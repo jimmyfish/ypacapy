@@ -10,6 +10,7 @@
 /* Hallmark · waive 39b · .seg button is 24px inside the 28px Rows and Structure switch of the results toolbar · voidHTTP's compact view switch, kept the same size here */
 /* Hallmark · dismissed 3 · the 3px rule on the vertical .divider is its drag grip, voidHTTP's side-by-side divider, not a card stripe */
 /* Hallmark · dismissed 23 · .side-resize::after is a 3px line along the sidebar edge while dragged, far under 5% of the window */
+/* Hallmark · dismissed F1 · the straight quotes in table.html sit inside jsonb cells and the SQL, as the database returned them; typographic quotes would change the value */
 @import url("./tokens.css");
 @import url("./base.css");
 
@@ -788,3 +789,68 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 .res-actions .menu { min-width: 200px; }
 /* the results toolbar sits above the grid, so its menus open over the sticky column heads */
 .res-tools { position: relative; z-index: calc(var(--z-sticky) + 1); }
+
+/* ======================================================================
+   The result grid, second pass: values read by their type; a cell is the unit; the inspector holds the full value.
+   ====================================================================== */
+.state > .grid-wrap { margin: 0; border: 0; border-top: 1px solid var(--color-rule); border-radius: 0; }
+.grid th, .grid td { height: 34px; padding: 0 var(--space-md); }
+.grid thead th { padding-block: var(--space-xs) var(--space-2xs); background: var(--color-paper); border-bottom: 0; box-shadow: inset 0 -1px 0 var(--color-rule); }
+.grid thead th.num { text-align: right; }
+.th-btn { display: inline-flex; align-items: center; gap: var(--space-2xs); padding: 0; border: 0; background: none; color: var(--color-ink); font: 600 var(--text-md)/1.2 var(--font-ui); white-space: nowrap; cursor: pointer; }
+.th-btn .t-ico { width: 14px; height: 14px; color: var(--color-muted); }
+.th-btn .k-ico { width: 12px; height: 12px; color: var(--color-link); }
+.th-btn .sort-ico { width: 13px; height: 13px; color: var(--color-muted); opacity: 0; transition: opacity var(--dur-micro) var(--ease-out); }
+.th-btn:hover .sort-ico, .th-btn:focus-visible .sort-ico, th[aria-sort="ascending"] .sort-ico, th[aria-sort="descending"] .sort-ico { opacity: 1; }
+th[aria-sort="ascending"] .sort-ico, th[aria-sort="descending"] .sort-ico { color: var(--color-link); }
+.th-btn:hover { color: var(--color-link); }
+.th-btn:active { transform: translateY(1px); }
+.th-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; border-radius: 4px; }
+.grid .col-type { margin-top: var(--space-3xs); padding-left: calc(var(--space-md) + var(--space-3xs)); }
+.grid th.num .col-type { padding-left: 0; }
+.grid .rownum { background: var(--color-paper); color: var(--color-placeholder); font-size: var(--text-xs); }
+.grid thead .rownum { box-shadow: inset -1px -1px 0 var(--color-rule); }
+.grid tbody tr:hover td { background: var(--color-paper-3); }
+.grid tbody tr[aria-selected="true"] td { background: color-mix(in srgb, var(--color-accent-soft) 55%, var(--color-paper)); }
+.grid tbody tr[aria-selected="true"] .rownum { color: var(--color-link); }
+.grid td.cell-sel { background: var(--color-accent-soft); box-shadow: inset 0 0 0 2px var(--color-focus); }
+.grid td.ts .d { color: var(--color-ink); }
+.grid td.ts .t { color: var(--color-ink-2); }
+.grid td.ts .tz { color: var(--color-placeholder); }
+.grid td.null { font-style: normal; }
+.null-pill { display: inline-block; padding: 0 var(--space-2xs); border: 1px dashed var(--color-edge-aa); border-radius: 4px; color: var(--color-placeholder); font: italic var(--text-xs)/1.5 var(--font-ui); }
+.grid td.bool .ico { width: 15px; height: 15px; }
+.grid td.bool .yes { color: var(--color-ok); }
+.grid td.bool .no { color: var(--color-placeholder); }
+.grid td.json { max-width: 44ch; color: var(--color-ink-2); }
+.jk { color: var(--j-key); } .js { color: var(--j-str); } .jn { color: var(--j-bool); }
+.inspector { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: var(--space-md); padding: var(--space-sm) var(--space-md); border-top: 1px solid var(--color-rule); background: var(--color-paper-3); }
+.ins-where { display: grid; gap: var(--space-3xs); min-width: 144px; }
+.ins-col { font-weight: 600; }
+.ins-type, .ins-row { color: var(--color-muted); font-size: var(--text-sm); }
+.ins-type { font-family: var(--font-mono); }
+.ins-value { max-height: 4.5em; overflow: auto; font: var(--text-table)/1.5 var(--font-table); color: var(--color-ink); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; }
+.ins-value.is-null { color: var(--color-placeholder); font-style: italic; }
+.state > .grid-foot { margin: 0; padding: var(--space-2xs) var(--space-md); border-top: 1px solid var(--color-rule); }
+.col-key { display: inline-flex; }
+.ins-copy { flex-shrink: 0; }
+
+/* wide results: the row number and the first column stay on screen while the rest scrolls */
+:root { --rownum-w: 52px; }
+.grid .rownum { width: var(--rownum-w); min-width: var(--rownum-w); padding-inline: var(--space-sm); }
+.grid.pin tbody td:nth-child(2), .grid.pin thead th:nth-child(2) { position: sticky; left: var(--rownum-w); z-index: var(--z-raised); background: var(--color-paper); box-shadow: inset -1px 0 0 var(--color-rule); }
+.grid.pin thead th:nth-child(2) { z-index: calc(var(--z-sticky) + 1); }
+.grid.pin tbody tr:hover td:nth-child(2) { background: var(--color-paper-3); }
+.cols-menu { max-height: 360px; overflow-y: auto; }
+.cols-menu button { justify-content: space-between; gap: var(--space-md); }
+.cols-menu .col-t { color: var(--color-muted); font: var(--text-xs) var(--font-mono); }
+
+/* long text: the first line, cut, and how many more lines there are; the inspector holds all of it */
+.grid td.long { max-width: 60ch; }
+.grid td.long .first { display: inline-block; max-width: calc(100% - 8ch); overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.grid td.long .more { margin-left: var(--space-xs); padding: 0 var(--space-2xs); border-radius: 4px; background: var(--color-paper-2); color: var(--color-muted); font: var(--text-xs)/1.6 var(--font-ui); }
+.ins-value { max-height: 9em; }
+
+/* a table's name is a title, not a control: no rename on click (renaming a table is DDL; it lives in the tree row menu, behind the guard) */
+.req-title .name--static { color: var(--color-ink); cursor: default; }
+.req-title .name--static:hover { text-decoration: none; }

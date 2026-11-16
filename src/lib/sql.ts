@@ -1,0 +1,111 @@
+/**
+ * SQL for the console: colouring, a light formatter, identifier quoting. This only paints and lays out
+ * text; what a statement does is decided in Rust (sqlparser) before anything runs.
+ */
+import { format, type SqlLanguage } from "sql-formatter";
+import type { Engine } from "../types";
+
+export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+const KEYWORDS = new Set(
+  (
+    "select from where and or not in is null as on join left right inner outer full cross natural using group by order having limit offset fetch first next rows only " +
+    "union all intersect except distinct case when then else end insert into values update set delete returning create table view index unique primary key foreign " +
+    "references drop alter add column constraint default check truncate grant revoke to with recursive asc desc nulls last exists between like ilike similar " +
+    "interval true false begin commit rollback transaction explain analyze replace if cascade restrict materialized schema database lateral over partition window " +
+    "filter within conflict do nothing escape collate show use describe pragma vacuum for of share nowait skip locked temporary temp sequence trigger function procedure"
+  ).split(" "),
+);
+const TYPES = new Set(
+  (
+    "int integer smallint bigint tinyint mediumint int2 int4 int8 serial bigserial numeric decimal real float float4 float8 double precision money text varchar char " +
+    "character varying bpchar uuid json jsonb bool boolean date time timestamp timestamptz timetz bytea blob inet cidr macaddr xml datetime year enum bit"
+  ).split(" "),
+);
+
+// comment | string | dollar-quoted | quoted identifier | number | word | anything else
+const TOKEN = /(--[^\n]*|\/\*[\s\S]*?(?:\*\/|$))|('(?:[^']|'')*'?)|(\$([A-Za-z_]\w*)?\$[\s\S]*?(?:\$\4\$|$))|("(?:[^"]|"")*"?|`[^`]*`?)|(\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b)|([A-Za-z_][\w$]*)/g;
+
+type Run = [cls: string, text: string];
+
+function runs(src: string): Run[] {
+  const out: Run[] = [];
+  let last = 0;
+  TOKEN.lastIndex = 0;
+  for (let m = TOKEN.exec(src); m; m = TOKEN.exec(src)) {
+    if (m.index > last) out.push(["", src.slice(last, m.index)]);
+    let cls = "";
+    if (m[1]) cls = "q-c";
+    else if (m[2] || m[3]) cls = "q-s";
+    else if (m[6]) cls = "q-n";
+    else if (m[7]) {
+      const w = m[7].toLowerCase();
+      const next = src.slice(m.index + m[0].length).match(/^\s*\(/);
+      cls = KEYWORDS.has(w) ? "q-k" : TYPES.has(w) ? "q-t" : next ? "q-f" : "";
+    }
+    out.push([cls, m[0]]);
+    last = m.index + m[0].length;
+  }
+  if (last < src.length) out.push(["", src.slice(last)]);
+  return out;
+}
+
+/** One `.l` block per line, leading spaces in `.ind`, tokens coloured; runs never cross a line. */
+export function highlightSql(src: string, cur?: number): string {
+  const lines: string[] = [""];
+  for (const [cls, text] of runs(src)) {
+    text.split("\n").forEach((part, k) => {
+      if (k > 0) lines.push("");
+      if (part) lines[lines.length - 1] += cls ? `<span class="${cls}">${esc(part)}</span>` : esc(part);
+    });
+  }
+  return lines
+    .map((html, i) => {
+      const m = /^ +/.exec(html);
+      const lead = m ? `<span class="ind">${m[0]}</span>` : "";
+      return `<span class="l${i === cur ? " cur" : ""}">${lead}${m ? html.slice(m[0].length) : html}</span>`;
+    })
+    .join("");
+}
+
+/** The words of one line of SQL, coloured, for small samples (no line numbers). */
+export const highlightInline = (src: string) => runs(src).map(([c, t]) => (c ? `<span class="${c}">${esc(t)}</span>` : esc(t))).join("");
+
+const DIALECT: Record<Engine, SqlLanguage> = { postgres: "postgresql", mysql: "mysql", sqlite: "sqlite" };
+
+/**
+ * Formats SQL in the dialect of the connection, one clause per line with its keyword beside it:
+ *   SELECT *
+ *   FROM active_packages
+ *   WHERE used_quota_data > 0
+ *     AND order_id IS NOT NULL
+ * Keywords and type names upper case; names, strings, functions and comments as typed.
+ * Throws when the text cannot be parsed; the caller keeps the text and says why.
+ */
+export function formatSql(src: string, engine: Engine): string {
+  const out = format(src, { language: DIALECT[engine], keywordCase: "upper", dataTypeCase: "upper", functionCase: "preserve", identifierCase: "preserve", tabWidth: 2, linesBetweenQueries: 1, expressionWidth: 60 });
+  // sql-formatter puts a clause keyword alone on its line with the body two spaces in: bring the first body line up beside it
+  const lines = out.split("\n"), joined: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^( *)([A-Z]+(?: [A-Z]+)*)$/), next = lines[i + 1];
+    if (m && next !== undefined && next.startsWith(m[1] + "  ") && !next.startsWith(m[1] + "   ")) {
+      joined.push(`${m[1]}${m[2]} ${next.trim()}`);
+      i++;
+    } else joined.push(lines[i]);
+  }
+  return joined.join("\n") + "\n";
+}
+
+export function quoteIdent(engine: Engine, name: string): string {
+  return engine === "mysql" ? "`" + name.replace(/`/g, "``") + "`" : '"' + name.replace(/"/g, '""') + '"';
+}
+
+/** select * from the table, with the where clause the person typed; no order by they did not choose. */
+export function tableSelect(engine: Engine, schema: string, table: string, where: string, limit: number, offset: number): string {
+  const from = engine === "sqlite" && schema === "main" ? quoteIdent(engine, table) : `${quoteIdent(engine, schema)}.${quoteIdent(engine, table)}`;
+  const w = where.trim();
+  return `select * from ${from}${w ? `\nwhere ${w}` : ""}\nlimit ${limit}${offset ? ` offset ${offset}` : ""}`;
+}
+
+export const ENGINE_LABEL: Record<Engine, string> = { postgres: "PG", mysql: "MYSQL", sqlite: "SQLITE" };
+export const ENGINE_NAME: Record<Engine, string> = { postgres: "PostgreSQL", mysql: "MySQL", sqlite: "SQLite" };

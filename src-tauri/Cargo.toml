@@ -1,0 +1,51 @@
+[package]
+name = "ypacapy"
+version = "0.0.1"
+description = "ypacapy — a local-only database explorer"
+edition = "2021"
+
+[lib]
+name = "ypacapy_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+# Settings > Data on this Mac: "Show in Finder".
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["sync", "time", "macros", "rt"] }
+tokio-util = "0.7"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+fontdb = { version = "0.23", default-features = false, features = ["fs", "memmap"] }
+# PostgreSQL, MySQL/MariaDB and SQLite, one async driver family; also ypacapy.db (history, saved queries).
+# No macros, no migrations, no `any` driver: column types are read from each driver's own result metadata.
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-webpki", "postgres", "mysql", "sqlite"] }
+# Write guard: statements are classified from the parsed AST (tokenizer fallback), never by regex.
+sqlparser = { version = "0.64", features = ["visitor"] }
+# settings.toml and connections.toml
+toml = "0.9"
+# The app passphrase is kept as a salted PBKDF2 hash (in the keychain), never as the passphrase itself.
+pbkdf2 = { version = "0.12", default-features = false, features = ["hmac"] }
+sha2 = "0.10"
+getrandom = "0.3"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Connection passwords and the passphrase hash in the macOS login keychain (same crate as voidHTTP).
+security-framework = "3"
+# Touch ID for the write guard: LocalAuthentication's LAContext.
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSError"] }
+objc2-local-authentication = { version = "0.3", default-features = false, features = ["std", "block2", "LAContext", "LAError"] }
+block2 = "0.6"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

@@ -1,0 +1,127 @@
+/* Tokens · voidHTTP src/tokens.css, taken as is by owner request (2026-11-16): ypacapy shares voidHTTP's components and colours.
+ * ypacapy additions sit in the last :root block: the table font, and SQL syntax colours mapped onto the scheme-derived roles. */
+:root {
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
+  /* ---- user-configurable type: the only four values a Settings screen will ever write ---- */
+  --font-ui: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-size-ui: 14px;
+  --font-size-code: 13px;
+  /* everything below derives from those four; nothing else names a face or a size */
+  --text-xs: calc(var(--font-size-ui) * 0.857); --text-sm: calc(var(--font-size-ui) * 0.929); --text-md: var(--font-size-ui);
+  --text-lg: calc(var(--font-size-ui) * 1.143); --text-xl: calc(var(--font-size-ui) * 1.286); --text-2xl: calc(var(--font-size-ui) * 1.429); --text-3xl: calc(var(--font-size-ui) * 1.6);
+  --text-code: var(--font-size-code);
+  --text-display-s: var(--text-xl); --text-display: var(--text-2xl); --text-section: var(--text-xl); --text-title: var(--text-lg); --text-lead: var(--text-md);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
+  --container: 1440px; --gutter: 64px; --gap-columns: 32px; --section-gap-s: 120px; --section-gap: 144px; --section-gap-l: 176px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+
+  --color-canvas: #f0f4fa;      /* the frame behind the panel and the rail */
+  --color-paper: #ffffff;       /* the panel */
+  --color-paper-2: #f0f4fa;     /* selected row, segmented track */
+  --color-paper-3: #f7f8fa;     /* filled fields: the request line, search */
+  --color-thumb: #ffffff;       /* the pressed segment: always lighter than its track, so it reads raised */
+  --color-ink: #0e2949;
+  --color-ink-2: #283f5d;
+  --color-muted: #4e6891;
+  --color-placeholder: #647081;
+  --color-rule: #e6ebf3;
+  /* edges: soft, by the owner's decision (2026-11-12). --color-edge-aa (3:1, WCAG 1.4.11) stays defined for a future setting. */
+  --color-edge-soft: #dce3ed; --color-edge-aa: #7d8aa0;
+  --color-field-edge: var(--color-edge-soft); --url-edge: transparent;
+  --color-gutter: #3d68b8; --color-guide: #b8c2d2;
+  --color-accent: #2e67e5;
+  --color-accent-ink: #ffffff;
+  --color-accent-soft: #eef3fe;
+  --color-link: #2e67e5;
+  --color-focus: #2e67e5;
+  --color-ok: #01804a;
+  --color-redir: #1a5fb4;
+  --color-error: #d00000;
+  --color-warn: #a34a00;
+  --color-bar: #2e67e5;
+  --color-hit: #fff0b3; --color-hit-cur: #ffd24d; --color-hit-edge: #c79100;
+  /* project identity tiles: text on a tint, each pair 4.5:1 or better */
+  --proj-1-fg: #2e67e5; --proj-1-bg: #eef3fe; --proj-2-fg: #01804a; --proj-2-bg: #e8f6ef;
+  --proj-3-fg: #a34a00; --proj-3-bg: #fcefe5; --proj-4-fg: #6d3fd1; --proj-4-bg: #f1ecfd;
+  --proj-5-fg: #0b7285; --proj-5-bg: #e6f6f8; --proj-6-fg: #c2255c; --proj-6-bg: #fdecf2;
+  /* tag fills (flatuicolors.com, Flat UI): fixed in every theme and scheme, so a colour means the same thing everywhere */
+  --tag-turquoise: #1abc9c; --tag-emerald: #2ecc71; --tag-cyan: #0097a7; --tag-river: #3498db; --tag-amethyst: #9b59b6; --tag-asphalt: #34495e;
+  --tag-sunflower: #f1c40f; --tag-carrot: #e67e22; --tag-alizarin: #e74c3c; --tag-clouds: #ecf0f1; --tag-concrete: #95a5a6;
+  /* each tag's text colour on its badge: white on the dark fills, Midnight Blue on the light ones */
+  --tag-turquoise-ink: #2c3e50; --tag-emerald-ink: #2c3e50; --tag-cyan-ink: #2c3e50; --tag-river-ink: #2c3e50; --tag-amethyst-ink: #ffffff; --tag-asphalt-ink: #ffffff;
+  --tag-sunflower-ink: #2c3e50; --tag-carrot-ink: #2c3e50; --tag-alizarin-ink: #ffffff; --tag-clouds-ink: #2c3e50; --tag-concrete-ink: #2c3e50;
+  /* unresolved {{variables}}: Alizarin in every theme and scheme, by owner request (stronger than --color-warn) */
+  --color-unresolved: var(--tag-alizarin);
+  /* gRPC is a protocol, not a scheme colour: the convention cyan in every theme and scheme, by owner request */
+  --m-grpc: var(--tag-cyan);
+  /* WebSocket, the same way: amethyst, the one tag hue no method label uses */
+  --m-ws: var(--tag-amethyst);
+  /* Socket.IO: turquoise in every theme and scheme, by owner pick */
+  --m-sio: var(--tag-turquoise);
+  /* Kafka: its own black and white, the one label with no hue: asphalt here, clouds in dark themes (themes.ts too). Owner pick */
+  --m-kafka: var(--tag-asphalt);
+  /* GraphQL: its own rhodamine pink, not a scheme colour; darkened to read as text here, lifted in dark themes (themes.ts too) */
+  --m-gql: #c4007f;
+  /* the faint grey ring round every tag dot and swatch: keeps Clouds visible on light and Asphalt on dark */
+  --tag-ring: rgb(128 128 128 / 0.35);
+  /* switch knob: white in every theme, on the grey or accent track */
+  --color-knob: #ffffff; --color-knob-shadow: rgb(0 0 0 / 0.25);
+  --color-overlay: rgb(14 41 73 / 0.32);
+  --color-on-accent-rule: rgb(255 255 255 / 0.35);
+  --color-shadow: rgb(14 41 73 / 0.08);
+
+  --m-get: #01804c; --m-post: #c74200; --m-put: #0b6d9e; --m-patch: #7d53dd; --m-delete: #d00000; --m-head: #8a6a00; --m-options: #c2255c; --m-other: #4e6891;
+  --j-key: #ba0205; --j-str: #0054b0; --j-num: #b45300; --j-bool: #7c3aed; --j-punct: #4e6891;
+
+  --font-display: var(--font-ui);
+  --font-body: var(--font-ui);
+  --font-outlier: var(--font-mono);
+  --radius-card: 12px; --radius-control: 8px; --radius-pill: 999px; --rule-hair: 1px; --shadow-card: none;
+  --tracking-display: -0.01em;
+  --control: 28px;
+  color-scheme: light;
+}
+
+/* Dark is derived, not measured: Apidog's reference screenshots are light only. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-canvas: #0e1218; --color-paper: #161b25; --color-paper-2: #1f2633; --color-paper-3: #1b212c; --color-thumb: #2c3546;
+    --color-ink: #e3e8f2; --color-ink-2: #c3cbd9; --color-muted: #8a9bb8; --color-placeholder: #8a96a8;
+    --color-rule: #262e3c; --color-edge-soft: #2e3747; --color-edge-aa: #6b778c; --color-gutter: #7f9ad6; --color-bar: #4f85fc; --proj-1-fg: #8db0ff; --proj-1-bg: #1d2b4a; --proj-2-fg: #3fd18d; --proj-2-bg: #13302a; --proj-3-fg: #ffab70; --proj-3-bg: #3a2618; --proj-4-fg: #c0a6ff; --proj-4-bg: #2a2145; --proj-5-fg: #2bc2d6; --proj-5-bg: #10303a; --proj-6-fg: #ff7aa8; --proj-6-bg: #3d1a2a; --color-guide: #3a4457;
+    --color-accent: #2e67e5; --color-accent-ink: #ffffff; --color-accent-soft: #1d2b4a; --color-link: #6f9bff; --color-focus: #6f9bff;
+    --color-ok: #01bf71; --color-redir: #6cb6ff; --color-error: #ff5c5c; --color-warn: #f5b84b;
+    --color-hit: rgb(245 184 75 / 0.22); --color-hit-cur: rgb(245 184 75 / 0.5); --color-hit-edge: #f5b84b;
+    --color-overlay: rgb(0 0 0 / 0.55); --color-shadow: rgb(0 0 0 / 0.3);
+    --m-gql: #ff4fb8;
+  --m-kafka: var(--tag-clouds);
+    --m-kafka: var(--tag-clouds);
+    --m-get: #01bf71; --m-post: #ff7a33; --m-put: #38b6f0; --m-patch: #a78bfa; --m-delete: #ff5c5c; --m-head: #e5c07b; --m-options: #ff7aa8; --m-other: #8a9bb8;
+    --j-key: #ff7b72; --j-str: #79b8ff; --j-num: #ffab70; --j-bool: #b392f0; --j-punct: #8a9bb8;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --color-canvas: #0e1218; --color-paper: #161b25; --color-paper-2: #1f2633; --color-paper-3: #1b212c; --color-thumb: #2c3546;
+  --color-ink: #e3e8f2; --color-ink-2: #c3cbd9; --color-muted: #8a9bb8; --color-placeholder: #8a96a8;
+  --color-rule: #262e3c; --color-edge-soft: #2e3747; --color-edge-aa: #6b778c; --color-gutter: #7f9ad6; --color-bar: #4f85fc; --proj-1-fg: #8db0ff; --proj-1-bg: #1d2b4a; --proj-2-fg: #3fd18d; --proj-2-bg: #13302a; --proj-3-fg: #ffab70; --proj-3-bg: #3a2618; --proj-4-fg: #c0a6ff; --proj-4-bg: #2a2145; --proj-5-fg: #2bc2d6; --proj-5-bg: #10303a; --proj-6-fg: #ff7aa8; --proj-6-bg: #3d1a2a; --color-guide: #3a4457;
+  --color-accent: #2e67e5; --color-accent-ink: #ffffff; --color-accent-soft: #1d2b4a; --color-link: #6f9bff; --color-focus: #6f9bff;
+  --color-ok: #01bf71; --color-redir: #6cb6ff; --color-error: #ff5c5c; --color-warn: #f5b84b;
+    --color-hit: rgb(245 184 75 / 0.22); --color-hit-cur: rgb(245 184 75 / 0.5); --color-hit-edge: #f5b84b;
+  --color-overlay: rgb(0 0 0 / 0.55); --color-shadow: rgb(0 0 0 / 0.3);
+  --m-gql: #ff4fb8;
+  --m-get: #01bf71; --m-post: #ff7a33; --m-put: #38b6f0; --m-patch: #a78bfa; --m-delete: #ff5c5c; --m-head: #e5c07b; --m-options: #ff7aa8; --m-other: #8a9bb8;
+  --j-key: #ff7b72; --j-str: #79b8ff; --j-num: #ffab70; --j-bool: #b392f0; --j-punct: #8a9bb8;
+  color-scheme: dark;
+}
+
+/* ---- ypacapy: the table face is a third user-set font; SQL syntax rides on roles every scheme already derives ---- */
+:root {
+  --font-table: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-size-table: 13px;
+  --text-table: var(--font-size-table);
+  --sql-keyword: var(--j-bool); --sql-string: var(--m-get); --sql-number: var(--j-num); --sql-fn: var(--m-put); --sql-type: var(--color-redir); --sql-comment: var(--color-muted);
+  /* engine labels, coloured text like voidHTTP's method labels, never a chip */
+  --e-postgres: var(--m-put); --e-mysql: var(--m-post); --e-sqlite: var(--m-get);
+}

@@ -1,0 +1,43 @@
+[
+ {
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "brand (voidHTTP components and tokens, by owner request)",
+  "axes": "light/grotesk-sans/cool",
+  "nav": "title strip of connection tabs + icon rail (Schema, History, Saved) + panel",
+  "footer": "none",
+  "imagery": "none",
+  "photos": [],
+  "signature": "the result grid under the query line: engine and database in one filled field beside Run",
+  "sections": [
+   "title strip",
+   "rail",
+   "sidebar: schema tree, history, saved",
+   "tabs bar",
+   "query line",
+   "SQL editor",
+   "results",
+   "table rows, columns, indexes",
+   "home",
+   "settings",
+   "new connection"
+  ],
+  "waived": [
+   "24b",
+   "39b"
+  ],
+  "prompt": "local-only macOS database explorer, Tauri v2 + React, SQLite/PostgreSQL/MySQL",
+  "date": "2026-11-16",
+  "mode": "build",
+  "depth": "full",
+  "genre": "modern-minimal",
+  "hero": "none (app screen)",
+  "preview": [
+   ".hallmark/preview/home.html",
+   "index.html",
+   "table.html",
+   "settings.html",
+   "connect.html"
+  ]
+ }
+]

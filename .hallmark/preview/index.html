@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ypacapy preview</title>
+<meta name="description" content="Design preview of ypacapy, a local-only database explorer for macOS: the query console and its result grid.">
+<link rel="stylesheet" href="./app.css">
+<link rel="stylesheet" href="./preview.css">
+<script src="./themes.js"></script>
+</head>
+<body>
+<!-- icons: Lucide v0.460.0 (ISC), inlined from lucide-react's icon nodes -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
+  <symbol id="i-list-tree" viewBox="0 0 24 24"><path d="M21 12h-8"/><path d="M21 6H8"/><path d="M21 18h-8"/><path d="M3 6v4c0 1.1.9 2 2 2h3"/><path d="M3 10v6c0 1.1.9 2 2 2h3"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></symbol>
+  <symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></symbol>
+  <symbol id="i-hard-drive" viewBox="0 0 24 24"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-square-function" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 17c2 0 2.8-1 2.8-2.8V10c0-2 1-3.3 3.2-3"/><path d="M9 11.2h5.7"/></symbol>
+  <symbol id="i-table-2" viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></symbol>
+  <symbol id="i-square-code" viewBox="0 0 24 24"><path d="M10 9.5 8 12l2 2.5"/><path d="m14 9.5 2 2.5-2 2.5"/><rect width="18" height="18" x="3" y="3" rx="2"/></symbol>
+  <symbol id="i-panel-left-close" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></symbol>
+  <symbol id="i-columns-2" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+  <symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></symbol>
+  <symbol id="i-circle-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></symbol>
+  <symbol id="i-key-round" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-folder-open" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-lock-open" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></symbol>
+  <symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+  <symbol id="i-shield-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5 5a1 1 0 0 0-1 1v7c0 5 3.5 7.5 7.67 8.94a1 1 0 0 0 .67.01c2.35-.82 4.48-1.97 5.9-3.71"/><path d="M9.309 3.652A12.252 12.252 0 0 0 11.24 2.28a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1v7a9.784 9.784 0 0 1-.08 1.264"/></symbol>
+  <symbol id="i-fingerprint" viewBox="0 0 24 24"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-wand-sparkles" viewBox="0 0 24 24"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></symbol>
+  <symbol id="i-file-plus" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M12 18v-6"/></symbol>
+</svg>
+
+<header class="pv-bar">
+  <strong>ypacapy preview · query</strong>
+  <nav class="pv-screens" aria-label="Screens">
+    <a class="btn btn--quiet" href="./home.html" style="min-height:var(--control)">Home</a>
+    <a class="btn btn--quiet" href="./index.html" style="min-height:var(--control)" aria-current="page">Query</a>
+    <a class="btn btn--quiet" href="./table.html" style="min-height:var(--control)">Table</a>
+    <a class="btn btn--quiet" href="./settings.html" style="min-height:var(--control)">Settings</a>
+    <a class="btn btn--quiet" href="./connect.html" style="min-height:var(--control)">New connection</a>
+  </nav>
+  <div class="pv-states" role="group" aria-label="States">
+    <button type="button" data-show="results" aria-pressed="true">Results</button>
+    <button type="button" data-show="running" aria-pressed="false">Running</button>
+    <button type="button" data-show="empty" aria-pressed="false">No rows</button>
+    <button type="button" data-show="sql-error" aria-pressed="false">SQL error</button>
+    <button type="button" data-show="lost" aria-pressed="false">Connection lost</button>
+  </div>
+  <div class="pv-fonts">
+    <label>UI font <select data-font="--font-ui"><option value="">System</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option><option value="Avenir Next, Avenir, sans-serif">Avenir</option><option value="Georgia, serif">Georgia</option></select></label>
+    <label>Table font <select data-font="--font-table"><option value="">System mono</option><option value="Menlo, monospace">Menlo</option><option value="'Courier New', monospace">Courier</option><option value="Monaco, monospace">Monaco</option></select></label>
+    <label>Console font <select data-font="--font-mono"><option value="">System mono</option><option value="Menlo, monospace">Menlo</option><option value="'Courier New', monospace">Courier</option><option value="Monaco, monospace">Monaco</option></select></label>
+    <label>Size <select data-size="--font-size-ui"><option value="">14</option><option value="13px">13</option><option value="15px">15</option><option value="16px">16</option></select></label>
+  </div>
+  <div class="pv-theme" role="group" aria-label="Density" style="margin-left:0">
+    <button type="button" data-density-set="" aria-pressed="true">Default</button>
+    <button type="button" data-density-set="compact" aria-pressed="false">Compact</button>
+  </div>
+  <div class="pv-theme" role="group" aria-label="Mac appearance" style="margin-left:0">
+    <button type="button" data-os-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-os-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<div class="pv-stage">
+<div class="app">
+  <!-- title strip: the native macOS traffic lights sit in the empty 84px on the left (not drawn here) -->
+  <div class="app-strip" data-tauri-drag-region>
+    <nav class="ptabs" aria-label="Connections">
+      <button type="button" class="ptab" data-href="./home.html"><svg aria-hidden="true" class="ico"><use href="#i-house"/></svg>Home</button>
+      <span class="ptab-sep" aria-hidden="true"></span>
+      <div class="ptab ptab--project" aria-current="page">
+        <button type="button" class="ptab-main" data-href="./index.html"><span class="proj-tile proj-tile--sm" style="--fg: var(--proj-1-fg); --bg: var(--proj-1-bg)"><svg aria-hidden="true" class="ico"><use href="#i-server"/></svg></span>shop_prod</button>
+        <button type="button" class="icon-btn ptab-close" aria-label="Close shop_prod"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="ptab ptab--project">
+        <button type="button" class="ptab-main" data-href="./index.html"><span class="proj-tile proj-tile--sm" style="--fg: var(--proj-2-fg); --bg: var(--proj-2-bg)"><svg aria-hidden="true" class="ico"><use href="#i-hard-drive"/></svg></span>analytics.sqlite</button>
+        <button type="button" class="icon-btn ptab-close" aria-label="Close analytics.sqlite"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button>
+      </div>
+    </nav>
+    <div class="strip-end">
+      <button type="button" class="icon-btn strip-settings" title="Settings  ⌘," aria-label="Settings" data-href="./settings.html"><svg aria-hidden="true" class="ico"><use href="#i-settings"/></svg></button>
+    </div>
+  </div>
+  <nav class="rail" aria-label="Sections">
+    <div class="rail-mark" aria-hidden="true"><svg aria-hidden="true" class="ico"><use href="#i-database"/></svg></div>
+    <button type="button" class="rail-item" data-rail="schema" aria-label="Schema" title="Schema" aria-current="page"><svg aria-hidden="true" class="ico ico-lg"><use href="#i-list-tree"/></svg></button>
+    <button type="button" class="rail-item" data-rail="history" aria-label="History" title="History"><svg aria-hidden="true" class="ico ico-lg"><use href="#i-history"/></svg></button>
+    <button type="button" class="rail-item" data-rail="saved" aria-label="Saved queries" title="Saved queries"><svg aria-hidden="true" class="ico ico-lg"><use href="#i-bookmark"/></svg></button>
+  </nav>
+  <div class="panel">
+    <aside class="sidebar" data-side="schema">
+      <div class="side-resize" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" title="Drag to resize, drag past the edge to hide"></div>
+      <div class="side-head"><h2>Schema</h2></div>
+      <div class="side-tools">
+        <div class="search"><svg aria-hidden="true" class="ico"><use href="#i-search"/></svg><input class="field" id="tree-filter" placeholder="Filter tables" aria-label="Filter tables, views and functions" autocomplete="off" spellcheck="false"></div>
+        <button type="button" class="icon-btn icon-btn--outline" title="Refresh schema" aria-label="Refresh schema"><svg aria-hidden="true" class="ico"><use href="#i-refresh-cw"/></svg></button>
+        <button type="button" class="icon-btn icon-btn--filled" title="New query" aria-label="New query"><svg aria-hidden="true" class="ico"><use href="#i-plus"/></svg></button>
+      </div>
+      <div class="tree" id="tree">
+        <div class="row collection" data-path="public"><button type="button" class="row-main" data-group="public" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><span class="name">public</span><span class="count">(13)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for public" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="public/tables"><button type="button" class="row-main" data-group="public/tables" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">Tables</span><span class="count">(8)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Tables" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/orders"><button type="button" class="row-main" data-href="./table.html"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">orders</span><span class="count est" title="Estimate from table statistics">~12k</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for orders" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/order_items"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">order_items</span><span class="count est" title="Estimate from table statistics">~41k</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for order_items" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/customers"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">customers</span><span class="count est" title="Estimate from table statistics">~3.2k</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for customers" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/products"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">products</span><span class="count est" title="Estimate from table statistics">~640</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for products" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/refunds"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">refunds</span><span class="count est" title="Estimate from table statistics">~318</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for refunds" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/shipments"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">shipments</span><span class="count est" title="Estimate from table statistics">~11k</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for shipments" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/warehouses"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">warehouses</span><span class="count est" title="Estimate from table statistics">~4</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for warehouses" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/schema_migrations"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">schema_migrations</span><span class="count est" title="Estimate from table statistics">~57</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for schema_migrations" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="public/views"><button type="button" class="row-main" data-group="public/views" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">Views</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Views" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/views/daily_revenue"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-eye"/></svg><span class="name">daily_revenue</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for daily_revenue" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/views/open_orders"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-eye"/></svg><span class="name">open_orders</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for open_orders" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="public/functions"><button type="button" class="row-main" data-group="public/functions" aria-expanded="false"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-right"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">Functions</span><span class="count">(3)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Functions" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="public/functions/order_total"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-function"/></svg><span class="name">order_total</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for order_total" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="public/functions/touch_updated_at"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-function"/></svg><span class="name">touch_updated_at</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for touch_updated_at" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="public/functions/refund_window"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-function"/></svg><span class="name">refund_window</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for refund_window" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row collection" data-path="audit"><button type="button" class="row-main" data-group="audit" aria-expanded="false"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-right"/></svg><span class="name">audit</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for audit" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="empty" id="tree-empty" hidden><strong>Nothing matches <span id="tree-empty-q"></span></strong><span>The filter checks table, view and function names.</span><button type="button" class="link" id="tree-clear">Clear the filter</button></div>
+        <div class="menu row-menu" id="row-menu" role="menu" aria-label="Table actions" hidden>
+          <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-table-2"/></svg>Open rows</button>
+          <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg>New query on this table</button>
+          <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg>Copy name</button>
+          <hr>
+          <button type="button" role="menuitem" class="danger">Truncate</button>
+          <button type="button" role="menuitem" class="danger">Drop</button>
+        </div>
+      </div>
+    </aside>
+    <aside class="sidebar" data-side="history" hidden>
+      <div class="side-head"><h2>History</h2><button type="button" class="btn btn--quiet">Clear</button></div>
+      <div class="side-tools"><div class="search"><svg aria-hidden="true" class="ico"><use href="#i-search"/></svg><input class="field" placeholder="Search history" aria-label="Search history" autocomplete="off" spellcheck="false"></div></div>
+      <div class="tree">
+        <div class="day">Today</div>
+        <div class="row"><button type="button" class="row-main"><span class="e e-postgres">PG</span><span class="name hq">select c.email, count(*) as refunds</span><span class="htime">09:41</span><span class="hstatus rows">14</span></button></div>
+        <div class="row"><button type="button" class="row-main"><span class="e e-postgres">PG</span><span class="name hq">select id, totl from orders</span><span class="htime">09:38</span><span class="hstatus fail">error</span></button></div>
+        <div class="row"><button type="button" class="row-main"><span class="e e-postgres">PG</span><span class="name hq">select * from orders where status</span><span class="htime">09:30</span><span class="hstatus rows">20</span></button></div>
+        <div class="row"><button type="button" class="row-main"><span class="e e-sqlite">SQLITE</span><span class="name hq">select day, sum(views) from page_views</span><span class="htime">08:55</span><span class="hstatus rows">31</span></button></div>
+        <div class="day">Yesterday</div>
+        <div class="row"><button type="button" class="row-main"><span class="e e-postgres">PG</span><span class="name hq">update shipments set carrier = 'dhl'</span><span class="htime">17:12</span><span class="hstatus rows">3</span></button></div>
+        <div class="row"><button type="button" class="row-main"><span class="e e-mysql">MYSQL</span><span class="name hq">show processlist</span><span class="htime">16:40</span><span class="hstatus rows">8</span></button></div>
+      </div>
+    </aside>
+    <aside class="sidebar" data-side="saved" hidden>
+      <div class="side-head"><h2>Saved queries</h2></div>
+      <div class="side-tools"><div class="search"><svg aria-hidden="true" class="ico"><use href="#i-search"/></svg><input class="field" placeholder="Search saved queries" aria-label="Search saved queries" autocomplete="off" spellcheck="false"></div>
+        <button type="button" class="icon-btn icon-btn--filled" title="New folder" aria-label="New folder"><svg aria-hidden="true" class="ico"><use href="#i-plus"/></svg></button></div>
+      <div class="tree">
+        <div class="row collection"><button type="button" class="row-main" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><span class="name">Reports</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Reports" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px" aria-current="page"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Refunds by customer</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Refunds by customer" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Daily revenue</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Daily revenue" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row collection"><button type="button" class="row-main" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><span class="name">Ops</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Ops" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Stuck shipments</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Stuck shipments" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Long-running queries</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Long-running queries" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+      </div>
+    </aside>
+    <main class="work">
+      <div class="tabsbar">
+        <button type="button" class="icon-btn side-toggle" aria-label="Hide sidebar" title="Hide sidebar  ⌘\"><svg aria-hidden="true" class="ico"><use href="#i-panel-left-close"/></svg></button>
+        <div class="tabs">
+          <div class="tab" data-tab="orders"><button type="button" class="tab-main" data-href="./table.html"><svg aria-hidden="true" class="ico"><use href="#i-table-2"/></svg><span class="name">orders</span></button><button type="button" class="icon-btn close" aria-label="Close orders"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button></div>
+          <div class="tab" data-tab="q1" aria-current="page"><button type="button" class="tab-main"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg><span class="name">Query 1</span></button><button type="button" class="icon-btn close" aria-label="Close Query 1"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button></div>
+          <div class="tab" data-tab="q2"><button type="button" class="tab-main"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg><span class="name">Query 2</span><span class="dirty" role="img" aria-label="Unsaved changes"></span></button><button type="button" class="icon-btn close" aria-label="Close Query 2"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button></div>
+          <button type="button" class="icon-btn tab-add" aria-label="New query tab"><svg aria-hidden="true" class="ico"><use href="#i-plus"/></svg></button>
+        </div>
+        <div class="menu-anchor env-group guard">
+          <button type="button" class="env-picker" id="guard-btn" data-menu="guard-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Write guard for shop_prod: Ask to confirm" title="Write guard for shop_prod"><svg aria-hidden="true" class="ico guard-ico"><use href="#i-shield"/></svg><span class="env-name" id="guard-name">Ask to confirm</span><svg aria-hidden="true" class="ico"><use href="#i-chevron-down"/></svg></button>
+          <div class="menu guard-menu" id="guard-menu" role="menu" aria-label="Write guard for shop_prod" hidden>
+            <p class="menu-note">Before a write runs on shop_prod</p>
+            <button type="button" role="menuitemradio" aria-checked="false" data-guard="run" data-icon="shield-off"><svg aria-hidden="true" class="ico"><use href="#i-shield-off"/></svg><span>Run it</span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+            <button type="button" role="menuitemradio" aria-checked="true" data-guard="confirm" data-icon="shield"><svg aria-hidden="true" class="ico"><use href="#i-shield"/></svg><span>Ask to confirm</span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+            <button type="button" role="menuitemradio" aria-checked="false" data-guard="verify" data-icon="fingerprint"><svg aria-hidden="true" class="ico"><use href="#i-fingerprint"/></svg><span>Ask for passphrase</span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+            <p class="menu-note" id="guard-lower" hidden>Lowering it asks for the passphrase first</p>
+          </div>
+        </div>
+      </div>
+      <div class="work-body">
+        <div class="req-pane" id="req-pane">
+          <div class="request-line">
+            <div class="url-field"><div class="ctx"><span class="e e-postgres">PG</span><strong>shop_prod</strong><span class="sep">/</span><span class="ctx-select"><select aria-label="Database"><option>shop</option><option>shop_staging</option></select><svg aria-hidden="true" class="ico"><use href="#i-chevron-down"/></svg></span><span class="sep">/</span><span class="ctx-select"><select aria-label="Schema"><option>public</option><option>audit</option></select><svg aria-hidden="true" class="ico"><use href="#i-chevron-down"/></svg></span></div></div>
+          <div class="joined" id="run-group">
+            <button type="button" class="btn btn--primary" id="run"><span class="spinner" hidden></span>Run</button>
+            <button type="button" class="btn btn--primary joined-tail" aria-label="More run options" aria-haspopup="menu" aria-expanded="false" data-menu="run-menu"><svg aria-hidden="true" class="ico"><use href="#i-chevron-down"/></svg></button>
+            <div class="menu" id="run-menu" role="menu" aria-label="Run" hidden>
+              <button type="button" role="menuitem">Run all<kbd>⌘↵</kbd></button>
+              <button type="button" role="menuitem">Run selection<kbd>⇧⌘↵</kbd></button>
+              <button type="button" role="menuitem">Explain</button>
+            </div>
+          </div>
+            <div class="joined">
+              <button type="button" class="btn">Save</button>
+              <span class="btn joined-tail save-state ok" id="save-state" role="img" aria-label="Saved" title="Saved"><svg aria-hidden="true" class="ico"><use href="#i-circle-check"/></svg></span>
+            </div>
+          </div>
+          <div class="req-title"><button type="button" class="name" id="q-name">Refunds by customer</button><span class="path" id="q-path">Saved queries / Reports</span></div>
+          <div class="section">
+            <div class="editor">
+              <div class="editor-bar"><button type="button" class="btn btn--quiet"><svg aria-hidden="true" class="ico"><use href="#i-wand-sparkles"/></svg>Format</button></div>
+<pre class="code" id="code-q1" tabindex="0" aria-label="SQL editor, Query 1"><span class="l"><span class="q-c">-- Refunds in the last 30 days, by customer</span></span><span class="l"><span class="q-k">select</span> c.email,</span><span class="l"><span class="ind">       </span><span class="q-f">count</span>(*) <span class="q-k">as</span> refunds,</span><span class="l"><span class="ind">       </span><span class="q-f">sum</span>(o.total) <span class="q-k">as</span> refunded</span><span class="l"><span class="q-k">from</span> orders o</span><span class="l"><span class="q-k">join</span> customers c <span class="q-k">on</span> c.id = o.customer_id</span><span class="l"><span class="q-k">where</span> o.status = <span class="q-s">'refunded'</span></span><span class="l"><span class="ind">  </span><span class="q-k">and</span> o.created_at &gt; <span class="q-f">now</span>() - <span class="q-k">interval</span> <span class="q-s">'30 days'</span></span><span class="l cur"><span class="q-k">group by</span> c.email <span class="q-k">order by</span> refunded <span class="q-k">desc</span></span><span class="l"><span class="q-k">limit</span> <span class="q-n">500</span>;</span></pre>
+<pre class="code" id="code-q2" tabindex="0" aria-label="SQL editor, Query 2" hidden><span class="l cur"><span class="q-k">select</span> id, <span class="q-err" id="q2-col">totl</span> <span class="q-k">from</span> orders <span class="q-k">where</span> status = <span class="q-s">'paid'</span> <span class="q-k">limit</span> <span class="q-n">500</span>;</span></pre>
+            </div>
+          </div>
+        </div>
+        <div class="divider" role="separator" aria-orientation="horizontal" aria-label="Resize panes" tabindex="0"></div>
+        <section class="response" aria-label="Results">
+          <nav class="subtabs" aria-label="Results">
+            <button type="button" class="subtab" data-sub="results" aria-pressed="true">Results<span class="n" id="r-n">14</span></button>
+            <button type="button" class="subtab" data-sub="messages" aria-pressed="false">Messages</button>
+            <span class="push meta" id="r-meta"><span class="ok">OK</span><span class="dim">38&nbsp;ms</span><span class="dim">limit 500</span></span>
+          </nav>
+          <div class="res-tools"><div class="res-actions"><div class="menu-anchor"><button type="button" class="icon-btn" title="Copy" aria-label="Copy rows" aria-haspopup="menu" aria-expanded="false" data-menu="q-copy"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg></button><div class="menu" id="q-copy" role="menu" aria-label="Copy as" hidden><p class="menu-note">Copy as</p><button type="button" role="menuitem">Plain text</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">Markdown table</button><button type="button" role="menuitem">CSV</button></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Export" aria-label="Export rows" aria-haspopup="menu" aria-expanded="false" data-menu="q-export"><svg aria-hidden="true" class="ico"><use href="#i-download"/></svg></button><div class="menu" id="q-export" role="menu" aria-label="Export as" hidden><p class="menu-note">Export as</p><button type="button" role="menuitem">Plain text</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">Markdown table</button><button type="button" role="menuitem">CSV</button></div></div></div></div>
+          <div class="state" data-when="full" data-for="q1">
+            <div class="grid-wrap" tabindex="0" aria-label="Results of Query 1">
+              <table class="grid"><thead><tr><th class="rownum" scope="col"><span class="visually-hidden">Row</span></th><th scope="col"><span class="col-name">email</span><span class="col-type">text</span></th><th scope="col" class="num"><span class="col-name">refunds</span><span class="col-type">int8</span></th><th scope="col" class="num"><span class="col-name">refunded</span><span class="col-type">numeric(12,2)</span></th></tr></thead><tbody>
+<tr><td class="rownum">1</td><td>a.lindqvist@example.net</td><td class="num">4</td><td class="num">1,284.50</td></tr>
+<tr><td class="rownum">2</td><td>r.okonkwo@example.com</td><td class="num">3</td><td class="num">979.00</td></tr>
+<tr aria-selected="true"><td class="rownum">3</td><td>mei.tanaka@example.org</td><td class="num">3</td><td class="num">642.75</td></tr>
+<tr><td class="rownum">4</td><td>p.haddad@example.net</td><td class="num">2</td><td class="num">588.40</td></tr>
+<tr><td class="rownum">5</td><td>s.ferreira@example.com</td><td class="num">2</td><td class="num">431.00</td></tr>
+<tr><td class="rownum">6</td><td>k.nowak@example.org</td><td class="num">2</td><td class="num">219.99</td></tr>
+<tr><td class="rownum">7</td><td>d.mensah@example.net</td><td class="num">1</td><td class="num">189.00</td></tr>
+<tr><td class="rownum">8</td><td>l.bianchi@example.com</td><td class="num">1</td><td class="num">154.20</td></tr>
+<tr><td class="rownum">9</td><td>t.nguyen@example.org</td><td class="num">1</td><td class="num">120.00</td></tr>
+<tr><td class="rownum">10</td><td>h.adeyemi@example.net</td><td class="num">1</td><td class="num">96.50</td></tr>
+<tr><td class="rownum">11</td><td>j.moreau@example.com</td><td class="num">1</td><td class="num">74.00</td></tr>
+<tr><td class="rownum">12</td><td>n.kapoor@example.org</td><td class="num">1</td><td class="num">59.90</td></tr>
+<tr><td class="rownum">13</td><td>e.vasquez@example.net</td><td class="num">1</td><td class="num">42.00</td></tr>
+<tr><td class="rownum">14</td><td>o.petrov@example.com</td><td class="num">1</td><td class="num">18.75</td></tr>
+              </tbody></table>
+            </div>
+          </div>
+          <div class="state" data-when="full" data-for="q2" hidden>
+            <div class="grid-wrap" tabindex="0" aria-label="Results of Query 2">
+              <table class="grid"><thead><tr><th class="rownum" scope="col"><span class="visually-hidden">Row</span></th><th scope="col" class="num"><span class="col-name">id</span><span class="col-type">int8</span></th><th scope="col" class="num"><span class="col-name">total</span><span class="col-type">numeric(12,2)</span></th></tr></thead><tbody>
+<tr><td class="rownum">1</td><td class="num">10482</td><td class="num">4,820.00</td></tr>
+<tr><td class="rownum">2</td><td class="num">10478</td><td class="num">1,499.00</td></tr>
+<tr><td class="rownum">3</td><td class="num">10474</td><td class="num">64.20</td></tr>
+<tr><td class="rownum">4</td><td class="num">10473</td><td class="num">129.90</td></tr>
+<tr><td class="rownum">5</td><td class="num">10469</td><td class="num">1,511.50</td></tr>
+<tr><td class="rownum">6</td><td class="num">10464</td><td class="num">76.70</td></tr>
+              </tbody></table>
+            </div>
+          </div>
+          <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Running on shop_prod</strong><span>Started 0.4&nbsp;s ago</span><button type="button" class="btn" id="cancel">Cancel</button></div></div>
+          <div class="state" data-when="empty" hidden><div class="empty"><strong>The query ran and returned no rows</strong><span>No customer had a refund in the last 30 days. Widen the interval on line 8 and run it again.</span></div></div>
+          <div class="state" data-when="error" hidden><div class="error-box">
+            <strong>Column totl does not exist</strong>
+            <span class="hint-line">PostgreSQL stopped at line 1 and suggests the column you may have meant.</span>
+<pre class="db-says"><span class="bad">ERROR:  column "totl" does not exist</span>
+LINE 1: select id, totl from orders where status = 'paid' limit 500;
+                   ^
+HINT:  Perhaps you meant to reference the column "orders.total".</pre>
+            <div class="actions"><button type="button" class="btn" id="q2-fix">Use orders.total and run</button></div>
+          </div></div>
+          <div class="state" data-when="lost" hidden><div class="error-box">
+            <strong>Lost the connection to shop_prod</strong>
+            <span class="msg">server closed the connection unexpectedly</span>
+            <span class="hint-line">localhost:5432 stopped answering while the query ran. Nothing was changed.</span>
+            <div class="actions"><button type="button" class="btn" id="reconnect">Reconnect</button></div>
+          </div></div>
+          <div class="state" data-when="messages" hidden><pre class="code messages" aria-label="Messages"><span class="l">14 rows in 38 ms, from shop_prod (PostgreSQL 16.4)</span><span class="l">NOTICE: none</span></pre></div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+<script>
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const root = document.documentElement;
+  const q = new URLSearchParams(location.search);
+
+  // Theme: Auto/Light/Dark plus a colour scheme per appearance. The bar's Light/Dark stands in for the Mac's appearance.
+  const { SCHEMES, BUILTIN, DEFAULT_SCHEME, FAMILIES, findScheme, isDark, schemeTokens, schemeSwatch } = window.YpaThemes;
+  const DEF = { mode: "auto", light: DEFAULT_SCHEME.light, dark: DEFAULT_SCHEME.dark, os: "light", density: "" };
+  const st = Object.fromEntries(Object.entries(DEF).map(([k, v]) => [k, q.get(k) ?? v]));
+  // Fonts: the values Settings writes (voidHTTP's four, plus the table face and size)
+  const FONT = { "--font-ui": "fui", "--font-table": "ftable", "--font-mono": "fmono", "--font-size-ui": "sui", "--font-size-table": "stable", "--font-size-code": "scode" };
+  const fonts = {};
+
+  // every link between screens carries the theme, density and fonts, so a pick survives the jump
+  function writeUrl() {
+    const u = new URL(location);
+    for (const k of Object.keys(DEF)) st[k] !== DEF[k] ? u.searchParams.set(k, st[k]) : u.searchParams.delete(k);
+    for (const [prop, k] of Object.entries(FONT)) fonts[prop] ? u.searchParams.set(k, fonts[prop]) : u.searchParams.delete(k);
+    history.replaceState(null, "", u);
+    const carry = new URLSearchParams(u.search); carry.delete("show");
+    $$(".pv-screens a, [data-href], [data-close]").forEach((a) => {
+      const attr = a.tagName === "A" ? "href" : a.dataset.href ? "data-href" : "data-close";
+      const base = a.dataset.base || (a.dataset.base = a.getAttribute(attr));
+      const t = new URL(base, location.href); carry.forEach((v, k) => t.searchParams.set(k, v));
+      a.setAttribute(attr, t.href);
+    });
+  }
+
+  const opts = `<optgroup label="ypacapy">${Object.entries(BUILTIN).map(([id, b]) => `<option value="${id}">${b.name}</option>`).join("")}</optgroup>` +
+    FAMILIES.map((f) => `<optgroup label="${f}">${SCHEMES.filter((x) => x.family === f).map((x) => `<option value="${x.id}">${x.name}</option>`).join("")}</optgroup>`).join("");
+  $$("select[data-scheme]").forEach((sel) => { sel.innerHTML = opts; sel.addEventListener("change", () => { st[sel.dataset.scheme] = sel.value; apply(); }); });
+
+  let set = [];
+  function apply() {
+    const id = st[st.mode === "auto" ? st.os : st.mode];
+    set.forEach((k) => root.style.removeProperty(k)); set = [];
+    const sc = findScheme(id);
+    root.dataset.theme = sc ? (isDark(sc) ? "dark" : "light") : BUILTIN[id]?.dark ? "dark" : "light";
+    if (sc) Object.entries(schemeTokens(sc)).forEach(([k, v]) => { root.style.setProperty(k, v); set.push(k); });
+    if (st.density) root.dataset.density = st.density; else delete root.dataset.density;
+    // rows: both slots under Auto, one under Light or Dark
+    const auto = st.mode === "auto";
+    $$("[data-scheme-row]").forEach((row) => {
+      const slot = row.dataset.schemeRow;
+      row.hidden = !auto && slot !== st.mode;
+      if (row.hidden) return;
+      $("[data-scheme-label]", row).textContent = auto ? (slot === "light" ? "Light theme" : "Dark theme") : "Colour scheme";
+      $("select", row).value = st[slot];
+      const [bg, ...dots] = schemeSwatch(st[slot]);
+      const d = $(".scheme-dots", row); d.style.background = bg; d.innerHTML = dots.map((c) => `<i style="background:${c}"></i>`).join("");
+    });
+    $$("[data-set-theme]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.setTheme === st.mode)));
+    $$("[data-os-set]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.osSet === st.os)));
+    $$("[data-density-set]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.densitySet === st.density)));
+    const compact = $("#set-compact"); if (compact) compact.checked = st.density === "compact";
+    writeUrl();
+  }
+  $$("[data-set-theme]").forEach((b) => b.addEventListener("click", () => { st.mode = b.dataset.setTheme; apply(); }));
+  $$("[data-os-set]").forEach((b) => b.addEventListener("click", () => { st.os = b.dataset.osSet; apply(); }));
+  $$("[data-density-set]").forEach((b) => b.addEventListener("click", () => { st.density = b.dataset.densitySet; apply(); }));
+  $("#set-compact")?.addEventListener("change", (e) => { st.density = e.target.checked ? "compact" : ""; apply(); });
+
+  // a font named in Settings gets its kind of fallback; the bar's selects carry whole stacks
+  const FALLBACK = { "--font-ui": "ui-sans-serif, system-ui, sans-serif", "--font-table": "ui-monospace, monospace", "--font-mono": "ui-monospace, monospace" };
+  function setFont(prop, v) {
+    fonts[prop] = v;
+    if (v) root.style.setProperty(prop, v); else root.style.removeProperty(prop);
+    $$(`select[data-font="${prop}"], select[data-size="${prop}"]`).forEach((s) => { s.value = [...s.options].some((o) => o.value === v) ? v : ""; });
+    writeUrl();
+  }
+  for (const [prop, k] of Object.entries(FONT)) if (q.get(k)) setFont(prop, q.get(k));
+  $$("select[data-font], select[data-size]").forEach((sel) => sel.addEventListener("change", () => setFont(sel.dataset.font || sel.dataset.size, sel.value)));
+  $$("input[data-font-name]").forEach((inp) => inp.addEventListener("input", () => {
+    const prop = inp.dataset.fontName, v = inp.value.trim();
+    setFont(prop, v ? `"${v}", ${FALLBACK[prop]}` : "");
+  }));
+  $("#set-reset")?.addEventListener("click", () => {
+    Object.assign(st, { mode: DEF.mode, light: DEF.light, dark: DEF.dark, density: "" });
+    Object.keys(FONT).forEach((p) => setFont(p, ""));
+    $$("input[data-font-name]").forEach((i) => { i.value = ""; });
+    $(".res-actions .menu button").forEach((b) => b.addEventListener("click", () => { const m = b.closest(".menu"); m.hidden = true; $(`[data-menu="${m.id}"]`).setAttribute("aria-expanded", "false"); }));
+  apply();
+  });
+
+  // Screens and states
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-href]"); if (t && !t.disabled) { location.href = t.dataset.href; return; }
+    const b = e.target.closest("[data-close]"); if (b && e.target === b) location.href = b.dataset.close;
+  });
+  document.addEventListener("keydown", (e) => {
+    const b = $("[data-close]"); if (e.key === "Escape" && b && !$(".menu:not([hidden])")) location.href = b.dataset.close;
+    if (e.metaKey && e.key === ",") { e.preventDefault(); location.href = $(".strip-settings").dataset.href; }
+  });
+  const shows = $$("[data-show]");
+  window.pvShow = () => {};
+  function show(k) {
+    shows.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.show === k)));
+    window.pvShow(k);
+    const u = new URL(location); u.searchParams.set("show", k); history.replaceState(null, "", u);
+  }
+  shows.forEach((b) => b.addEventListener("click", () => show(b.dataset.show)));
+  function pvStart() { if (!shows.length) return; const k = q.get("show"); show(shows.some((b) => b.dataset.show === k) ? k : shows[0].dataset.show); }
+
+  // ---------- the app itself (shipped behaviour) ----------
+  // Rail: Schema, History and Saved queries swap the sidebar; the tabs bar toggle hides it
+  {
+    const panel = $(".panel");
+    $$(".rail-item[data-rail]").forEach((r) => r.addEventListener("click", () => {
+      $$(".rail-item[data-rail]").forEach((x) => x.toggleAttribute("aria-current", x === r) || x.removeAttribute("aria-current"));
+      r.setAttribute("aria-current", "page");
+      $$("[data-side]").forEach((s) => { s.hidden = s.dataset.side !== r.dataset.rail; });
+      panel?.classList.remove("no-side");
+    }));
+    const tgl = $(".side-toggle");
+    tgl?.addEventListener("click", () => {
+      const off = panel.classList.toggle("no-side");
+      tgl.setAttribute("aria-label", off ? "Show sidebar" : "Hide sidebar");
+      tgl.title = off ? "Show sidebar  ⌘\\" : "Hide sidebar  ⌘\\";
+    });
+  }
+  // Schema tree: groups open and close; the filter narrows by name and says when nothing matches
+  {
+    const rows = $$('#tree .row[data-path]');
+    const shown = (row) => { const parts = row.dataset.path.split("/"); for (let i = 1; i < parts.length; i++) { const g = rows.find((r) => r.dataset.path === parts.slice(0, i).join("/")); if (g && $(".row-main", g).getAttribute("aria-expanded") === "false") return false; } return true; };
+    const layout = (filter = "") => {
+      let any = false;
+      rows.forEach((r) => {
+        const leaf = !$(".row-main", r).hasAttribute("aria-expanded");
+        const hit = !filter || !leaf || $(".name", r).textContent.toLowerCase().includes(filter);
+        r.hidden = filter ? !(leaf && hit) && !(!leaf && rows.some((x) => x.dataset.path.startsWith(r.dataset.path + "/") && !$(".row-main", x).hasAttribute("aria-expanded") && $(".name", x).textContent.toLowerCase().includes(filter))) : !shown(r);
+        if (leaf && !r.hidden) any = true;
+      });
+      const empty = $("#tree-empty"); if (empty) { empty.hidden = !filter || any; $("#tree-empty-q").textContent = `"${filter}"`; }
+    };
+    $$("#tree [data-group]").forEach((g) => g.addEventListener("click", () => {
+      const open = g.getAttribute("aria-expanded") !== "true";
+      g.setAttribute("aria-expanded", String(open));
+      $("use", g).setAttribute("href", open ? "#i-chevron-down" : "#i-chevron-right");
+      layout($("#tree-filter").value.trim().toLowerCase());
+    }));
+    const f = $("#tree-filter");
+    f?.addEventListener("input", () => layout(f.value.trim().toLowerCase()));
+    $("#tree-clear")?.addEventListener("click", () => { f.value = ""; layout(); f.focus(); });
+  }
+  // Menus: the row "…" menu and Run's menu; Escape or a click elsewhere closes them
+  {
+    const rowMenu = $("#row-menu");
+    const closeAll = () => {
+      $$(".menu:not([hidden])").forEach((m) => { m.hidden = true; });
+      $$(".row.menu-open").forEach((r) => r.classList.remove("menu-open"));
+      $$('[aria-haspopup="menu"][aria-expanded="true"]').forEach((b) => b.setAttribute("aria-expanded", "false"));
+    };
+    $$(".row-more").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const row = b.closest(".row"), open = !row.classList.contains("menu-open");
+      closeAll(); if (!open || !rowMenu) return;
+      row.append(rowMenu); rowMenu.hidden = false; row.classList.add("menu-open"); b.setAttribute("aria-expanded", "true");
+      rowMenu.querySelector("button").focus();
+    }));
+    $$("[data-menu]").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const m = $(`#${b.dataset.menu}`), open = m.hidden;
+      closeAll(); if (!open) return;
+      m.hidden = false; b.setAttribute("aria-expanded", "true"); m.querySelector("button").focus();
+    }));
+    document.addEventListener("mousedown", (e) => { if (!e.target.closest(".menu, .row-more, [data-menu]")) closeAll(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
+  }
+  // Grid rows: select by pointer, move with the arrow keys
+  $$(".grid-wrap[tabindex]").forEach((wrap) => {
+    wrap.addEventListener("click", (e) => {
+      const tr = e.target.closest("tbody tr"); if (!tr) return;
+      $$('tbody tr[aria-selected="true"]', wrap).forEach((r) => r.removeAttribute("aria-selected"));
+      tr.setAttribute("aria-selected", "true");
+    });
+    wrap.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      const rows = $$("tbody tr", wrap); if (!rows.length) return;
+      e.preventDefault();
+      const cur = rows.findIndex((r) => r.getAttribute("aria-selected") === "true");
+      const next = rows[Math.max(0, Math.min(rows.length - 1, cur + (e.key === "ArrowDown" ? 1 : -1)))];
+      rows.forEach((r) => r.removeAttribute("aria-selected")); next.setAttribute("aria-selected", "true");
+      next.scrollIntoView({ block: "nearest" });
+    });
+  });
+  // The divider between query and results, by pointer and arrow keys
+  {
+    const d = $(".divider"), top = $("#req-pane");
+    if (d && top) {
+      let ratio = 1;
+      const setR = (r) => { ratio = Math.max(0.3, Math.min(3, r)); top.style.flexGrow = String(ratio); };
+      d.addEventListener("pointerdown", (e) => {
+        d.setPointerCapture(e.pointerId);
+        const body = d.parentElement.getBoundingClientRect();
+        const move = (ev) => { const y = ev.clientY - body.top; setR((y / (body.height - y)) * 1.1); };
+        const up = () => { d.removeEventListener("pointermove", move); d.removeEventListener("pointerup", up); };
+        d.addEventListener("pointermove", move); d.addEventListener("pointerup", up);
+      });
+      d.addEventListener("keydown", (e) => { if (e.key === "ArrowUp") setR(ratio * 0.9); if (e.key === "ArrowDown") setR(ratio * 1.1); });
+    }
+  }
+
+  apply();
+  // Write guard of the open connection: one level, plus "every statement"; lowering from Touch ID asks first (in the app)
+  {
+    const btn = $("#guard-btn");
+    if (btn) {
+      const LABEL = { run: "Run it", confirm: "Ask to confirm", verify: "Ask for passphrase" };
+      const setLevel = (lvl) => {
+        $$("[data-guard]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.guard === lvl)));
+        btn.dataset.level = lvl;
+        $("#guard-name").textContent = LABEL[lvl];
+        $(".guard-ico use", btn).setAttribute("href", `#i-${$(`[data-guard="${lvl}"]`).dataset.icon}`);
+        btn.setAttribute("aria-label", `Write guard for shop_prod: ${LABEL[lvl]}`);
+        $("#guard-lower").hidden = lvl !== "verify";
+      };
+      $$("[data-guard]").forEach((b) => b.addEventListener("click", () => { setLevel(b.dataset.guard); $("#guard-menu").hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); }));
+      setLevel("confirm");
+    }
+  }
+
+// Query: Query 1 and Query 2 are tabs on this page; orders opens the table screen
+  const run = $("#run"), spin = $("#run .spinner");
+  let tab = "q1", state = "full", sub = "results";
+  const NAMES = { q1: ["Refunds by customer", "Saved queries / Reports"], q2: ["Query 2", "Not saved"] };
+  function render() {
+    $$(".tab[data-tab]").forEach((t) => t.toggleAttribute("aria-current", t.dataset.tab === tab) && t.setAttribute("aria-current", "page"));
+    $("#code-q1").hidden = tab !== "q1"; $("#code-q2").hidden = tab !== "q2";
+    $("#q-name").textContent = NAMES[tab][0]; $("#q-path").textContent = NAMES[tab][1];
+    $("#save-state").hidden = tab === "q2";
+    $$(".subtab[data-sub]").forEach((s) => s.setAttribute("aria-pressed", String(s.dataset.sub === sub)));
+    $$(".response .state").forEach((s) => {
+      const w = s.dataset.when;
+      s.hidden = sub === "messages" ? w !== "messages" : !(w === state && (!s.dataset.for || s.dataset.for === tab));
+    });
+    $(".res-tools").hidden = sub === "messages" || state !== "full";
+    const busy = state === "loading";
+    run.toggleAttribute("aria-busy", busy); spin.hidden = !busy;
+    const meta = { full: tab === "q2" ? ["ok", "OK", "4 ms"] : ["ok", "OK", "38 ms"], empty: ["ok", "OK", "21 ms"], error: ["fail", "Error", "2 ms"], lost: ["fail", "Disconnected", "30.0 s"], loading: ["dim", "Running", ""] }[state];
+    $("#r-meta").innerHTML = `<span class="${meta[0]}">${meta[1]}</span>${meta[2] ? `<span class="dim">${meta[2]}</span>` : ""}<span class="dim">limit 500</span>`;
+    $("#r-n").textContent = state === "full" ? (tab === "q2" ? "6" : "14") : state === "empty" ? "0" : "";
+    $("#r-n").hidden = !$("#r-n").textContent;
+  }
+  $$(".tab[data-tab] .tab-main:not([data-href])").forEach((b) => b.addEventListener("click", () => {
+    tab = b.closest(".tab").dataset.tab;
+    state = tab === "q2" && $("#q2-col").textContent === "totl" ? "error" : "full";
+    render();
+  }));
+  $$(".subtab[data-sub]").forEach((s) => s.addEventListener("click", () => { sub = s.dataset.sub; render(); }));
+  // Run: the results show the spinner, then the result. The preview has no backend, so it replays the sample.
+  let timer;
+  function runQuery() {
+    if (state === "loading") return;
+    sub = "results"; state = "loading"; render();
+    timer = setTimeout(() => { state = tab === "q2" && $("#q2-col").textContent === "totl" ? "error" : "full"; render(); }, 700);
+  }
+  run.addEventListener("click", runQuery);
+  $("#cancel").addEventListener("click", () => { clearTimeout(timer); state = "full"; render(); });
+  $("#reconnect").addEventListener("click", runQuery);
+  document.addEventListener("keydown", (e) => { if (e.metaKey && e.key === "Enter") { e.preventDefault(); runQuery(); } });
+  // Query 2: take the hint, rewrite the column, run again
+  $("#q2-fix").addEventListener("click", () => { const c = $("#q2-col"); c.textContent = "total"; c.classList.remove("q-err"); runQuery(); });
+
+  window.pvShow = (k) => {
+    clearTimeout(timer); sub = "results";
+    tab = k === "sql-error" ? "q2" : "q1";
+    if (k === "sql-error") { const c = $("#q2-col"); c.textContent = "totl"; c.classList.add("q-err"); }
+    state = { results: "full", running: "loading", empty: "empty", "sql-error": "error", lost: "lost" }[k];
+    render();
+  };
+pvStart();
+</script>
+</body>
+</html>

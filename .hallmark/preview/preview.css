@@ -1,0 +1,32 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand (voidHTTP's system, by owner request)
+ * preview chrome only: the screen switcher above the app; never ported into src/ · taken from voidHTTP's .hallmark/preview/preview.css · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S3 R5 V3 · weakest: S, the look is voidHTTP's by request; the query line, the engine label and the column types under each grid head keep it a database tool */
+/* Hallmark · dismissed F4 · the pressed buttons in .pv-bar are preview chrome, never ported; Run is the one filled primary of the app */
+body { display: flex; flex-direction: column; }
+.pv-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs) var(--space-md); flex-shrink: 0; min-height: 48px; padding: var(--space-2xs) var(--space-md);
+  background: var(--color-paper); border-bottom: 1px solid var(--color-rule); font-size: var(--text-sm);
+}
+.pv-screens, .pv-theme { display: flex; gap: var(--space-2xs); flex-wrap: wrap; min-width: 0; }
+.pv-bar button { white-space: nowrap; }
+.pv-theme { margin-left: auto; }
+.pv-fonts { display: flex; gap: var(--space-sm); margin-left: auto; color: var(--color-muted); }
+.pv-fonts label { display: flex; align-items: center; gap: var(--space-2xs); }
+.pv-fonts select { min-height: 28px; border: 1px solid var(--color-field-edge); border-radius: 6px; background: var(--color-paper); color: var(--color-ink); padding: 0 var(--space-2xs); }
+.pv-fonts select:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.pv-fonts + .pv-theme { margin-left: 0; }
+.pv-bar button {
+  min-height: var(--control); padding: 0 var(--space-sm); border: 1px solid transparent; border-radius: var(--radius-control);
+  background: none; color: var(--color-muted);
+}
+.pv-bar button:hover { color: var(--color-ink); background: var(--color-paper-3); }
+.pv-bar button[aria-pressed="true"] { color: var(--color-link); background: var(--color-accent-soft); font-weight: 600; }
+.pv-bar button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.pv-stage { flex: 1; min-height: 0; position: relative; }
+.pv-stage .app { height: 100%; }
+.pv-muted { color: var(--color-muted); }
+.pv-screens a { text-decoration: none; }
+.pv-screens a[aria-current="page"] { color: var(--color-link); background: var(--color-accent-soft); font-weight: 600; }
+.pv-states { display: flex; gap: var(--space-2xs); flex-wrap: wrap; min-width: 0; padding-left: var(--space-md); border-left: 1px solid var(--color-rule); }
+.pv-bar { position: relative; z-index: calc(var(--z-modal) + 1); }
+.pv-stage .backdrop { position: absolute; }

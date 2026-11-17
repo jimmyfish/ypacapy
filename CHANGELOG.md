@@ -1,10 +1,8 @@
 # Changelog
 
-All notable changes to ypacapy are documented in this file.
+All notable changes to ypacapy are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-Each version's section becomes the release notes on GitHub and in the app's update chip and About dialog. Write top-level bullets as `- **Lead.** detail`: the app shows each bold lead as one line.
+## [Unreleased]
 
 ## [0.0.1] - 2026-11-17
 

@@ -1,148 +1,231 @@
+<div align="center">
+
+<img src="app-icon.svg" alt="ypacapy icon: a capybara with a yuzu, soaking in a database cylinder" width="128" height="128" />
+
 # ypacapy
 
-A local-only database explorer for macOS. Connect to PostgreSQL, MySQL/MariaDB or SQLite, browse schemas, write SQL, and edit rows, with a write guard that asks before a statement changes anything.
+**A database client with the temperament of a capybara.**
 
-The name is a palindrome of "capy", for capybara.
+Calm. Local. Unbothered. Sits in the hot spring with your databases and asks nothing of you.
+PostgreSQL, MySQL/MariaDB and SQLite, on a small Rust core.
 
-Built with [Tauri 2](https://v2.tauri.app/) (Rust) and React + TypeScript.
+<sub><i>Read it backwards. Still ypacapy. Still a capybara.</i></sub>
 
-## Features
+[![Latest release](https://img.shields.io/github/v/release/jimmyfish/ypacapy?style=for-the-badge&logo=github&label=release&color=1abc9c)](https://github.com/jimmyfish/ypacapy/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/jimmyfish/ypacapy/release.yml?style=for-the-badge&logo=githubactions&logoColor=white&label=build)](https://github.com/jimmyfish/ypacapy/actions/workflows/release.yml)
+[![Downloads](https://img.shields.io/github/downloads/jimmyfish/ypacapy/total?style=for-the-badge&logo=apple&logoColor=white&color=34495e)](https://github.com/jimmyfish/ypacapy/releases)
 
-- **Three engines, one driver family.** PostgreSQL, MySQL/MariaDB and SQLite through `sqlx`. Column types come from each driver's own result metadata.
-- **Quiet by design.** ypacapy runs only catalog lookups and limited reads on its own. Everything else is SQL you typed. Row counts in the tree are planner estimates (`pg_class.reltuples`, `information_schema.TABLES.TABLE_ROWS`), never `count(*)`. Nothing polls the server. The optional heartbeat is off by default.
-- **Home.** Connections as coloured tiles, in named groups you can fold, rename or ungroup. `⌘F` finds a connection.
-- **Schema tree.** Databases, schemas, tables, views, materialized views, foreign tables and functions. Each schema loads when you expand it and stays cached until Refresh.
-- **SQL console.**
-  - `⌘↵` runs the whole editor and `⇧⌘↵` runs only the selection.
-  - Autocomplete for tables, aliases and columns. It reads the schema tree you already loaded and one catalog read per table.
-  - Format (via `sql-formatter`) and `⌘/` to comment lines. Both stay on the native undo stack.
-  - A run can be cancelled. Cancel and the statement timeout ask the server to stop (`pg_cancel_backend`, `KILL QUERY`).
-  - Errors are shown as the database's own client prints them, with `LINE n:` and a caret.
-- **Row limit.** Settings › Queries › Row limit is added to a query that has no `LIMIT` of its own. When a limit cannot be added, ypacapy keeps at most 10,000 rows of a result set.
-- **Result grid.** Sort, frozen key columns, typed cells (numbers, timestamps, booleans, JSON, bytes), a cell inspector, and copy with `⌘C`. Export rows as CSV, JSON, Markdown table or plain text.
-- **Inline editing.** A result that reads one table plainly, with its full primary key, can be edited in place. Changes wait until Save (`⌘S`). Save writes them in one transaction, one `UPDATE` or `DELETE` per row, each keyed by the primary key. If any statement changes more or fewer than one row, nothing is kept.
-- **Table view.** A table tab shows its rows with a `WHERE` filter and paging, plus its columns, indexes and foreign keys from the catalog.
-- **Tabs that come back.** Each connection's open tabs, including unsaved SQL, are restored the next time you open it. Tabs are coloured by connection.
-- **History and saved queries.** History is kept per connection (the last 2,000 runs, searchable). Saved queries are kept in folders.
-- **Themes and fonts.** ypacapy Light/Dark plus built-in schemes (Ayu, Atom One and others), compact mode, and separate UI, table and code fonts picked from the fonts installed on your Mac.
-- **In-app updates.** Signed updates from GitHub Releases, shown in the title-strip update chip and the About dialog with the release notes.
+[![macOS](https://img.shields.io/badge/macOS-Apple%20Silicon%20%2B%20Intel-000000?style=flat-square&logo=apple&logoColor=white)](https://github.com/jimmyfish/ypacapy/releases/latest)
+[![Tauri v2](https://img.shields.io/badge/Tauri-v2-24c8db?style=flat-square&logo=tauri&logoColor=white)](https://v2.tauri.app)
+[![Rust](https://img.shields.io/badge/Rust-core-b7410e?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org)
+[![React](https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-supported-336791?style=flat-square&logo=postgresql&logoColor=white)](#what-it-does)
+[![MySQL](https://img.shields.io/badge/MySQL%20%2F%20MariaDB-supported-00758f?style=flat-square&logo=mysql&logoColor=white)](#what-it-does)
+[![SQLite](https://img.shields.io/badge/SQLite-supported-003b57?style=flat-square&logo=sqlite&logoColor=white)](#what-it-does)
+[![Telemetry](https://img.shields.io/badge/telemetry-none-2ecc71?style=flat-square)](#why-another-database-client)
+[![count(*)](https://img.shields.io/badge/count(*)-never%20on%20its%20own-e67e22?style=flat-square)](#why-another-database-client)
+[![Capybara](https://img.shields.io/badge/capybara-unbothered-9b59b6?style=flat-square)](#why-another-database-client)
 
-## The write guard
+[**Download**](https://github.com/jimmyfish/ypacapy/releases/latest) · [What it does](#what-it-does) · [The write guard](#the-write-guard) · [Shortcuts](#shortcuts) · [Hack on it](#hack-on-it) · [Changelog](CHANGELOG.md)
 
-Each connection has a **security level**. You set it in the connection's Options or from the tabs bar.
+</div>
 
-| Level  | What happens before a protected statement                                   |
-| ------ | --------------------------------------------------------------------------- |
-| None   | It runs.                                                                    |
-| Low    | ypacapy asks you to confirm.                                                |
-| Strict | ypacapy asks for the app passphrase, or Touch ID when the connection allows it. |
+---
 
-- **What to protect** picks the statement kinds a level asks about: `INSERT`, `UPDATE`, `DELETE`, `REPLACE` (MySQL), `ALTER`, `DROP`, `TRUNCATE`, `CREATE`, `GRANT`, `REVOKE`. `SELECT` never asks.
-- Statements are classified from the parsed SQL (`sqlparser`), including statements nested in CTEs and `EXPLAIN ANALYZE`. If the dialect cannot parse the text, the tokenizer splits it at top-level semicolons and the leading keywords decide. Text that cannot be tokenized counts as unreadable, so ypacapy asks.
-- A Strict connection can stay unlocked for its own time window after the passphrase. Unlocking one connection never unlocks another.
-- Lowering a Strict connection needs the passphrase (or Touch ID, when that connection allows it).
-- Strict needs a passphrase, set in Settings › Security. If you disable the passphrase, Strict connections become Low.
-- Forgot the passphrase? The Mac's owner (Touch ID or the login password) can set a new one. The old one cannot be shown, because only its hash is stored.
+## <img src="docs/assets/icons/circle-help.svg" width="24" height="24" align="top" alt="" /> Why another database client?
 
-## Where your data lives
+Because you opened a database client to look at *one* table and it counted every row of a 400-million-row table to draw the sidebar, while your DBA watched. Not cute.
 
-Everything stays on your Mac.
+ypacapy goes the other way:
 
-| What                                            | Where                                                      |
-| ----------------------------------------------- | ---------------------------------------------------------- |
-| Settings                                        | `~/.config/ypacapy/settings.toml`                          |
-| Connections (no passwords)                      | `~/.config/ypacapy/connections.toml`                       |
-| History, saved queries, open tabs               | `~/.config/ypacapy/ypacapy.db` (SQLite)                    |
-| Connection passwords, passphrase hash (PBKDF2)  | macOS login keychain, service `ypacapy`, not synchronizable |
+- <img src="docs/assets/icons/feather.svg" width="18" height="18" align="top" alt="" /> **Tiny.** Uses the webview macOS already ships instead of bundling a browser. The heavy lifting is Rust (`sqlx`, `sqlparser`, `tokio`).
+- <img src="docs/assets/icons/hard-drive.svg" width="18" height="18" align="top" alt="" /> **Local. Like, actually local.** No account, no cloud sync, no telemetry. Settings and connections are TOML files in `~/.config/ypacapy`. Passwords live in the macOS Keychain.
+- <img src="docs/assets/icons/zap.svg" width="18" height="18" align="top" alt="" /> **Quiet on your server.** ypacapy runs only catalog lookups and limited reads on its own. Row counts are planner estimates, never `count(*)`. Nothing polls. Everything else is SQL *you* typed.
+- <img src="docs/assets/icons/shield-check.svg" width="18" height="18" align="top" alt="" /> **Hard to fat-finger.** A per-connection write guard asks before `DELETE`, `DROP` and friends: a confirm, or your passphrase or Touch ID on the connections that matter.
+- <img src="docs/assets/icons/users.svg" width="18" height="18" align="top" alt="" /> **A party of one.** No team plans, no shared workspaces, no presence avatars. Just you and a capybara in the onsen.
 
-The config folder is created with mode `0700`. Files are written through a temp file and a rename. Keychain items are marked not synchronizable, so iCloud Keychain never copies them off the Mac. To see the folder, open Settings › Data on this Mac › Show in Finder.
+## <img src="docs/assets/icons/download.svg" width="24" height="24" align="top" alt="" /> Get it
 
-## Install
+1. Grab the `.dmg` for your Mac (Apple Silicon or Intel) from the [latest release](https://github.com/jimmyfish/ypacapy/releases/latest).
+2. Drag ypacapy into Applications.
+3. The app is ad-hoc signed (no Apple Developer ID), so macOS will side-eye it on first launch. Calm it down once with:
 
-Download the `.dmg` for your Mac (Apple silicon or Intel) from the [latest release](https://github.com/jimmyfish/ypacapy/releases/latest).
+   ```sh
+   xattr -cr /Applications/ypacapy.app
+   ```
 
-The app is ad-hoc signed (no Apple Developer ID). After the first install, clear the quarantine flag:
+After that, the app updates itself. A little chip shows up in the title strip when a new version lands.
 
-```sh
-xattr -cr /Applications/ypacapy.app
-```
+## <img src="docs/assets/icons/sparkles.svg" width="24" height="24" align="top" alt="" /> What it does
 
-Updates installed by the app itself do not need this step.
+### <img src="docs/assets/icons/folder-tree.svg" width="20" height="20" align="top" alt="" /> Connections and the schema tree
 
-## Build from source
+- **PostgreSQL, MySQL/MariaDB and SQLite**, one async driver family (`sqlx`). Column types come from each driver's own result metadata.
+- **Home** shows connections as coloured tiles, in named groups you can fold, rename or ungroup. `⌘F` finds one, `Enter` opens it.
+- **Per connection:** SSL mode (`disable` through `verify-full`, with a CA file), connect timeout, PostgreSQL `application_name`, and its own row limit and statement timeout. **Test** checks it before you save.
+- **Schema tree:** databases, schemas, tables, views, materialized views, foreign tables and functions. Each schema loads when you expand it and stays cached until Refresh. Pick the database and schema from the context picker.
+- **Open tabs come back.** Each connection's tabs, including unsaved SQL, are restored the next time you open it. Tabs take the connection's colour, so prod never looks like staging.
 
-Requirements:
+### <img src="docs/assets/icons/code-xml.svg" width="20" height="20" align="top" alt="" /> The SQL console
 
-- macOS
-- [Bun](https://bun.sh/)
-- Rust (stable), via [rustup](https://rustup.rs/)
-- Xcode Command Line Tools
+- `⌘↵` runs the whole editor, `⇧⌘↵` only the selection. Several statements in one run? Fine.
+- **Autocomplete** for tables, aliases and columns. It reuses the schema tree you already loaded and reads a table's columns once, the first time a statement names it. Keystrokes never hit the database.
+- **Format** (via `sql-formatter`) and `⌘/` to comment lines. Both stay on the native undo stack, so `⌘Z` behaves.
+- **Row limit** (100 by default) is added to a query that has no `LIMIT` of its own. When it can't be added, ypacapy keeps at most 10,000 rows of a result set.
+- **Cancel** and the **statement timeout** (30 s by default) don't just give up on the client: they ask the server to stop (`pg_cancel_backend`, `KILL QUERY`).
+- **Errors read like your database's own client**, with `LINE n:` and a caret under the spot. Lost the connection? It says so and offers Reconnect.
+- `CREATE`, `ALTER` or `DROP` reloads the schema tree by itself.
+
+### <img src="docs/assets/icons/database.svg" width="20" height="20" align="top" alt="" /> Results, tables and editing
+
+- **Result grid:** sort, frozen primary-key columns, typed cells (numbers, timestamps, booleans, coloured JSON, bytes), a cell inspector, and `⌘C`.
+- **Export** rows as CSV, JSON, Markdown table or plain text.
+- **Edit in place.** A result that reads one table plainly (no join, group, union or distinct), with its full primary key, can be edited. Type over a cell, `⌘⌫` a row, then `⌘S`. All changes go in **one transaction**, one `UPDATE` or `DELETE` per row keyed by the primary key. If any statement touches more or fewer than one row, the whole thing rolls back.
+- **Table tabs:** rows with a `WHERE` filter and paging, plus the table's columns, indexes and foreign keys from the catalog.
+
+### <img src="docs/assets/icons/history.svg" width="20" height="20" align="top" alt="" /> History and saved queries
+
+- **History** belongs to the open connection: its last 2,000 runs, searchable, with time, rows and status. Clear empties only that connection's list.
+- **Saved queries** live in folders. A tab tied to a saved query shows when it has drifted from the saved text.
+
+### <img src="docs/assets/icons/palette.svg" width="20" height="20" align="top" alt="" /> Make it yours
+
+- **Light or dark**, each with its own colour scheme: ypacapy Light / Dark, plus the Ayu and Atom One families.
+- **Fonts:** pick the UI, table and code fonts from what's installed on your Mac, each with its own size.
+- **Compact mode** for small screens and big result sets.
+- **Connection heartbeat** (off by default): a `select 1` on idle PostgreSQL and MySQL connections every 30 s, for servers or VPNs that drop idle sessions. Each connection can override it.
+
+## <img src="docs/assets/icons/shield-check.svg" width="24" height="24" align="top" alt="" /> The write guard
+
+Every connection has a **security level**. Set it in the connection's Options or straight from the tabs bar.
+
+| Level | Before a protected statement |
+| --- | --- |
+| **None** | It runs. Your local SQLite scratchpad doesn't need a bouncer. |
+| **Low** | ypacapy asks you to confirm. |
+| **Strict** | ypacapy asks for the app passphrase, or Touch ID if the connection allows it. |
+
+**What to protect** picks the statement kinds a level cares about: `INSERT`, `UPDATE`, `DELETE`, `REPLACE` (MySQL), `ALTER`, `DROP`, `TRUNCATE`, `CREATE`, `GRANT`, `REVOKE`. `SELECT` never asks.
+
+<details>
+<summary><img src="docs/assets/icons/wrench.svg" width="18" height="18" align="top" alt="" /> <b>How it decides, and why it's hard to sneak past</b></summary>
+
+<br />
+
+- Statements are classified from the **parsed SQL** (`sqlparser`), never a regex. That includes statements hiding in CTEs and `EXPLAIN ANALYZE`, and every statement of a multi-statement run.
+- If the dialect can't parse the text, the tokenizer splits it at top-level semicolons and the leading keywords decide. Text that can't even be tokenized counts as **unreadable**, so ypacapy asks.
+- A Strict connection can stay **unlocked for a window** you choose after the passphrase. Unlocking one connection never unlocks another.
+- **Lowering** a Strict connection (a lower level, fewer protected statements, allowing Touch ID, a longer window) needs the passphrase too.
+- Strict needs a passphrase, set in Settings › Security. Disable the passphrase and Strict connections drop to Low, so they still ask about the same statements.
+- **Forgot the passphrase?** The Mac's owner (Touch ID or the login password) can set a new one. The old one can't be shown: the Keychain holds only a salted PBKDF2 hash.
+
+</details>
+
+## <img src="docs/assets/icons/keyboard.svg" width="24" height="24" align="top" alt="" /> Shortcuts
+
+Hands off the mouse.
+
+| Key | What happens |
+| --- | --- |
+| `⌘T` | New query tab |
+| `⌘W` | Close the tab |
+| `⇧⌘W` | Close the window |
+| `⌘↵` | Run the whole editor (in a table tab: re-read the rows) |
+| `⇧⌘↵` | Run the selection |
+| `⌘S` | Save the query, or write the grid's pending edits |
+| `⌘/` | Comment or uncomment the selected lines |
+| `⌘\` | Show or hide the sidebar |
+| `⌘F` | Find a connection on Home |
+| `⌘,` | Settings |
+| `⌘C` | Copy the selected cell |
+| `↵` / `F2` | Edit the selected cell (or just start typing) |
+| `⌘⌫` | Delete or restore the selected row |
+| `⌘` + arrow | Jump to the edge of the grid |
+
+## <img src="docs/assets/icons/database.svg" width="24" height="24" align="top" alt="" /> Where's my data?
+
+On your Mac, in one folder you can find, back up and delete:
+
+- **`~/.config/ypacapy/`** (on macOS too, not Application Support), created with mode `0700`:
+  - `settings.toml`: your settings
+  - `connections.toml`: every connection, **without** passwords
+  - `ypacapy.db`: history, saved queries and each connection's open tabs (SQLite)
+- **The macOS login Keychain**, service `ypacapy`: connection passwords and the passphrase hash. Items are marked not synchronizable, so iCloud Keychain never copies them off the Mac. Nothing secret is ever written to a file.
+
+Files are written through a temp file and a rename, so a crash never leaves half a file. Settings › Data on this Mac › Show in Finder takes you there.
+
+## <img src="docs/assets/icons/code-xml.svg" width="24" height="24" align="top" alt="" /> Hack on it
+
+You'll need macOS, [Rust](https://rustup.rs), [Bun](https://bun.sh) and the Xcode Command Line Tools.
 
 ```sh
 bun install
-bun tauri dev        # run with hot reload (Vite on http://localhost:1420)
-bun tauri build      # release bundle in src-tauri/target/release/bundle
-bun run typecheck    # TypeScript only
+bun tauri dev        # run the app with hot reload (Vite on http://localhost:1420)
+bun tauri build      # build the release bundle (.app / .dmg)
+bun run typecheck    # TypeScript check only
 ```
 
-Dev builds (`bun tauri dev` and `bun tauri build --debug`) never check for updates, so a GitHub release never replaces them. They show their git state (commit, branch, tag, dirty) instead.
+- Dev builds (`bun tauri dev`, `bun tauri build --debug`) never check for updates, so the GitHub release never replaces them. About shows their commit, branch and tag instead.
+- New icon? `bunx tauri icon app-icon.svg` regenerates the lot. Then `touch src-tauri/src/lib.rs` so `tauri dev` embeds it again.
+- Tests that need the outside world are `#[ignore]`d. Inside `src-tauri`, `cargo test` runs the unit tests and `cargo test -- --ignored` adds the Keychain test and the PostgreSQL tests (a local server on `localhost:5432` that lets `$USER` in; they only select and use session temp tables).
+- Coding with an agent? [AGENTS.md](AGENTS.md) explains the graphify knowledge graph in `graphify-out/`.
 
-Rust tests that need outside resources are marked `#[ignore]`:
+<details>
+<summary><img src="docs/assets/icons/map.svg" width="18" height="18" align="top" alt="" /> <b>Where things live</b></summary>
 
-```sh
-cd src-tauri
-cargo test                 # unit tests
-cargo test -- --ignored    # also the keychain test and the PostgreSQL tests (local server on localhost:5432 that lets $USER in)
+<br />
+
+```
+src-tauri/src/db.rs        connection pools, catalog reads, run_query, cancel, apply_edits, heartbeat
+src-tauri/src/guard.rs     write guard: statement classification, security levels, passphrase, Touch ID
+src-tauri/src/conns.rs     connections.toml, security level changes, groups
+src-tauri/src/store.rs     ypacapy.db: history, saved queries, open tabs
+src-tauri/src/keychain.rs  connection passwords and the passphrase hash in the macOS Keychain
+src-tauri/src/settings.rs  settings.toml, and the parts Rust enforces (row limit, timeout, heartbeat)
+src-tauri/src/fonts.rs     installed system fonts for Settings
+src-tauri/src/paths.rs     ~/.config/ypacapy, atomic writes, export files
+src/store.ts               app state (zustand)
+src/types.ts               shared types, mirrored by the Rust structs
+src/lib/                   SQL helpers, autocomplete, grid edits, cell formats, themes, updater
+src/components/            UI: Home, Sidebar, QueryPane, SqlEditor, ResultGrid, TablePane, Modals, ...
+.github/workflows/         release and Rust cache pipelines
 ```
 
-## Keyboard shortcuts
+</details>
 
-| Keys    | Action                                                     |
-| ------- | ---------------------------------------------------------- |
-| `⌘T`    | New query tab                                              |
-| `⌘W`    | Close tab (`⇧⌘W` closes the window)                        |
-| `⌘↵`    | Run the whole editor (in a table tab: re-read the rows)    |
-| `⇧⌘↵`   | Run the selection                                          |
-| `⌘S`    | Save the query, or save the grid's pending edits           |
-| `⌘/`    | Toggle `--` comments on the selected lines                 |
-| `⌘\`    | Show or hide the sidebar                                   |
-| `⌘F`    | Find a connection (Home)                                   |
-| `⌘,`    | Settings                                                   |
-| `⌘C`    | Copy the selected cell                                     |
-| `↵` / `F2` | Edit the selected cell                                  |
-| `⌘⌫`    | Delete or restore the selected row                         |
+<details>
+<summary><img src="docs/assets/icons/rocket.svg" width="18" height="18" align="top" alt="" /> <b>Cutting a release</b></summary>
 
-## Releasing
-
-Releases are built by GitHub Actions from version tags.
+<br />
 
 1. Bump the version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`.
-2. Add a `## [x.y.z] - YYYY-MM-DD` section to `CHANGELOG.md`. Use `- **Lead.** detail` bullets, because the app shows each bold lead as one line of the release notes.
+2. Move the `[Unreleased]` notes in [CHANGELOG.md](CHANGELOG.md) into a `## [x.y.z] - YYYY-MM-DD` section. Write bullets as `- **Lead.** detail`: the app shows each bold lead as one line of the release notes.
 3. Commit, then tag and push: `git tag vx.y.z && git push origin vx.y.z`.
-4. `.github/workflows/release.yml` creates a draft release with that CHANGELOG section as its notes. It builds `aarch64-apple-darwin` and `x86_64-apple-darwin`, and uploads the bundles and `latest.json`.
-5. Publish the draft by hand. Until you do, installed copies keep seeing the previous release.
+4. `.github/workflows/release.yml` creates a **draft** release with that CHANGELOG section as its notes, builds `aarch64-apple-darwin` and `x86_64-apple-darwin`, and uploads the bundles and `latest.json`.
+5. Publish the draft by hand. Until then, installed copies keep seeing the previous release.
 
-Change release notes in `CHANGELOG.md` before tagging. Notes edited on the draft reach the release page, but they do not reach `latest.json`, which the app reads.
+Fix release notes in CHANGELOG.md before tagging. Edits on the draft reach the release page but not `latest.json`, which is what the app reads.
 
-The workflow needs two repository secrets: `TAURI_SIGNING_PRIVATE_KEY` (contents of `~/.tauri/ypacapy.key`) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. `.github/workflows/cache.yml` keeps a Rust dependency cache on `master` for release runs to restore.
+The workflow needs two repository secrets: `TAURI_SIGNING_PRIVATE_KEY` (the contents of `~/.tauri/ypacapy.key`) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. `.github/workflows/cache.yml` keeps a Rust dependency cache on `master` for release runs to restore.
 
-## Project layout
+</details>
 
-```
-src/                 React frontend
-  components/        Home, Sidebar, QueryPane, SqlEditor, ResultGrid, TablePane, Modals, ...
-  lib/               SQL helpers, autocomplete, edit statements, themes, updater
-  store.ts           app state (zustand)
-  types.ts           shared types, mirrored by the Rust structs
-src-tauri/src/       Rust backend (Tauri commands)
-  db.rs              connection pools, catalog reads, run_query, apply_edits, heartbeat
-  guard.rs           statement classification, security levels, passphrase, Touch ID
-  conns.rs           connections.toml
-  store.rs           ypacapy.db: history, saved queries, workspaces
-  keychain.rs        macOS keychain
-  settings.rs        settings.toml
-  fonts.rs           installed font discovery
-.github/workflows/   release and cache pipelines
-```
+## <img src="docs/assets/icons/ban.svg" width="24" height="24" align="top" alt="" /> Never on the wishlist
 
-Contributors and coding agents: see [AGENTS.md](AGENTS.md) for how to use the graphify knowledge graph in `graphify-out/`.
+ypacapy is local by design. Like a capybara in a hot spring, it isn't going anywhere. It will never have:
+
+- accounts, sign-in, or "invite your team"
+- cloud sync, shared workspaces, or a "share link" for your connections
+- telemetry, analytics, or "help us improve ypacapy" pings
+- background queries that scan your tables to make a dashboard look busy
+
+Your connection details, passwords and half-written `DELETE`s stay on your Mac, with you, where they belong.
+
+## <img src="docs/assets/icons/users.svg" width="24" height="24" align="top" alt="" /> Come soak with us
+
+Bug reports, ideas and pull requests are welcome. Every version's changes are in [CHANGELOG.md](CHANGELOG.md).
+
+<div align="center">
+<br />
+<sub>Made with coffee, Rust, and a capybara that refuses to be rushed.</sub>
+</div>

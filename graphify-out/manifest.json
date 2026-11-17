@@ -132,9 +132,9 @@
     "semantic_hash": ""
   },
   "src/components/QueryPane.tsx": {
-    "mtime": 1794912380.6472325,
-    "seen": 1794912476.215005,
-    "ast_hash": "3696167a23e959daad55640e3ff02f65",
+    "mtime": 1794933152.7340236,
+    "seen": 1794933173.883245,
+    "ast_hash": "f726add8de796b5b1a0aeb95f25be5e3",
     "semantic_hash": ""
   },
   "src/components/ResultGrid.tsx": {
@@ -198,9 +198,9 @@
     "semantic_hash": "bb24d42767d89a110fdc09459320106c"
   },
   "src/lib/sql.ts": {
-    "mtime": 1794917387.6382308,
-    "seen": 1794917390.337287,
-    "ast_hash": "bb4deb39130233aaab3b6f7dc79c1e3c",
+    "mtime": 1794933152.6525044,
+    "seen": 1794933173.883255,
+    "ast_hash": "92d1a64f37835e4301c3f541b4a146d2",
     "semantic_hash": ""
   },
   "src/lib/themes.ts": {
@@ -393,6 +393,138 @@
     "mtime": 1794921321.1817315,
     "seen": 1794921411.1395829,
     "ast_hash": "ab8cf97e5c7a5710d663149ab7c26aa6",
+    "semantic_hash": ""
+  },
+  "CHANGELOG.md": {
+    "mtime": 1794933167.9708366,
+    "seen": 1794933173.883266,
+    "ast_hash": "b381bb83f7285eb76bfc478c494bb31d",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1794933205.6085231,
+    "seen": 1794933206.274713,
+    "ast_hash": "af7f14c456fd677ff7b2fe2038e79d9f",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/ban.svg": {
+    "mtime": 1794921731.4627779,
+    "seen": 1794933173.8832698,
+    "ast_hash": "086e5be1df595e7632ebeb7c0ff7ab16",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/check.svg": {
+    "mtime": 1794921731.464539,
+    "seen": 1794933173.883271,
+    "ast_hash": "8b211832e86f121ed0a4dceb58fb7e9d",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/circle-help.svg": {
+    "mtime": 1794921731.4314644,
+    "seen": 1794933173.883271,
+    "ast_hash": "f23375b9f4d897a510d445b77469b479",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/code-xml.svg": {
+    "mtime": 1794921731.449589,
+    "seen": 1794933173.883272,
+    "ast_hash": "b7b43d2e4efe8385943366e191a27b3d",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/database.svg": {
+    "mtime": 1794921731.45733,
+    "seen": 1794933173.883272,
+    "ast_hash": "5b24b97e74a22ec1e9532e0dc4202058",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/download.svg": {
+    "mtime": 1794921731.4439971,
+    "seen": 1794933173.883273,
+    "ast_hash": "c4695ea328490b293804ef32db0162ac",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/feather.svg": {
+    "mtime": 1794921731.4336805,
+    "seen": 1794933173.883273,
+    "ast_hash": "3e4bfae1d6d38186f4126a32ae102dca",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/folder-tree.svg": {
+    "mtime": 1794921731.4478397,
+    "seen": 1794933173.883274,
+    "ast_hash": "28f9f2dc8baed0111e3ceb72761273c9",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/hard-drive.svg": {
+    "mtime": 1794921731.4357197,
+    "seen": 1794933173.883274,
+    "ast_hash": "cdc63e84be5bb3ae25a1131a82254698",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/history.svg": {
+    "mtime": 1794921731.4514806,
+    "seen": 1794933173.883275,
+    "ast_hash": "e1d571a09408968f7b0d86c3463a22d7",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/keyboard.svg": {
+    "mtime": 1794921731.4552882,
+    "seen": 1794933173.883275,
+    "ast_hash": "f1154bca8fa0f225b5f5d191cdc24dbd",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/lightbulb.svg": {
+    "mtime": 1794921731.4609714,
+    "seen": 1794933173.883276,
+    "ast_hash": "be9c5d08e166b9ce47dc1acfae1ec517",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/map.svg": {
+    "mtime": 1794921731.4592106,
+    "seen": 1794933173.883277,
+    "ast_hash": "dcc7cfefe852b8951331748d4f6c5361",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/palette.svg": {
+    "mtime": 1794921731.453319,
+    "seen": 1794933173.883277,
+    "ast_hash": "510482b7a38a8672a3efbf04f2c60466",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/rocket.svg": {
+    "mtime": 1794921731.4682314,
+    "seen": 1794933173.8832781,
+    "ast_hash": "dca3ffa9872ecfb3b540ac3125757ef2",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/shield-check.svg": {
+    "mtime": 1794921731.439767,
+    "seen": 1794933173.8832781,
+    "ast_hash": "17e6882fb5c21fda6fd98831a8e7c6f6",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/sparkles.svg": {
+    "mtime": 1794921731.4458113,
+    "seen": 1794933173.883279,
+    "ast_hash": "a524fd1b6a2a5f8b7fa9a2f14818fe22",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/users.svg": {
+    "mtime": 1794921731.4419458,
+    "seen": 1794933173.883279,
+    "ast_hash": "7ecebab6ae627f158cd6fd2c87dc4499",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/wrench.svg": {
+    "mtime": 1794921731.466462,
+    "seen": 1794933173.8832798,
+    "ast_hash": "16af1d102fe627a24256afe34a965fd6",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/zap.svg": {
+    "mtime": 1794921731.4376774,
+    "seen": 1794933173.883281,
+    "ast_hash": "1ab1ccc27ebafc5fd0f4568f2a698ed9",
     "semantic_hash": ""
   }
 }

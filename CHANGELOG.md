@@ -4,6 +4,10 @@ All notable changes to ypacapy are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Changed
+
+- **`⌘↵` runs the statement at the cursor.** With nothing selected, `⌘↵` runs only the statement the cursor is in, up to the next `;`. With a selection it runs the selection. `⇧⌘↵` now runs the whole editor.
+
 ## [0.0.1] - 2026-11-17
 
 First release.

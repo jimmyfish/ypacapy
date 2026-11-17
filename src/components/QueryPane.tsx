@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isDirty, useCurrent, useStore } from "../store";
-import { ENGINE_LABEL, ENGINE_NAME, formatSql } from "../lib/sql";
+import { ENGINE_LABEL, ENGINE_NAME, formatSql, statementAt } from "../lib/sql";
 import { duration } from "../lib/time";
 import { returnsRows, sourceOf, statements, targetOf, type EditTarget } from "../lib/edit";
 import { api, errText } from "../lib/api";
@@ -250,7 +250,7 @@ function QueryResults({ tab }: { tab: QueryTab }) {
       <div className="state">
         <div className="empty">
           <strong>Run a query to see its rows here</strong>
-          <span>⌘↵ runs the whole editor, ⇧⌘↵ only the selection.</span>
+          <span>⌘↵ runs the selection or the statement at the cursor, ⇧⌘↵ the whole editor.</span>
         </div>
       </div>
     );
@@ -368,9 +368,10 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
     return el && el.selectionEnd > el.selectionStart ? tab.sql.slice(el.selectionStart, el.selectionEnd) : "";
   };
   const runAll = () => void st.run(tab.id);
+  // the selection when there is one, else the statement the cursor is in
   const runSel = () => {
-    const s = selection();
-    void st.run(tab.id, s.trim() ? { sql: s } : {});
+    const s = selection().trim() ? selection() : statementAt(tab.sql, editor.current?.selectionStart ?? tab.sql.length);
+    if (s.trim()) void st.run(tab.id, { sql: s });
   };
   const explain = () => {
     const s = (selection() || tab.sql).trim();
@@ -378,13 +379,13 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
     void st.run(tab.id, { sql: `${conn.engine === "sqlite" ? "explain query plan" : "explain"} ${s}` });
   };
 
-  // ⌘↵ runs everything, ⇧⌘↵ the selection, wherever the focus is in this tab
+  // ⌘↵ runs the selection or the statement at the cursor, ⇧⌘↵ everything, wherever the focus is in this tab
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!e.metaKey || e.key !== "Enter" || useStore.getState().modal) return;
       e.preventDefault();
-      if (e.shiftKey) runSel();
-      else runAll();
+      if (e.shiftKey) runAll();
+      else runSel();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -434,8 +435,8 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
             disabled={session.status !== "open"}
             onRun={runAll}
             items={[
-              { label: "Run all", kbd: "⌘↵", run: runAll },
-              { label: "Run selection", kbd: "⇧⌘↵", run: runSel },
+              { label: "Run statement or selection", kbd: "⌘↵", run: runSel },
+              { label: "Run all", kbd: "⇧⌘↵", run: runAll },
               { label: "Explain", run: explain },
             ]}
           />

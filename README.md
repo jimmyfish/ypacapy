@@ -62,17 +62,17 @@ After that, the app updates itself. A little chip shows up in the title strip wh
 
 - **PostgreSQL, MySQL/MariaDB and SQLite**, one async driver family (`sqlx`). Column types come from each driver's own result metadata.
 - **Home** shows connections as coloured tiles, in named groups you can fold, rename or ungroup. `⌘F` finds one, `Enter` opens it.
-- **Per connection:** SSL mode (`disable` through `verify-full`, with a CA file), connect timeout, PostgreSQL `application_name`, and its own row limit and statement timeout. **Test** checks it before you save.
+- **Per connection:** SSL mode (`disable` through `verify-full`, with a CA file), connect timeout, PostgreSQL `application_name`, and its own row limit and statement timeout. Test checks it before you save.
 - **Schema tree:** databases, schemas, tables, views, materialized views, foreign tables and functions. Each schema loads when you expand it and stays cached until Refresh. Pick the database and schema from the context picker.
-- **Open tabs come back.** Each connection's tabs, including unsaved SQL, are restored the next time you open it. Tabs take the connection's colour, so prod never looks like staging.
+- **Open tabs come back.** Each connection's tabs, including unsaved SQL, are restored the next time you open it. Tabs take the connection's colour, so prod doesn't have to look like staging.
 
 ### <img src="docs/assets/icons/code-xml.svg" width="20" height="20" align="top" alt="" /> The SQL console
 
-- `⌘↵` runs the whole editor, `⇧⌘↵` only the selection. Several statements in one run? Fine.
+- `⌘↵` runs the selection, or with nothing selected the statement the cursor is in (up to the next `;`). `⇧⌘↵` runs the whole editor. Several statements in one run? Fine.
 - **Autocomplete** for tables, aliases and columns. It reuses the schema tree you already loaded and reads a table's columns once, the first time a statement names it. Keystrokes never hit the database.
 - **Format** (via `sql-formatter`) and `⌘/` to comment lines. Both stay on the native undo stack, so `⌘Z` behaves.
 - **Row limit** (100 by default) is added to a query that has no `LIMIT` of its own. When it can't be added, ypacapy keeps at most 10,000 rows of a result set.
-- **Cancel** and the **statement timeout** (30 s by default) don't just give up on the client: they ask the server to stop (`pg_cancel_backend`, `KILL QUERY`).
+- **Cancel** and the statement timeout (30 s by default) stop the query on the server too (`pg_cancel_backend`, `KILL QUERY`), so nothing keeps grinding after you've given up on it.
 - **Errors read like your database's own client**, with `LINE n:` and a caret under the spot. Lost the connection? It says so and offers Reconnect.
 - `CREATE`, `ALTER` or `DROP` reloads the schema tree by itself.
 
@@ -80,7 +80,7 @@ After that, the app updates itself. A little chip shows up in the title strip wh
 
 - **Result grid:** sort, frozen primary-key columns, typed cells (numbers, timestamps, booleans, coloured JSON, bytes), a cell inspector, and `⌘C`.
 - **Export** rows as CSV, JSON, Markdown table or plain text.
-- **Edit in place.** A result that reads one table plainly (no join, group, union or distinct), with its full primary key, can be edited. Type over a cell, `⌘⌫` a row, then `⌘S`. All changes go in **one transaction**, one `UPDATE` or `DELETE` per row keyed by the primary key. If any statement touches more or fewer than one row, the whole thing rolls back.
+- **Edit in place.** A result that reads one table plainly (no join, group, union or distinct), with its full primary key, can be edited. Type over a cell, `⌘⌫` a row, then `⌘S`. All changes go in one transaction, one `UPDATE` or `DELETE` per row keyed by the primary key. If any statement touches more or fewer than one row, the whole thing rolls back.
 - **Table tabs:** rows with a `WHERE` filter and paging, plus the table's columns, indexes and foreign keys from the catalog.
 
 ### <img src="docs/assets/icons/history.svg" width="20" height="20" align="top" alt="" /> History and saved queries
@@ -112,9 +112,9 @@ Every connection has a **security level**. Set it in the connection's Options or
 
 <br />
 
-- Statements are classified from the **parsed SQL** (`sqlparser`), never a regex. That includes statements hiding in CTEs and `EXPLAIN ANALYZE`, and every statement of a multi-statement run.
-- If the dialect can't parse the text, the tokenizer splits it at top-level semicolons and the leading keywords decide. Text that can't even be tokenized counts as **unreadable**, so ypacapy asks.
-- A Strict connection can stay **unlocked for a window** you choose after the passphrase. Unlocking one connection never unlocks another.
+- Statements are classified from the parsed SQL (`sqlparser`), never a regex. That includes statements hiding in CTEs and `EXPLAIN ANALYZE`, and every statement of a multi-statement run.
+- If the dialect can't parse the text, the tokenizer splits it at top-level semicolons and the leading keywords decide. Text that can't even be tokenized counts as unreadable, so ypacapy asks.
+- A Strict connection can stay unlocked for a window you choose after the passphrase. Unlocking one connection never unlocks another.
 - **Lowering** a Strict connection (a lower level, fewer protected statements, allowing Touch ID, a longer window) needs the passphrase too.
 - Strict needs a passphrase, set in Settings › Security. Disable the passphrase and Strict connections drop to Low, so they still ask about the same statements.
 - **Forgot the passphrase?** The Mac's owner (Touch ID or the login password) can set a new one. The old one can't be shown: the Keychain holds only a salted PBKDF2 hash.
@@ -130,8 +130,8 @@ Hands off the mouse.
 | `⌘T` | New query tab |
 | `⌘W` | Close the tab |
 | `⇧⌘W` | Close the window |
-| `⌘↵` | Run the whole editor (in a table tab: re-read the rows) |
-| `⇧⌘↵` | Run the selection |
+| `⌘↵` | Run the selection, or the statement at the cursor (in a table tab: re-read the rows) |
+| `⇧⌘↵` | Run the whole editor |
 | `⌘S` | Save the query, or write the grid's pending edits |
 | `⌘/` | Comment or uncomment the selected lines |
 | `⌘\` | Show or hide the sidebar |
@@ -148,7 +148,7 @@ On your Mac, in one folder you can find, back up and delete:
 
 - **`~/.config/ypacapy/`** (on macOS too, not Application Support), created with mode `0700`:
   - `settings.toml`: your settings
-  - `connections.toml`: every connection, **without** passwords
+  - `connections.toml`: every connection, minus the passwords
   - `ypacapy.db`: history, saved queries and each connection's open tabs (SQLite)
 - **The macOS login Keychain**, service `ypacapy`: connection passwords and the passphrase hash. Items are marked not synchronizable, so iCloud Keychain never copies them off the Mac. Nothing secret is ever written to a file.
 
@@ -168,7 +168,7 @@ bun run typecheck    # TypeScript check only
 - Dev builds (`bun tauri dev`, `bun tauri build --debug`) never check for updates, so the GitHub release never replaces them. About shows their commit, branch and tag instead.
 - New icon? `bunx tauri icon app-icon.svg` regenerates the lot. Then `touch src-tauri/src/lib.rs` so `tauri dev` embeds it again.
 - Tests that need the outside world are `#[ignore]`d. Inside `src-tauri`, `cargo test` runs the unit tests and `cargo test -- --ignored` adds the Keychain test and the PostgreSQL tests (a local server on `localhost:5432` that lets `$USER` in; they only select and use session temp tables).
-- Coding with an agent? [AGENTS.md](AGENTS.md) explains the graphify knowledge graph in `graphify-out/`.
+- Agents (and the humans steering them) start at [AGENTS.md](AGENTS.md), which explains the graphify knowledge graph in `graphify-out/`.
 
 <details>
 <summary><img src="docs/assets/icons/map.svg" width="18" height="18" align="top" alt="" /> <b>Where things live</b></summary>
@@ -201,7 +201,7 @@ src/components/            UI: Home, Sidebar, QueryPane, SqlEditor, ResultGrid, 
 1. Bump the version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`.
 2. Move the `[Unreleased]` notes in [CHANGELOG.md](CHANGELOG.md) into a `## [x.y.z] - YYYY-MM-DD` section. Write bullets as `- **Lead.** detail`: the app shows each bold lead as one line of the release notes.
 3. Commit, then tag and push: `git tag vx.y.z && git push origin vx.y.z`.
-4. `.github/workflows/release.yml` creates a **draft** release with that CHANGELOG section as its notes, builds `aarch64-apple-darwin` and `x86_64-apple-darwin`, and uploads the bundles and `latest.json`.
+4. `.github/workflows/release.yml` creates a draft release with that CHANGELOG section as its notes, builds `aarch64-apple-darwin` and `x86_64-apple-darwin`, and uploads the bundles and `latest.json`.
 5. Publish the draft by hand. Until then, installed copies keep seeing the previous release.
 
 Fix release notes in CHANGELOG.md before tagging. Edits on the draft reach the release page but not `latest.json`, which is what the app reads.
@@ -219,7 +219,7 @@ ypacapy is local by design. Like a capybara in a hot spring, it isn't going anyw
 - telemetry, analytics, or "help us improve ypacapy" pings
 - background queries that scan your tables to make a dashboard look busy
 
-Your connection details, passwords and half-written `DELETE`s stay on your Mac, with you, where they belong.
+Your connection details, passwords and half-written `DELETE`s never leave your Mac.
 
 ## <img src="docs/assets/icons/users.svg" width="24" height="24" align="top" alt="" /> Come soak with us
 

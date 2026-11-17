@@ -112,6 +112,36 @@ export function highlightSql(src: string, cur?: number): string {
 /** The words of one line of SQL, coloured, for small samples (no line numbers). */
 export const highlightInline = (src: string) => runs(src).map(([c, t]) => (c ? `<span class="${c}">${esc(t)}</span>` : esc(t))).join("");
 
+/**
+ * The statement around the cursor: from the `;` before it to the next `;` (or the end), trimmed and
+ * without the `;`. Semicolons inside strings, quoted names and comments do not count. A cursor right
+ * after a `;` on the same line (`select 1;|`), or on a stretch with nothing in it, takes the statement
+ * before. Empty string when the editor holds no statement.
+ */
+export function statementAt(src: string, cursor: number): string {
+  const semis: number[] = [];
+  let last = 0;
+  const scan = (text: string, at: number) => {
+    for (let i = text.indexOf(";"); i >= 0; i = text.indexOf(";", i + 1)) semis.push(at + i);
+  };
+  TOKEN.lastIndex = 0;
+  for (let m = TOKEN.exec(src); m; m = TOKEN.exec(src)) {
+    scan(src.slice(last, m.index), last);
+    last = m.index + m[0].length;
+  }
+  scan(src.slice(last), last);
+
+  // statement i runs from bounds[i] up to semis[i] (or the end of the text)
+  const bounds = [0, ...semis.map((s) => s + 1)];
+  const end = (i: number) => (i < semis.length ? semis[i] : src.length);
+  const blank = (i: number) => !src.slice(bounds[i], end(i)).replace(/--[^\n]*|\/\*[\s\S]*?(?:\*\/|$)/g, "").trim();
+  let i = bounds.length - 1;
+  while (i > 0 && bounds[i] > cursor) i--;
+  if (i > 0 && (blank(i) || /^[ \t]*$/.test(src.slice(bounds[i], cursor)))) i--;
+  while (i > 0 && blank(i)) i--;
+  return src.slice(bounds[i], end(i)).trim();
+}
+
 const DIALECT: Record<Engine, SqlLanguage> = { postgres: "postgresql", mysql: "mysql", sqlite: "sqlite" };
 
 /**

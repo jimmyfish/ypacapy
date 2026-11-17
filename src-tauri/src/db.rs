@@ -18,7 +18,7 @@ use sqlx::{Column, Either, Executor, Row, TypeInfo, ValueRef};
 use tauri::{AppHandle, Manager, State};
 use tokio_util::sync::CancellationToken;
 
-use crate::conns::{self, Conn, Engine};
+use crate::conns::{self, Conn, Engine, SslMode};
 use crate::guard::{self, Approval, Ask, GuardState};
 use crate::settings::SettingsState;
 use crate::store::{HistoryEntry, LocalStore};
@@ -48,6 +48,8 @@ pub struct Open {
     engine: Engine,
     /// "PostgreSQL 16.4"
     server: String,
+    /// the connection's own heartbeat choice; None follows Settings
+    heartbeat: Option<bool>,
 }
 
 #[derive(Default)]
@@ -220,14 +222,26 @@ fn port_of(conn: &Conn) -> u16 {
 async fn connect(conn: &Conn, database: &str, password: Option<String>, read_only: bool, max: u32) -> Result<Pool, sqlx::Error> {
     let db = Some(database).filter(|d| !d.is_empty()).or(conn.database.as_deref().filter(|d| !d.trim().is_empty()));
     let user = conn.user.clone().filter(|u| !u.trim().is_empty());
-    let acquire = Duration::from_secs(15);
+    let acquire = Duration::from_secs(conn.connect_timeout.filter(|s| *s > 0).unwrap_or(15) as u64);
+    let ssl = conn.ssl_mode.unwrap_or_default();
+    let ca = conn.ssl_ca.as_deref().map(str::trim).filter(|c| !c.is_empty()).map(crate::paths::expand_tilde);
     Ok(match conn.engine {
         Engine::Postgres => {
+            let app = conn.app_name.as_deref().map(str::trim).filter(|a| !a.is_empty()).unwrap_or("ypacapy");
             let mut o = PgConnectOptions::new()
                 .host(&host_of(conn))
                 .port(port_of(conn))
-                .ssl_mode(PgSslMode::Prefer)
-                .application_name("ypacapy");
+                .ssl_mode(match ssl {
+                    SslMode::Disable => PgSslMode::Disable,
+                    SslMode::Prefer => PgSslMode::Prefer,
+                    SslMode::Require => PgSslMode::Require,
+                    SslMode::VerifyCa => PgSslMode::VerifyCa,
+                    SslMode::VerifyFull => PgSslMode::VerifyFull,
+                })
+                .application_name(app);
+            if let Some(ca) = &ca {
+                o = o.ssl_root_cert(ca);
+            }
             if let Some(u) = &user {
                 o = o.username(u);
             }
@@ -243,7 +257,16 @@ async fn connect(conn: &Conn, database: &str, password: Option<String>, read_onl
             Pool::Pg(PgPoolOptions::new().max_connections(max).test_before_acquire(true).acquire_timeout(acquire).connect_with(o).await?)
         }
         Engine::Mysql => {
-            let mut o = MySqlConnectOptions::new().host(&host_of(conn)).port(port_of(conn)).ssl_mode(MySqlSslMode::Preferred);
+            let mut o = MySqlConnectOptions::new().host(&host_of(conn)).port(port_of(conn)).ssl_mode(match ssl {
+                SslMode::Disable => MySqlSslMode::Disabled,
+                SslMode::Prefer => MySqlSslMode::Preferred,
+                SslMode::Require => MySqlSslMode::Required,
+                SslMode::VerifyCa => MySqlSslMode::VerifyCa,
+                SslMode::VerifyFull => MySqlSslMode::VerifyIdentity,
+            });
+            if let Some(ca) = &ca {
+                o = o.ssl_ca(ca);
+            }
             if let Some(u) = &user {
                 o = o.username(u);
             }
@@ -316,15 +339,15 @@ async fn server_version(pool: &Pool, engine: Engine) -> Result<String, sqlx::Err
 }
 
 impl DbState {
-    async fn get(&self, conn: &Conn, database: &str, settings: &SettingsState) -> Result<Arc<Open>, sqlx::Error> {
+    async fn get(&self, conn: &Conn, database: &str) -> Result<Arc<Open>, sqlx::Error> {
         let key = (conn.id.clone(), database.to_string());
         if let Some(o) = self.open.lock().await.get(&key) {
             return Ok(o.clone());
         }
         let password = password_for(conn).await.map_err(|e| sqlx::Error::Configuration(e.into()))?;
-        let pool = connect(conn, database, password, settings.bool("readOnly", false), 4).await?;
+        let pool = connect(conn, database, password, false, 4).await?;
         let server = server_version(&pool, conn.engine).await.unwrap_or_else(|_| conn.engine.label().to_string());
-        let open = Arc::new(Open { pool, engine: conn.engine, server });
+        let open = Arc::new(Open { pool, engine: conn.engine, server, heartbeat: conn.heartbeat });
         let mut map = self.open.lock().await;
         // another call may have connected meanwhile: keep the first
         Ok(map.entry(key).or_insert(open).clone())
@@ -388,10 +411,10 @@ pub struct OpenInfo {
 
 /// Opens (or reuses) the pool for a connection and database and lists what the context picker shows.
 #[tauri::command]
-pub async fn open_connection(id: String, database: Option<String>, state: State<'_, DbState>, settings: State<'_, SettingsState>) -> Result<OpenInfo, String> {
+pub async fn open_connection(id: String, database: Option<String>, state: State<'_, DbState>) -> Result<OpenInfo, String> {
     let conn = conns::find(&id)?;
     let database = database.unwrap_or_default();
-    let open = state.get(&conn, &database, &settings).await.map_err(|e| err_text(&e))?;
+    let open = state.get(&conn, &database).await.map_err(|e| err_text(&e))?;
     let pool = &open.pool;
     let r = async {
         Ok::<_, sqlx::Error>(match conn.engine {
@@ -464,9 +487,9 @@ fn quote_ident(engine: Engine, s: &str) -> String {
 
 /// One schema of the tree, loaded when it is expanded.
 #[tauri::command]
-pub async fn load_schema(id: String, database: Option<String>, schema: String, state: State<'_, DbState>, settings: State<'_, SettingsState>) -> Result<SchemaObjects, String> {
+pub async fn load_schema(id: String, database: Option<String>, schema: String, state: State<'_, DbState>) -> Result<SchemaObjects, String> {
     let conn = conns::find(&id)?;
-    let open = state.get(&conn, &database.unwrap_or_default(), &settings).await.map_err(|e| err_text(&e))?;
+    let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
     schema_objects(&open.pool, conn.engine, &schema).await
 }
 
@@ -578,10 +601,9 @@ pub async fn table_info(
     schema: String,
     table: String,
     state: State<'_, DbState>,
-    settings: State<'_, SettingsState>,
 ) -> Result<TableInfo, String> {
     let conn = conns::find(&id)?;
-    let open = state.get(&conn, &database.unwrap_or_default(), &settings).await.map_err(|e| err_text(&e))?;
+    let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
     table_catalog(&open.pool, conn.engine, &schema, &table).await
 }
 
@@ -950,7 +972,7 @@ pub async fn run_query(
     if let Some(ask) = guard::check(&c, conn.guard, req.approval, &settings, &guard_state).await? {
         return Ok(RunOutcome::Ask(ask));
     }
-    let row_limit = settings.u64("rowLimit", 500) as usize;
+    let row_limit = conn.row_limit.map(u64::from).unwrap_or_else(|| settings.u64("rowLimit", 500)) as usize;
     let (sql, limit) = if req.add_limit && c.limitable && row_limit > 0 {
         (format!("{}\nlimit {row_limit}", &req.sql[..c.end]), Some(row_limit))
     } else {
@@ -964,8 +986,8 @@ pub async fn run_query(
     let started_at = conns::now_ms();
     let t = Instant::now();
     let database = req.database.clone().unwrap_or_default();
-    let res = match state.get(&conn, &database, &settings).await {
-        Ok(open) => execute(&open, req.schema.as_deref(), &sql, cap, token, settings.u64("statementTimeout", 30)).await.map(|e| (e, open.server.clone())),
+    let res = match state.get(&conn, &database).await {
+        Ok(open) => execute(&open, req.schema.as_deref(), &sql, cap, token, conn.statement_timeout.map(u64::from).unwrap_or_else(|| settings.u64("statementTimeout", 30))).await.map(|e| (e, open.server.clone())),
         Err(e) => Err(e),
     };
     if let Ok(mut runs) = state.runs.lock() {
@@ -1028,16 +1050,15 @@ pub fn cancel_query(run_id: String, state: State<'_, DbState>) {
 
 /// Settings > Queries > Connection heartbeat (off by default): every interval, `select 1` on each idle
 /// pooled connection of every open PostgreSQL and MySQL connection, for servers that drop idle sessions.
+/// A connection's own Heartbeat choice (Advanced tab) overrides the setting for that connection.
 /// Connections busy with a run are not touched (they are not idle). SQLite is never pinged.
 pub fn start_heartbeat(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         loop {
             let every = app.state::<SettingsState>().u64("heartbeatEvery", 30).max(5);
             tokio::time::sleep(Duration::from_secs(every)).await;
-            if !app.state::<SettingsState>().bool("heartbeat", false) {
-                continue;
-            }
-            let opens: Vec<Arc<Open>> = app.state::<DbState>().open.lock().await.values().cloned().collect();
+            let global = app.state::<SettingsState>().bool("heartbeat", false);
+            let opens: Vec<Arc<Open>> = app.state::<DbState>().open.lock().await.values().filter(|o| o.heartbeat.unwrap_or(global)).cloned().collect();
             for o in opens {
                 match &o.pool {
                     Pool::Pg(p) => {
@@ -1081,6 +1102,13 @@ mod tests {
             file: std::env::var("YPACAPY_TEST_SQLITE").ok(),
             color: 1,
             guard: Default::default(),
+            row_limit: None,
+            statement_timeout: None,
+            ssl_mode: None,
+            ssl_ca: None,
+            app_name: None,
+            connect_timeout: None,
+            heartbeat: None,
             last_opened: None,
         }
     }
@@ -1089,7 +1117,7 @@ mod tests {
         let c = conn(engine);
         let pool = connect(&c, "", None, false, 2).await.expect("connect");
         let server = server_version(&pool, engine).await.unwrap();
-        Open { pool, engine, server }
+        Open { pool, engine, server, heartbeat: None }
     }
 
     fn done(e: Exec) -> Collected {
@@ -1193,7 +1221,7 @@ mod tests {
         let mut c = conn(Engine::Sqlite);
         c.file = Some(file.to_string_lossy().into_owned());
         let pool = connect(&c, "", None, false, 1).await.unwrap();
-        let o = Open { pool, engine: Engine::Sqlite, server: String::new() };
+        let o = Open { pool, engine: Engine::Sqlite, server: String::new(), heartbeat: None };
         let r = done(execute(&o, None, "select id, name, price, blob, ok, 1 + 1 as two from t", 100, CancellationToken::new(), 10).await.unwrap());
         let s = &r.sets[0];
         assert_eq!(s.rows.len(), 2);

@@ -69,6 +69,70 @@ interface State {
   loadSaved(): Promise<void>;
 }
 
+/**
+ * Each connection's query tabs (scratchpads and edited saved queries) are kept in ypacapy.db and come
+ * back when it is opened again, also after a restart. Table tabs are not kept.
+ */
+interface Workspace {
+  v: 1;
+  active: string | null;
+  tabs: { id: string; title: string; sql: string; savedId?: string; savedFolder?: string; savedSql?: string }[];
+}
+/** a short pause after the last change, so a quit right after typing loses little */
+const WORKSPACE_SAVE_MS = 300;
+/** connections whose kept tabs were read back; only those are written, so an empty session never overwrites them */
+const restored = new Set<string>();
+const saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const lastWritten = new Map<string, string>();
+
+function workspaceOf(s: Session): string {
+  const kept = s.tabs.filter((t): t is QueryTab => t.kind === "query" && (!!t.savedId || t.sql.trim() !== ""));
+  const active = kept.find((t) => t.id === s.activeTabId)?.id ?? kept[kept.length - 1]?.id ?? null;
+  const w: Workspace = {
+    v: 1,
+    active,
+    tabs: kept.map((t) => ({ id: t.id, title: t.title, sql: t.sql, savedId: t.savedId, savedFolder: t.savedFolder, savedSql: t.savedSql })),
+  };
+  return JSON.stringify(w);
+}
+
+/** Writes the connection's kept tabs now, if they changed since the last write. */
+async function flushWorkspace(id: string): Promise<void> {
+  clearTimeout(saveTimers.get(id));
+  saveTimers.delete(id);
+  const s = useStore.getState().sessions[id];
+  if (!s || !restored.has(id)) return;
+  const data = workspaceOf(s);
+  if (lastWritten.get(id) === data) return;
+  lastWritten.set(id, data);
+  await api.saveWorkspace(id, data).catch((e) => {
+    lastWritten.delete(id);
+    useStore.getState().showToast(`Open tabs not kept: ${errText(e)}`);
+  });
+}
+
+async function readWorkspace(id: string): Promise<{ tabs: QueryTab[]; active: string | null }> {
+  try {
+    const raw = await api.loadWorkspace(id);
+    if (!raw) return { tabs: [], active: null };
+    lastWritten.set(id, raw);
+    const w = JSON.parse(raw) as Partial<Workspace>;
+    const tabs: QueryTab[] = (Array.isArray(w.tabs) ? w.tabs : [])
+      .filter((t) => t && typeof t.sql === "string")
+      .map((t) => ({
+        id: t.id || uid(),
+        kind: "query",
+        title: t.title || "Query",
+        sql: t.sql,
+        ...(t.savedId ? { savedId: t.savedId, savedFolder: t.savedFolder, savedSql: t.savedSql } : {}),
+        run: { status: "idle" },
+      }));
+    return { tabs, active: tabs.some((t) => t.id === w.active) ? (w.active ?? null) : (tabs[tabs.length - 1]?.id ?? null) };
+  } catch {
+    return { tabs: [], active: null };
+  }
+}
+
 const emptySession = (): Session => ({ status: "opening", database: "", schema: "", tree: {}, expanded: {}, tabs: [], activeTabId: null });
 
 export const useStore = create<State>()((set, get) => {
@@ -165,7 +229,9 @@ export const useStore = create<State>()((set, get) => {
 
     async deleteConn(id) {
       await get().closeConn(id);
+      lastWritten.delete(id);
       try {
+        await api.saveWorkspace(id, null);
         await api.deleteConnection(id);
       } catch (e) {
         get().showToast(errText(e));
@@ -178,6 +244,11 @@ export const useStore = create<State>()((set, get) => {
       const existing = get().sessions[id];
       if (existing && existing.status !== "error") return;
       set((st) => ({ sessions: { ...st.sessions, [id]: { ...emptySession(), tabs: existing?.tabs ?? [], activeTabId: existing?.activeTabId ?? null } } }));
+      if (!restored.has(id)) {
+        const ws = await readWorkspace(id);
+        patchSession(id, (s) => ({ tabs: [...ws.tabs, ...s.tabs], activeTabId: s.activeTabId ?? ws.active }));
+        restored.add(id);
+      }
       void api.touchConnection(id).then(() => get().refreshConns());
       try {
         const info = await api.openConnection(id);
@@ -202,6 +273,8 @@ export const useStore = create<State>()((set, get) => {
     },
 
     async closeConn(id) {
+      await flushWorkspace(id);
+      restored.delete(id);
       await api.closeConnection(id).catch(() => {});
       set((st) => {
         const openIds = st.openIds.filter((x) => x !== id);
@@ -298,7 +371,8 @@ export const useStore = create<State>()((set, get) => {
       const id = get().currentId;
       if (!id) return "";
       const s = get().sessions[id];
-      const n = s.tabs.filter((t) => t.kind === "query").length + 1;
+      // after the highest "Query n", so restored tabs keep their names unique
+      const n = Math.max(0, ...s.tabs.map((t) => (t.kind === "query" ? Number(/^Query (\d+)$/.exec(t.title)?.[1] ?? 0) : 0))) + 1;
       const t: QueryTab = { ...newQuery(n), sql, ...(title ? { title } : {}) };
       if (saved) Object.assign(t, { title: saved.name, savedId: saved.id, savedFolder: saved.folder, savedSql: saved.sql, sql: saved.sql });
       patchSession(id, (x) => ({ tabs: [...x.tabs, t], activeTabId: t.id }));
@@ -392,7 +466,7 @@ export const useStore = create<State>()((set, get) => {
       const conn = get().conns.find((c) => c.id === connId);
       if (!conn) return;
       const offset = opts.offset ?? 0;
-      const limit = get().settings.rowLimit || DEFAULT_ROW_LIMIT;
+      const limit = conn.rowLimit || get().settings.rowLimit || DEFAULT_ROW_LIMIT;
       const sql = tableSelect(conn.engine, tab.schema, tab.table, tab.where, limit, offset);
       const runId = uid();
       const prev = tab.run;
@@ -453,6 +527,16 @@ export const useStore = create<State>()((set, get) => {
       }
     },
   };
+});
+
+useStore.subscribe((st, prev) => {
+  if (st.sessions === prev.sessions) return;
+  for (const [id, s] of Object.entries(st.sessions)) {
+    const before = prev.sessions[id];
+    if (!restored.has(id) || (before && s.tabs === before.tabs && s.activeTabId === before.activeTabId)) continue;
+    clearTimeout(saveTimers.get(id));
+    saveTimers.set(id, setTimeout(() => void flushWorkspace(id), WORKSPACE_SAVE_MS));
+  }
 });
 
 function newQuery(n: number): QueryTab {

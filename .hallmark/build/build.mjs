@@ -500,7 +500,10 @@ const passDialogs = () =>
 const securityPane = () => `
       <div class="set-pane" data-pane="security" hidden>
         <h3>Security</h3>
-        <p class="pane-note">Each connection sets its own write guard in the tabs bar.</p>
+        <p class="pane-note">Each connection can change its write guard in the tabs bar or in its Options.</p>
+        <div class="set-list">${setItem("Write guard", "For new connections", choice("sec-guard", LEVELS, "confirm"), "sec-guard")}
+        </div>
+        <div data-when-verify hidden>
         <div class="set-list">
               <div class="set-item">
                 <div class="set-text"><span class="set-label">Passphrase</span><span class="desc" data-pass-desc>Not set</span></div>
@@ -513,6 +516,7 @@ const securityPane = () => `
           <button type="button" class="btn btn--quiet" id="protect-toggle">${ic("lock")}<span>Change</span></button>
         </div>
         <div class="set-list stmts" id="protect" data-needs-pass hidden>${STMTS.map(([k, tag], i) => setItem(`<code class="stmt">${k}</code>${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-${i}" class="switch" type="checkbox" role="switch" checked disabled>`, `prot-${i}`)).join("")}
+        </div>
         </div>
       </div>`;
 const sw = (id, on) => `<input id="${id}" class="switch" type="checkbox" role="switch"${on ? " checked" : ""}>`;
@@ -549,7 +553,7 @@ pages["settings.html"] = page({
       </div>
       <div class="set-pane" data-pane="queries" hidden>
         <h3>Queries</h3>
-        <div class="set-list">${setItem("Row limit", "Added to a select that has no limit of its own", unit("set-limit", "500", "rows"), "set-limit")}${setItem("Statement timeout", "", unit("set-timeout", "30", "s"), "set-timeout")}${setItem("Open new connections read-only", "", sw("set-ro", false), "set-ro")}${setItem("Keep query history", "", sw("set-hist", true), "set-hist")}${setItem("Connection heartbeat", "Sends select 1 on every open connection, for servers that drop idle ones", sw("set-beat", false), "set-beat")}${setItem("Every", "Below the server idle timeout", unit("set-beat-every", "30", "s"), "set-beat-every").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-beat hidden")}
+        <div class="set-list">${setItem("Row limit", "Added to a select that has no limit of its own", unit("set-limit", "500", "rows"), "set-limit")}${setItem("Statement timeout", "", unit("set-timeout", "30", "s"), "set-timeout")}${setItem("Keep query history", "", sw("set-hist", true), "set-hist")}${setItem("Connection heartbeat", "Sends select 1 on every open connection, for servers that drop idle ones", sw("set-beat", false), "set-beat")}${setItem("Every", "Below the server idle timeout", unit("set-beat-every", "30", "s"), "set-beat-every").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-beat hidden")}
         </div>
       </div>
 ${securityPane()}
@@ -565,40 +569,97 @@ ${securityPane()}
   script: js("page-settings.js"),
 });
 
-// New connection: voidHTTP's .dialog with its labels
+// New connection: a data-source dialog. Name and colour on top, then tabs; right-aligned labels, fields to the right
+const csel = (id, opts, cur, extra = "") => `<span class="select-wrap"${extra}><select class="field" id="${id}">${opts.map(([v, t]) => `<option value="${v}"${v === cur ? " selected" : ""}>${t}</option>`).join("")}</select>${ic("chevron-down", "select-chev")}</span>`;
+const lab = (id, t) => `<label for="${id}">${t}</label>`;
+const COLORS = [["1", "Blue"], ["2", "Green"], ["3", "Orange"], ["4", "Violet"], ["5", "Teal"], ["6", "Pink"]];
 pages["connect.html"] = page({
   title: "ypacapy preview, new connection",
   desc: "Design preview of adding a PostgreSQL, MySQL or SQLite connection in ypacapy, with its password kept in the macOS keychain.",
-  barHtml: bar("connect", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["name-missing", "Name missing"], ["testing", "Testing"], ["test-ok", "Test passed"], ["test-failed", "Test failed"]]),
+  barHtml: bar("connect", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["url-only", "URL only"], ["options", "Options tab"], ["options-verify", "Ask for passphrase"], ["options-nopass", "Ask, no passphrase set"], ["ssl", "SSL tab"], ["advanced", "Advanced tab"], ["name-missing", "Name missing"], ["testing", "Testing"], ["test-ok", "Test passed"], ["test-failed", "Test failed"]]),
   body: `
 <div class="app">${strip("home")}
   <div class="home"><div class="home-inner"><div class="home-head"><div><h1>Connections</h1><p class="muted">Everything stays on this Mac, in ~/.config/ypacapy.</p></div></div></div></div>
 </div>
 <div class="backdrop" data-close="./home.html">
-  <div class="dialog" role="dialog" aria-modal="true" aria-label="New connection" style="width: 520px">
-    <h2>New connection</h2>
+  <div class="dialog cx" role="dialog" aria-modal="true" aria-labelledby="cx-title">
+    <h2 id="cx-title">New connection</h2>
     <form id="connect-form" data-endpoint="" novalidate>
-      <label>Engine<span class="select-wrap"><select class="field" id="c-engine" name="engine"><option value="postgres" selected>PostgreSQL</option><option value="mysql">MySQL</option><option value="sqlite">SQLite</option></select>${ic("chevron-down", "select-chev")}</span></label>
-      <label>Name<input class="field" id="c-name" name="name" required aria-required="true" aria-describedby="c-name-h" autocomplete="off" spellcheck="false"><span class="help" id="c-name-h"></span></label>
-      <div data-for="sqlite" hidden>
-        <label for="c-file">Database file</label>
-        <div class="with-btn"><input class="field mono" id="c-file" name="file" placeholder="~/data/analytics.sqlite" autocomplete="off" spellcheck="false" aria-describedby="c-file-h"><button type="button" class="btn">${ic("folder-open")}Choose</button></div>
-        <span class="help" id="c-file-h">Opened in place, never copied</span>
+      <div class="cx-grid cx-head">
+        ${lab("c-name", "Name")}<input class="field" id="c-name" name="name" required aria-required="true" aria-describedby="c-name-h" autocomplete="off" spellcheck="false">
+        ${lab("c-color", "Color")}<span class="cx-color" style="--fg: var(--proj-1-fg)">${csel("c-color", COLORS, "1")}</span>
+        <span class="help cx-full" id="c-name-h"></span>
       </div>
-      <div data-for="server">
-        <div class="pair"><label>Host<input class="field mono" name="host" value="localhost" autocomplete="off" spellcheck="false"></label><label>Port<input class="field mono" id="c-port" name="port" value="5432" inputmode="numeric" autocomplete="off"></label></div>
-        <div class="pair pair--even"><label>Database<input class="field mono" name="database" value="shop" autocomplete="off" spellcheck="false"></label><label>User<input class="field mono" name="user" value="ops" autocomplete="username" spellcheck="false"></label></div>
-        <label>Password<input class="field" id="c-pass" name="password" type="password" autocomplete="current-password" aria-describedby="c-pass-h"><span class="help" id="c-pass-h">${ic("key-round")}Kept in the macOS login keychain on this Mac only</span></label>
+      <div class="subtabs cx-tabs" role="tablist" aria-label="Connection settings">
+        ${[["general", "General"], ["options", "Options"], ["ssl", "SSL"], ["advanced", "Advanced"]].map(([k, t], i) => `<button type="button" class="subtab" role="tab" id="t-${k}" aria-controls="p-${k}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${t}</button>`).join("")}
       </div>
+
+      <div class="cx-panel" role="tabpanel" id="p-general" aria-labelledby="t-general">
+        <div class="cx-grid">
+          ${lab("c-engine", "Driver")}<span class="cx-full cx-driver">${ic("server", "drv-ico")}${csel("c-engine", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"]], "postgres")}</span>
+          <span class="cx-label" id="c-type-l" data-for="server">Connection type</span><span class="cx-full" data-for="server"><span class="seg seg--lg" role="group" aria-labelledby="c-type-l"><button type="button" aria-pressed="true" data-type="default">Default</button><button type="button" aria-pressed="false" data-type="url">URL only</button></span></span>
+          <span data-for="fields" class="cx-sub">${lab("c-host", "Host")}<input class="field mono" id="c-host" name="host" value="localhost" autocomplete="off" spellcheck="false">${lab("c-port", "Port")}<input class="field mono cx-port" id="c-port" name="port" value="5432" inputmode="numeric" autocomplete="off">
+          ${lab("c-user", "User")}<input class="field mono cx-full" id="c-user" name="user" value="ops" autocomplete="username" spellcheck="false"></span>
+          <span data-for="server" class="cx-sub">${lab("c-pass", "Password")}<input class="field cx-full" id="c-pass" name="password" type="password" autocomplete="current-password" aria-describedby="c-pass-h"></span>
+          <span data-for="fields" class="cx-sub">${lab("c-db", "Database")}<input class="field mono cx-full" id="c-db" name="database" value="shop" autocomplete="off" spellcheck="false"></span>
+          <span data-for="sqlite" class="cx-sub" hidden>${lab("c-file", "File")}<span class="with-btn cx-full"><input class="field mono" id="c-file" name="file" placeholder="~/data/analytics.sqlite" autocomplete="off" spellcheck="false"><button type="button" class="btn">${ic("folder-open")}Choose</button></span></span>
+          ${lab("c-url", "URL")}<input class="field mono cx-full" id="c-url" name="url" autocomplete="off" spellcheck="false" aria-describedby="c-url-h">
+          <span class="help cx-full cx-under" id="c-url-h">Editing the URL fills in the settings above.</span>
+          <span class="help cx-full cx-under" id="c-pass-h" data-for="server">${ic("key-round")}Passwords stay in the macOS login keychain on this Mac</span>
+        </div>
+      </div>
+
+      <div class="cx-panel" role="tabpanel" id="p-options" aria-labelledby="t-options" hidden>
+        <h3 class="cx-h">Write guard</h3>
+        <div class="set-list">${setItem("Write guard", "Lowering Ask for passphrase needs the passphrase", choice("c-guard", LEVELS, "confirm"), "c-guard")}
+        </div>
+        <div data-when-verify hidden>
+        <h3 class="cx-h">Passphrase <span class="cx-h-note">You can set this in Settings › Security later</span></h3>
+        <div class="set-list">
+              <div class="set-item">
+                <div class="set-text"><span class="set-label">Passphrase</span><span class="desc" data-pass-desc>Not set</span></div>
+                <div class="set-ctl" data-pass="none"><button type="button" class="btn" data-open-sub="new">Set passphrase</button></div>
+                <div class="set-ctl" data-pass="set" hidden><button type="button" class="btn" data-open-sub="change">Change passphrase</button><button type="button" class="btn btn--danger" data-open-sub="disable">Disable passphrase</button></div>
+              </div>${setItem("Open with Touch ID", "", '<input id="sec-touch" class="switch" type="checkbox" role="switch">', "sec-touch").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-needs-pass hidden")}${setItem("Stay unlocked for", "", choice("sec-window", [["0", "Ask every time"], ["60", "1 minute"], ["300", "5 minutes"], ["900", "15 minutes"]], "0"), "sec-window").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-needs-pass hidden")}
+        </div>
+        <div class="protect-head cx-protect-head" data-needs-pass hidden>
+          <h3 class="cx-h">What to protect <span class="cx-h-note">For every connection</span></h3>
+          <button type="button" class="btn btn--quiet" id="protect-toggle">${ic("lock")}<span>Change</span></button>
+        </div>
+        <div class="set-list stmts" id="protect" data-needs-pass hidden>${STMTS.map(([k, tag], i) => setItem(`<code class="stmt">${k}</code>${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-${i}" class="switch" type="checkbox" role="switch" checked disabled>`, `prot-${i}`)).join("")}
+        </div>
+        </div>
+        <h3 class="cx-h">Queries <span class="cx-h-note">Empty uses the value in Settings</span></h3>
+        <div class="set-list">${setItem("Row limit", "Added to a select that has no limit of its own", '<span class="unit-field"><input id="c-limit" class="field" inputmode="numeric" placeholder="500"><span class="unit">rows</span></span>', "c-limit")}${setItem("Statement timeout", "0 lets a statement run as long as it takes", '<span class="unit-field"><input id="c-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "c-timeout")}${setItem("Connection heartbeat", "Keeps idle sessions open with select 1", choice("c-beat", [["app", "Use Settings (off)"], ["on", "On"], ["off", "Off"]], "app"), "c-beat")}
+        </div>
+      </div>
+
+      <div class="cx-panel" role="tabpanel" id="p-ssl" aria-labelledby="t-ssl" hidden>
+        <div class="cx-grid" data-for="server">
+          ${lab("c-sslmode", "Mode")}<span class="cx-full">${csel("c-sslmode", [["disable", "Disable"], ["prefer", "Prefer"], ["require", "Require"], ["verify-ca", "Verify CA"], ["verify-full", "Verify full"]], "prefer")}</span>
+          <span class="help cx-full cx-under">Verify CA and Verify full check the server's certificate.</span>
+          ${lab("c-ca", "CA file")}<span class="with-btn cx-full"><input class="field mono" id="c-ca" placeholder="~/certs/ca.pem" autocomplete="off" spellcheck="false"><button type="button" class="btn">${ic("folder-open")}Choose</button></span>
+        </div>
+        <p class="cx-none" data-for="sqlite" hidden>SQLite opens a file on this Mac. There is no network to secure.</p>
+      </div>
+
+      <div class="cx-panel" role="tabpanel" id="p-advanced" aria-labelledby="t-advanced" hidden>
+        <div class="cx-grid">
+          <span data-for="server" class="cx-sub">${lab("c-app", "Application name")}<input class="field mono cx-full" id="c-app" value="ypacapy" autocomplete="off" spellcheck="false">
+          ${lab("c-ctimeout", "Connect timeout")}<span class="unit-field cx-full"><input class="field" id="c-ctimeout" inputmode="numeric" placeholder="15"><span class="unit">s</span></span></span>
+        </div>
+        <p class="cx-none" data-for="sqlite" hidden>Nothing to set for an SQLite file.</p>
+      </div>
+
       <p class="test-line" role="status" id="test-line" hidden></p>
-      <footer>
-        <button type="submit" class="btn" value="test" id="c-test">Test</button>
+      <footer class="cx-foot">
+        <button type="submit" class="btn" value="test" id="c-test">Test connection</button>
         <button type="button" class="btn" data-href="./home.html">Cancel</button>
         <button type="submit" class="btn btn--primary" value="save">Save</button>
       </footer>
     </form>
   </div>
-</div>`,
+</div>${passDialogs()}`,
   script: js("page-connect.js"),
 });
 

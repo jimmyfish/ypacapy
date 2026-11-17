@@ -28,6 +28,8 @@ export const api = {
   listSaved: () => invoke<Saved[]>("list_saved"),
   saveQuery: (q: Partial<Saved> & { name: string; sql: string }) => invoke<Saved>("save_query", { q }),
   deleteSaved: (id: string) => invoke<void>("delete_saved", { id }),
+  loadWorkspace: (connId: string) => invoke<string | null>("load_workspace", { connId }),
+  saveWorkspace: (connId: string, data: string | null) => invoke<void>("save_workspace", { connId, data }),
   configPath: () => invoke<string>("config_path"),
   writeTextFile: (path: string, contents: string) => invoke<void>("write_text_file", { path, contents }),
 };

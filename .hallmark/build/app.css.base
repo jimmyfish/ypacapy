@@ -176,7 +176,7 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 32px; 
 .tab-add { align-self: flex-end; margin: 0 0 5px var(--space-2xs); flex-shrink: 0; } /* centred on the tab text line: (42 - 32) / 2 */
 
 .joined { position: relative; display: inline-flex; flex-shrink: 0; }
-.joined > :first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.joined > :first-child:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .joined > .joined-tail { margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0; padding: 0; min-width: 34px; }
 .btn--primary.joined-tail { margin-left: 0; border-left: 1px solid var(--color-on-accent-rule); }
 .save-state { display: inline-grid; place-items: center; cursor: default; color: var(--color-muted); }

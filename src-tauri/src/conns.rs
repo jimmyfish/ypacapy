@@ -37,6 +37,18 @@ pub enum GuardLevel {
     Verify,
 }
 
+/// SSL for PostgreSQL and MySQL, named as libpq names it. Missing = prefer.
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum SslMode {
+    Disable,
+    #[default]
+    Prefer,
+    Require,
+    VerifyCa,
+    VerifyFull,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Conn {
@@ -59,6 +71,27 @@ pub struct Conn {
     pub color: u8,
     #[serde(default)]
     pub guard: GuardLevel,
+    /// Options tab. Each one missing = the value in Settings.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row_limit: Option<u32>,
+    /// seconds
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub statement_timeout: Option<u32>,
+    /// SSL tab (PostgreSQL and MySQL)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ssl_mode: Option<SslMode>,
+    /// CA certificate file, for verify-ca and verify-full
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ssl_ca: Option<String>,
+    /// Advanced tab. PostgreSQL application_name; missing = "ypacapy"
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app_name: Option<String>,
+    /// seconds to wait for a connection; missing = 15
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub connect_timeout: Option<u32>,
+    /// missing = Settings > Queries > Connection heartbeat
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub heartbeat: Option<bool>,
     /// ms since the epoch
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_opened: Option<i64>,

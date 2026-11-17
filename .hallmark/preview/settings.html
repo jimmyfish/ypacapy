@@ -438,10 +438,6 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
                 <div class="set-ctl"><span class="unit-field"><input id="set-timeout" class="field" inputmode="numeric" value="30"><span class="unit">s</span></span></div>
               </div>
               <div class="set-item">
-                <div class="set-text"><label for="set-ro">Open new connections read-only</label></div>
-                <div class="set-ctl"><input id="set-ro" class="switch" type="checkbox" role="switch"></div>
-              </div>
-              <div class="set-item">
                 <div class="set-text"><label for="set-hist">Keep query history</label></div>
                 <div class="set-ctl"><input id="set-hist" class="switch" type="checkbox" role="switch" checked></div>
               </div>
@@ -458,7 +454,14 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
 
       <div class="set-pane" data-pane="security" hidden>
         <h3>Security</h3>
-        <p class="pane-note">Each connection sets its own write guard in the tabs bar.</p>
+        <p class="pane-note">Each connection can change its write guard in the tabs bar or in its Options.</p>
+        <div class="set-list">
+              <div class="set-item">
+                <div class="set-text"><label for="sec-guard">Write guard</label><span class="desc">For new connections</span></div>
+                <div class="set-ctl"><span class="select-wrap"><select id="sec-guard" class="field set-choice"><option value="run">Run it</option><option value="confirm" selected>Ask to confirm</option><option value="verify">Ask for passphrase</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
+              </div>
+        </div>
+        <div data-when-verify hidden>
         <div class="set-list">
               <div class="set-item">
                 <div class="set-text"><span class="set-label">Passphrase</span><span class="desc" data-pass-desc>Not set</span></div>
@@ -519,6 +522,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
                 <div class="set-text"><label for="prot-9"><code class="stmt">REVOKE</code></label></div>
                 <div class="set-ctl"><input id="prot-9" class="switch" type="checkbox" role="switch" checked disabled></div>
               </div>
+        </div>
         </div>
       </div>
       <div class="set-pane" data-pane="data" hidden>
@@ -910,8 +914,12 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
   const _renderPass = renderPass;
   renderPass = () => { _renderPass(); if (!passSet) unlocked = false; renderLock(); };
   renderPass();
+  // the passphrase and what it protects only matter for Ask for passphrase: shown only then, as in the connection dialog
+  const renderGuard = () => { $("[data-when-verify]").hidden = $("#sec-guard").value !== "verify"; };
+  $("#sec-guard").addEventListener("change", renderGuard);
   window.pvShow = (k) => {
     closeSub();
+    $("#sec-guard").value = k === "security" ? "confirm" : "verify"; renderGuard();
     if (["appearance", "queries", "data"].includes(k)) { go(k); return; }
     go("security");
     passSet = k !== "security" && k !== "pass-new"; unlocked = k === "protect-open"; renderPass();

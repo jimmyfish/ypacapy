@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useStore, type Modal, type SettingsSection } from "../store";
@@ -6,9 +7,9 @@ import { api, errText } from "../lib/api";
 import { highlightInline } from "../lib/sql";
 import { systemFonts } from "../lib/fonts";
 import { BUILTIN, DEFAULT_SCHEME, FAMILIES, SCHEMES, schemeSwatch, type BuiltinId } from "../lib/themes";
-import { STATEMENTS, type Approval, type Conn, type Engine, type Settings } from "../types";
+import { STATEMENTS, type Approval, type Conn, type Engine, type GuardLevel, type Settings, type SslMode } from "../types";
 import { Select } from "./Select";
-import { CircleAlert, CircleCheck, Fingerprint, FolderOpen, KeyRound, Lock, LockOpen, ShieldCheck, Terminal, Type, ico } from "./Icon";
+import { CircleAlert, CircleCheck, Fingerprint, FolderOpen, HardDrive, KeyRound, Lock, LockOpen, Server, ShieldCheck, Terminal, Type, ico } from "./Icon";
 
 export function Modals() {
   const modal = useStore((s) => s.modal);
@@ -243,22 +244,108 @@ function LowerGuardModal({ m, onClose }: { m: Extract<Modal, { kind: "lowerGuard
 // ---------- New connection ----------
 
 const PORTS: Record<Engine, number | undefined> = { postgres: 5432, mysql: 3306, sqlite: undefined };
+const COLORS = ["Blue", "Green", "Orange", "Violet", "Teal", "Pink"];
+const SSL_MODES: [SslMode, string][] = [["disable", "Disable"], ["prefer", "Prefer"], ["require", "Require"], ["verify-ca", "Verify CA"], ["verify-full", "Verify full"]];
+const GUARDS: [GuardLevel, string][] = [["run", "Run it"], ["confirm", "Ask to confirm"], ["verify", "Ask for passphrase"]];
+type ConnTab = "general" | "options" | "ssl" | "advanced";
+const CONN_TABS: [ConnTab, string][] = [["general", "General"], ["options", "Options"], ["ssl", "SSL"], ["advanced", "Advanced"]];
+
+interface UrlParts {
+  engine: Engine;
+  host: string;
+  port: string;
+  user: string;
+  database: string;
+  file: string;
+  sslMode: SslMode;
+}
+
+// MySQL spells the modes its own way in a URL (ssl-mode=VERIFY_IDENTITY)
+const MY_SSL: Record<SslMode, string> = { disable: "DISABLED", prefer: "PREFERRED", require: "REQUIRED", "verify-ca": "VERIFY_CA", "verify-full": "VERIFY_IDENTITY" };
+const SSL_ALIASES: Record<string, SslMode> = {
+  disable: "disable", disabled: "disable", prefer: "prefer", preferred: "prefer", require: "require", required: "require",
+  "verify-ca": "verify-ca", verify_ca: "verify-ca", "verify-full": "verify-full", verify_identity: "verify-full",
+};
+
+/** The connection as a URL: postgresql://user@host:port/db, mysql://…, sqlite:path. Never carries the password. */
+function connUrl(p: UrlParts): string {
+  if (p.engine === "sqlite") return `sqlite:${p.file}`;
+  const enc = encodeURIComponent;
+  const q = p.sslMode === "prefer" ? "" : p.engine === "mysql" ? `?ssl-mode=${MY_SSL[p.sslMode]}` : `?sslmode=${p.sslMode}`;
+  return `${p.engine === "mysql" ? "mysql" : "postgresql"}://${p.user ? enc(p.user) + "@" : ""}${p.host}${p.port ? ":" + p.port : ""}${p.database ? "/" + enc(p.database) : ""}${q}`;
+}
+
+/** Reads a typed or pasted URL back into fields; a password in it is returned separately. Null when it is not one. */
+function parseUrl(v: string): (Partial<UrlParts> & { password?: string }) | null {
+  const t = v.trim();
+  if (/^sqlite:/i.test(t)) return { engine: "sqlite", file: t.replace(/^sqlite:(\/\/)?/i, "") };
+  const m = t.match(/^(postgres(?:ql)?|mysql|mariadb):\/\/(?:([^@/:]*)(?::([^@]*))?@)?([^:/?]*)(?::(\d*))?(?:\/([^?]*))?(?:\?(.*))?$/i);
+  if (!m) return null;
+  const dec = (s?: string) => {
+    try {
+      return decodeURIComponent(s ?? "");
+    } catch {
+      return s ?? "";
+    }
+  };
+  const q = new URLSearchParams(m[7] ?? "");
+  const ssl = SSL_ALIASES[(q.get("sslmode") ?? q.get("ssl-mode") ?? "").toLowerCase()];
+  return {
+    engine: /^(mysql|mariadb)$/i.test(m[1]) ? "mysql" : "postgres",
+    user: dec(m[2]),
+    password: m[3] === undefined ? undefined : dec(m[3]),
+    host: m[4],
+    port: m[5] ?? "",
+    database: dec(m[6]),
+    ...(ssl ? { sslMode: ssl } : {}),
+  };
+}
+
+const optNum = (s: string) => (s.trim() && Number(s) > 0 ? Number(s) : undefined);
+const optStr = (s: string) => s.trim() || undefined;
+
+/** A number field with its unit where empty means "use the value in Settings" (shown as the placeholder). */
+function OptUnit({ id, value, unit, placeholder, onChange }: { id: string; value: string; unit: string; placeholder: string; onChange: (v: string) => void }) {
+  return (
+    <span className="unit-field">
+      <input id={id} className="field" inputMode="numeric" autoComplete="off" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))} />
+      <span className="unit">{unit}</span>
+    </span>
+  );
+}
 
 function ConnectModal({ conn, onClose }: { conn?: Conn; onClose: () => void }) {
   const conns = useStore((s) => s.conns);
+  const settings = useStore((s) => s.settings);
+  const passSet = useStore((s) => s.pass.set);
+  const [tab, setTab] = useState<ConnTab>("general");
   const [engine, setEngine] = useState<Engine>(conn?.engine ?? "postgres");
   const [name, setName] = useState(conn?.name ?? "");
+  const [color, setColor] = useState(conn?.color ?? (conns.length % 6) + 1);
   const [touched, setTouched] = useState(false);
+  const [urlOnly, setUrlOnly] = useState(false);
   const [file, setFile] = useState(conn?.file ?? "");
   const [host, setHost] = useState(conn?.host ?? "localhost");
-  const [port, setPort] = useState(String(conn?.port ?? PORTS[conn?.engine ?? "postgres"]));
+  const [port, setPort] = useState(String(conn?.port ?? PORTS[conn?.engine ?? "postgres"] ?? ""));
   const [database, setDatabase] = useState(conn?.database ?? "");
   const [user, setUser] = useState(conn?.user ?? "");
   const [password, setPassword] = useState("");
+  // the URL while it is being typed; null shows the one built from the fields
+  const [urlDraft, setUrlDraft] = useState<string | null>(null);
+  const [guard, setGuard] = useState<GuardLevel>(conn?.guard ?? settings.defaultGuard ?? "confirm");
+  const [rowLimit, setRowLimit] = useState(conn?.rowLimit ? String(conn.rowLimit) : "");
+  const [stmtTimeout, setStmtTimeout] = useState(conn?.statementTimeout ? String(conn.statementTimeout) : "");
+  const [sslMode, setSslMode] = useState<SslMode>(conn?.sslMode ?? "prefer");
+  const [sslCa, setSslCa] = useState(conn?.sslCa ?? "");
+  const [appName, setAppName] = useState(conn?.appName ?? "");
+  const [connectTimeout, setConnectTimeout] = useState(conn?.connectTimeout ? String(conn.connectTimeout) : "");
+  const [heartbeat, setHeartbeat] = useState<"app" | "on" | "off">(conn?.heartbeat === undefined ? "app" : conn.heartbeat ? "on" : "off");
   const [line, setLine] = useState<{ kind: "testing" | "ok" | "fail"; text: string } | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const tabRefs = useRef<Partial<Record<ConnTab, HTMLButtonElement | null>>>({});
   const nameBad = touched && !name.trim();
   const lite = engine === "sqlite";
+  const url = urlDraft ?? connUrl({ engine, host, port, user, database, file, sslMode });
 
   const pickEngine = (e: Engine) => {
     setEngine(e);
@@ -266,23 +353,55 @@ function ConnectModal({ conn, onClose }: { conn?: Conn; onClose: () => void }) {
     setLine(null);
   };
 
+  const typeUrl = (v: string) => {
+    setUrlDraft(v);
+    const p = parseUrl(v);
+    if (!p) return;
+    if (p.engine && p.engine !== engine) setEngine(p.engine);
+    if (p.engine === "sqlite") return setFile(p.file ?? "");
+    setUser(p.user ?? "");
+    setHost(p.host ?? "");
+    setPort(p.port ?? "");
+    setDatabase(p.database ?? "");
+    if (p.sslMode) setSslMode(p.sslMode);
+    // a password typed into the URL goes to the keychain field and out of the URL
+    if (p.password !== undefined) {
+      setPassword(p.password);
+      setUrlDraft(null);
+    }
+  };
+
   const build = (): Conn => ({
     id: conn?.id ?? "",
     name: name.trim(),
     engine,
-    color: conn?.color ?? (conns.length % 6) + 1,
-    guard: conn?.guard ?? "confirm",
+    color,
+    guard,
+    rowLimit: optNum(rowLimit),
+    statementTimeout: optNum(stmtTimeout),
+    heartbeat: lite || heartbeat === "app" ? undefined : heartbeat === "on",
     ...(lite
       ? { file: file.trim() }
-      : { host: host.trim() || "localhost", port: Number(port) || PORTS[engine], database: database.trim() || undefined, user: user.trim() || undefined }),
+      : {
+          host: host.trim() || "localhost",
+          port: Number(port) || PORTS[engine],
+          database: database.trim() || undefined,
+          user: user.trim() || undefined,
+          sslMode: sslMode === "prefer" ? undefined : sslMode,
+          sslCa: optStr(sslCa),
+          appName: engine === "postgres" ? optStr(appName) : undefined,
+          connectTimeout: optNum(connectTimeout),
+        }),
   });
 
+  const choose = async (title: string, set: (f: string) => void) => {
+    const f = await openDialog({ multiple: false, directory: false, title }).catch(() => null);
+    if (typeof f === "string") set(f);
+    return typeof f === "string" ? f : null;
+  };
   const chooseFile = async () => {
-    const f = await openDialog({ multiple: false, directory: false, title: "Choose an SQLite database" }).catch(() => null);
-    if (typeof f === "string") {
-      setFile(f);
-      if (!name.trim()) setName(f.split("/").pop() ?? "");
-    }
+    const f = await choose("Choose an SQLite database", setFile);
+    if (f && !name.trim()) setName(f.split("/").pop() ?? "");
   };
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
@@ -290,7 +409,14 @@ function ConnectModal({ conn, onClose }: { conn?: Conn; onClose: () => void }) {
     const action = ((e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value ?? "save";
     setTouched(true);
     if (!name.trim()) {
-      nameRef.current?.focus();
+      setTab("general");
+      setTimeout(() => nameRef.current?.focus());
+      return;
+    }
+    // Ask for passphrase without a passphrase would quietly act as Ask to confirm: set one first
+    if (action === "save" && guard === "verify" && !passSet) {
+      setTab("options");
+      setLine({ kind: "fail", text: "Ask for passphrase needs a passphrase. Set one in Options." });
       return;
     }
     const c = build();
@@ -298,7 +424,7 @@ function ConnectModal({ conn, onClose }: { conn?: Conn; onClose: () => void }) {
       setLine({ kind: "testing", text: lite ? `Opening ${file}` : `Connecting to ${c.host}:${c.port}` });
       try {
         const r = await api.testConnection(c, password || null);
-        setLine({ kind: "ok", text: `Connected to ${r.server} in ${r.ms} ms` });
+        setLine({ kind: "ok", text: `Connected to ${r.server} in ${r.ms} ms` });
       } catch (err) {
         setLine({ kind: "fail", text: errText(err) });
       }
@@ -308,8 +434,13 @@ function ConnectModal({ conn, onClose }: { conn?: Conn; onClose: () => void }) {
       // a new connection without a password stores none; an edit keeps the keychain's when the field is empty
       const saved = await api.saveConnection(c, lite ? null : password ? password : conn ? null : "");
       const st = useStore.getState();
+      // an edit keeps the old guard (save_connection never changes it); a change goes through set_guard,
+      // and lowering it from Ask for passphrase asks for the passphrase first
+      const lowerFromVerify = !!conn && conn.guard !== guard && conn.guard === "verify" && passSet;
+      if (conn && conn.guard !== guard && !lowerFromVerify) await api.setGuard(saved.id, guard);
       await st.refreshConns();
-      onClose();
+      if (lowerFromVerify) st.openModal({ kind: "lowerGuard", connId: saved.id, level: guard });
+      else onClose();
       if (!conn) void st.openConn(saved.id);
       else if (st.sessions[saved.id]) void st.reconnect(saved.id);
     } catch (err) {
@@ -317,102 +448,253 @@ function ConnectModal({ conn, onClose }: { conn?: Conn; onClose: () => void }) {
     }
   };
 
+  const tabKey = (e: React.KeyboardEvent, i: number) => {
+    const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!d) return;
+    const next = CONN_TABS[(i + d + CONN_TABS.length) % CONN_TABS.length][0];
+    setTab(next);
+    tabRefs.current[next]?.focus();
+  };
+
+  const none = (text: string) => <p className="cx-none">{text}</p>;
+
   return (
-    <Shell title={conn ? "Edit connection" : "New connection"} onClose={onClose} style={{ width: 520 }}>
-      <form onSubmit={submit} noValidate>
-        <label>
-          Engine
-          <Select className="field" value={engine} onChange={(e) => pickEngine(e.target.value as Engine)}>
-            <option value="postgres">PostgreSQL</option>
-            <option value="mysql">MySQL / MariaDB</option>
-            <option value="sqlite">SQLite</option>
-          </Select>
-        </label>
-        <label>
-          Name
-          <input
-            ref={nameRef}
-            className="field"
-            required
-            aria-required="true"
-            aria-invalid={nameBad}
-            aria-describedby="c-name-h"
-            autoComplete="off"
-            spellCheck={false}
-            autoFocus
-            value={name}
-            onBlur={() => name && setTouched(true)}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <span className={`help${nameBad ? " err" : ""}`} id="c-name-h">
-            {nameBad ? "Give the connection a name so you can find it again" : ""}
-          </span>
-        </label>
-        {lite ? (
-          <div>
-            <label htmlFor="c-file">Database file</label>
-            <div className="with-btn">
-              <input className="field mono" id="c-file" placeholder="~/data/analytics.sqlite" autoComplete="off" spellCheck={false} aria-describedby="c-file-h" value={file} onChange={(e) => setFile(e.target.value)} />
-              <button type="button" className="btn" onClick={chooseFile}>
-                <FolderOpen {...ico} />
-                Choose
-              </button>
-            </div>
-            <span className="help" id="c-file-h">
-              Opened in place, never copied
+    <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="dialog cx" role="dialog" aria-modal="true" aria-labelledby="cx-title">
+        <h2 id="cx-title">{conn ? "Edit connection" : "New connection"}</h2>
+        <form onSubmit={submit} noValidate>
+          <div className="cx-grid cx-head">
+            <label htmlFor="c-name">Name</label>
+            <input
+              ref={nameRef}
+              id="c-name"
+              className="field"
+              required
+              aria-required="true"
+              aria-invalid={nameBad}
+              aria-describedby="c-name-h"
+              autoComplete="off"
+              spellCheck={false}
+              autoFocus
+              value={name}
+              onBlur={() => name && setTouched(true)}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <label htmlFor="c-color">Color</label>
+            <span className="cx-color" style={{ "--fg": `var(--proj-${color}-fg)` } as React.CSSProperties}>
+              <Select id="c-color" className="field" value={color} onChange={(e) => setColor(Number(e.target.value))}>
+                {COLORS.map((c, i) => (
+                  <option key={c} value={i + 1}>
+                    {c}
+                  </option>
+                ))}
+              </Select>
             </span>
-          </div>
-        ) : (
-          <div>
-            <div className="pair">
-              <label>
-                Host
-                <input className="field mono" autoComplete="off" spellCheck={false} value={host} onChange={(e) => setHost(e.target.value)} />
-              </label>
-              <label>
-                Port
-                <input className="field mono" inputMode="numeric" autoComplete="off" value={port} onChange={(e) => setPort(e.target.value.replace(/\D/g, ""))} />
-              </label>
-            </div>
-            <div className="pair pair--even">
-              <label>
-                Database
-                <input className="field mono" autoComplete="off" spellCheck={false} value={database} onChange={(e) => setDatabase(e.target.value)} />
-              </label>
-              <label>
-                User
-                <input className="field mono" autoComplete="username" spellCheck={false} value={user} onChange={(e) => setUser(e.target.value)} />
-              </label>
-            </div>
-            <label>
-              Password
-              <input className="field" type="password" autoComplete="current-password" aria-describedby="c-pass-h" placeholder={conn ? "Unchanged" : ""} value={password} onChange={(e) => setPassword(e.target.value)} />
-              <span className="help" id="c-pass-h">
-                <KeyRound {...ico} />
-                Kept in the macOS login keychain on this Mac only
+            {nameBad && (
+              <span className="help err" id="c-name-h">
+                Give the connection a name so you can find it again
               </span>
-            </label>
+            )}
           </div>
-        )}
-        {line && (
-          <p className={`test-line${line.kind === "ok" ? " ok" : line.kind === "fail" ? " fail" : ""}`} role="status">
-            {line.kind === "testing" ? <span className="spinner" /> : line.kind === "ok" ? <CircleCheck {...ico} /> : <CircleAlert {...ico} />}
-            {line.text}
-          </p>
-        )}
-        <footer>
-          <button type="submit" className="btn" value="test" aria-busy={line?.kind === "testing" || undefined} disabled={line?.kind === "testing"}>
-            Test
-          </button>
-          <button type="button" className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="btn btn--primary" value="save">
-            Save
-          </button>
-        </footer>
-      </form>
-    </Shell>
+
+          <div className="subtabs cx-tabs" role="tablist" aria-label="Connection settings">
+            {CONN_TABS.map(([k, label], i) => (
+              <button
+                key={k}
+                ref={(el) => {
+                  tabRefs.current[k] = el;
+                }}
+                type="button"
+                className="subtab"
+                role="tab"
+                id={`ct-${k}`}
+                aria-controls={`cp-${k}`}
+                aria-selected={tab === k}
+                tabIndex={tab === k ? 0 : -1}
+                onClick={() => setTab(k)}
+                onKeyDown={(e) => tabKey(e, i)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="cx-panel" role="tabpanel" id="cp-general" aria-labelledby="ct-general" hidden={tab !== "general"}>
+            <div className="cx-grid">
+              <label htmlFor="c-engine">Driver</label>
+              <span className="cx-full cx-driver">
+                {lite ? <HardDrive {...ico} className="ico drv-ico" /> : <Server {...ico} className="ico drv-ico" />}
+                <Select id="c-engine" className="field" value={engine} onChange={(e) => (pickEngine(e.target.value as Engine), setUrlDraft(null))}>
+                  <option value="postgres">PostgreSQL</option>
+                  <option value="mysql">MySQL / MariaDB</option>
+                  <option value="sqlite">SQLite</option>
+                </Select>
+              </span>
+              {lite ? (
+                <>
+                  <label htmlFor="c-file">File</label>
+                  <span className="with-btn cx-full">
+                    <input className="field mono" id="c-file" placeholder="~/data/analytics.sqlite" autoComplete="off" spellCheck={false} value={file} onChange={(e) => (setFile(e.target.value), setUrlDraft(null))} />
+                    <button type="button" className="btn" onClick={chooseFile}>
+                      <FolderOpen {...ico} />
+                      Choose
+                    </button>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="cx-label" id="c-type-l">
+                    Connection type
+                  </span>
+                  <span className="cx-full">
+                    <span className="seg seg--lg" role="group" aria-labelledby="c-type-l">
+                      <button type="button" aria-pressed={!urlOnly} onClick={() => setUrlOnly(false)}>
+                        Default
+                      </button>
+                      <button type="button" aria-pressed={urlOnly} onClick={() => setUrlOnly(true)}>
+                        URL only
+                      </button>
+                    </span>
+                  </span>
+                  {!urlOnly && (
+                    <>
+                      <label htmlFor="c-host">Host</label>
+                      <input className="field mono" id="c-host" autoComplete="off" spellCheck={false} value={host} onChange={(e) => (setHost(e.target.value), setUrlDraft(null))} />
+                      <label htmlFor="c-port">Port</label>
+                      <input className="field mono" id="c-port" inputMode="numeric" autoComplete="off" value={port} onChange={(e) => (setPort(e.target.value.replace(/\D/g, "")), setUrlDraft(null))} />
+                      <label htmlFor="c-user">User</label>
+                      <input className="field mono cx-full" id="c-user" autoComplete="username" spellCheck={false} value={user} onChange={(e) => (setUser(e.target.value), setUrlDraft(null))} />
+                    </>
+                  )}
+                  <label htmlFor="c-pass">Password</label>
+                  <input className="field cx-full" id="c-pass" type="password" autoComplete="current-password" aria-describedby="c-pass-h" placeholder={conn ? "Unchanged" : ""} value={password} onChange={(e) => setPassword(e.target.value)} />
+                  {!urlOnly && (
+                    <>
+                      <label htmlFor="c-db">Database</label>
+                      <input className="field mono cx-full" id="c-db" autoComplete="off" spellCheck={false} value={database} onChange={(e) => (setDatabase(e.target.value), setUrlDraft(null))} />
+                    </>
+                  )}
+                </>
+              )}
+              <label htmlFor="c-url">URL</label>
+              <input className="field mono cx-full" id="c-url" autoComplete="off" spellCheck={false} aria-describedby="c-url-h" value={url} onChange={(e) => typeUrl(e.target.value)} onBlur={() => setUrlDraft(null)} />
+              <span className="help cx-full cx-under" id="c-url-h">
+                {urlOnly ? "Paste the whole URL. A password in it moves to the field above." : "Editing the URL fills in the settings above."}
+              </span>
+              {!lite && (
+                <span className="help cx-full cx-under" id="c-pass-h">
+                  <KeyRound {...ico} />
+                  Passwords stay in the macOS login keychain on this Mac
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="cx-panel" role="tabpanel" id="cp-options" aria-labelledby="ct-options" hidden={tab !== "options"}>
+            <h3 className="cx-h">Write guard</h3>
+            <div className="set-list">
+              <SetItem label="Write guard" desc="Lowering Ask for passphrase needs the passphrase" htmlFor="c-guard">
+                <Select id="c-guard" className="field set-choice" value={guard} onChange={(e) => (setGuard(e.target.value as GuardLevel), setLine(null))}>
+                  {GUARDS.map(([v, t]) => (
+                    <option key={v} value={v}>
+                      {t}
+                    </option>
+                  ))}
+                </Select>
+              </SetItem>
+            </div>
+            {guard === "verify" && <PassphraseSection inDialog />}
+            <h3 className="cx-h">
+              Queries <span className="cx-h-note">Empty uses the value in Settings</span>
+            </h3>
+            <div className="set-list">
+              <SetItem label="Row limit" desc="Added to a select that has no limit of its own" htmlFor="c-limit">
+                <OptUnit id="c-limit" unit="rows" placeholder={String(settings.rowLimit ?? 500)} value={rowLimit} onChange={setRowLimit} />
+              </SetItem>
+              <SetItem label="Statement timeout" desc="0 lets a statement run as long as it takes" htmlFor="c-timeout">
+                <OptUnit id="c-timeout" unit="s" placeholder={String(settings.statementTimeout ?? 30)} value={stmtTimeout} onChange={setStmtTimeout} />
+              </SetItem>
+              {!lite && (
+                <SetItem label="Connection heartbeat" desc="Keeps idle sessions open with select 1" htmlFor="c-beat">
+                  <Select id="c-beat" className="field set-choice" value={heartbeat} onChange={(e) => setHeartbeat(e.target.value as "app" | "on" | "off")}>
+                    <option value="app">Use Settings ({settings.heartbeat ? "on" : "off"})</option>
+                    <option value="on">On</option>
+                    <option value="off">Off</option>
+                  </Select>
+                </SetItem>
+              )}
+            </div>
+          </div>
+
+          <div className="cx-panel" role="tabpanel" id="cp-ssl" aria-labelledby="ct-ssl" hidden={tab !== "ssl"}>
+            {lite ? (
+              none("SQLite opens a file on this Mac. There is no network to secure.")
+            ) : (
+              <div className="cx-grid">
+                <label htmlFor="c-sslmode">Mode</label>
+                <span className="cx-full">
+                  <Select id="c-sslmode" className="field" value={sslMode} onChange={(e) => (setSslMode(e.target.value as SslMode), setUrlDraft(null))}>
+                    {SSL_MODES.map(([v, t]) => (
+                      <option key={v} value={v}>
+                        {t}
+                      </option>
+                    ))}
+                  </Select>
+                </span>
+                <span className="help cx-full cx-under">
+                  {sslMode === "verify-ca" ? "Checks the server certificate against the CA file." : sslMode === "verify-full" ? "Checks the certificate and that it names this host." : "Verify CA and Verify full check the server's certificate."}
+                </span>
+                <label htmlFor="c-ca">CA file</label>
+                <span className="with-btn cx-full">
+                  <input className="field mono" id="c-ca" placeholder="~/certs/ca.pem" autoComplete="off" spellCheck={false} value={sslCa} onChange={(e) => setSslCa(e.target.value)} />
+                  <button type="button" className="btn" onClick={() => void choose("Choose a CA certificate", setSslCa)}>
+                    <FolderOpen {...ico} />
+                    Choose
+                  </button>
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="cx-panel" role="tabpanel" id="cp-advanced" aria-labelledby="ct-advanced" hidden={tab !== "advanced"}>
+            {lite ? (
+              none("Nothing to set for an SQLite file.")
+            ) : (
+              <div className="cx-grid">
+                {engine === "postgres" && (
+                  <>
+                    <label htmlFor="c-app">Application name</label>
+                    <input className="field mono cx-full" id="c-app" placeholder="ypacapy" autoComplete="off" spellCheck={false} value={appName} onChange={(e) => setAppName(e.target.value)} />
+                  </>
+                )}
+                <label htmlFor="c-ctimeout">Connect timeout</label>
+                <span className="cx-full">
+                  <OptUnit id="c-ctimeout" unit="s" placeholder="15" value={connectTimeout} onChange={setConnectTimeout} />
+                </span>
+              </div>
+            )}
+          </div>
+
+          {line && (
+            <p className={`test-line${line.kind === "ok" ? " ok" : line.kind === "fail" ? " fail" : ""}`} role="status">
+              {line.kind === "testing" ? <span className="spinner" /> : line.kind === "ok" ? <CircleCheck {...ico} /> : <CircleAlert {...ico} />}
+              {line.text}
+            </p>
+          )}
+          <footer className="cx-foot">
+            <button type="submit" className="btn" value="test" id="c-test" aria-busy={line?.kind === "testing" || undefined} disabled={line?.kind === "testing"}>
+              Test connection
+            </button>
+            <button type="button" className="btn" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn--primary" value="save">
+              Save
+            </button>
+          </footer>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -626,9 +908,6 @@ function QueriesPane() {
         <SetItem label="Statement timeout" htmlFor="set-timeout" desc="0 lets a statement run as long as it takes">
           <UnitField id="set-timeout" value={s.statementTimeout ?? 30} unit="s" min={0} max={86400} onChange={(n) => void set({ statementTimeout: n === 30 ? undefined : n })} />
         </SetItem>
-        <SetItem label="Open new connections read-only" htmlFor="set-ro">
-          <input id="set-ro" className="switch" type="checkbox" role="switch" checked={s.readOnly === true} onChange={(e) => void set({ readOnly: e.target.checked || undefined })} />
-        </SetItem>
         <SetItem label="Keep query history" htmlFor="set-hist">
           <input id="set-hist" className="switch" type="checkbox" role="switch" checked={s.keepHistory !== false} onChange={(e) => void set({ keepHistory: e.target.checked ? undefined : false })} />
         </SetItem>
@@ -649,22 +928,55 @@ type SubKind = "unlock" | "new" | "change" | "disable";
 
 function SecurityPane() {
   const s = useStore((st) => st.settings);
+  const set = useStore((st) => st.setSettings);
+  const guard = s.defaultGuard ?? "confirm";
+
+  return (
+    <div className="set-pane">
+      <h3>Security</h3>
+      <p className="pane-note">Each connection can change its write guard in the tabs bar or in its Options.</p>
+      <div className="set-list">
+        <SetItem label="Write guard" desc="For new connections" htmlFor="sec-guard">
+          <Select id="sec-guard" className="field set-choice" value={guard} onChange={(e) => void set({ defaultGuard: e.target.value === "confirm" ? undefined : (e.target.value as GuardLevel) })}>
+            {GUARDS.map(([v, t]) => (
+              <option key={v} value={v}>
+                {t}
+              </option>
+            ))}
+          </Select>
+        </SetItem>
+      </div>
+      {guard === "verify" && <PassphraseSection />}
+    </div>
+  );
+}
+
+/**
+ * The passphrase (set, change, disable, Touch ID, unlock window) and What to protect. One for the whole app:
+ * shown in Settings › Security and in a connection's Options, both only while the write guard is Ask for passphrase.
+ */
+function PassphraseSection({ inDialog }: { inDialog?: boolean }) {
+  const s = useStore((st) => st.settings);
   const pass = useStore((st) => st.pass);
   const set = useStore((st) => st.setSettings);
   const [sub, setSub] = useState<SubKind | null>(null);
   const [unlocked, setUnlocked] = useState(false);
   const protect = s.protect ?? STATEMENTS.map(([k]) => k);
   const refreshPass = async () => useStore.setState({ pass: await api.passphraseStatus() });
+  const id = (k: string) => (inDialog ? `c-${k}` : `sec-${k}`);
 
   return (
-    <div className="set-pane">
-      <h3>Security</h3>
-      <p className="pane-note">Each connection sets its own write guard in the tabs bar.</p>
+    <>
+      {inDialog && (
+        <h3 className="cx-h">
+          Passphrase <span className="cx-h-note">You can set this in Settings › Security later</span>
+        </h3>
+      )}
       <div className="set-list">
         <div className="set-item">
           <div className="set-text">
             <span className="set-label">Passphrase</span>
-            <span className="desc">{pass.set ? "Set, in the macOS keychain" : "Not set"}</span>
+            <span className="desc">{pass.set ? "Set, in the macOS keychain" : inDialog ? "Not set. Ask for passphrase needs one" : "Not set"}</span>
           </div>
           {pass.set ? (
             <div className="set-ctl" data-pass="set">
@@ -685,11 +997,11 @@ function SecurityPane() {
         </div>
         {pass.set && (
           <>
-            <SetItem label="Open with Touch ID" htmlFor="sec-touch" sub desc={pass.touchIdAvailable ? undefined : "This Mac has no Touch ID ready"}>
-              <input id="sec-touch" className="switch" type="checkbox" role="switch" disabled={!pass.touchIdAvailable} checked={s.touchId === true} onChange={(e) => void set({ touchId: e.target.checked || undefined })} />
+            <SetItem label="Open with Touch ID" htmlFor={id("touch")} sub desc={pass.touchIdAvailable ? undefined : "This Mac has no Touch ID ready"}>
+              <input id={id("touch")} className="switch" type="checkbox" role="switch" disabled={!pass.touchIdAvailable} checked={s.touchId === true} onChange={(e) => void set({ touchId: e.target.checked || undefined })} />
             </SetItem>
-            <SetItem label="Stay unlocked for" htmlFor="sec-window" sub>
-              <Select id="sec-window" className="field set-choice" value={String(s.unlockWindow ?? 0)} onChange={(e) => void set({ unlockWindow: Number(e.target.value) || undefined })}>
+            <SetItem label="Stay unlocked for" htmlFor={id("window")} sub>
+              <Select id={id("window")} className="field set-choice" value={String(s.unlockWindow ?? 0)} onChange={(e) => void set({ unlockWindow: Number(e.target.value) || undefined })}>
                 <option value="0">Ask every time</option>
                 <option value="60">1 minute</option>
                 <option value="300">5 minutes</option>
@@ -701,8 +1013,14 @@ function SecurityPane() {
       </div>
       {pass.set && (
         <>
-          <div className="protect-head">
-            <h3>What to protect</h3>
+          <div className={`protect-head${inDialog ? " cx-protect-head" : ""}`}>
+            {inDialog ? (
+              <h3 className="cx-h">
+                What to protect <span className="cx-h-note">For every connection</span>
+              </h3>
+            ) : (
+              <h3>What to protect</h3>
+            )}
             <button
               type="button"
               className="btn btn--quiet"
@@ -721,7 +1039,7 @@ function SecurityPane() {
             {STATEMENTS.map(([k, tag], i) => (
               <SetItem
                 key={k}
-                htmlFor={`prot-${i}`}
+                htmlFor={id(`prot-${i}`)}
                 label={
                   <>
                     <code className="stmt">{k}</code>
@@ -730,7 +1048,7 @@ function SecurityPane() {
                 }
               >
                 <input
-                  id={`prot-${i}`}
+                  id={id(`prot-${i}`)}
                   className="switch"
                   type="checkbox"
                   role="switch"
@@ -746,24 +1064,27 @@ function SecurityPane() {
           </div>
         </>
       )}
-      {sub && (
-        <PassDialog
-          kind={sub}
-          touch={sub === "unlock" && s.touchId === true && pass.touchIdAvailable}
-          onClose={() => setSub(null)}
-          onDone={async (k) => {
-            setSub(null);
-            if (k === "unlock") setUnlocked(true);
-            if (k === "disable") {
-              setUnlocked(false);
-              await set({ touchId: undefined });
-              await useStore.getState().refreshConns();
-            }
-            await refreshPass();
-          }}
-        />
-      )}
-    </div>
+      {sub &&
+        // a portal: the connection dialog is a form, and a form cannot hold another
+        createPortal(
+          <PassDialog
+            kind={sub}
+            touch={sub === "unlock" && s.touchId === true && pass.touchIdAvailable}
+            onClose={() => setSub(null)}
+            onDone={async (k) => {
+              setSub(null);
+              if (k === "unlock") setUnlocked(true);
+              if (k === "disable") {
+                setUnlocked(false);
+                await set({ touchId: undefined });
+                await useStore.getState().refreshConns();
+              }
+              await refreshPass();
+            }}
+          />,
+          document.body,
+        )}
+    </>
   );
 }
 
@@ -801,6 +1122,8 @@ function PassDialog({ kind, touch, onClose, onDone }: { kind: SubKind; touch: bo
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    // React bubbles events through the portal to the connection dialog's form: stop here
+    e.stopPropagation();
     const empty = vals.map((v, i) => (v ? -1 : i)).filter((i) => i >= 0);
     if (empty.length) {
       setBad(empty);

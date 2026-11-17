@@ -56,8 +56,12 @@
   const _renderPass = renderPass;
   renderPass = () => { _renderPass(); if (!passSet) unlocked = false; renderLock(); };
   renderPass();
+  // the passphrase and what it protects only matter for Ask for passphrase: shown only then, as in the connection dialog
+  const renderGuard = () => { $("[data-when-verify]").hidden = $("#sec-guard").value !== "verify"; };
+  $("#sec-guard").addEventListener("change", renderGuard);
   window.pvShow = (k) => {
     closeSub();
+    $("#sec-guard").value = k === "security" ? "confirm" : "verify"; renderGuard();
     if (["appearance", "queries", "data"].includes(k)) { go(k); return; }
     go("security");
     passSet = k !== "security" && k !== "pass-new"; unlocked = k === "protect-open"; renderPass();

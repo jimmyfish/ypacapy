@@ -141,6 +141,8 @@ pub fn run() {
             store::list_saved,
             store::save_query,
             store::delete_saved,
+            store::load_workspace,
+            store::save_workspace,
             fonts::list_fonts,
             paths::config_path,
             paths::write_text_file,

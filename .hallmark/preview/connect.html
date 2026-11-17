@@ -80,6 +80,12 @@
     <button type="button" data-show="postgres" aria-pressed="true">PostgreSQL</button>
     <button type="button" data-show="mysql" aria-pressed="false">MySQL</button>
     <button type="button" data-show="sqlite" aria-pressed="false">SQLite</button>
+    <button type="button" data-show="url-only" aria-pressed="false">URL only</button>
+    <button type="button" data-show="options" aria-pressed="false">Options tab</button>
+    <button type="button" data-show="options-verify" aria-pressed="false">Ask for passphrase</button>
+    <button type="button" data-show="options-nopass" aria-pressed="false">Ask, no passphrase set</button>
+    <button type="button" data-show="ssl" aria-pressed="false">SSL tab</button>
+    <button type="button" data-show="advanced" aria-pressed="false">Advanced tab</button>
     <button type="button" data-show="name-missing" aria-pressed="false">Name missing</button>
     <button type="button" data-show="testing" aria-pressed="false">Testing</button>
     <button type="button" data-show="test-ok" aria-pressed="false">Test passed</button>
@@ -117,30 +123,184 @@
   <div class="home"><div class="home-inner"><div class="home-head"><div><h1>Connections</h1><p class="muted">Everything stays on this Mac, in ~/.config/ypacapy.</p></div></div></div></div>
 </div>
 <div class="backdrop" data-close="./home.html">
-  <div class="dialog" role="dialog" aria-modal="true" aria-label="New connection" style="width: 520px">
-    <h2>New connection</h2>
+  <div class="dialog cx" role="dialog" aria-modal="true" aria-labelledby="cx-title">
+    <h2 id="cx-title">New connection</h2>
     <form id="connect-form" data-endpoint="" novalidate>
-      <label>Engine<span class="select-wrap"><select class="field" id="c-engine" name="engine"><option value="postgres" selected>PostgreSQL</option><option value="mysql">MySQL</option><option value="sqlite">SQLite</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></label>
-      <label>Name<input class="field" id="c-name" name="name" required aria-required="true" aria-describedby="c-name-h" autocomplete="off" spellcheck="false"><span class="help" id="c-name-h"></span></label>
-      <div data-for="sqlite" hidden>
-        <label for="c-file">Database file</label>
-        <div class="with-btn"><input class="field mono" id="c-file" name="file" placeholder="~/data/analytics.sqlite" autocomplete="off" spellcheck="false" aria-describedby="c-file-h"><button type="button" class="btn"><svg aria-hidden="true" class="ico"><use href="#i-folder-open"/></svg>Choose</button></div>
-        <span class="help" id="c-file-h">Opened in place, never copied</span>
+      <div class="cx-grid cx-head">
+        <label for="c-name">Name</label><input class="field" id="c-name" name="name" required aria-required="true" aria-describedby="c-name-h" autocomplete="off" spellcheck="false">
+        <label for="c-color">Color</label><span class="cx-color" style="--fg: var(--proj-1-fg)"><span class="select-wrap"><select class="field" id="c-color"><option value="1" selected>Blue</option><option value="2">Green</option><option value="3">Orange</option><option value="4">Violet</option><option value="5">Teal</option><option value="6">Pink</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></span>
+        <span class="help cx-full" id="c-name-h"></span>
       </div>
-      <div data-for="server">
-        <div class="pair"><label>Host<input class="field mono" name="host" value="localhost" autocomplete="off" spellcheck="false"></label><label>Port<input class="field mono" id="c-port" name="port" value="5432" inputmode="numeric" autocomplete="off"></label></div>
-        <div class="pair pair--even"><label>Database<input class="field mono" name="database" value="shop" autocomplete="off" spellcheck="false"></label><label>User<input class="field mono" name="user" value="ops" autocomplete="username" spellcheck="false"></label></div>
-        <label>Password<input class="field" id="c-pass" name="password" type="password" autocomplete="current-password" aria-describedby="c-pass-h"><span class="help" id="c-pass-h"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg>Kept in the macOS login keychain on this Mac only</span></label>
+      <div class="subtabs cx-tabs" role="tablist" aria-label="Connection settings">
+        <button type="button" class="subtab" role="tab" id="t-general" aria-controls="p-general" aria-selected="true" tabindex="0">General</button><button type="button" class="subtab" role="tab" id="t-options" aria-controls="p-options" aria-selected="false" tabindex="-1">Options</button><button type="button" class="subtab" role="tab" id="t-ssl" aria-controls="p-ssl" aria-selected="false" tabindex="-1">SSL</button><button type="button" class="subtab" role="tab" id="t-advanced" aria-controls="p-advanced" aria-selected="false" tabindex="-1">Advanced</button>
       </div>
+
+      <div class="cx-panel" role="tabpanel" id="p-general" aria-labelledby="t-general">
+        <div class="cx-grid">
+          <label for="c-engine">Driver</label><span class="cx-full cx-driver"><svg aria-hidden="true" class="ico drv-ico"><use href="#i-server"/></svg><span class="select-wrap"><select class="field" id="c-engine"><option value="postgres" selected>PostgreSQL</option><option value="mysql">MySQL</option><option value="sqlite">SQLite</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></span>
+          <span class="cx-label" id="c-type-l" data-for="server">Connection type</span><span class="cx-full" data-for="server"><span class="seg seg--lg" role="group" aria-labelledby="c-type-l"><button type="button" aria-pressed="true" data-type="default">Default</button><button type="button" aria-pressed="false" data-type="url">URL only</button></span></span>
+          <span data-for="fields" class="cx-sub"><label for="c-host">Host</label><input class="field mono" id="c-host" name="host" value="localhost" autocomplete="off" spellcheck="false"><label for="c-port">Port</label><input class="field mono cx-port" id="c-port" name="port" value="5432" inputmode="numeric" autocomplete="off">
+          <label for="c-user">User</label><input class="field mono cx-full" id="c-user" name="user" value="ops" autocomplete="username" spellcheck="false"></span>
+          <span data-for="server" class="cx-sub"><label for="c-pass">Password</label><input class="field cx-full" id="c-pass" name="password" type="password" autocomplete="current-password" aria-describedby="c-pass-h"></span>
+          <span data-for="fields" class="cx-sub"><label for="c-db">Database</label><input class="field mono cx-full" id="c-db" name="database" value="shop" autocomplete="off" spellcheck="false"></span>
+          <span data-for="sqlite" class="cx-sub" hidden><label for="c-file">File</label><span class="with-btn cx-full"><input class="field mono" id="c-file" name="file" placeholder="~/data/analytics.sqlite" autocomplete="off" spellcheck="false"><button type="button" class="btn"><svg aria-hidden="true" class="ico"><use href="#i-folder-open"/></svg>Choose</button></span></span>
+          <label for="c-url">URL</label><input class="field mono cx-full" id="c-url" name="url" autocomplete="off" spellcheck="false" aria-describedby="c-url-h">
+          <span class="help cx-full cx-under" id="c-url-h">Editing the URL fills in the settings above.</span>
+          <span class="help cx-full cx-under" id="c-pass-h" data-for="server"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg>Passwords stay in the macOS login keychain on this Mac</span>
+        </div>
+      </div>
+
+      <div class="cx-panel" role="tabpanel" id="p-options" aria-labelledby="t-options" hidden>
+        <h3 class="cx-h">Write guard</h3>
+        <div class="set-list">
+              <div class="set-item">
+                <div class="set-text"><label for="c-guard">Write guard</label><span class="desc">Lowering Ask for passphrase needs the passphrase</span></div>
+                <div class="set-ctl"><span class="select-wrap"><select id="c-guard" class="field set-choice"><option value="run">Run it</option><option value="confirm" selected>Ask to confirm</option><option value="verify">Ask for passphrase</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
+              </div>
+        </div>
+        <div data-when-verify hidden>
+        <h3 class="cx-h">Passphrase <span class="cx-h-note">You can set this in Settings › Security later</span></h3>
+        <div class="set-list">
+              <div class="set-item">
+                <div class="set-text"><span class="set-label">Passphrase</span><span class="desc" data-pass-desc>Not set</span></div>
+                <div class="set-ctl" data-pass="none"><button type="button" class="btn" data-open-sub="new">Set passphrase</button></div>
+                <div class="set-ctl" data-pass="set" hidden><button type="button" class="btn" data-open-sub="change">Change passphrase</button><button type="button" class="btn btn--danger" data-open-sub="disable">Disable passphrase</button></div>
+              </div>
+              <div class="set-item set-item--sub" data-needs-pass hidden>
+                <div class="set-text"><label for="sec-touch">Open with Touch ID</label></div>
+                <div class="set-ctl"><input id="sec-touch" class="switch" type="checkbox" role="switch"></div>
+              </div>
+              <div class="set-item set-item--sub" data-needs-pass hidden>
+                <div class="set-text"><label for="sec-window">Stay unlocked for</label></div>
+                <div class="set-ctl"><span class="select-wrap"><select id="sec-window" class="field set-choice"><option value="0" selected>Ask every time</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="900">15 minutes</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
+              </div>
+        </div>
+        <div class="protect-head cx-protect-head" data-needs-pass hidden>
+          <h3 class="cx-h">What to protect <span class="cx-h-note">For every connection</span></h3>
+          <button type="button" class="btn btn--quiet" id="protect-toggle"><svg aria-hidden="true" class="ico"><use href="#i-lock"/></svg><span>Change</span></button>
+        </div>
+        <div class="set-list stmts" id="protect" data-needs-pass hidden>
+              <div class="set-item">
+                <div class="set-text"><label for="prot-0"><code class="stmt">INSERT</code></label></div>
+                <div class="set-ctl"><input id="prot-0" class="switch" type="checkbox" role="switch" checked disabled></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><label for="prot-1"><code class="stmt">UPDATE</code></label></div>
+                <div class="set-ctl"><input id="prot-1" class="switch" type="checkbox" role="switch" checked disabled></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><label for="prot-2"><code class="stmt">DELETE</code></label></div>
+                <div class="set-ctl"><input id="prot-2" class="switch" type="checkbox" role="switch" checked disabled></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><label for="prot-3"><code class="stmt">REPLACE</code> <span class="tag">MySQL</span></label></div>
+                <div class="set-ctl"><input id="prot-3" class="switch" type="checkbox" role="switch" checked disabled></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><label for="prot-4"><code class="stmt">ALTER</code></label></div>
+                <div class="set-ctl"><input id="prot-4" class="switch" type="checkbox" role="switch" checked disabled></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><label for="prot-5"><code class="stmt">DROP</code></label></div>
+                <div class="set-ctl"><input id="prot-5" class="switch" type="checkbox" role="switch" checked disabled></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><label for="prot-6"><code class="stmt">TRUNCATE</code></label></div>
+                <div class="set-ctl"><input id="prot-6" class="switch" type="checkbox" role="switch" checked disabled></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><label for="prot-7"><code class="stmt">CREATE</code></label></div>
+                <div class="set-ctl"><input id="prot-7" class="switch" type="checkbox" role="switch" checked disabled></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><label for="prot-8"><code class="stmt">GRANT</code></label></div>
+                <div class="set-ctl"><input id="prot-8" class="switch" type="checkbox" role="switch" checked disabled></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><label for="prot-9"><code class="stmt">REVOKE</code></label></div>
+                <div class="set-ctl"><input id="prot-9" class="switch" type="checkbox" role="switch" checked disabled></div>
+              </div>
+        </div>
+        </div>
+        <h3 class="cx-h">Queries <span class="cx-h-note">Empty uses the value in Settings</span></h3>
+        <div class="set-list">
+              <div class="set-item">
+                <div class="set-text"><label for="c-limit">Row limit</label><span class="desc">Added to a select that has no limit of its own</span></div>
+                <div class="set-ctl"><span class="unit-field"><input id="c-limit" class="field" inputmode="numeric" placeholder="500"><span class="unit">rows</span></span></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><label for="c-timeout">Statement timeout</label><span class="desc">0 lets a statement run as long as it takes</span></div>
+                <div class="set-ctl"><span class="unit-field"><input id="c-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><label for="c-beat">Connection heartbeat</label><span class="desc">Keeps idle sessions open with select 1</span></div>
+                <div class="set-ctl"><span class="select-wrap"><select id="c-beat" class="field set-choice"><option value="app" selected>Use Settings (off)</option><option value="on">On</option><option value="off">Off</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
+              </div>
+        </div>
+      </div>
+
+      <div class="cx-panel" role="tabpanel" id="p-ssl" aria-labelledby="t-ssl" hidden>
+        <div class="cx-grid" data-for="server">
+          <label for="c-sslmode">Mode</label><span class="cx-full"><span class="select-wrap"><select class="field" id="c-sslmode"><option value="disable">Disable</option><option value="prefer" selected>Prefer</option><option value="require">Require</option><option value="verify-ca">Verify CA</option><option value="verify-full">Verify full</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></span>
+          <span class="help cx-full cx-under">Verify CA and Verify full check the server's certificate.</span>
+          <label for="c-ca">CA file</label><span class="with-btn cx-full"><input class="field mono" id="c-ca" placeholder="~/certs/ca.pem" autocomplete="off" spellcheck="false"><button type="button" class="btn"><svg aria-hidden="true" class="ico"><use href="#i-folder-open"/></svg>Choose</button></span>
+        </div>
+        <p class="cx-none" data-for="sqlite" hidden>SQLite opens a file on this Mac. There is no network to secure.</p>
+      </div>
+
+      <div class="cx-panel" role="tabpanel" id="p-advanced" aria-labelledby="t-advanced" hidden>
+        <div class="cx-grid">
+          <span data-for="server" class="cx-sub"><label for="c-app">Application name</label><input class="field mono cx-full" id="c-app" value="ypacapy" autocomplete="off" spellcheck="false">
+          <label for="c-ctimeout">Connect timeout</label><span class="unit-field cx-full"><input class="field" id="c-ctimeout" inputmode="numeric" placeholder="15"><span class="unit">s</span></span></span>
+        </div>
+        <p class="cx-none" data-for="sqlite" hidden>Nothing to set for an SQLite file.</p>
+      </div>
+
       <p class="test-line" role="status" id="test-line" hidden></p>
-      <footer>
-        <button type="submit" class="btn" value="test" id="c-test">Test</button>
+      <footer class="cx-foot">
+        <button type="submit" class="btn" value="test" id="c-test">Test connection</button>
         <button type="button" class="btn" data-href="./home.html">Cancel</button>
         <button type="submit" class="btn btn--primary" value="save">Save</button>
       </footer>
     </form>
   </div>
 </div>
+  <div class="backdrop sub-backdrop" data-sub="unlock" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-label="Change what to protect">
+      <h2>Change what to protect</h2>
+      <form data-sub-form="unlock" novalidate><label>Passphrase<input class="field" id="p-unlock" type="password" autocomplete="current-password" required aria-required="true"></label><p class="help" data-touch-hint hidden>Or use Touch ID.</p>
+        <p class="help err" data-sub-err role="alert"></p>
+        <footer><button type="button" class="btn" data-sub-cancel>Cancel</button><button type="submit" class="btn btn--primary">Open for changes</button></footer>
+      </form>
+    </div>
+  </div>
+  <div class="backdrop sub-backdrop" data-sub="new" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-label="Set passphrase">
+      <h2>Set passphrase</h2>
+      <form data-sub-form="new" novalidate><label>Passphrase<input class="field" id="p-new" type="password" autocomplete="new-password" required aria-required="true"></label><label>Type it again<input class="field" id="p-new2" type="password" autocomplete="new-password" required aria-required="true"></label><p class="help">It cannot be recovered.</p>
+        <p class="help err" data-sub-err role="alert"></p>
+        <footer><button type="button" class="btn" data-sub-cancel>Cancel</button><button type="submit" class="btn btn--primary">Set passphrase</button></footer>
+      </form>
+    </div>
+  </div>
+  <div class="backdrop sub-backdrop" data-sub="change" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-label="Change passphrase">
+      <h2>Change passphrase</h2>
+      <form data-sub-form="change" novalidate><label>Current passphrase<input class="field" id="p-cur" type="password" autocomplete="current-password" required aria-required="true"></label><label>New passphrase<input class="field" id="p-chg" type="password" autocomplete="new-password" required aria-required="true"></label><label>Type it again<input class="field" id="p-chg2" type="password" autocomplete="new-password" required aria-required="true"></label>
+        <p class="help err" data-sub-err role="alert"></p>
+        <footer><button type="button" class="btn" data-sub-cancel>Cancel</button><button type="submit" class="btn btn--primary">Change passphrase</button></footer>
+      </form>
+    </div>
+  </div>
+  <div class="backdrop sub-backdrop" data-sub="disable" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-label="Disable passphrase">
+      <h2>Disable passphrase</h2>
+      <form data-sub-form="disable" novalidate><label>Current passphrase<input class="field" id="p-cur2" type="password" autocomplete="current-password" required aria-required="true"></label><p class="help">Connections set to Ask for passphrase fall back to Ask to confirm, and Open with Touch ID turns off.</p>
+        <p class="help err" data-sub-err role="alert"></p>
+        <footer><button type="button" class="btn" data-sub-cancel>Cancel</button><button type="submit" class="btn btn--danger">Disable passphrase</button></footer>
+      </form>
+    </div>
+  </div>
 </div>
 <script>
   const $ = (s, el = document) => el.querySelector(s);
@@ -407,46 +567,159 @@
     }
   }
 
-// New connection: the engine swaps the fields; the name is required; Test and Save call Tauri commands in the app
+// New connection: tabs, engine swaps the fields, URL and fields fill each other, the name is required.
+  // Test and Save call Tauri commands in the app; the preview has no backend.
   const form = $("#connect-form"), line = $("#test-line"), test = $("#c-test"), name = $("#c-name"), help = $("#c-name-h");
-  const HELP = "";
-  function setEngine(v) {
-    $("#c-engine").value = v;
-    const lite = v === "sqlite";
-    $('[data-for="sqlite"]').hidden = !lite; $('[data-for="server"]').hidden = lite;
-    if (!lite) $("#c-port").value = v === "mysql" ? "3306" : "5432";
+  const f = (id) => $("#" + id);
+  const tabs = [...document.querySelectorAll('[role="tab"]')];
+  function selectTab(k) {
+    for (const t of tabs) {
+      const on = t.id === "t-" + k;
+      t.setAttribute("aria-selected", String(on)); t.tabIndex = on ? 0 : -1;
+      f(t.getAttribute("aria-controls")).hidden = !on;
+    }
   }
-  $("#c-engine").addEventListener("change", (e) => setEngine(e.target.value));
+  tabs.forEach((t, i) => {
+    t.addEventListener("click", () => selectTab(t.id.slice(2)));
+    t.addEventListener("keydown", (e) => {
+      const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (!d) return;
+      const n = tabs[(i + d + tabs.length) % tabs.length]; selectTab(n.id.slice(2)); n.focus();
+    });
+  });
+
+  let urlOnly = false;
+  const showFor = (sel, on) => document.querySelectorAll(`[data-for="${sel}"]`).forEach((el) => (el.hidden = !on));
+  function layout() {
+    const lite = f("c-engine").value === "sqlite";
+    showFor("sqlite", lite); showFor("server", !lite); showFor("fields", !lite && !urlOnly);
+    f("c-url-h").textContent = urlOnly ? "Paste the whole URL. The password goes in the field above it." : "Editing the URL fills in the settings above.";
+  }
+  function setEngine(v) {
+    f("c-engine").value = v;
+    if (v !== "sqlite") f("c-port").value = v === "mysql" ? "3306" : "5432";
+    f("c-engine").closest(".cx-driver").querySelector("use").setAttribute("href", v === "sqlite" ? "#i-hard-drive" : "#i-server");
+    layout(); toUrl();
+  }
+  function setType(t) {
+    urlOnly = t === "url";
+    document.querySelectorAll("[data-type]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.type === t)));
+    layout();
+  }
+  document.querySelectorAll("[data-type]").forEach((b) => b.addEventListener("click", () => setType(b.dataset.type)));
+  f("c-engine").addEventListener("change", (e) => setEngine(e.target.value));
+  f("c-color").addEventListener("change", (e) => f("c-color").closest(".cx-color").style.setProperty("--fg", `var(--proj-${e.target.value}-fg)`));
+
+  // fields to URL, and URL back to fields; a password typed into the URL moves to the keychain field
+  const SCHEME = { postgres: "postgresql", mysql: "mysql" };
+  function toUrl() {
+    const e = f("c-engine").value;
+    if (e === "sqlite") { f("c-url").value = "sqlite:" + (f("c-file").value || ""); return; }
+    const u = f("c-user").value, h = f("c-host").value, p = f("c-port").value, d = f("c-db").value;
+    f("c-url").value = `${SCHEME[e]}://${u ? u + "@" : ""}${h}${p ? ":" + p : ""}${d ? "/" + d : ""}`;
+  }
+  function fromUrl() {
+    const v = f("c-url").value.trim();
+    if (/^sqlite:/.test(v)) { if (f("c-engine").value !== "sqlite") setEngine("sqlite"); f("c-file").value = v.slice(7); return; }
+    const m = v.match(/^(postgres(?:ql)?|mysql):\/\/(?:([^@/:]*)(?::([^@]*))?@)?([^:/?]*)(?::(\d+))?(?:\/([^?]*))?/);
+    if (!m) return;
+    const eng = m[1] === "mysql" ? "mysql" : "postgres";
+    if (f("c-engine").value !== eng) { f("c-engine").value = eng; layout(); }
+    f("c-user").value = m[2] || ""; f("c-host").value = m[4] || ""; f("c-port").value = m[5] || ""; f("c-db").value = m[6] || "";
+    if (m[3]) { f("c-pass").value = decodeURIComponent(m[3]); toUrl(); }
+  }
+  ["c-host", "c-port", "c-user", "c-db", "c-file"].forEach((id) => f(id).addEventListener("input", toUrl));
+  f("c-url").addEventListener("input", fromUrl);
+  f("c-url").addEventListener("change", fromUrl);
+
   function validate() {
     const bad = !name.value.trim();
     name.setAttribute("aria-invalid", String(bad));
     help.classList.toggle("err", bad);
-    help.textContent = bad ? "Give the connection a name so you can find it again" : HELP;
+    help.textContent = bad ? "Give the connection a name so you can find it again" : "";
     return !bad;
   }
   name.addEventListener("blur", () => { if (name.dataset.touched) validate(); });
   name.addEventListener("input", () => { name.dataset.touched = "1"; if (name.getAttribute("aria-invalid") === "true") validate(); });
   function setLine(kind, text) {
-    test.removeAttribute("aria-busy"); test.disabled = false; line.className = "test-line"; line.hidden = !kind && !text;
+    test.removeAttribute("aria-busy"); test.disabled = false; line.className = "test-line"; line.hidden = !kind && !text; line.title = "";
     if (kind === "testing") { test.setAttribute("aria-busy", "true"); test.disabled = true; line.innerHTML = '<span class="spinner"></span>Connecting to localhost:5432'; }
     else if (kind === "ok") { line.classList.add("ok"); line.innerHTML = '<svg aria-hidden="true" class="ico"><use href="#i-circle-check"/></svg>Connected to PostgreSQL 16.4 in 14&nbsp;ms'; }
-    else if (kind === "fail") { line.classList.add("fail"); line.innerHTML = '<svg aria-hidden="true" class="ico"><use href="#i-circle-alert"/></svg>password authentication failed for user "ops"'; }
-    else line.textContent = text || "";
+    else if (kind === "fail") { line.classList.add("fail"); line.innerHTML = '<svg aria-hidden="true" class="ico"><use href="#i-circle-alert"/></svg>password authentication failed for user "ops"'; line.title = line.textContent; }
+    else { line.textContent = text || ""; line.title = line.textContent; }
   }
-  // No backend in the preview: Test and Save validate, then say that nothing was sent
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    if (!validate()) { name.focus(); return; }
+    if (!validate()) { selectTab("general"); name.focus(); return; }
+    if (f("c-guard").value === "verify" && !passSet) { selectTab("options"); setLine("", "Ask for passphrase needs a passphrase. Set one in Options."); line.classList.add("fail"); return; }
     setLine("testing");
     setTimeout(() => setLine("", `Not sent: the preview has no backend; the app calls ${e.submitter.value === "save" ? "save_connection" : "test_connection"} here`), 600);
   });
 
+  // Passphrase: the Settings > Security rows and dialogs, here too. One passphrase for the whole app;
+  // without it, Ask for passphrase cannot be picked
+  let passSet = true;
+  const renderPass = () => {
+    $$("[data-pass]").forEach((c) => { c.hidden = c.dataset.pass !== (passSet ? "set" : "none"); });
+    $("[data-pass-desc]").textContent = passSet ? "Set, in the macOS keychain" : "Not set. Ask for passphrase needs one";
+    $$("[data-needs-pass]").forEach((r) => { r.hidden = !passSet; });
+    if (!passSet) $("#sec-touch").checked = false;
+    if (typeof renderLock === "function") renderLock();
+  };
+  const openSub = (k) => {
+    $$("[data-sub]").forEach((d) => { d.hidden = d.dataset.sub !== k; });
+    const d = $(`[data-sub="${k}"]`); if (!d) return;
+    $("form", d).reset(); $("[data-sub-err]", d).textContent = "";
+    $$("input", d).forEach((i) => i.removeAttribute("aria-invalid"));
+    $("input", d).focus();
+  };
+  const closeSub = () => $$("[data-sub]").forEach((d) => { d.hidden = true; });
+  $$("[data-open-sub]").forEach((b) => b.addEventListener("click", () => openSub(b.dataset.openSub)));
+  $$("[data-sub-cancel]").forEach((b) => b.addEventListener("click", closeSub));
+  $$(".sub-backdrop").forEach((d) => d.addEventListener("click", (e) => { if (e.target === d) closeSub(); }));
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("[data-sub]:not([hidden])")) { e.stopPropagation(); closeSub(); } }, true);
+  $$("[data-sub-form]").forEach((sf) => sf.addEventListener("submit", (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const inputs = $$("input", sf), err = $("[data-sub-err]", sf);
+    const empty = inputs.find((i) => !i.value);
+    inputs.forEach((i) => i.setAttribute("aria-invalid", String(!i.value)));
+    if (empty) { err.textContent = "Fill in every field."; empty.focus(); return; }
+    const pair = inputs.slice(-2);
+    if (sf.dataset.subForm === "unlock") { unlocked = true; renderLock(); closeSub(); return; }
+    if (sf.dataset.subForm !== "disable" && pair[0].value !== pair[1].value) { pair[1].setAttribute("aria-invalid", "true"); err.textContent = "The two passphrases differ."; pair[1].focus(); return; }
+    passSet = sf.dataset.subForm !== "disable"; renderPass(); closeSub();
+  }));
+  // What to protect: locked until the passphrase opens it, as in Settings
+  let unlocked = false;
+  const renderLock = () => {
+    if (!passSet) unlocked = false;
+    $$("#protect .switch").forEach((sw) => { sw.disabled = !unlocked; });
+    const t = f("protect-toggle");
+    $("use", t).setAttribute("href", unlocked ? "#i-lock-open" : "#i-lock");
+    $("span", t).textContent = unlocked ? "Lock" : "Change";
+  };
+  f("protect-toggle").addEventListener("click", () => {
+    if (unlocked) { unlocked = false; renderLock(); return; }
+    openSub("unlock");
+    $("[data-touch-hint]").hidden = !f("sec-touch").checked;
+  });
+
+  // the passphrase and what it protects only matter for Ask for passphrase: shown only then
+  const renderGuard = () => { $("[data-when-verify]").hidden = f("c-guard").value !== "verify"; };
+  f("c-guard").addEventListener("change", renderGuard);
+
   window.pvShow = (k) => {
+    setType(k === "url-only" ? "url" : "default");
     setEngine(["mysql", "sqlite"].includes(k) ? k : "postgres");
+    selectTab({ options: "options", "options-verify": "options", "options-nopass": "options", ssl: "ssl", advanced: "advanced" }[k] || "general");
+    f("c-guard").value = ["options-verify", "options-nopass"].includes(k) ? "verify" : "confirm"; renderGuard();
+    closeSub();
+    passSet = k !== "options-nopass"; unlocked = false; renderPass();
     name.value = k === "name-missing" ? "" : k === "sqlite" ? "analytics" : "shop_prod";
-    if (k === "name-missing") validate(); else { name.removeAttribute("aria-invalid"); help.classList.remove("err"); help.textContent = HELP; }
-    $("#c-file").value = k === "sqlite" ? "~/data/analytics.sqlite" : "";
-    $("#c-pass").value = ["testing", "test-ok", "test-failed"].includes(k) ? "correct-horse" : "";
+    if (k === "name-missing") validate(); else { name.removeAttribute("aria-invalid"); help.classList.remove("err"); help.textContent = ""; }
+    f("c-file").value = k === "sqlite" ? "~/data/analytics.sqlite" : "";
+    f("c-pass").value = ["testing", "test-ok", "test-failed", "url-only"].includes(k) ? "correct-horse" : "";
+    toUrl();
+    if (k === "url-only") f("c-url").value = "postgresql://ops@loophealth-staging.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com:5432/postgres?sslmode=require";
     setLine({ testing: "testing", "test-ok": "ok", "test-failed": "fail" }[k] || "");
   };
 pvStart();

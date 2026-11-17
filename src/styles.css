@@ -176,7 +176,7 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 32px; 
 .tab-add { align-self: flex-end; margin: 0 0 5px var(--space-2xs); flex-shrink: 0; } /* centred on the tab text line: (42 - 32) / 2 */
 
 .joined { position: relative; display: inline-flex; flex-shrink: 0; }
-.joined > :first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.joined > :first-child:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .joined > .joined-tail { margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0; padding: 0; min-width: 34px; }
 .btn--primary.joined-tail { margin-left: 0; border-left: 1px solid var(--color-on-accent-rule); }
 .save-state { display: inline-grid; place-items: center; cursor: default; color: var(--color-muted); }
@@ -903,3 +903,51 @@ body.row-resizing, body.row-resizing * { cursor: row-resize !important; user-sel
 /* Home: edit and remove sit on a connection card only while it is pointed at or focused (the preview has no card actions) */
 .conn-card .card-actions { opacity: 0; transition: opacity var(--dur-micro) var(--ease-out); }
 .conn-card:hover .card-actions, .conn-card:focus-within .card-actions { opacity: 1; }
+
+/* New connection, data-source layout: name and colour on top, tabs, then right-aligned labels with fields to their right.
+   Four columns: label, field, side label (Port), side field. Wrapper spans use display: contents so rows can hide as one. */
+.dialog.cx { width: 640px; }
+.cx [hidden] { display: none !important; }
+.cx-grid { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content 96px; align-items: center; gap: var(--space-sm) var(--space-sm); }
+.cx-grid > label, .cx-sub > label, .cx-label { display: block; margin: 0; text-align: right; color: var(--color-muted); font-size: var(--text-md); }
+.cx-grid > label.check, .cx-sub > label.check { display: flex; text-align: left; color: var(--color-ink); }
+.cx-sub { display: contents; }
+.cx-full { grid-column: 2 / -1; }
+/* one label width for every tab and engine, so fields do not shift when switching */
+.cx-panel .cx-grid { grid-template-columns: 136px minmax(0, 1fr) max-content 96px; }
+.cx-under { margin-top: calc(-1 * var(--space-2xs)); }
+.cx-port { width: 96px; }
+.cx .unit-field { justify-self: start; }
+.cx .unit-field .field { padding-right: 48px; }
+.cx .with-btn { min-width: 0; }
+.cx .seg { justify-self: start; }
+/* the top block reads like the dialog title row: no gap to the tabs except the tab strip's own */
+.cx-head { grid-template-columns: max-content minmax(0, 1fr) max-content max-content; margin-bottom: var(--space-sm); }
+.cx-head .help { grid-column: 2 / 3; }
+/* colour: the select carries a dot of the chosen colour */
+.cx-color .select-wrap::before { content: ""; position: absolute; left: 12px; top: 50%; width: 10px; height: 10px; border-radius: 50%; background: var(--fg); transform: translateY(-50%); pointer-events: none; }
+.cx-color .field { width: 128px; padding-left: 30px; }
+/* driver: engine glyph on the left of the select */
+.cx-driver { position: relative; }
+.cx-driver .drv-ico { position: absolute; left: 10px; top: 50%; z-index: 1; width: 16px; height: 16px; transform: translateY(-50%); color: var(--color-muted); pointer-events: none; }
+.cx-driver .field { padding-left: 34px; }
+/* tab strip runs edge to edge across the dialog, like a sheet's toolbar */
+.cx-tabs { margin: 0 calc(-1 * var(--space-lg)) var(--space-md); padding: 0 var(--space-lg); }
+.subtab[aria-selected="true"] { color: var(--color-link); border-bottom-color: var(--color-accent); font-weight: 600; }
+/* panels keep one height so switching tabs does not move the footer */
+.cx-panel { min-height: 404px; max-height: min(480px, calc(100vh - 360px)); overflow-y: auto; }
+.cx-none { color: var(--color-muted); }
+/* Options tab: the rows of Settings (Security, Queries), set for this connection */
+.dialog .cx-h { display: flex; align-items: baseline; gap: var(--space-xs); margin: 0 0 var(--space-xs); color: var(--color-ink); font-size: var(--text-sm); font-weight: 600; }
+.cx-h-note { color: var(--color-muted); font-weight: 400; white-space: nowrap; }
+.cx-protect-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 var(--space-xs); }
+.cx-protect-head .cx-h { margin: 0; }
+.cx-panel .set-list { margin-bottom: var(--space-md); }
+.cx-panel > .set-list:last-child { margin-bottom: 0; }
+.cx-panel .set-item .set-text label { display: block; margin: 0; color: var(--color-ink); font-size: var(--text-md); font-weight: 500; }
+.cx-panel .set-ctl .field.set-choice { width: 200px; }
+/* the rule closes the tab panel; under it the test result (when there is one), then Test, Cancel and Save */
+.cx-panel { padding-bottom: var(--space-md); border-bottom: 1px solid var(--color-rule); }
+.dialog .cx-foot { align-items: center; margin-top: var(--space-md); }
+.cx-foot #c-test { margin-right: auto; }
+.cx .test-line { margin-top: var(--space-md); overflow-wrap: anywhere; }

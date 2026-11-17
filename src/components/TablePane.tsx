@@ -11,7 +11,8 @@ import { ChevronLeft, ChevronRight, Key, Link, ico } from "./Icon";
 /** A table: its rows under a where filter (select … limit, no order by), its columns, its indexes and keys. */
 export function TablePane({ tab }: { tab: TableTab }) {
   const { conn, session } = useCurrent();
-  const limit = useStore((s) => s.settings.rowLimit) || DEFAULT_ROW_LIMIT;
+  const appLimit = useStore((s) => s.settings.rowLimit);
+  const limit = conn?.rowLimit || appLimit || DEFAULT_ROW_LIMIT;
   const st = useStore.getState();
   const busy = tab.run.status === "running";
   const o = tab.run.outcome;

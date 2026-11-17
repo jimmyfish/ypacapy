@@ -1,5 +1,6 @@
 export type Engine = "postgres" | "mysql" | "sqlite";
 export type GuardLevel = "run" | "confirm" | "verify";
+export type SslMode = "disable" | "prefer" | "require" | "verify-ca" | "verify-full";
 
 /** connections.toml: one connection, never its password (that is in the keychain). */
 export interface Conn {
@@ -15,6 +16,20 @@ export interface Conn {
   /** 1..6 */
   color: number;
   guard: GuardLevel;
+  /** Options tab; each one missing = the value in Settings */
+  rowLimit?: number;
+  /** seconds */
+  statementTimeout?: number;
+  /** SSL (PostgreSQL, MySQL); missing = prefer */
+  sslMode?: SslMode;
+  /** CA certificate file */
+  sslCa?: string;
+  /** Advanced tab. PostgreSQL application_name; missing = ypacapy */
+  appName?: string;
+  /** seconds; missing = 15 */
+  connectTimeout?: number;
+  /** missing = Settings > Queries > Connection heartbeat */
+  heartbeat?: boolean;
   lastOpened?: number;
 }
 
@@ -33,12 +48,13 @@ export interface Settings {
   /** Queries */
   rowLimit?: number;
   statementTimeout?: number;
-  readOnly?: boolean;
   keepHistory?: boolean;
   heartbeat?: boolean;
   heartbeatEvery?: number;
   /** Security: statement kinds the write guard asks about (all when missing) */
   protect?: string[];
+  /** write guard for new connections; missing = confirm */
+  defaultGuard?: GuardLevel;
   touchId?: boolean;
   /** seconds a passphrase or Touch ID lasts; 0 asks every time */
   unlockWindow?: number;

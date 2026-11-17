@@ -1,4 +1,4 @@
-//! ypacapy.db: query history and saved queries, in SQLite next to settings.toml.
+//! ypacapy.db: query history, saved queries and each connection's open tabs, in SQLite next to settings.toml.
 
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
@@ -36,6 +36,11 @@ create table if not exists saved (
   sql text not null,
   conn_id text,
   created_at integer not null,
+  updated_at integer not null
+);
+create table if not exists workspace (
+  conn_id text primary key,
+  data text not null,
   updated_at integer not null
 );
 ";
@@ -200,5 +205,32 @@ pub async fn save_query(mut q: Saved, store: State<'_, LocalStore>) -> Result<Sa
 pub async fn delete_saved(id: String, store: State<'_, LocalStore>) -> Result<(), String> {
     let p = store.pool().await?;
     sqlx::query("delete from saved where id = ?").bind(id).execute(p).await.map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// The open tabs of one connection, as JSON written by the frontend; restored when it is opened again.
+#[tauri::command]
+pub async fn load_workspace(conn_id: String, store: State<'_, LocalStore>) -> Result<Option<String>, String> {
+    let p = store.pool().await?;
+    sqlx::query_scalar("select data from workspace where conn_id = ?").bind(conn_id).fetch_optional(p).await.map_err(|e| e.to_string())
+}
+
+/// Stores the open tabs of one connection; None removes them.
+#[tauri::command]
+pub async fn save_workspace(conn_id: String, data: Option<String>, store: State<'_, LocalStore>) -> Result<(), String> {
+    let p = store.pool().await?;
+    match data {
+        Some(d) => sqlx::query(
+            "insert into workspace (conn_id, data, updated_at) values (?, ?, ?) \
+             on conflict (conn_id) do update set data = excluded.data, updated_at = excluded.updated_at",
+        )
+        .bind(conn_id)
+        .bind(d)
+        .bind(now_ms())
+        .execute(p)
+        .await
+        .map_err(|e| e.to_string())?,
+        None => sqlx::query("delete from workspace where conn_id = ?").bind(conn_id).execute(p).await.map_err(|e| e.to_string())?,
+    };
     Ok(())
 }

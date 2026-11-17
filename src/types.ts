@@ -114,6 +114,16 @@ export interface TableColumn {
   references: string | null;
 }
 
+/** a column for the editor's autocomplete */
+export interface ColumnBrief {
+  name: string;
+  type: string;
+  primary: boolean;
+}
+
+/** one table's columns as autocomplete knows them, by "schema.table" */
+export type ColumnsEntry = { state: "loading"; req: string } | { state: "loaded"; cols: ColumnBrief[] } | { state: "error" };
+
 export interface TableInfo {
   columns: TableColumn[];
   indexes: { name: string; columns: string; method: string; unique: boolean; primary: boolean }[];
@@ -234,6 +244,8 @@ export interface Session {
   schema: string;
   /** the schema tree, per schema, cached for the session (Refresh, DDL and Reconnect clear it) */
   tree: Record<string, SchemaNode>;
+  /** columns autocomplete has read, per "schema.table"; cleared with the tree */
+  columns: Record<string, ColumnsEntry>;
   expanded: Record<string, boolean>;
   tabs: Tab[];
   activeTabId: string | null;

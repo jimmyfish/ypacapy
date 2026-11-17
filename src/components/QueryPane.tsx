@@ -6,7 +6,7 @@ import { returnsRows, sourceOf, statements, targetOf, type EditTarget } from "..
 import { api, errText } from "../lib/api";
 import type { QueryTab, ResultSet, RunOutcome, RunState } from "../types";
 import { ResultGrid, type GridEdit } from "./ResultGrid";
-import { SqlEditor } from "./SqlEditor";
+import { SqlEditor, type Completer } from "./SqlEditor";
 import { useDismiss } from "./useDismiss";
 import { ChevronDown, CircleCheck, WandSparkles, ico } from "./Icon";
 
@@ -326,6 +326,20 @@ function QueryResults({ tab }: { tab: QueryTab }) {
 export function QueryPane({ tab }: { tab: QueryTab }) {
   const { conn, session } = useCurrent();
   const editor = useRef<HTMLTextAreaElement>(null);
+  // autocomplete reads the schema tree and the column cache; it changes only when those do, not per keystroke
+  const engine = conn?.engine;
+  const { status, schema, info, tree, columns } = session ?? {};
+  const complete = useMemo<Completer | undefined>(() => {
+    if (!engine || status !== "open" || !schema || !tree || !columns) return undefined;
+    return {
+      engine,
+      schema,
+      schemas: info?.schemas.length ? info.schemas : Object.keys(tree),
+      tables: (s) => (tree[s]?.state === "loaded" ? tree[s].data?.tables : undefined),
+      columns: (s, t) => columns[`${s}.${t}`],
+      load: (s, t) => useStore.getState().loadColumns(s, t),
+    };
+  }, [engine, status, schema, info, tree, columns]);
   // Format goes through insertText, like Tab and the comment toggle, so ⌘Z brings the text back as typed
   const formatEditor = () => {
     const el = editor.current;
@@ -448,6 +462,7 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
             value={tab.sql}
             onChange={(sql) => st.updateTab(tab.id, { sql })}
             label={`SQL editor, ${tab.title}`}
+            complete={complete}
             empty={
               <>
                 <strong>Write SQL for {conn ? ENGINE_NAME[conn.engine] : "the database"}</strong>

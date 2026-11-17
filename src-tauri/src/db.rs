@@ -641,6 +641,56 @@ fn truthy(s: &str) -> bool {
     matches!(s.to_lowercase().as_str(), "true" | "t" | "1" | "yes")
 }
 
+/// One column for the editor's autocomplete: name, type and whether it is in the primary key.
+#[derive(Serialize)]
+pub struct ColumnBrief {
+    name: String,
+    #[serde(rename = "type")]
+    ty: String,
+    primary: bool,
+}
+
+/// A table's columns only, for autocomplete: one catalog read, no indexes or keys. The editor asks once per
+/// table, the first time a statement names it, and keeps the answer until Refresh.
+#[tauri::command]
+pub async fn table_columns(
+    id: String,
+    database: Option<String>,
+    schema: String,
+    table: String,
+    state: State<'_, DbState>,
+) -> Result<Vec<ColumnBrief>, String> {
+    let conn = conns::find(&id)?;
+    check_schema(&conn, &schema)?;
+    let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
+    let (s, t) = (schema.as_str(), table.as_str());
+    let rows = match conn.engine {
+        Engine::Postgres => {
+            catalog(
+                &open.pool,
+                "select a.attname::text, format_type(a.atttypid, a.atttypmod), \
+                 exists(select 1 from pg_index i where i.indrelid = a.attrelid and i.indisprimary and a.attnum = any(i.indkey))::text \
+                 from pg_attribute a \
+                 where a.attrelid = (quote_ident($1) || '.' || quote_ident($2))::regclass and a.attnum > 0 and not a.attisdropped order by a.attnum",
+                &[s, t],
+            )
+            .await
+        }
+        Engine::Mysql => {
+            catalog(
+                &open.pool,
+                "select cast(COLUMN_NAME as char), cast(COLUMN_TYPE as char), cast(COLUMN_KEY = 'PRI' as char) \
+                 from information_schema.COLUMNS where TABLE_SCHEMA = ? and TABLE_NAME = ? order by ORDINAL_POSITION",
+                &[s, t],
+            )
+            .await
+        }
+        Engine::Sqlite => catalog(&open.pool, "select name, lower(type), cast(pk > 0 as text) from pragma_table_info(?, ?) order by cid", &[t, s]).await,
+    }
+    .map_err(|e| err_text(&e))?;
+    Ok(rows.iter().map(|r| ColumnBrief { name: col(r, 0), ty: col(r, 1), primary: truthy(&col(r, 2)) }).collect())
+}
+
 /// A table's columns, indexes and foreign keys, from the catalog.
 #[tauri::command]
 pub async fn table_info(

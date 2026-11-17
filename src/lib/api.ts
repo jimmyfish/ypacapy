@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Approval, Conn, HistoryEntry, OpenInfo, RunOutcome, Saved, SchemaObjects, SecurityLevel, Settings, TableInfo } from "../types";
+import type { Approval, ColumnBrief, Conn, HistoryEntry, OpenInfo, RunOutcome, Saved, SchemaObjects, SecurityLevel, Settings, TableInfo } from "../types";
 
 /** Every Tauri command, typed. Rust errors arrive as strings. */
 export const api = {
@@ -16,6 +16,8 @@ export const api = {
   openConnection: (id: string, database?: string) => invoke<OpenInfo>("open_connection", { id, database }),
   closeConnection: (id: string) => invoke<void>("close_connection", { id }),
   loadSchema: (id: string, database: string, schema: string) => invoke<SchemaObjects>("load_schema", { id, database, schema }),
+  /** columns only, for autocomplete */
+  tableColumns: (id: string, database: string, schema: string, table: string) => invoke<ColumnBrief[]>("table_columns", { id, database, schema, table }),
   tableInfo: (id: string, database: string, schema: string, table: string) => invoke<TableInfo>("table_info", { id, database, schema, table }),
   runQuery: (req: { runId: string; connId: string; database?: string; schema?: string; sql: string; addLimit: boolean; approval?: Approval; history: boolean }) =>
     invoke<RunOutcome>("run_query", { req }),

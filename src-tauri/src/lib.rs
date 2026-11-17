@@ -130,6 +130,7 @@ pub fn run() {
             db::close_connection,
             db::load_schema,
             db::table_info,
+            db::table_columns,
             db::run_query,
             db::cancel_query,
             db::apply_edits,

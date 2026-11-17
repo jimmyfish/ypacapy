@@ -209,7 +209,7 @@ const savedSide = `
       </div>
     </aside>`;
 
-const TABS = [["orders", "table-2", "orders", "./table.html"], ["q1", "square-code", "Query 1", "./index.html"], ["q2", "square-code", "Query 2", "./index.html?show=sql-error"], ["q3", "square-code", "Query 3", "./index.html?show=wide"], ["q4", "square-code", "Query 4", "./index.html?show=long"]];
+const TABS = [["orders", "table-2", "orders", "./table.html"], ["q1", "square-code", "Query 1", "./index.html"], ["q2", "square-code", "Query 2", "./index.html?show=sql-error"], ["q3", "square-code", "Query 3", "./index.html?show=wide"], ["q4", "square-code", "Query 4", "./index.html?show=long"], ["q5", "square-code", "Query 5", "./index.html?show=ac-columns"]];
 const tabsbar = (active, local) => `
       <div class="tabsbar">
         <button type="button" class="icon-btn side-toggle" aria-label="Hide sidebar" title="Hide sidebar  ⌘\\">${ic("panel-left-close")}</button>
@@ -250,7 +250,29 @@ const app = ({ current, side = "", work, overlay = "" }) => `
 </div>${overlay}`;
 
 const sel = (label, opts) => `<span class="ctx-select"><select aria-label="${label}">${opts.map((o) => `<option>${o}</option>`).join("")}</select>${ic("chevron-down")}</span>`;
-const queryWork = `${tabsbar("q1", ["q1", "q2", "q3", "q4"])}
+// Query 5's autocomplete: the tables are what the schema tree already loaded; the columns stand in for the
+// one catalog read per table that the app makes the first time a statement needs that table
+const AC_COLS = {
+  orders: [["id", "int8", 1], ["customer_id", "int8"], ["status", "text"], ["total", "numeric(12,2)"], ["currency", "char(3)"], ["created_at", "timestamptz"], ["updated_at", "timestamptz"], ["shipped_at", "timestamptz"], ["meta", "jsonb"]],
+  order_items: [["id", "int8", 1], ["order_id", "int8"], ["product_id", "int8"], ["qty", "int4"], ["unit_price", "numeric(10,2)"]],
+  customers: CUST_COLS.map(([n, t]) => (n === "id" ? [n, t, 1] : [n, t])),
+  products: [["id", "int8", 1], ["sku", "text"], ["name", "text"], ["price", "numeric(10,2)"], ["active", "bool"], ["created_at", "timestamptz"]],
+  refunds: [["id", "int8", 1], ["order_id", "int8"], ["amount", "numeric(12,2)"], ["reason", "text"], ["created_at", "timestamptz"]],
+  shipments: [["id", "int8", 1], ["order_id", "int8"], ["carrier", "text"], ["tracking_no", "text"], ["shipped_at", "timestamptz"], ["delivered_at", "timestamptz"]],
+  warehouses: [["id", "int4", 1], ["code", "text"], ["city", "text"]],
+  schema_migrations: [["version", "text", 1], ["applied_at", "timestamptz"]],
+  daily_revenue: [["day", "date"], ["orders", "int8"], ["revenue", "numeric"]],
+  open_orders: [["id", "int8"], ["customer_id", "int8"], ["total", "numeric(12,2)"], ["created_at", "timestamptz"]],
+};
+const AC_DATA = {
+  schema: "public",
+  schemas: { public: { loaded: true, tables: [...TABLES.map(([n, e]) => [n, "table", e]), ["daily_revenue", "view"], ["open_orders", "view"]] }, audit: { loaded: false, tables: [] } },
+  columns: AC_COLS,
+};
+const acOverlay = `
+<div class="menu ac-menu" id="ac-menu" role="listbox" aria-label="Suggestions" hidden></div>
+<script type="application/json" id="ac-data">${JSON.stringify(AC_DATA).replace(/</g, "\\u003c")}</script>`;
+const queryWork = `${tabsbar("q1", ["q1", "q2", "q3", "q4", "q5"])}
       <div class="work-body">
         <div class="req-pane" id="req-pane">
           <div class="request-line">
@@ -264,10 +286,11 @@ const queryWork = `${tabsbar("q1", ["q1", "q2", "q3", "q4"])}
           <div class="section">
             <div class="editor">
               <div class="editor-bar"><button type="button" class="btn btn--quiet">${ic("wand-sparkles")}Format</button></div>
-<pre class="code" id="code-q1" tabindex="0" aria-label="SQL editor, Query 1"><span class="l"><span class="q-c">-- Refunds in the last 30 days, by customer</span></span><span class="l"><span class="q-k">select</span> c.email, c.is_vip,</span><span class="l"><span class="ind">       </span><span class="q-f">count</span>(*) <span class="q-k">as</span> refunds,</span><span class="l"><span class="ind">       </span><span class="q-f">sum</span>(o.total) <span class="q-k">as</span> refunded,</span><span class="l"><span class="ind">       </span><span class="q-f">max</span>(o.created_at) <span class="q-k">as</span> last_refund</span><span class="l"><span class="q-k">from</span> orders o</span><span class="l"><span class="q-k">join</span> customers c <span class="q-k">on</span> c.id = o.customer_id</span><span class="l"><span class="q-k">where</span> o.status = <span class="q-s">'refunded'</span></span><span class="l"><span class="ind">  </span><span class="q-k">and</span> o.created_at &gt; <span class="q-f">now</span>() - <span class="q-k">interval</span> <span class="q-s">'30 days'</span></span><span class="l cur"><span class="q-k">group by</span> c.email, c.is_vip <span class="q-k">order by</span> refunded <span class="q-k">desc</span></span><span class="l"><span class="q-k">limit</span> <span class="q-n">500</span>;</span></pre>
-<pre class="code" id="code-q2" tabindex="0" aria-label="SQL editor, Query 2" hidden><span class="l cur"><span class="q-k">select</span> id, <span class="q-err" id="q2-col">totl</span> <span class="q-k">from</span> orders <span class="q-k">where</span> status = <span class="q-s">'paid'</span> <span class="q-k">limit</span> <span class="q-n">500</span>;</span></pre>
-<pre class="code" id="code-q3" tabindex="0" aria-label="SQL editor, Query 3" hidden><span class="l cur"><span class="q-k">select</span> * <span class="q-k">from</span> customers <span class="q-k">limit</span> <span class="q-n">50</span>;</span></pre>
-<pre class="code" id="code-q4" tabindex="0" aria-label="SQL editor, Query 4" hidden><span class="l"><span class="q-k">select</span> id, status, subject, body</span><span class="l"><span class="q-k">from</span> support_tickets</span><span class="l cur"><span class="q-k">limit</span> <span class="q-n">50</span>;</span></pre>
+<pre class="code" id="code-q1" tabindex="0" aria-label="SQL editor, Query 1"><span class="l"><span class="q-c">-- Refunds in the last 30 days, by customer</span></span><span class="l"><span class="q-k">select</span> c.email, c.is_vip,</span><span class="l"><span class="ind">       </span><span class="q-f">count</span>(*) <span class="q-k">as</span> refunds,</span><span class="l"><span class="ind">       </span><span class="q-f">sum</span>(o.total) <span class="q-k">as</span> refunded,</span><span class="l"><span class="ind">       </span><span class="q-f">max</span>(o.created_at) <span class="q-k">as</span> last_refund</span><span class="l"><span class="q-k">from</span> <span class="q-tb">orders</span> o</span><span class="l"><span class="q-k">join</span> <span class="q-tb">customers</span> c <span class="q-k">on</span> c.id = o.customer_id</span><span class="l"><span class="q-k">where</span> o.status = <span class="q-s">'refunded'</span></span><span class="l"><span class="ind">  </span><span class="q-k">and</span> o.created_at &gt; <span class="q-f">now</span>() - <span class="q-k">interval</span> <span class="q-s">'30 days'</span></span><span class="l cur"><span class="q-k">group by</span> c.email, c.is_vip <span class="q-k">order by</span> refunded <span class="q-k">desc</span></span><span class="l"><span class="q-k">limit</span> <span class="q-n">500</span>;</span></pre>
+<pre class="code" id="code-q2" tabindex="0" aria-label="SQL editor, Query 2" hidden><span class="l cur"><span class="q-k">select</span> id, <span class="q-err" id="q2-col">totl</span> <span class="q-k">from</span> <span class="q-tb">orders</span> <span class="q-k">where</span> status = <span class="q-s">'paid'</span> <span class="q-k">limit</span> <span class="q-n">500</span>;</span></pre>
+<pre class="code" id="code-q3" tabindex="0" aria-label="SQL editor, Query 3" hidden><span class="l cur"><span class="q-k">select</span> * <span class="q-k">from</span> <span class="q-tb">customers</span> <span class="q-k">limit</span> <span class="q-n">50</span>;</span></pre>
+<pre class="code" id="code-q4" tabindex="0" aria-label="SQL editor, Query 4" hidden><span class="l"><span class="q-k">select</span> id, status, subject, body</span><span class="l"><span class="q-k">from</span> <span class="q-tb">support_tickets</span></span><span class="l cur"><span class="q-k">limit</span> <span class="q-n">50</span>;</span></pre>
+<div class="code-edit" id="code-q5" hidden><div class="code-edit-grid"><pre class="code" id="q5-code" aria-hidden="true"></pre><textarea class="code-input" id="q5-input" aria-label="SQL editor, Query 5" spellcheck="false" autocorrect="off" autocapitalize="off" wrap="off" aria-autocomplete="list" aria-controls="ac-menu"></textarea></div></div>
             </div>
           </div>
         </div>
@@ -307,6 +330,7 @@ ${TICKET_ROWS}
               </tbody></table>
             </div>${inspector("id", "int8", 1, "812")}
           </div>
+          <div class="state" data-when="full" data-for="q5" hidden><div class="empty"><strong>Not run yet</strong><span>Type in the editor: table and column names come up as you go. Ctrl+Space asks for them.</span></div></div>
           <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Running on shop_prod</strong><span>Started 0.4&nbsp;s ago</span><button type="button" class="btn" id="cancel">Cancel</button></div></div>
           <div class="state" data-when="empty" hidden><div class="empty"><strong>The query returned no rows</strong></div></div>
           <div class="state" data-when="error" hidden><div class="error-box">
@@ -630,9 +654,9 @@ const guardDialogs = `
 pages["index.html"] = page({
   title: "ypacapy preview",
   desc: "Design preview of ypacapy, a local-only database explorer for macOS: the query console and its result grid.",
-  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["wide", "Many columns"], ["long", "Long text"], ["cell-menu", "Cell menu"], ["row-menu", "Sidebar menu"], ["level-menu", "Security level menu"], ["guard-confirm", "Low: confirm"], ["guard-pass", "Strict: passphrase"], ["guard-pass-touch", "Strict with Touch ID"], ["guard-pass-wrong", "Strict: wrong passphrase"], ["history", "History"], ["history-clear", "Clear history"], ["history-none", "History, none yet"]], true),
-  body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: guardDialogs + histClearDlg }),
-  script: js("page-index.js"),
+  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["wide", "Many columns"], ["long", "Long text"], ["cell-menu", "Cell menu"], ["row-menu", "Sidebar menu"], ["level-menu", "Security level menu"], ["guard-confirm", "Low: confirm"], ["guard-pass", "Strict: passphrase"], ["guard-pass-touch", "Strict with Touch ID"], ["guard-pass-wrong", "Strict: wrong passphrase"], ["history", "History"], ["history-clear", "Clear history"], ["history-none", "History, none yet"], ["ac-tables", "Complete: tables"], ["ac-columns", "Complete: columns"], ["ac-mixed", "Complete: two tables"], ["ac-loading", "Complete: reading columns"], ["ac-schema", "Complete: schema not loaded"]], true),
+  body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: guardDialogs + histClearDlg + acOverlay }),
+  script: js("page-index.js") + js("page-index-ac.js"),
 });
 
 // Table
@@ -782,7 +806,7 @@ pages["settings.html"] = page({
         <div class="set-list">${setItem("Theme", "", `<div class="seg seg--lg" role="group" aria-label="Theme"><button type="button" data-set-theme="auto" aria-pressed="true">Auto</button><button type="button" data-set-theme="light" aria-pressed="false">Light</button><button type="button" data-set-theme="dark" aria-pressed="false">Dark</button></div>`)}${schemeRow("light")}${schemeRow("dark")}${setItem("Compact mode", "", sw("set-compact", false), "set-compact")}${fontRow("set-ui-font", "Interface font", "", "System default", "--font-ui", "--font-size-ui", [12, 13, 14, 15, 16], 14)}${fontRow("set-table-font", "Table font", "", "System monospace", "--font-table", "--font-size-table", [11, 12, 13, 14, 15, 16], 13)}${fontRow("set-console-font", "Editor font", "", "System monospace", "--font-mono", "--font-size-code", [11, 12, 13, 14, 15, 16, 18], 13)}
           <div class="set-sample" aria-label="Sample">
             <span class="set-sample-ui">Refunds by customer <span class="muted">Saved queries / Reports</span></span>
-            <code><span class="q-k">select</span> c.email, <span class="q-f">count</span>(*) <span class="q-k">from</span> orders</code>
+            <code><span class="q-k">select</span> c.email, <span class="q-f">count</span>(*) <span class="q-k">from</span> <span class="q-tb">orders</span></code>
             <code style="font-family: var(--font-table); font-size: var(--text-table)">10482   4,820.00   2026-11-14 09:41:07+07</code>
           </div>
         </div>

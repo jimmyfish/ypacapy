@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { api, errText } from "./lib/api";
 import { tableSelect } from "./lib/sql";
 import { editCount, type Edits } from "./lib/edit";
-import type { Approval, Ask, Conn, HistoryEntry, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
+import type { Approval, Ask, ColumnsEntry, Conn, HistoryEntry, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
 
 export type SettingsSection = "appearance" | "queries" | "security" | "data";
 export type SideView = "schema" | "history" | "saved";
@@ -63,6 +63,8 @@ interface State {
   toggle(path: string): void;
   loadSchema(schema: string): Promise<void>;
   refreshTree(id?: string): void;
+  /** autocomplete: reads a table's columns once; later calls reuse them until the tree is cleared */
+  loadColumns(schema: string, table: string): void;
 
   newQueryTab(sql?: string, title?: string, saved?: Saved): string;
   openTable(schema: string, table: string): void;
@@ -143,7 +145,7 @@ async function readWorkspace(id: string): Promise<{ tabs: QueryTab[]; active: st
   }
 }
 
-const emptySession = (): Session => ({ status: "opening", database: "", schema: "", tree: {}, expanded: {}, tabs: [], activeTabId: null });
+const emptySession = (): Session => ({ status: "opening", database: "", schema: "", tree: {}, columns: {}, expanded: {}, tabs: [], activeTabId: null });
 
 export const useStore = create<State>()((set, get) => {
   /** Changes the current connection's session. */
@@ -326,6 +328,7 @@ export const useStore = create<State>()((set, get) => {
           database: info.database,
           schema,
           tree: {},
+          columns: {},
           expanded: schema ? { [schema]: true, [`${schema}/tables`]: true, [`${schema}/views`]: true } : {},
           ...(s.tabs.length ? {} : (() => {
             const t = newQuery(1);
@@ -364,13 +367,13 @@ export const useStore = create<State>()((set, get) => {
     async setDatabase(db) {
       const id = get().currentId;
       if (!id) return;
-      patchSession(id, () => ({ database: db, tree: {} }));
+      patchSession(id, () => ({ database: db, tree: {}, columns: {} }));
       try {
         const info = await api.openConnection(id, db);
         const conn = get().conns.find((c) => c.id === id);
         // MySQL: a database is a schema, so the picked one becomes the open schema too
         const schema = conn?.engine === "mysql" ? db : info.defaultSchema;
-        patchSession(id, () => ({ info, database: info.database || db, schema, tree: {}, expanded: { [schema]: true, [`${schema}/tables`]: true, [`${schema}/views`]: true } }));
+        patchSession(id, () => ({ info, database: info.database || db, schema, tree: {}, columns: {}, expanded: { [schema]: true, [`${schema}/tables`]: true, [`${schema}/views`]: true } }));
         if (schema) void get().loadSchema(schema);
       } catch (e) {
         get().showToast(errText(e));
@@ -430,6 +433,25 @@ export const useStore = create<State>()((set, get) => {
       }
     },
 
+    loadColumns(schema, table) {
+      const id = get().currentId;
+      if (!id) return;
+      const s = get().sessions[id];
+      const key = `${schema}.${table}`;
+      if (!s || s.status !== "open" || s.columns[key]) return;
+      // a token, so an answer that lands after Refresh or a database switch is dropped
+      const req = uid();
+      patchSession(id, (x) => ({ columns: { ...x.columns, [key]: { state: "loading", req } } }));
+      const done = (entry: ColumnsEntry) => {
+        const cur = get().sessions[id]?.columns[key];
+        if (cur?.state === "loading" && cur.req === req) patchSession(id, (x) => ({ columns: { ...x.columns, [key]: entry } }));
+      };
+      api.tableColumns(id, s.database, schema, table).then(
+        (cols) => done({ state: "loaded", cols }),
+        () => done({ state: "error" }),
+      );
+    },
+
     /** Refresh button, DDL that ypacapy ran, Reconnect: the cached tree goes and the open schemas reload. */
     refreshTree(connId) {
       const id = connId ?? get().currentId;
@@ -437,7 +459,7 @@ export const useStore = create<State>()((set, get) => {
       const s = get().sessions[id];
       if (!s) return;
       const open = Object.keys(s.tree);
-      patchSession(id, () => ({ tree: {} }));
+      patchSession(id, () => ({ tree: {}, columns: {} }));
       if (id === get().currentId) for (const schema of open) void get().loadSchema(schema);
     },
 
@@ -537,7 +559,7 @@ export const useStore = create<State>()((set, get) => {
       dropEdits(tabId);
       patchTab(tabId, { run: { status: "done", runId, outcome: out, sql } });
       if (out.kind === "done" && out.ddl) get().refreshTree(connId);
-      if (out.kind === "error" && out.lost) patchSession(connId, () => ({ tree: {} }));
+      if (out.kind === "error" && out.lost) patchSession(connId, () => ({ tree: {}, columns: {} }));
       if (get().side === "history") void get().loadHistory();
     },
 

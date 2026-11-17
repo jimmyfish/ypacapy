@@ -14,6 +14,11 @@ export interface ColKey {
   references?: string | null;
 }
 
+/** a key of more columns than this is not frozen */
+const MAX_PINNED = 4;
+/** narrowest a frozen column gets in a small window; below it nothing is frozen */
+const MIN_PIN_W = 80;
+
 const TYPE_ICON: Record<Kind, typeof Hash> = { num: Hash, ts: CalendarClock, bool: ToggleLeft, json: Braces, bytes: Type, text: Type };
 
 /** JSON on one line, keys, strings and literals coloured (the cell); the inspector shows the text as is. */
@@ -49,11 +54,11 @@ function jsonHtml(v: unknown): ReactNode {
   );
 }
 
-function Cell({ v, kind, sel, ci, edited, editor }: { v: string | null; kind: Kind; sel: boolean; ci: number; edited: boolean; editor?: ReactNode }) {
-  const s = (sel ? " cell-sel" : "") + (edited ? " cell-edit" : "");
+function Cell({ v, kind, sel, ci, edited, editor, pin }: { v: string | null; kind: Kind; sel: boolean; ci: number; edited: boolean; editor?: ReactNode; pin?: string }) {
+  const s = (sel ? " cell-sel" : "") + (edited ? " cell-edit" : "") + (pin ? ` ${pin}` : "");
   if (editor)
     return (
-      <td className={`cell-editing${kind === "num" ? " num" : ""}`} data-c={ci}>
+      <td className={`cell-editing${kind === "num" ? " num" : ""}${pin ? ` ${pin}` : ""}`} data-c={ci}>
         {editor}
       </td>
     );
@@ -130,10 +135,16 @@ const GridRow = memo(function GridRow({
   deleted,
   editCol,
   editor,
+  view,
+  pins,
 }: {
   row: (string | null)[];
   n: number;
   kinds: Kind[];
+  /** the columns in the order they are drawn: indexes into row */
+  view: number[];
+  /** the frozen columns' classes, by column */
+  pins: Record<number, string>;
   selCol: number;
   /** values edited and not yet saved, by column */
   changed?: Record<number, string | null>;
@@ -144,9 +155,9 @@ const GridRow = memo(function GridRow({
   return (
     <tr aria-selected={selCol >= 0 ? true : undefined} data-n={n} className={deleted ? "row-del" : changed ? "row-edit" : undefined}>
       <td className="rownum">{n + 1}</td>
-      {row.map((v, i) => {
+      {view.map((i) => {
         const ed = !!changed && i in changed;
-        return <Cell key={i} v={ed ? changed![i] : v} kind={kinds[i]} sel={i === selCol} ci={i} edited={ed} editor={i === editCol ? editor : undefined} />;
+        return <Cell key={i} v={ed ? changed![i] : row[i]} kind={kinds[i]} sel={i === selCol} ci={i} edited={ed} editor={i === editCol ? editor : undefined} pin={pins[i]} />;
       })}
     </tr>
   );
@@ -284,14 +295,26 @@ type SaveError = Extract<RunOutcome, { kind: "error" }>;
  */
 export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: { set: ResultSet; keys?: Record<string, ColKey>; label: string; exportName: string; lead?: ReactNode; foot?: ReactNode; edit?: GridEdit }) {
   const kinds = useMemo(() => set.columns.map((c) => kindOf(c.type)), [set]);
+  const target = edit && edit.target && typeof edit.target === "object" ? edit.target : null;
+
+  // The primary key's columns, in SELECT order, are drawn first and stay on screen while the rest scrolls.
+  // Only the drawing order changes: a column keeps its index everywhere else (selection, edits, copy, export).
+  // No known key (a join, a group by, a table without one, the key not selected): nothing is frozen.
+  const pk = useMemo(() => set.columns.map((c, i) => (keys?.[c.name]?.primary || target?.pk.includes(i) ? i : -1)).filter((i) => i >= 0), [set.columns, keys, target]);
+  const view = useMemo(() => [...pk, ...set.columns.map((_, i) => i).filter((i) => !pk.includes(i))], [set.columns, pk]);
+  const pins = useMemo(() => {
+    const m: Record<number, string> = {};
+    if (pk.length <= MAX_PINNED) pk.forEach((c, k) => (m[c] = `pin-${k}${k === pk.length - 1 ? " pin-last" : ""}`));
+    return m;
+  }, [pk]);
+
   const [sort, setSort] = useState<{ col: number; dir: 1 | -1 } | null>(null);
-  const [sel, setSel] = useState<{ r: number; c: number } | null>(() => (set.rows.length && set.columns.length ? { r: 0, c: 0 } : null));
+  const [sel, setSel] = useState<{ r: number; c: number } | null>(() => (set.rows.length && set.columns.length ? { r: 0, c: view[0] } : null));
   const [ctx, setCtx] = useState<{ x: number; y: number; r: number; c: number } | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const showToast = useStore((s) => s.showToast);
 
   // ---- editing ----
-  const target = edit && edit.target && typeof edit.target === "object" ? edit.target : null;
   const edits = useStore((s) => (edit ? s.edits[edit.key] : undefined)) ?? NO_EDITS;
   const pending = editCount(edits);
   /** r: index into set.rows */
@@ -329,7 +352,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
   // a new result (other columns) starts over; the same one after a save keeps its sort and place
   useEffect(() => {
     setSort(null);
-    setSel(set.rows.length && set.columns.length ? { r: 0, c: 0 } : null);
+    setSel(set.rows.length && set.columns.length ? { r: 0, c: view[0] } : null);
   }, [set.columns]);
   useEffect(() => {
     setEditing(null);
@@ -408,7 +431,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
     if (keep && (e.orig === null ? e.draft !== "" : e.draft !== e.orig)) setCell(e.r, e.c, e.draft);
     if (move !== undefined) {
       const dr = order.indexOf(e.r);
-      const c = Math.max(0, Math.min(set.columns.length - 1, e.c + move));
+      const c = view[Math.max(0, Math.min(view.length - 1, view.indexOf(e.c) + move))];
       setSel({ r: dr, c });
       if (c !== e.c && target?.cols[c] != null) {
         const v = cur(e.r, c) ?? null;
@@ -497,10 +520,12 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
     const d = ({ ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] } as Record<string, [number, number]>)[e.key];
     if (!d || !set.rows.length) return;
     e.preventDefault();
-    const cur = sel ?? { r: 0, c: 0 };
+    const cur = sel ?? { r: 0, c: view[0] };
     const jump = e.metaKey;
     const r = jump ? (d[0] > 0 ? order.length - 1 : d[0] < 0 ? 0 : cur.r) : Math.max(0, Math.min(order.length - 1, cur.r + d[0]));
-    const c = jump ? (d[1] > 0 ? set.columns.length - 1 : d[1] < 0 ? 0 : cur.c) : Math.max(0, Math.min(set.columns.length - 1, cur.c + d[1]));
+    // left and right follow the columns as drawn
+    const p = view.indexOf(cur.c);
+    const c = view[jump ? (d[1] > 0 ? view.length - 1 : d[1] < 0 ? 0 : p) : Math.max(0, Math.min(view.length - 1, p + d[1]))];
     setSel({ r, c });
   };
 
@@ -549,7 +574,43 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
   };
 
   const col = sel ? set.columns[sel.c] : undefined;
-  const pin = set.columns.length > 6;
+  // The frozen columns get at most half the visible width between them: in a narrow window a wide key is cut
+  // short (… and the full value in the inspector) rather than unfrozen. Only when each would get less than
+  // MIN_PIN_W is nothing frozen. Then their left edges, measured, as --pl0..--pl3.
+  const table = useRef<HTMLTableElement>(null);
+  const [fits, setFits] = useState(true);
+  useLayoutEffect(() => {
+    const t = table.current;
+    const w = wrap.current;
+    if (!t || !w || !pk.length || pk.length > MAX_PINNED) return;
+    const heads = () => pk.map((c) => t.querySelector<HTMLElement>(`thead th[data-c="${c}"]`));
+    const measure = () => {
+      let left = t.querySelector<HTMLElement>("thead th.rownum")?.getBoundingClientRect().width ?? 52;
+      const cap = Math.floor((w.clientWidth / 2 - left) / pk.length);
+      if (cap < MIN_PIN_W) {
+        w.style.scrollPaddingLeft = "";
+        setFits(false);
+        return;
+      }
+      t.style.setProperty("--pin-max", `${cap}px`);
+      setFits(true);
+      heads().forEach((th, k) => {
+        t.style.setProperty(`--pl${k}`, `${left}px`);
+        left += th?.getBoundingClientRect().width ?? 0;
+      });
+      // a cell scrolled into view (arrow keys, Go to a column) lands right of the frozen columns, not under them
+      w.style.scrollPaddingLeft = `${left}px`;
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(w);
+    for (const th of heads()) if (th) ro.observe(th);
+    return () => {
+      ro.disconnect();
+      w.style.scrollPaddingLeft = "";
+    };
+  }, [pk, set]);
+  const pin = pk.length > 0 && pk.length <= MAX_PINNED && fits;
   const editor = editing && (
     <CellEditor value={editing.draft} onChange={(draft) => setEditing((x) => (x ? { ...x, draft } : x))} onDone={finishEdit} />
   );
@@ -604,7 +665,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
                     onClick={() => {
                       close();
                       setSel({ r: sel?.r ?? 0, c: i });
-                      wrap.current?.querySelectorAll("thead th")[i + 1]?.scrollIntoView({ block: "nearest", inline: "center" });
+                      wrap.current?.querySelector(`thead th[data-c="${i}"]`)?.scrollIntoView({ block: "nearest", inline: "center" });
                       wrap.current?.focus();
                     }}
                   >
@@ -654,18 +715,19 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
         </div>
       )}
       <div className="grid-wrap" tabIndex={0} aria-label={label} ref={wrap} onKeyDown={onKey} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu}>
-        <table className={`grid${pin ? " pin" : ""}`}>
+        <table className={`grid${pin ? " pin" : ""}`} ref={table}>
           <thead>
             <tr>
               <th className="rownum" scope="col">
                 <span className="visually-hidden">Row</span>
               </th>
-              {set.columns.map((c, i) => {
+              {view.map((i) => {
+                const c = set.columns[i];
                 const TI = TYPE_ICON[kinds[i]];
                 const k = keys?.[c.name] ?? (target?.pk.includes(i) ? { primary: true } : undefined);
                 const dir = sort?.col === i ? sort.dir : 0;
                 return (
-                  <th key={i} scope="col" className={kinds[i] === "num" ? "num" : undefined} aria-sort={dir === 1 ? "ascending" : dir === -1 ? "descending" : "none"}>
+                  <th key={i} scope="col" data-c={i} className={[kinds[i] === "num" ? "num" : "", pins[i] ?? ""].join(" ").trim() || undefined} aria-sort={dir === 1 ? "ascending" : dir === -1 ? "descending" : "none"}>
                     <button type="button" className="th-btn" title="Sort the rows on screen" onClick={() => sortBy(i)}>
                       <TI {...icoC("t-ico")} />
                       <span className="col-name">{c.name}</span>
@@ -700,6 +762,8 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
                 deleted={edits.deleted[ri]}
                 editCol={editing?.r === ri ? editing.c : -1}
                 editor={editing?.r === ri ? editor : undefined}
+                view={view}
+                pins={pins}
               />
             ))}
           </tbody>

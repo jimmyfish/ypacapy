@@ -7,7 +7,7 @@ import type { Engine } from "../types";
 
 export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-const KEYWORDS = new Set(
+export const KEYWORDS = new Set(
   (
     "select from where and or not in is null as on join left right inner outer full cross natural using group by order having limit offset fetch first next rows only " +
     "union all intersect except distinct case when then else end insert into values update set delete returning create table view index unique primary key foreign " +
@@ -26,22 +26,63 @@ const TYPES = new Set(
 // comment | string | dollar-quoted | quoted identifier | number | word | anything else
 const TOKEN = /(--[^\n]*|\/\*[\s\S]*?(?:\*\/|$))|('(?:[^']|'')*'?)|(\$([A-Za-z_]\w*)?\$[\s\S]*?(?:\$\4\$|$))|("(?:[^"]|"")*"?|`[^`]*`?)|(\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b)|([A-Za-z_][\w$]*)/g;
 
-type Run = [cls: string, text: string];
+export type Run = [cls: string, text: string];
 
-function runs(src: string): Run[] {
+// Table names (q-tb): the name after FROM, JOIN, UPDATE, INTO, TABLE, TRUNCATE, REFERENCES, each name in a
+// FROM list (a, b), and every part of schema.table. FROM counts only where this paren level holds a
+// SELECT/DELETE, so EXTRACT(x FROM ts) and IS DISTINCT FROM y stay plain. After FROM/JOIN a name followed
+// by "(" is a function (generate_series); after INTO/TABLE it is the table with its column list.
+const TABLE_AFTER = new Set(["from", "join", "update", "into", "table", "truncate", "references"]);
+const KEEP_WANT = new Set(["only", "lateral", "if", "not", "exists"]);
+const KEEP_LIST = new Set(["as", "only", "lateral", "join", "left", "right", "inner", "outer", "full", "cross", "natural"]);
+
+/** the text in coloured runs: class q-c comment, q-s string, q-k keyword, q-t type, q-f function, q-n number, q-tb table, "" the rest */
+export function runs(src: string): Run[] {
   const out: Run[] = [];
   let last = 0;
+  let depth = 0, list = -1, want = "", tableEnd = -1, prevKw = "";
+  let sel: boolean[] = [false];
+  const gap = (text: string) => {
+    for (const ch of text) {
+      if (ch === "(") { depth++; sel[depth] = false; want = ""; }
+      else if (ch === ")") { if (depth > 0) depth--; if (list > depth) list = -1; want = ""; }
+      else if (ch === "," && list === depth) want = "from";
+      else if (ch === ";") { depth = 0; sel = [false]; list = -1; want = ""; }
+    }
+  };
   TOKEN.lastIndex = 0;
   for (let m = TOKEN.exec(src); m; m = TOKEN.exec(src)) {
-    if (m.index > last) out.push(["", src.slice(last, m.index)]);
+    if (m.index > last) {
+      out.push(["", src.slice(last, m.index)]);
+      gap(src.slice(last, m.index));
+    }
+    const qualified = tableEnd >= 0 && src.slice(tableEnd, m.index) === ".";
+    tableEnd = -1;
     let cls = "";
     if (m[1]) cls = "q-c";
-    else if (m[2] || m[3]) cls = "q-s";
-    else if (m[6]) cls = "q-n";
-    else if (m[7]) {
-      const w = m[7].toLowerCase();
-      const next = src.slice(m.index + m[0].length).match(/^\s*\(/);
-      cls = KEYWORDS.has(w) ? "q-k" : TYPES.has(w) ? "q-t" : next ? "q-f" : "";
+    else if (m[2] || m[3] || m[6]) {
+      cls = m[6] ? "q-n" : "q-s";
+      want = "";
+      prevKw = "";
+    } else {
+      const w = (m[7] || "").toLowerCase();
+      const call = /^\s*\(/.test(src.slice(m.index + m[0].length));
+      if (m[7] && KEYWORDS.has(w)) {
+        cls = "q-k";
+        if (w === "select" || w === "delete") sel[depth] = true;
+        if (TABLE_AFTER.has(w) && !(w === "from" && (!sel[depth] || prevKw === "distinct"))) {
+          want = w;
+          if (w === "from") list = depth;
+        } else if (!KEEP_WANT.has(w)) want = "";
+        if (list === depth && !KEEP_LIST.has(w) && w !== "from") list = -1;
+        prevKw = w;
+      } else {
+        const fn = call && (want === "from" || want === "join" || !want) && !qualified;
+        cls = (want || qualified) && !fn ? "q-tb" : !m[7] ? "" : TYPES.has(w) ? "q-t" : call ? "q-f" : "";
+        if (cls === "q-tb") tableEnd = m.index + m[0].length;
+        want = "";
+        prevKw = "";
+      }
     }
     out.push([cls, m[0]]);
     last = m.index + m[0].length;

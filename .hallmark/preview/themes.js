@@ -8,6 +8,8 @@
   { id: "ayu-mirage", name: "Ayu Mirage", family: "Ayu", g: G("#1f2430", "#cccac2", "#171b24 #ed8274 #87d96c #facc6e #6dcbfa #dabafa #90e1c6 #c7c7c7 #686868 #f28779 #d5ff80 #ffd173 #73d0ff #dfbfff #95e6cb #ffffff") },
   { id: "atom-one-light", name: "Atom One Light", family: "Atom", g: G("#f9f9f9", "#2a2c33", "#000000 #de3e35 #3f953a #d2b67c #2f5af3 #950095 #3f953a #bbbbbb #000000 #de3e35 #3f953a #d2b67c #2f5af3 #a00095 #3f953a #ffffff") },
   { id: "atom-one-dark", name: "Atom One Dark", family: "Atom", g: G("#21252b", "#abb2bf", "#21252b #e06c75 #98c379 #e5c07b #61afef #c678dd #56b6c2 #abb2bf #767676 #e06c75 #98c379 #e5c07b #61afef #c678dd #56b6c2 #abb2bf") },
+  { id: "xcode-light", name: "Xcode Light", family: "Xcode", g: G("#ffffff", "#262626", "#b4d8fd #d12f1b #3e8087 #78492a #0f68a0 #ad3da4 #804fb8 #262626 #8a99a6 #d12f1b #23575c #78492a #0b4f79 #ad3da4 #4b21b0 #262626") },
+  { id: "xcode-dark", name: "Xcode Dark", family: "Xcode", g: G("#292a30", "#dfdfe0", "#414453 #ff8170 #78c2b3 #d9c97c #4eb0cc #ff7ab2 #b281eb #dfdfe0 #7f8c98 #ff8170 #acf2e4 #ffa14f #6bdfff #ff7ab2 #dabaff #dfdfe0") },
   ];
   /** The two built-in schemes: tokens.css itself, light and dark (voidHTTP's, renamed). */
   const BUILTIN = {

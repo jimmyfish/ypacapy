@@ -6,7 +6,7 @@
 /* Hallmark · pre-emit critique: P4 H4 E4 S3 R5 V3 · weakest: S, the look is voidHTTP's by request; the query line, the engine label and the column types under each grid head keep it a database tool */
 /* Hallmark · owner decision: soft field edges (--color-edge-soft, about 1.3:1), inherited from voidHTTP; Floor 40 stays open and is reported, --color-edge-aa (3:1) is kept for a future setting */
 /* Hallmark · dismissed F4 · Run is the one filled primary button; the filled new-query plus and the filled mode chips are voidHTTP's selection and icon states, not a second call to action */
-/* Hallmark · waive 24b · .tab-add margin 5px is an optical offset, not spacing · it puts the plus on the centre line of the 42px tab text, (42 - 32) / 2 */
+/* Hallmark · waive 24b · .tab-add and .side-toggle margin 2.5px is an optical offset, not spacing · it puts their 32px buttons on the centre line of the tab icons, measured 18.5px up from the bar's foot (18.5 - 16); 2.5px is 5 device pixels on a 2x screen */
 /* Hallmark · waive 39b · .seg button is 24px inside the 28px Rows and Structure switch of the results toolbar · voidHTTP's compact view switch, kept the same size here */
 /* Hallmark · dismissed 3 · the 3px rule on the vertical .divider is its drag grip, voidHTTP's side-by-side divider, not a card stripe */
 /* Hallmark · dismissed 23 · .side-resize::after is a 3px line along the sidebar edge while dragged, far under 5% of the window */
@@ -163,7 +163,7 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 32px; 
 .tab:not([aria-current="page"]) + .tab:not([aria-current="page"])::before {
   content: ""; position: absolute; left: -3px; top: 50%; width: 1px; height: 16px; transform: translateY(-50%); background: var(--color-rule);
 }
-.tab-main { display: flex; align-items: center; gap: var(--space-xs); min-width: 0; height: 100%; padding: 0 var(--space-2xs) 0 var(--space-sm); border: none; background: none; color: inherit; }
+.tab-main { flex: 1 1 auto; display: flex; align-items: center; gap: var(--space-xs); min-width: 0; height: 100%; padding: 0 var(--space-2xs) 0 var(--space-sm); border: none; background: none; color: inherit; }
 .tab[aria-current="page"] .tab-main .name { font-weight: 600; }
 .tab-main .m { width: auto; }
 .tab-main:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
@@ -173,7 +173,21 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 32px; 
 /* close is always visible on every tab; the unsaved dot sits beside it, never replaced by it */
 .tab .close { display: inline-grid; min-width: 20px; min-height: 20px; border-radius: 6px; color: var(--color-muted); }
 .tab .close:hover { color: var(--color-ink); background: var(--color-paper-2); }
-.tab-add { align-self: flex-end; margin: 0 0 5px var(--space-2xs); flex-shrink: 0; } /* centred on the tab text line: (42 - 32) / 2 */
+.tab-add { align-self: flex-end; margin: 0 0 2.5px var(--space-2xs); flex-shrink: 0; } /* on the tab icons' centre line, 18.5px up from the foot: 16px + 2.5px */
+/* many tabs: they shrink to 140px (names ellipsized; the active one keeps its width), then the row scrolls
+ * sideways with no scrollbar. The picked tab scrolls into view, and a mouse wheel scrolls the row (TabsBar). */
+.tabs { scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex-shrink: 1; min-width: 140px; }
+.tab[aria-current="page"] { flex-shrink: 0; }
+/* tabs past an edge fade out there, so the row never stops hard against the security pill (data-fade-* from TabsBar) */
+.tabs[data-fade-end="true"] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.tabs[data-fade-start="true"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px); mask-image: linear-gradient(to right, transparent, #000 28px); }
+.tabs[data-fade-start="true"][data-fade-end="true"] {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+}
+.tabsbar .env-group { padding-left: var(--space-sm); }
 
 .joined { position: relative; display: inline-flex; flex-shrink: 0; }
 .joined > :first-child:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
@@ -272,7 +286,9 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 32px; 
 .divider[aria-orientation="vertical"]::after { width: 4px; height: 16px; background-size: 4px 6px; background-repeat: repeat-y; }
 .divider[aria-orientation="vertical"]:hover { border-left-color: var(--color-accent); }
 /* tabs bar toggles: sidebar on the far left, layout beside the environment */
-.side-toggle { align-self: flex-end; margin-bottom: 5px; flex-shrink: 0; } /* on the tab text line, like .tab-add */
+.side-toggle { align-self: flex-end; margin-bottom: 2.5px; flex-shrink: 0; } /* on the tab text line, like .tab-add */
+/* the toggle and the new-tab plus sit beside the tabs: hovered, the icon brightens with no square behind it */
+.side-toggle:hover, .tab-add:hover { background: transparent; color: var(--color-ink); }
 .layout-toggle { align-self: center; flex-shrink: 0; } /* centred with the environment picker beside it */
 .side-toggle { margin-right: calc(var(--space-sm) * -1 + var(--space-2xs)); }
 .layout-toggle { margin-left: auto; }

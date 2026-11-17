@@ -309,6 +309,53 @@
   }
 
   apply();
+  // many tabs: the row scrolls sideways with no scrollbar; the edge with tabs past it fades, and a mouse wheel scrolls the row
+  $$(".tabs").forEach((el) => {
+    const edges = () => { el.dataset.fadeStart = String(el.scrollLeft > 1); el.dataset.fadeEnd = String(el.scrollLeft + el.clientWidth < el.scrollWidth - 1); };
+    new ResizeObserver(edges).observe(el);
+    el.addEventListener("scroll", edges, { passive: true });
+    el.addEventListener("wheel", (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) el.scrollLeft += e.deltaY; }, { passive: true });
+    edges();
+  });
+  // Tabs: right-click for Pin tab / Unpin tab and Close tab. A pinned tab joins the pinned ones at the left, keeps its
+  // width, and shows a pin where its close button was (click the pin to unpin). It stays open: Close and ⌘W skip it.
+  // In the app a pinned tab is kept with its connection, across a restart and a reconnect.
+  {
+    const tabsEl = $(".tabs");
+    if (tabsEl) {
+      const icon = (n) => `<svg aria-hidden="true" class="ico"><use href="#i-${n}"/></svg>`;
+      const menu = document.createElement("div");
+      menu.className = "menu ctx-menu"; menu.id = "tab-menu"; menu.hidden = true;
+      menu.setAttribute("role", "menu"); menu.setAttribute("aria-label", "Tab");
+      menu.innerHTML = `<button type="button" role="menuitem" data-tm="pin"></button><hr><button type="button" role="menuitem" data-tm="close">${icon("x")}Close tab<kbd>⌘W</kbd></button><p class="menu-note" data-tm-note hidden>Unpin the tab to close it</p>`;
+      document.body.append(menu);
+      let cur = null;
+      const pinned = () => $$(".tab[data-pinned]", tabsEl);
+      const setPinned = (t, on) => {
+        t.toggleAttribute("data-pinned", on);
+        const last = pinned().filter((x) => x !== t).pop();
+        last ? last.after(t) : tabsEl.prepend(t);
+        t.scrollIntoView({ block: "nearest", inline: "nearest" });
+      };
+      $$(".tab .pin", tabsEl).forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); setPinned(b.closest(".tab"), false); }));
+      $$(".tab", tabsEl).forEach((t) => t.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        $$(".menu:not([hidden])").forEach((m) => { m.hidden = true; });
+        cur = t;
+        const on = t.hasAttribute("data-pinned");
+        $('[data-tm="pin"]', menu).innerHTML = on ? `${icon("pin-off")}Unpin tab` : `${icon("pin")}Pin tab`;
+        $('[data-tm="close"]', menu).disabled = on;
+        $("[data-tm-note]", menu).hidden = !on;
+        menu.hidden = false;
+        const r = menu.getBoundingClientRect();
+        menu.style.left = `${Math.max(8, Math.min(e.clientX, innerWidth - r.width - 8))}px`;
+        menu.style.top = `${e.clientY + r.height > innerHeight - 8 ? Math.max(8, e.clientY - r.height) : e.clientY}px`;
+        $("button", menu).focus();
+      }));
+      $('[data-tm="pin"]', menu).addEventListener("click", () => { menu.hidden = true; if (cur) setPinned(cur, !cur.hasAttribute("data-pinned")); });
+      $('[data-tm="close"]', menu).addEventListener("click", () => { menu.hidden = true; if (cur && !cur.hasAttribute("data-pinned")) cur.hidden = true; });
+    }
+  }
   // Security level of the open connection: None, Low or Strict; lowering from Strict asks for the passphrase first (in the app)
   {
     const btn = $("#guard-btn");

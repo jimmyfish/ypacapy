@@ -6,7 +6,7 @@
 /* Hallmark · pre-emit critique: P4 H4 E4 S3 R5 V3 · weakest: S, the look is voidHTTP's by request; the query line, the engine label and the column types under each grid head keep it a database tool */
 /* Hallmark · owner decision: soft field edges (--color-edge-soft, about 1.3:1), inherited from voidHTTP; Floor 40 stays open and is reported, --color-edge-aa (3:1) is kept for a future setting */
 /* Hallmark · dismissed F4 · Run is the one filled primary button; the filled new-query plus and the filled mode chips are voidHTTP's selection and icon states, not a second call to action */
-/* Hallmark · waive 24b · .tab-add margin 5px is an optical offset, not spacing · it puts the plus on the centre line of the 42px tab text, (42 - 32) / 2 */
+/* Hallmark · waive 24b · .tab-add and .side-toggle margin 2.5px is an optical offset, not spacing · it puts their 32px buttons on the centre line of the tab icons, measured 18.5px up from the bar's foot (18.5 - 16); 2.5px is 5 device pixels on a 2x screen */
 /* Hallmark · waive 39b · .seg button is 24px inside the 28px Rows and Structure switch of the results toolbar · voidHTTP's compact view switch, kept the same size here */
 /* Hallmark · dismissed 3 · the 3px rule on the vertical .divider is its drag grip, voidHTTP's side-by-side divider, not a card stripe */
 /* Hallmark · dismissed 23 · .side-resize::after is a 3px line along the sidebar edge while dragged, far under 5% of the window */
@@ -163,7 +163,7 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 32px; 
 .tab:not([aria-current="page"]) + .tab:not([aria-current="page"])::before {
   content: ""; position: absolute; left: -3px; top: 50%; width: 1px; height: 16px; transform: translateY(-50%); background: var(--color-rule);
 }
-.tab-main { display: flex; align-items: center; gap: var(--space-xs); min-width: 0; height: 100%; padding: 0 var(--space-2xs) 0 var(--space-sm); border: none; background: none; color: inherit; }
+.tab-main { flex: 1 1 auto; display: flex; align-items: center; gap: var(--space-xs); min-width: 0; height: 100%; padding: 0 var(--space-2xs) 0 var(--space-sm); border: none; background: none; color: inherit; }
 .tab[aria-current="page"] .tab-main .name { font-weight: 600; }
 .tab-main .m { width: auto; }
 .tab-main:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
@@ -173,7 +173,21 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 32px; 
 /* close is always visible on every tab; the unsaved dot sits beside it, never replaced by it */
 .tab .close { display: inline-grid; min-width: 20px; min-height: 20px; border-radius: 6px; color: var(--color-muted); }
 .tab .close:hover { color: var(--color-ink); background: var(--color-paper-2); }
-.tab-add { align-self: flex-end; margin: 0 0 5px var(--space-2xs); flex-shrink: 0; } /* centred on the tab text line: (42 - 32) / 2 */
+.tab-add { align-self: flex-end; margin: 0 0 2.5px var(--space-2xs); flex-shrink: 0; } /* on the tab icons' centre line, 18.5px up from the foot: 16px + 2.5px */
+/* many tabs: they shrink to 140px (names ellipsized; the active one keeps its width), then the row scrolls
+ * sideways with no scrollbar. The picked tab scrolls into view, and a mouse wheel scrolls the row (TabsBar). */
+.tabs { scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex-shrink: 1; min-width: 140px; }
+.tab[aria-current="page"] { flex-shrink: 0; }
+/* tabs past an edge fade out there, so the row never stops hard against the security pill (data-fade-* from TabsBar) */
+.tabs[data-fade-end="true"] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.tabs[data-fade-start="true"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px); mask-image: linear-gradient(to right, transparent, #000 28px); }
+.tabs[data-fade-start="true"][data-fade-end="true"] {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+}
+.tabsbar .env-group { padding-left: var(--space-sm); }
 
 .joined { position: relative; display: inline-flex; flex-shrink: 0; }
 .joined > :first-child:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
@@ -272,7 +286,9 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 32px; 
 .divider[aria-orientation="vertical"]::after { width: 4px; height: 16px; background-size: 4px 6px; background-repeat: repeat-y; }
 .divider[aria-orientation="vertical"]:hover { border-left-color: var(--color-accent); }
 /* tabs bar toggles: sidebar on the far left, layout beside the environment */
-.side-toggle { align-self: flex-end; margin-bottom: 5px; flex-shrink: 0; } /* on the tab text line, like .tab-add */
+.side-toggle { align-self: flex-end; margin-bottom: 2.5px; flex-shrink: 0; } /* on the tab text line, like .tab-add */
+/* the toggle and the new-tab plus sit beside the tabs: hovered, the icon brightens with no square behind it */
+.side-toggle:hover, .tab-add:hover { background: transparent; color: var(--color-ink); }
 .layout-toggle { align-self: center; flex-shrink: 0; } /* centred with the environment picker beside it */
 .side-toggle { margin-right: calc(var(--space-sm) * -1 + var(--space-2xs)); }
 .layout-toggle { margin-left: auto; }
@@ -1289,3 +1305,37 @@ body.cards-dragging .group-drop-new { display: flex; }
 .about-verline .about-ver { margin-top: 0; }
 .about-res dd .muted { color: var(--color-muted); }
 .about-res dd.warn { color: var(--color-warn); }
+
+/* Run: play icon, bold label, its shortcut inside the button. While a run is out the button is disabled
+ * and a turning loader-circle takes the play icon's place. */
+.request-line .btn--run { gap: var(--space-xs); padding: 0 var(--space-md) 0 var(--space-sm); font-weight: 700; }
+.btn--run .run-ico, .btn--run .run-spin { width: 15px; height: 15px; stroke-width: 2; }
+.btn--run .run-spin { display: none; }
+.btn--run[aria-busy] .run-ico { display: none; }
+.btn--run[aria-busy] .run-spin { display: block; animation: spin 0.8s linear infinite; }
+.btn--run[aria-busy]:disabled { opacity: 0.8; cursor: progress; }
+@media (prefers-reduced-motion: reduce) { .btn--run[aria-busy] .run-spin { animation-duration: 2.4s; } }
+.btn--run .run-kbd { margin-left: var(--space-xs); font: 500 var(--text-sm) / 1 var(--font-ui); letter-spacing: 0.04em; opacity: 0.85; }
+
+/* the security level pill: no edge, tinted by level (Flat UI: None Asphalt, Low Carrot, Strict Alizarin), bold name */
+.guard .env-picker { --fg: var(--proj-8-fg); --bg: var(--proj-8-bg); gap: 6px; padding: 0 var(--space-xs) 0 var(--space-sm); border: none; border-radius: var(--radius-pill); background: var(--bg); color: var(--fg); font-weight: 700; }
+.guard .env-picker[data-level="low"] { --fg: var(--proj-3-fg); --bg: var(--proj-3-bg); }
+.guard .env-picker[data-level="strict"] { --fg: var(--proj-6-fg); --bg: var(--proj-6-bg); }
+.guard .env-picker:hover, .guard .env-picker[aria-expanded="true"] { background: color-mix(in srgb, var(--fg) 14%, var(--bg)); }
+.guard .env-picker .guard-ico, .guard .env-picker[data-level="none"] .guard-ico { color: currentColor; }
+.guard .env-picker .ico:last-child { color: currentColor; opacity: 0.7; margin-left: 2px; }
+
+/* Save: one button, one width. Saved and unchanged, it reads "Saved" with a green check and does nothing;
+ * never saved or edited since, it reads "Save". */
+.request-line .btn--save { min-width: 96px; gap: 6px; }
+.btn--save .save-ico { display: none; width: 15px; height: 15px; color: var(--color-ok); }
+.btn--save[data-saved="true"] .save-ico { display: block; }
+.btn--save[data-saved="true"]:disabled { opacity: 1; cursor: default; color: var(--color-muted); background: var(--color-paper); }
+
+/* a pinned tab: kept with the connection, first in the row, never shrunk; a pin stands where its close button was */
+.tab[data-pinned] { flex-shrink: 0; }
+.tab .pin { display: none; min-width: 20px; min-height: 20px; border-radius: 6px; color: var(--color-muted); }
+.tab .pin .ico { width: 14px; height: 14px; }
+.tab .pin:hover { color: var(--color-ink); background: var(--color-paper-2); }
+.tab[data-pinned] .pin { display: inline-grid; }
+.tab[data-pinned] .close { display: none; }

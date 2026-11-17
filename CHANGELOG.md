@@ -4,9 +4,22 @@ All notable changes to ypacapy are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Added
+
+- **Pinned tabs.** Right-click a tab and choose Pin tab. A pinned tab moves to the left of the row and shows a pin where its close button was; click the pin to unpin it. Pinned tabs, table tabs included, come back after a restart and after you close and reopen the connection. A pinned tab can't be closed, with `⌘W` or otherwise, until you unpin it.
+- **Xcode colour schemes.** Xcode Light and Xcode Dark join the scheme picker in Settings, taken from Ghostty's theme files like Ayu and Atom One.
+
 ### Changed
 
 - **`⌘↵` runs the statement at the cursor.** With nothing selected, `⌘↵` runs only the statement the cursor is in, up to the next `;`. With a selection it runs the selection. `⇧⌘↵` now runs the whole editor.
+- **Run and Save buttons.** Run shows a play icon and its `⌘↵` shortcut, and clicking it does what `⌘↵` does. While a query runs, the button is disabled and a spinner replaces the play icon. The SQL console's Run has no menu any more, so Explain is gone from it. Save sits before Run and reads "Saved" with a green check when the query has no unsaved changes.
+- **Security level pill.** The level in the tabs bar is a tinted pill: grey for None, orange for Low, red for Strict. Its menu no longer ends with the note about picking statements.
+- **One way to a new query tab.** The blue `+` beside the schema filter is gone. Use the `+` after the tabs or `⌘T`.
+
+### Fixed
+
+- **Many open tabs.** The tabs bar no longer shows a horizontal scrollbar, and tabs no longer run under the security level pill. Tabs shrink to a minimum width, then the row scrolls sideways and fades at the edge where more tabs are hidden. A mouse wheel scrolls the row.
+- **Tabs bar alignment.** The sidebar toggle and the new-tab `+` sit on the same line as the tab icons; they sat about 2px high.
 
 ## [0.0.1] - 2026-11-17
 

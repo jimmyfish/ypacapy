@@ -6,7 +6,7 @@ import { quoteIdent } from "../lib/sql";
 import { clockOf, dayLabel, startOfDay } from "../lib/time";
 import type { Saved } from "../types";
 import { useDismiss } from "./useDismiss";
-import { ChevronDown, ChevronRight, Copy, Ellipsis, Eye, Folder, Plus, RefreshCw, Search, SquareCode, SquareFunction, Table2, Trash2, icoC, ico } from "./Icon";
+import { ChevronDown, ChevronRight, Copy, Ellipsis, Eye, Folder, RefreshCw, Search, SquareCode, SquareFunction, Table2, Trash2, icoC, ico } from "./Icon";
 
 export function Sidebar({ view, onResizeStart }: { view: SideView; onResizeStart: (e: React.MouseEvent) => void }) {
   return (
@@ -210,9 +210,6 @@ function SchemaSide() {
         </div>
         <button type="button" className="icon-btn icon-btn--outline" title="Refresh schema" aria-label="Refresh schema" onClick={() => st.refreshTree()}>
           <RefreshCw {...ico} />
-        </button>
-        <button type="button" className="icon-btn icon-btn--filled" title="New query  ⌘T" aria-label="New query" onClick={() => st.newQueryTab()}>
-          <Plus {...ico} />
         </button>
       </div>
       <div className="tree">

@@ -8,7 +8,7 @@ import type { QueryTab, ResultSet, RunOutcome, RunState } from "../types";
 import { ResultGrid, type GridEdit } from "./ResultGrid";
 import { SqlEditor, type Completer } from "./SqlEditor";
 import { useDismiss } from "./useDismiss";
-import { ChevronDown, CircleCheck, WandSparkles, ico } from "./Icon";
+import { ChevronDown, CircleCheck, LoaderCircle, Play, WandSparkles, ico, icoC } from "./Icon";
 
 /** The connection's database and schema pickers, inside the query line's filled field. */
 function CtxSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
@@ -60,16 +60,26 @@ export function QueryContext() {
   );
 }
 
-/** Run, and its menu. */
-export function RunGroup({ busy, disabled, onRun, items }: { busy: boolean; disabled?: boolean; onRun: () => void; items: { label: string; kbd?: string; run: () => void }[] }) {
+/**
+ * Run: a play icon, the label and its shortcut inside the button. While a run is out the button is
+ * disabled and a turning loader takes the play icon's place. With `items`, a menu opens from a chevron beside it.
+ */
+export function RunGroup({ busy, disabled, onRun, kbd, items }: { busy: boolean; disabled?: boolean; onRun: () => void; kbd: string; items?: { label: string; kbd?: string; run: () => void }[] }) {
   const [open, setOpen] = useState(false);
   const ref = useDismiss(open, () => setOpen(false));
+  const run = (
+    <button type="button" className="btn btn--primary btn--run" aria-busy={busy || undefined} disabled={disabled || busy} title={`Run  ${kbd}`} onClick={onRun}>
+      {busy ? <LoaderCircle {...icoC("run-spin")} /> : <Play {...icoC("run-ico")} />}
+      <span>Run</span>
+      <span className="run-kbd" aria-hidden="true">
+        {kbd}
+      </span>
+    </button>
+  );
+  if (!items) return run;
   return (
     <div className="joined" ref={ref}>
-      <button type="button" className="btn btn--primary" aria-busy={busy || undefined} disabled={disabled} onClick={onRun}>
-        {busy && <span className="spinner" />}
-        Run
-      </button>
+      {run}
       <button type="button" className="btn btn--primary joined-tail" aria-label="More run options" aria-haspopup="menu" aria-expanded={open} disabled={disabled} onClick={() => setOpen(!open)}>
         <ChevronDown {...ico} />
       </button>
@@ -373,11 +383,6 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
     const s = selection().trim() ? selection() : statementAt(tab.sql, editor.current?.selectionStart ?? tab.sql.length);
     if (s.trim()) void st.run(tab.id, { sql: s });
   };
-  const explain = () => {
-    const s = (selection() || tab.sql).trim();
-    if (!s || !conn) return;
-    void st.run(tab.id, { sql: `${conn.engine === "sqlite" ? "explain query plan" : "explain"} ${s}` });
-  };
 
   // ⌘↵ runs the selection or the statement at the cursor, ⇧⌘↵ everything, wherever the focus is in this tab
   useEffect(() => {
@@ -430,26 +435,20 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
           <div className="url-field">
             <QueryContext />
           </div>
-          <RunGroup
-            busy={busy}
-            disabled={session.status !== "open"}
-            onRun={runAll}
-            items={[
-              { label: "Run statement or selection", kbd: "⌘↵", run: runSel },
-              { label: "Run all", kbd: "⇧⌘↵", run: runAll },
-              { label: "Explain", run: explain },
-            ]}
-          />
-          <div className="joined">
-            <button type="button" className="btn" onClick={() => void st.saveTab(tab.id)} title="Save  ⌘S">
-              Save
-            </button>
-            {saved && (
-              <span className="btn joined-tail save-state ok" role="img" aria-label="Saved" title="Saved">
-                <CircleCheck {...ico} />
-              </span>
-            )}
-          </div>
+          {/* Saved and unchanged, Save reads "Saved" and does nothing; one width either way, so Run stays put */}
+          <button
+            type="button"
+            className="btn btn--save"
+            data-saved={saved}
+            disabled={saved}
+            title={saved ? "No changes since the last save" : "Save  ⌘S"}
+            onClick={() => void st.saveTab(tab.id)}
+          >
+            {saved && <CircleCheck {...icoC("save-ico")} />}
+            {saved ? "Saved" : "Save"}
+          </button>
+          {/* the click does what ⌘↵ does; ⇧⌘↵ runs the whole editor */}
+          <RunGroup busy={busy} disabled={session.status !== "open"} onRun={runSel} kbd="⌘↵" />
         </div>
         <div className="req-title">
           <button type="button" className="name" title="Rename" onClick={rename}>

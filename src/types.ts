@@ -213,6 +213,8 @@ export interface QueryTab {
   savedId?: string;
   savedFolder?: string;
   savedSql?: string;
+  /** kept with the connection (a restart, a reconnect), first in the row, and not closed until unpinned */
+  pinned?: boolean;
   run: RunState;
 }
 
@@ -224,6 +226,8 @@ export interface TableTab {
   where: string;
   offset: number;
   view: "rows" | "columns" | "indexes";
+  /** kept with the connection (a restart, a reconnect), first in the row, and not closed until unpinned */
+  pinned?: boolean;
   run: RunState;
   info?: TableInfo;
   infoError?: string;

@@ -13,7 +13,7 @@ import { schemeTokens } from "./lib/themes";
 import { connColorId } from "./lib/connColors";
 import { useUpdates } from "./updates";
 import { UpdateChip } from "./components/UpdateChip";
-import { Bookmark, Database, HistoryIcon, House, ListTree, Settings, X, ico, icoLg } from "./components/Icon";
+import { Bookmark, Database, HistoryIcon, House, ListTree, Settings2, X, ico, icoLg } from "./components/Icon";
 
 export const SIDEBAR_DEFAULT = 296;
 const SIDEBAR_MIN = 220;
@@ -122,7 +122,7 @@ function AppStrip() {
       <div className="strip-end">
         <UpdateChip />
         <button type="button" className="icon-btn strip-settings" title="Settings  ⌘," aria-label="Settings" aria-expanded={settingsOpen} onClick={() => st.openModal({ kind: "settings" })}>
-          <Settings {...ico} />
+          <Settings2 {...ico} />
         </button>
       </div>
     </div>

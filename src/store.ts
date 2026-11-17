@@ -71,6 +71,8 @@ interface State {
   openTable(schema: string, table: string): void;
   setActiveTab(id: string): void;
   closeTab(id: string, force?: boolean): void;
+  /** pins or unpins a tab; a pinned tab moves to the end of the pinned ones at the left */
+  pinTab(id: string, on: boolean): void;
   updateTab(id: string, patch: Partial<QueryTab> | Partial<TableTab>): void;
   run(tabId: string, opts?: { sql?: string; approval?: Approval; discard?: boolean }): Promise<void>;
   cancel(tabId: string): void;
@@ -83,13 +85,16 @@ interface State {
 }
 
 /**
- * Each connection's query tabs (scratchpads and edited saved queries) are kept in ypacapy.db and come
- * back when it is opened again, also after a restart. Table tabs are not kept.
+ * Each connection's query tabs (scratchpads and edited saved queries) and its pinned tabs are kept in
+ * ypacapy.db and come back when it is opened again, also after a restart. An unpinned table tab is not kept.
+ * A table entry has `kind: "table"` and no `sql`, so a build that knows only query tabs skips it.
  */
+type KeptQuery = { kind?: "query"; id: string; title: string; sql: string; savedId?: string; savedFolder?: string; savedSql?: string; pinned?: boolean };
+type KeptTable = { kind: "table"; id: string; schema: string; table: string; where: string; view: TableTab["view"]; pinned?: boolean };
 interface Workspace {
   v: 1;
   active: string | null;
-  tabs: { id: string; title: string; sql: string; savedId?: string; savedFolder?: string; savedSql?: string }[];
+  tabs: (KeptQuery | KeptTable)[];
 }
 /** a short pause after the last change, so a quit right after typing loses little */
 const WORKSPACE_SAVE_MS = 300;
@@ -99,12 +104,16 @@ const saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const lastWritten = new Map<string, string>();
 
 function workspaceOf(s: Session): string {
-  const kept = s.tabs.filter((t): t is QueryTab => t.kind === "query" && (!!t.savedId || t.sql.trim() !== ""));
+  const kept = s.tabs.filter((t) => t.pinned || (t.kind === "query" && (!!t.savedId || t.sql.trim() !== "")));
   const active = kept.find((t) => t.id === s.activeTabId)?.id ?? kept[kept.length - 1]?.id ?? null;
   const w: Workspace = {
     v: 1,
     active,
-    tabs: kept.map((t) => ({ id: t.id, title: t.title, sql: t.sql, savedId: t.savedId, savedFolder: t.savedFolder, savedSql: t.savedSql })),
+    tabs: kept.map((t) =>
+      t.kind === "query"
+        ? { id: t.id, title: t.title, sql: t.sql, savedId: t.savedId, savedFolder: t.savedFolder, savedSql: t.savedSql, pinned: t.pinned || undefined }
+        : { kind: "table", id: t.id, schema: t.schema, table: t.table, where: t.where, view: t.view, pinned: true },
+    ),
   };
   return JSON.stringify(w);
 }
@@ -124,22 +133,34 @@ async function flushWorkspace(id: string): Promise<void> {
   });
 }
 
-async function readWorkspace(id: string): Promise<{ tabs: QueryTab[]; active: string | null }> {
+async function readWorkspace(id: string): Promise<{ tabs: Tab[]; active: string | null }> {
   try {
     const raw = await api.loadWorkspace(id);
     if (!raw) return { tabs: [], active: null };
     lastWritten.set(id, raw);
     const w = JSON.parse(raw) as Partial<Workspace>;
-    const tabs: QueryTab[] = (Array.isArray(w.tabs) ? w.tabs : [])
-      .filter((t) => t && typeof t.sql === "string")
-      .map((t) => ({
-        id: t.id || uid(),
-        kind: "query",
-        title: t.title || "Query",
-        sql: t.sql,
-        ...(t.savedId ? { savedId: t.savedId, savedFolder: t.savedFolder, savedSql: t.savedSql } : {}),
-        run: { status: "idle" },
-      }));
+    const tabs: Tab[] = [];
+    for (const t of Array.isArray(w.tabs) ? w.tabs : []) {
+      if (!t) continue;
+      const pinned = t.pinned ? { pinned: true } : {};
+      if (t.kind === "table") {
+        if (typeof t.schema !== "string" || typeof t.table !== "string" || !t.table) continue;
+        const view = t.view === "columns" || t.view === "indexes" ? t.view : "rows";
+        tabs.push({ id: t.id || uid(), kind: "table", schema: t.schema, table: t.table, where: typeof t.where === "string" ? t.where : "", offset: 0, view, ...pinned, run: { status: "idle" } });
+      } else if (typeof t.sql === "string") {
+        tabs.push({
+          id: t.id || uid(),
+          kind: "query",
+          title: t.title || "Query",
+          sql: t.sql,
+          ...(t.savedId ? { savedId: t.savedId, savedFolder: t.savedFolder, savedSql: t.savedSql } : {}),
+          ...pinned,
+          run: { status: "idle" },
+        });
+      }
+    }
+    // pinned tabs first, each group in its kept order
+    tabs.sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned));
     return { tabs, active: tabs.some((t) => t.id === w.active) ? (w.active ?? null) : (tabs[tabs.length - 1]?.id ?? null) };
   } catch {
     return { tabs: [], active: null };
@@ -337,6 +358,12 @@ export const useStore = create<State>()((set, get) => {
           })()),
         }));
         if (schema) void get().loadSchema(schema);
+        // pinned table tabs kept from last time read their rows and columns now that the pool is open
+        for (const t of get().sessions[id]?.tabs ?? []) {
+          if (t.kind !== "table" || t.run.status !== "idle" || t.info) continue;
+          void get().readTable(t.id);
+          void get().loadTableInfo(t.id);
+        }
       } catch (e) {
         patchSession(id, () => ({ status: "error", error: errText(e) }));
       }
@@ -500,6 +527,11 @@ export const useStore = create<State>()((set, get) => {
       const hit = sessionOfTab(tabId);
       if (!hit) return;
       const [id, , tab] = hit;
+      // a pinned tab stays open, ⌘W included, until it is unpinned
+      if (tab.pinned) {
+        get().showToast("Unpin the tab to close it");
+        return;
+      }
       if (!force && tab.kind === "query" && isDirty(tab)) {
         get().openModal({
           kind: "confirm",
@@ -528,6 +560,19 @@ export const useStore = create<State>()((set, get) => {
         const tabs = s.tabs.filter((t) => t.id !== tabId);
         const activeTabId = s.activeTabId === tabId ? (tabs[Math.min(i, tabs.length - 1)]?.id ?? null) : s.activeTabId;
         return { tabs, activeTabId };
+      });
+    },
+
+    pinTab(tabId, on) {
+      const hit = sessionOfTab(tabId);
+      if (!hit) return;
+      patchSession(hit[0], (s) => {
+        const tab = s.tabs.find((t) => t.id === tabId);
+        if (!tab) return {};
+        const rest = s.tabs.filter((t) => t.id !== tabId);
+        const at = rest.filter((t) => t.pinned).length;
+        const moved = { ...tab, pinned: on || undefined } as Tab;
+        return { tabs: [...rest.slice(0, at), moved, ...rest.slice(at)] };
       });
     },
 

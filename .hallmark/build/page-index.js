@@ -1,12 +1,12 @@
   // Query: Query 1 and Query 2 are tabs on this page; orders opens the table screen
-  const run = $("#run"), spin = $("#run .spinner");
+  const run = $("#run");
   let tab = "q1", state = "full", sub = "results";
   const NAMES = { q1: ["Refunds by customer", "Saved queries / Reports"], q2: ["Query 2", "Not saved"], q3: ["Query 3", "Not saved"], q4: ["Query 4", "Not saved"], q5: ["Query 5", "Not saved"] };
   function render() {
     $$(".tab[data-tab]").forEach((t) => t.toggleAttribute("aria-current", t.dataset.tab === tab) && t.setAttribute("aria-current", "page"));
     ["q1", "q2", "q3", "q4", "q5"].forEach((q) => { $(`#code-${q}`).hidden = tab !== q; });
     $("#q-name").textContent = NAMES[tab][0]; $("#q-path").textContent = NAMES[tab][1];
-    $("#save-state").hidden = tab === "q2" || tab === "q5";
+    { const saved = tab !== "q2" && tab !== "q5", sv = $("#save"); sv.disabled = saved; sv.dataset.saved = String(saved); $(".save-label", sv).textContent = saved ? "Saved" : "Save"; sv.title = saved ? "No changes since the last save" : "Save  ⌘S"; }
     if (tab !== "q5") window.acClose?.();
     $$(".subtab[data-sub]").forEach((s) => s.setAttribute("aria-pressed", String(s.dataset.sub === sub)));
     $$(".response .state").forEach((s) => {
@@ -15,7 +15,7 @@
     });
     $(".res-tools").hidden = sub === "messages" || state !== "full" || tab === "q5";
     const busy = state === "loading";
-    run.toggleAttribute("aria-busy", busy); spin.hidden = !busy;
+    run.toggleAttribute("aria-busy", busy); run.disabled = busy;
     const meta = tab === "q5" && state === "full" ? ["dim", "Not run", ""] : { full: ["ok", "OK", { q1: "38\u00a0ms", q2: "4\u00a0ms", q3: "9\u00a0ms", q4: "3\u00a0ms" }[tab]], empty: ["ok", "OK", "21 ms"], error: ["fail", "Error", "2 ms"], lost: ["fail", "Disconnected", "30.0 s"], loading: ["dim", "Running", ""] }[state];
     $("#r-meta").innerHTML = `<span class="${meta[0]}">${meta[1]}</span>${meta[2] ? `<span class="dim">${meta[2]}</span>` : ""}<span class="dim">limit 500</span>`;
     $("#r-n").textContent = state === "full" ? ({ q1: "14", q2: "6", q3: "12", q4: "8", q5: "" }[tab]) : state === "empty" ? "0" : "";
@@ -71,6 +71,7 @@
     // the two right-click menus, opened as a right-click would
     const at = (el, dx, dy) => { const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.left + dx, clientY: r.top + dy })); };
     if (k === "level-menu") setTimeout(() => $("#guard-btn").click());
+    if (k === "tab-menu") setTimeout(() => { const t = $('.tab[data-tab="q1"]'); if (t) at(t, 40, 14); });
     if (k === "cell-menu") setTimeout(() => { const td = $$("#res-q1 tbody tr")[2]?.cells[2] ?? $$(".grid-wrap[tabindex] tbody td:not(.rownum)").find((x) => x.offsetParent)?.closest("tr")?.cells[2]; if (td) at(td, 24, 12); });
     if (k === "row-menu") setTimeout(() => { const row = $$(".row").find((r) => $(".row-more", r) && r.offsetParent && /order_items/.test(r.textContent)); if (row) at(row, 60, 10); });
   };

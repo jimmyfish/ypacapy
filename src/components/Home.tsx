@@ -5,7 +5,7 @@ import { when } from "../lib/time";
 import type { Conn } from "../types";
 import { ConnTile } from "./ConnTile";
 import { useDismiss } from "./useDismiss";
-import { Check, ChevronDown, ChevronRight, Ellipsis, Folder, FolderInput, FolderMinus, FolderPlus, Pencil, PlugZap, Plus, Search, X, ico, icoC } from "./Icon";
+import { Check, ChevronDown, ChevronRight, Ellipsis, Folder, FolderInput, FolderMinus, FolderPlus, Pencil, PlugZap, Plus, Search, Settings2, X, ico, icoC } from "./Icon";
 
 /** host or folder (gives way with an ellipsis) and the tail that always shows: port and database, or the file name */
 function address(c: Conn): [string, string] {
@@ -302,7 +302,7 @@ export function Home() {
             ]}
           />
           <button type="button" className="icon-btn" title="Edit connection" aria-label={`Edit ${c.name}`} onClick={() => st.openModal({ kind: "connect", conn: c })}>
-            <Pencil {...ico} />
+            <Settings2 {...ico} />
           </button>
           <button type="button" className="icon-btn" title="Remove connection" aria-label={`Remove ${c.name}`} onClick={() => remove(c)}>
             <X {...ico} />

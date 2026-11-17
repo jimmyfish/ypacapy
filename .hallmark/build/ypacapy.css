@@ -666,3 +666,37 @@ body.cards-dragging .group-drop-new { display: flex; }
 .about-verline .about-ver { margin-top: 0; }
 .about-res dd .muted { color: var(--color-muted); }
 .about-res dd.warn { color: var(--color-warn); }
+
+/* Run: play icon, bold label, its shortcut inside the button. While a run is out the button is disabled
+ * and a turning loader-circle takes the play icon's place. */
+.request-line .btn--run { gap: var(--space-xs); padding: 0 var(--space-md) 0 var(--space-sm); font-weight: 700; }
+.btn--run .run-ico, .btn--run .run-spin { width: 15px; height: 15px; stroke-width: 2; }
+.btn--run .run-spin { display: none; }
+.btn--run[aria-busy] .run-ico { display: none; }
+.btn--run[aria-busy] .run-spin { display: block; animation: spin 0.8s linear infinite; }
+.btn--run[aria-busy]:disabled { opacity: 0.8; cursor: progress; }
+@media (prefers-reduced-motion: reduce) { .btn--run[aria-busy] .run-spin { animation-duration: 2.4s; } }
+.btn--run .run-kbd { margin-left: var(--space-xs); font: 500 var(--text-sm) / 1 var(--font-ui); letter-spacing: 0.04em; opacity: 0.85; }
+
+/* the security level pill: no edge, tinted by level (Flat UI: None Asphalt, Low Carrot, Strict Alizarin), bold name */
+.guard .env-picker { --fg: var(--proj-8-fg); --bg: var(--proj-8-bg); gap: 6px; padding: 0 var(--space-xs) 0 var(--space-sm); border: none; border-radius: var(--radius-pill); background: var(--bg); color: var(--fg); font-weight: 700; }
+.guard .env-picker[data-level="low"] { --fg: var(--proj-3-fg); --bg: var(--proj-3-bg); }
+.guard .env-picker[data-level="strict"] { --fg: var(--proj-6-fg); --bg: var(--proj-6-bg); }
+.guard .env-picker:hover, .guard .env-picker[aria-expanded="true"] { background: color-mix(in srgb, var(--fg) 14%, var(--bg)); }
+.guard .env-picker .guard-ico, .guard .env-picker[data-level="none"] .guard-ico { color: currentColor; }
+.guard .env-picker .ico:last-child { color: currentColor; opacity: 0.7; margin-left: 2px; }
+
+/* Save: one button, one width. Saved and unchanged, it reads "Saved" with a green check and does nothing;
+ * never saved or edited since, it reads "Save". */
+.request-line .btn--save { min-width: 96px; gap: 6px; }
+.btn--save .save-ico { display: none; width: 15px; height: 15px; color: var(--color-ok); }
+.btn--save[data-saved="true"] .save-ico { display: block; }
+.btn--save[data-saved="true"]:disabled { opacity: 1; cursor: default; color: var(--color-muted); background: var(--color-paper); }
+
+/* a pinned tab: kept with the connection, first in the row, never shrunk; a pin stands where its close button was */
+.tab[data-pinned] { flex-shrink: 0; }
+.tab .pin { display: none; min-width: 20px; min-height: 20px; border-radius: 6px; color: var(--color-muted); }
+.tab .pin .ico { width: 14px; height: 14px; }
+.tab .pin:hover { color: var(--color-ink); background: var(--color-paper-2); }
+.tab[data-pinned] .pin { display: inline-grid; }
+.tab[data-pinned] .close { display: none; }

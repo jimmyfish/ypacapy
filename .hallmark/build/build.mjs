@@ -10,10 +10,10 @@ const LUCIDE = process.env.LUCIDE_ICONS || `${process.env.HOME}/Playgrounds/rea/
 fs.writeFileSync(`${OUT}/app.css`, fs.readFileSync(`${SP}app.css.base`, "utf8") + fs.readFileSync(`${SP}ypacapy.css`, "utf8"));
 
 // ---------- icons: Lucide v0.460.0 nodes, read as text from voidHTTP's lucide-react ----------
-const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "house", "server", "hard-drive", "x", "plus", "settings", "search", "refresh-cw",
+const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "house", "server", "hard-drive", "x", "plus", "settings-2", "search", "refresh-cw",
   "ellipsis", "chevron-down", "chevron-right", "chevron-left", "folder", "eye", "square-function", "table-2", "square-code", "panel-left-close",
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
-  "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus",
+  "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus", "pin", "pin-off",
   "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy"];
 function symbol(name) {
   const src = fs.readFileSync(`${LUCIDE}/${name}.js`, "utf8");
@@ -115,7 +115,7 @@ ${CONNS.slice(0, 2).map(([name, , n, engine]) => `      <div class="ptab ptab--p
       </div>`).join("\n")}
     </nav>
     <div class="strip-end">${chip}
-      <button type="button" class="icon-btn strip-settings" title="Settings  ⌘," aria-label="Settings" data-href="./settings.html">${ic("settings")}</button>
+      <button type="button" class="icon-btn strip-settings" title="Settings  ⌘," aria-label="Settings" data-href="./settings.html">${ic("settings-2")}</button>
     </div>
   </div>`;
 const rail = `
@@ -137,7 +137,6 @@ const schemaSide = (current) => `
       <div class="side-tools">
         <div class="search">${ic("search")}<input class="field" id="tree-filter" placeholder="Filter tables" aria-label="Filter tables, views and functions" autocomplete="off" spellcheck="false"></div>
         <button type="button" class="icon-btn icon-btn--outline" title="Refresh schema" aria-label="Refresh schema">${ic("refresh-cw")}</button>
-        <button type="button" class="icon-btn icon-btn--filled" title="New query" aria-label="New query">${ic("plus")}</button>
       </div>
       <div class="tree" id="tree">
 ${group("public", "public", 13, 0, true, false)}
@@ -211,11 +210,13 @@ const savedSide = `
     </aside>`;
 
 const TABS = [["orders", "table-2", "orders", "./table.html"], ["q1", "square-code", "Query 1", "./index.html"], ["q2", "square-code", "Query 2", "./index.html?show=sql-error"], ["q3", "square-code", "Query 3", "./index.html?show=wide"], ["q4", "square-code", "Query 4", "./index.html?show=long"], ["q5", "square-code", "Query 5", "./index.html?show=ac-columns"]];
+// pinned tabs sit first and are kept with the connection (across a restart and a reconnect); orders starts pinned
+const PINNED = ["orders"];
 const tabsbar = (active, local) => `
       <div class="tabsbar">
         <button type="button" class="icon-btn side-toggle" aria-label="Hide sidebar" title="Hide sidebar  ⌘\\">${ic("panel-left-close")}</button>
         <div class="tabs">
-${TABS.map(([id, icon, label, href]) => `          <div class="tab" data-tab="${id}"${id === active ? ' aria-current="page"' : ""}><button type="button" class="tab-main"${local.includes(id) ? "" : ` data-href="${href}"`}>${ic(icon)}<span class="name">${label}</span>${id === "q2" ? '<span class="dirty" role="img" aria-label="Unsaved changes"></span>' : ""}</button><button type="button" class="icon-btn close" aria-label="Close ${label}">${ic("x")}</button></div>`).join("\n")}
+${TABS.map(([id, icon, label, href]) => `          <div class="tab" data-tab="${id}"${id === active ? ' aria-current="page"' : ""}${PINNED.includes(id) ? " data-pinned" : ""}><button type="button" class="tab-main"${local.includes(id) ? "" : ` data-href="${href}"`}>${ic(icon)}<span class="name">${label}</span>${id === "q2" ? '<span class="dirty" role="img" aria-label="Unsaved changes"></span>' : ""}</button><button type="button" class="icon-btn close" aria-label="Close ${label}">${ic("x")}</button><button type="button" class="icon-btn pin" aria-label="Unpin ${label}" title="Pinned: kept with shop_prod. Click to unpin">${ic("pin")}</button></div>`).join("\n")}
           <button type="button" class="icon-btn tab-add" aria-label="New query tab">${ic("plus")}</button>
         </div>
         <div class="menu-anchor env-group guard">
@@ -225,22 +226,14 @@ ${TABS.map(([id, icon, label, href]) => `          <div class="tab" data-tab="${
             <button type="button" role="menuitemradio" aria-checked="false" data-guard="none" data-icon="shield-off">${ic("shield-off")}<span class="gm-text"><span>None</span><small>Every statement runs</small></span>${ic("check", "tick")}</button>
             <button type="button" role="menuitemradio" aria-checked="true" data-guard="low" data-icon="shield">${ic("shield")}<span class="gm-text"><span>Low</span><small>Confirm the picked statements</small></span>${ic("check", "tick")}</button>
             <button type="button" role="menuitemradio" aria-checked="false" data-guard="strict" data-icon="lock">${ic("lock")}<span class="gm-text"><span>Strict</span><small>Passphrase for the picked statements</small></span>${ic("check", "tick")}</button>
-            <p class="menu-note">Pick the statements in the connection's Options</p>
           </div>
         </div>
       </div>`;
 const FORMATS = ["Plain text", "JSON", "Markdown table", "CSV"];
 const resActions = (id) => `<div class="res-actions"><div class="menu-anchor"><button type="button" class="icon-btn" title="Columns" aria-label="Go to a column" aria-haspopup="menu" aria-expanded="false" data-menu="${id}-cols">${ic("columns-3")}</button><div class="menu cols-menu" id="${id}-cols" role="menu" aria-label="Go to a column" data-cols hidden></div></div>${[["copy", "Copy", "copy"], ["export", "Export", "download"]].map(([k, label, icon]) => `<div class="menu-anchor"><button type="button" class="icon-btn" title="${label}" aria-label="${label} rows" aria-haspopup="menu" aria-expanded="false" data-menu="${id}-${k}">${ic(icon)}</button><div class="menu" id="${id}-${k}" role="menu" aria-label="${label} as" hidden><p class="menu-note">${label} as</p>${FORMATS.map((x) => `<button type="button" role="menuitem">${x}</button>`).join("")}</div></div>`).join("")}</div>`;
+// Run: one button, play icon, its shortcut inside (⌘↵ runs the selection or the statement at the cursor); Run all is ⇧⌘↵
 const runGroup = `
-          <div class="joined" id="run-group">
-            <button type="button" class="btn btn--primary" id="run"><span class="spinner" hidden></span>Run</button>
-            <button type="button" class="btn btn--primary joined-tail" aria-label="More run options" aria-haspopup="menu" aria-expanded="false" data-menu="run-menu">${ic("chevron-down")}</button>
-            <div class="menu" id="run-menu" role="menu" aria-label="Run" hidden>
-              <button type="button" role="menuitem">Run all<kbd>⌘↵</kbd></button>
-              <button type="button" role="menuitem">Run selection<kbd>⇧⌘↵</kbd></button>
-              <button type="button" role="menuitem">Explain</button>
-            </div>
-          </div>`;
+          <button type="button" class="btn btn--primary btn--run" id="run" title="Run  ⌘↵">${ic("play", "run-ico")}${ic("loader-circle", "run-spin")}<span>Run</span><span class="run-kbd" aria-hidden="true">⌘↵</span></button>`;
 
 const app = ({ current, side = "", work, overlay = "", chip = "" }) => `
 <div class="app">${strip(current, chip)}${rail}
@@ -277,11 +270,8 @@ const queryWork = `${tabsbar("q1", ["q1", "q2", "q3", "q4", "q5"])}
       <div class="work-body">
         <div class="req-pane" id="req-pane">
           <div class="request-line">
-            <div class="url-field"><div class="ctx"><span class="e e-postgres">PG</span><strong>shop_prod</strong><span class="sep">/</span>${sel("Database", ["shop", "shop_staging"])}<span class="sep">/</span>${sel("Schema", ["public", "audit"])}</div></div>${runGroup}
-            <div class="joined">
-              <button type="button" class="btn">Save</button>
-              <span class="btn joined-tail save-state ok" id="save-state" role="img" aria-label="Saved" title="Saved">${ic("circle-check")}</span>
-            </div>
+            <div class="url-field"><div class="ctx"><span class="e e-postgres">PG</span><strong>shop_prod</strong><span class="sep">/</span>${sel("Database", ["shop", "shop_staging"])}<span class="sep">/</span>${sel("Schema", ["public", "audit"])}</div></div>
+            <button type="button" class="btn btn--save" id="save" title="Save  ⌘S">${ic("circle-check", "save-ico")}<span class="save-label">Save</span></button>${runGroup}
           </div>
           <div class="req-title"><button type="button" class="name" id="q-name">Refunds by customer</button><span class="path" id="q-path">Saved queries / Reports</span></div>
           <div class="section">
@@ -445,7 +435,7 @@ ${(o.groups || GROUPS).map((g) => `                  <button type="button" role=
                   <button type="button" role="menuitem">${ic("folder-minus")}Remove from group</button>` : ""}
                 </div>
               </span>
-              <button type="button" class="icon-btn" title="Edit connection" aria-label="Edit ${name}" data-href="./connect.html">${ic("pencil")}</button>
+              <button type="button" class="icon-btn" title="Edit connection" aria-label="Edit ${name}" data-href="./connect.html">${ic("settings-2")}</button>
               <button type="button" class="icon-btn" title="Remove connection" aria-label="Remove ${name}">${ic("x")}</button>
             </span>` : ""}
           </div>`;
@@ -655,7 +645,7 @@ const guardDialogs = `
 pages["index.html"] = page({
   title: "ypacapy preview",
   desc: "Design preview of ypacapy, a local-only database explorer for macOS: the query console and its result grid.",
-  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["wide", "Many columns"], ["long", "Long text"], ["cell-menu", "Cell menu"], ["row-menu", "Sidebar menu"], ["level-menu", "Security level menu"], ["guard-confirm", "Low: confirm"], ["guard-pass", "Strict: passphrase"], ["guard-pass-touch", "Strict with Touch ID"], ["guard-pass-wrong", "Strict: wrong passphrase"], ["history", "History"], ["history-clear", "Clear history"], ["history-none", "History, none yet"], ["ac-tables", "Complete: tables"], ["ac-columns", "Complete: columns"], ["ac-mixed", "Complete: two tables"], ["ac-loading", "Complete: reading columns"], ["ac-schema", "Complete: schema not loaded"]], true),
+  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["wide", "Many columns"], ["long", "Long text"], ["cell-menu", "Cell menu"], ["row-menu", "Sidebar menu"], ["level-menu", "Security level menu"], ["tab-menu", "Tab menu"], ["guard-confirm", "Low: confirm"], ["guard-pass", "Strict: passphrase"], ["guard-pass-touch", "Strict with Touch ID"], ["guard-pass-wrong", "Strict: wrong passphrase"], ["history", "History"], ["history-clear", "Clear history"], ["history-none", "History, none yet"], ["ac-tables", "Complete: tables"], ["ac-columns", "Complete: columns"], ["ac-mixed", "Complete: two tables"], ["ac-loading", "Complete: reading columns"], ["ac-schema", "Complete: schema not loaded"]], true),
   body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: guardDialogs + histClearDlg + acOverlay }),
   script: js("page-index.js") + js("page-index-ac.js"),
 });

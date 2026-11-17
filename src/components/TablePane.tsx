@@ -282,6 +282,7 @@ export function TablePane({ tab }: { tab: TableTab }) {
           busy={busy}
           disabled={session.status !== "open"}
           onRun={() => void st.readTable(tab.id)}
+          kbd="⌘↵"
           items={[
             { label: "Run", kbd: "⌘↵", run: () => void st.readTable(tab.id) },
             { label: "Open as a query", run: () => st.newQueryTab(tableSelect(conn.engine, tab.schema, tab.table, tab.where, limit, tab.offset) + "\n", tab.table) },

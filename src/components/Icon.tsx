@@ -34,6 +34,7 @@ export {
   Minus,
   PanelLeftClose,
   PanelLeftOpen,
+  PlugZap,
   Pencil,
   Plus,
   RefreshCw,

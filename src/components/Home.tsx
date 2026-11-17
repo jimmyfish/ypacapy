@@ -1,11 +1,9 @@
-import { open } from "@tauri-apps/plugin-dialog";
 import { useStore } from "../store";
-import { api, errText } from "../lib/api";
 import { ENGINE_LABEL } from "../lib/sql";
 import { when } from "../lib/time";
 import type { Conn } from "../types";
 import { ConnTile } from "./ConnTile";
-import { FolderOpen, Pencil, Plus, X, ico } from "./Icon";
+import { Pencil, Plus, X, ico } from "./Icon";
 
 /** host or folder (gives way with an ellipsis) and the tail that always shows: port and database, or the file name */
 function address(c: Conn): [string, string] {
@@ -22,28 +20,14 @@ function address(c: Conn): [string, string] {
 export function Home() {
   const conns = useStore((s) => s.conns);
   const st = useStore.getState();
-  const sorted = [...conns].sort((a, b) => (b.lastOpened ?? 0) - (a.lastOpened ?? 0));
-
-  /** Open SQLite file: a connection named after the file, opened in place, right away. */
-  const openFile = async () => {
-    const file = await open({ multiple: false, directory: false, title: "Open SQLite file" }).catch(() => null);
-    if (typeof file !== "string") return;
-    const name = file.split("/").pop() || "database";
-    try {
-      const color = (conns.length % 6) + 1;
-      const c = await api.saveConnection({ id: "", name, engine: "sqlite", file, color, guard: "confirm" }, null);
-      await st.refreshConns();
-      await st.openConn(c.id);
-    } catch (e) {
-      st.showToast(errText(e));
-    }
-  };
+  // oldest first; connections without createdAt predate it and keep their file order, which is creation order
+  const sorted = [...conns].sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
 
   const remove = (c: Conn) =>
     st.openModal({
       kind: "confirm",
       title: `Remove ${c.name}?`,
-      message: c.engine === "sqlite" ? "The connection goes from ypacapy. The database file stays where it is." : "The connection and its keychain password go from this Mac. The database is not touched.",
+      message: c.engine === "sqlite" ? "ypacapy forgets the connection. The database file stays where it is." : "ypacapy removes the connection and its keychain password from this Mac. The database is not touched.",
       confirmLabel: "Remove",
       onConfirm: () => void st.deleteConn(c.id),
     });
@@ -57,10 +41,6 @@ export function Home() {
             <p className="muted">Everything stays on this Mac, in ~/.config/ypacapy.</p>
           </div>
           <div className="home-actions">
-            <button type="button" className="btn" onClick={openFile}>
-              <FolderOpen {...ico} />
-              Open SQLite file
-            </button>
             <button type="button" className="btn btn--primary" onClick={() => st.openModal({ kind: "connect" })}>
               <Plus {...ico} />
               New connection

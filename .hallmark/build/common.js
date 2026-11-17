@@ -44,7 +44,7 @@
       const slot = row.dataset.schemeRow;
       row.hidden = !auto && slot !== st.mode;
       if (row.hidden) return;
-      $("[data-scheme-label]", row).textContent = auto ? (slot === "light" ? "Light theme" : "Dark theme") : "Colour scheme";
+      $("[data-scheme-label]", row).textContent = auto ? (slot === "light" ? "Light theme" : "Dark theme") : "Color scheme";
       $("select", row).value = st[slot];
       const [bg, ...dots] = schemeSwatch(st[slot]);
       const d = $(".scheme-dots", row); d.style.background = bg; d.innerHTML = dots.map((c) => `<i style="background:${c}"></i>`).join("");
@@ -175,9 +175,30 @@
       closeAll(); if (!open) return;
       m.hidden = false; b.setAttribute("aria-expanded", "true"); m.querySelector("button").focus();
     }));
+    // Right-click on a tree row opens the same menu as its "…"
+    $$(".row").forEach((row) => row.addEventListener("contextmenu", (e) => {
+      const b = $(".row-more", row); if (!b) return;
+      e.preventDefault(); closeAll(); b.click();
+    }));
     document.addEventListener("mousedown", (e) => { if (!e.target.closest(".menu, .row-more, [data-menu]")) closeAll(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
   }
+  // Right-click on a result cell: copy its value, or its row in the Copy button's formats. Opens at the pointer.
+  const cellMenu = document.createElement("div");
+  cellMenu.className = "menu ctx-menu"; cellMenu.id = "cell-menu"; cellMenu.hidden = true;
+  cellMenu.setAttribute("role", "menu"); cellMenu.setAttribute("aria-label", "Cell");
+  cellMenu.innerHTML = `<button type="button" role="menuitem" data-ctx="value">Copy value<kbd>⌘C</kbd></button><hr><p class="menu-note">Copy row as</p>${["Plain text", "JSON", "Markdown table", "CSV"].map((f) => `<button type="button" role="menuitem">${f}</button>`).join("")}`;
+  document.body.append(cellMenu);
+  $$("button", cellMenu).forEach((b) => b.addEventListener("click", () => { cellMenu.hidden = true; }));
+  const openCellMenu = (x, y, isNull) => {
+    $$(".menu:not([hidden])").forEach((m) => { m.hidden = true; });
+    $('[data-ctx="value"]', cellMenu).disabled = isNull;
+    cellMenu.hidden = false;
+    const r = cellMenu.getBoundingClientRect();
+    cellMenu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
+    cellMenu.style.top = `${y + r.height > innerHeight - 8 ? Math.max(8, y - r.height) : y}px`;
+    $("button:not(:disabled)", cellMenu).focus();
+  };
   // Grid: a cell is the unit. Click or arrow to a cell; the inspector under the grid shows its column, type, row and full value.
   // A head sorts the rows already on screen (no new query); the row numbers keep the order the database returned.
   $$(".grid-wrap[tabindex]").forEach((wrap) => {
@@ -203,6 +224,13 @@
     wrap.addEventListener("click", (e) => {
       const td = e.target.closest("tbody td"); if (!td) return;
       pick(td.classList.contains("rownum") ? td.nextElementSibling : td);
+    });
+    wrap.addEventListener("contextmenu", (e) => {
+      let td = e.target.closest("tbody td"); if (!td) return;
+      e.preventDefault();
+      if (td.classList.contains("rownum")) td = td.nextElementSibling;
+      pick(td, false);
+      openCellMenu(e.clientX, e.clientY, td.classList.contains("null"));
     });
     wrap.addEventListener("keydown", (e) => {
       const d = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
@@ -244,20 +272,19 @@
   }
 
   apply();
-  // Write guard of the open connection: one level, plus "every statement"; lowering from Touch ID asks first (in the app)
+  // Security level of the open connection: None, Low or Strict; lowering from Strict asks for the passphrase first (in the app)
   {
     const btn = $("#guard-btn");
     if (btn) {
-      const LABEL = { run: "Run it", confirm: "Ask to confirm", verify: "Ask for passphrase" };
+      const LABEL = { none: "None", low: "Low", strict: "Strict" };
       const setLevel = (lvl) => {
         $$("[data-guard]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.guard === lvl)));
         btn.dataset.level = lvl;
         $("#guard-name").textContent = LABEL[lvl];
         $(".guard-ico use", btn).setAttribute("href", `#i-${$(`[data-guard="${lvl}"]`).dataset.icon}`);
-        btn.setAttribute("aria-label", `Write guard for shop_prod: ${LABEL[lvl]}`);
-        $("#guard-lower").hidden = lvl !== "verify";
+        btn.setAttribute("aria-label", `Security level for shop_prod: ${LABEL[lvl]}`);
       };
       $$("[data-guard]").forEach((b) => b.addEventListener("click", () => { setLevel(b.dataset.guard); $("#guard-menu").hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); }));
-      setLevel("confirm");
+      setLevel("low");
     }
   }

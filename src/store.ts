@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { api, errText } from "./lib/api";
 import { tableSelect } from "./lib/sql";
-import type { Approval, Ask, Conn, GuardLevel, HistoryEntry, QueryTab, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
+import { editCount, type Edits } from "./lib/edit";
+import type { Approval, Ask, Conn, GuardLevel, HistoryEntry, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
 
 export type SettingsSection = "appearance" | "queries" | "security" | "data";
 export type SideView = "schema" | "history" | "saved";
@@ -12,12 +13,11 @@ export type Modal =
   | { kind: "confirm"; title: string; message: string; confirmLabel?: string; onConfirm: () => void }
   | { kind: "prompt"; title: string; label: string; initial: string; onSubmit: (v: string) => void }
   | { kind: "saveQuery"; tabId: string }
-  | { kind: "guard"; ask: Ask; connName: string; onApprove: (a: Approval) => void }
-  | { kind: "lowerGuard"; connId: string; level: GuardLevel };
+  | { kind: "guard"; ask: Ask; connName: string; onApprove: (a: Approval) => void };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
-export const DEFAULT_ROW_LIMIT = 500;
+export const DEFAULT_ROW_LIMIT = 100;
 
 interface State {
   loaded: boolean;
@@ -33,6 +33,11 @@ interface State {
   history: HistoryEntry[];
   saved: Saved[];
   pass: { set: boolean; touchIdAvailable: boolean };
+  /** result grid changes not yet saved, by tab id and result set index (kept while the tab is away) */
+  edits: Record<string, Edits>;
+  setEdits(key: string, e: Edits | null): void;
+  /** a result set as it is after its edits were saved */
+  replaceSet(tabId: string, index: number, set: ResultSet): void;
 
   init(): Promise<void>;
   setSettings(patch: Partial<Settings>): Promise<void>;
@@ -59,9 +64,9 @@ interface State {
   setActiveTab(id: string): void;
   closeTab(id: string, force?: boolean): void;
   updateTab(id: string, patch: Partial<QueryTab> | Partial<TableTab>): void;
-  run(tabId: string, opts?: { sql?: string; approval?: Approval }): Promise<void>;
+  run(tabId: string, opts?: { sql?: string; approval?: Approval; discard?: boolean }): Promise<void>;
   cancel(tabId: string): void;
-  readTable(tabId: string, opts?: { offset?: number; approval?: Approval }): Promise<void>;
+  readTable(tabId: string, opts?: { offset?: number; approval?: Approval; discard?: boolean }): Promise<void>;
   loadTableInfo(tabId: string): Promise<void>;
   saveTab(tabId: string, name?: string, folder?: string): Promise<void>;
 
@@ -107,7 +112,7 @@ async function flushWorkspace(id: string): Promise<void> {
   lastWritten.set(id, data);
   await api.saveWorkspace(id, data).catch((e) => {
     lastWritten.delete(id);
-    useStore.getState().showToast(`Open tabs not kept: ${errText(e)}`);
+    useStore.getState().showToast(`Could not save open tabs: ${errText(e)}`);
   });
 }
 
@@ -154,6 +159,30 @@ export const useStore = create<State>()((set, get) => {
     if (!hit) return;
     patchSession(hit[0], (s) => ({ tabs: s.tabs.map((t) => (t.id === tabId ? ({ ...t, ...patch } as Tab) : t)) }));
   };
+  const editKeys = (tabId: string) => Object.keys(get().edits).filter((k) => k.startsWith(tabId + ":"));
+  const pendingIn = (tabId: string) => editKeys(tabId).reduce((n, k) => n + editCount(get().edits[k]), 0);
+  const dropEdits = (tabId: string) => {
+    const keys = editKeys(tabId);
+    if (!keys.length) return;
+    set((st) => {
+      const edits = { ...st.edits };
+      for (const k of keys) delete edits[k];
+      return { edits };
+    });
+  };
+  /** a new read replaces the rows the changes were made on: ask first */
+  const askDiscard = (tabId: string, again: () => void) => {
+    const n = pendingIn(tabId);
+    if (!n) return false;
+    get().openModal({
+      kind: "confirm",
+      title: `Discard ${n} unsaved change${n === 1 ? "" : "s"}?`,
+      message: "Running again reloads the rows. Save first to keep the changes.",
+      confirmLabel: "Discard",
+      onConfirm: again,
+    });
+    return true;
+  };
   const failed = (e: unknown): RunOutcome => ({ kind: "error", title: "The query did not run", says: null, message: errText(e), hint: null, lost: false, ms: 0 });
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -171,6 +200,23 @@ export const useStore = create<State>()((set, get) => {
     history: [],
     saved: [],
     pass: { set: false, touchIdAvailable: false },
+    edits: {},
+
+    setEdits(key, e) {
+      set((st) => {
+        const edits = { ...st.edits };
+        if (e && editCount(e)) edits[key] = e;
+        else delete edits[key];
+        return { edits };
+      });
+    },
+
+    replaceSet(tabId, index, rs) {
+      const t = sessionOfTab(tabId)?.[2];
+      const o = t?.run.outcome;
+      if (!t || o?.kind !== "done" || !o.sets[index]) return;
+      patchTab(tabId, { run: { ...t.run, outcome: { ...o, sets: o.sets.map((x, i) => (i === index ? rs : x)) } } });
+    },
 
     async init() {
       const [settings, conns, pass] = await Promise.all([
@@ -321,10 +367,6 @@ export const useStore = create<State>()((set, get) => {
       const id = get().currentId;
       const conn = get().conns.find((c) => c.id === id);
       if (!id || !conn || conn.guard === level) return;
-      if (conn.guard === "verify" && get().pass.set) {
-        get().openModal({ kind: "lowerGuard", connId: id, level });
-        return;
-      }
       try {
         await api.setGuard(id, level);
         await get().refreshConns();
@@ -413,6 +455,18 @@ export const useStore = create<State>()((set, get) => {
         });
         return;
       }
+      const pending = pendingIn(tabId);
+      if (!force && pending) {
+        get().openModal({
+          kind: "confirm",
+          title: `Close ${tab.kind === "query" ? tab.title : tab.table}?`,
+          message: `${pending} unsaved change${pending === 1 ? "" : "s"} to its rows ${pending === 1 ? "is" : "are"} lost.`,
+          confirmLabel: "Close",
+          onConfirm: () => get().closeTab(tabId, true),
+        });
+        return;
+      }
+      dropEdits(tabId);
       if (tab.run.status === "running" && tab.run.runId) void api.cancelQuery(tab.run.runId);
       patchSession(id, (s) => {
         const i = s.tabs.findIndex((t) => t.id === tabId);
@@ -433,6 +487,7 @@ export const useStore = create<State>()((set, get) => {
       if (tab.kind !== "query" || s.status !== "open") return;
       const sql = opts.sql ?? tab.sql;
       if (!sql.trim() || tab.run.status === "running") return;
+      if (!opts.discard && askDiscard(tabId, () => void get().run(tabId, { ...opts, discard: true }))) return;
       const runId = uid();
       const prev = tab.run;
       patchTab(tabId, { run: { status: "running", runId, startedAt: Date.now(), outcome: prev.outcome } });
@@ -447,7 +502,8 @@ export const useStore = create<State>()((set, get) => {
         get().openModal({ kind: "guard", ask: out, connName: conn?.name ?? "", onApprove: (approval) => void get().run(tabId, { ...opts, approval }) });
         return;
       }
-      patchTab(tabId, { run: { status: "done", runId, outcome: out } });
+      dropEdits(tabId);
+      patchTab(tabId, { run: { status: "done", runId, outcome: out, sql } });
       if (out.kind === "done" && out.ddl) get().refreshTree(connId);
       if (out.kind === "error" && out.lost) patchSession(connId, () => ({ tree: {} }));
       if (get().side === "history") void get().loadHistory();
@@ -466,6 +522,7 @@ export const useStore = create<State>()((set, get) => {
       const conn = get().conns.find((c) => c.id === connId);
       if (!conn) return;
       const offset = opts.offset ?? 0;
+      if (!opts.discard && askDiscard(tabId, () => void get().readTable(tabId, { ...opts, discard: true }))) return;
       const limit = conn.rowLimit || get().settings.rowLimit || DEFAULT_ROW_LIMIT;
       const sql = tableSelect(conn.engine, tab.schema, tab.table, tab.where, limit, offset);
       const runId = uid();
@@ -477,10 +534,11 @@ export const useStore = create<State>()((set, get) => {
       if (out.kind === "ask") {
         // the where clause carried a statement that changes data
         patchTab(tabId, { run: prev });
-        get().openModal({ kind: "guard", ask: out, connName: conn.name, onApprove: (approval) => void get().readTable(tabId, { offset, approval }) });
+        get().openModal({ kind: "guard", ask: out, connName: conn.name, onApprove: (approval) => void get().readTable(tabId, { offset, approval, discard: true }) });
         return;
       }
-      patchTab(tabId, { run: { status: "done", runId, outcome: out } });
+      dropEdits(tabId);
+      patchTab(tabId, { run: { status: "done", runId, outcome: out, sql } });
     },
 
     async loadTableInfo(tabId) {

@@ -2,10 +2,11 @@ import { useEffect, useMemo } from "react";
 import { DEFAULT_ROW_LIMIT, useCurrent, useStore } from "../store";
 import { estimate } from "../lib/cells";
 import { tableSelect } from "../lib/sql";
+import { targetOf } from "../lib/edit";
 import { duration } from "../lib/time";
 import type { TableTab } from "../types";
 import { ErrorState, RunGroup } from "./QueryPane";
-import { ResultGrid, type ColKey } from "./ResultGrid";
+import { ResultGrid, type ColKey, type GridEdit } from "./ResultGrid";
 import { ChevronLeft, ChevronRight, Key, Link, ico } from "./Icon";
 
 /** A table: its rows under a where filter (select … limit, no order by), its columns, its indexes and keys. */
@@ -23,6 +24,14 @@ export function TablePane({ tab }: { tab: TableTab }) {
     for (const c of tab.info?.columns ?? []) k[c.name] = { primary: c.primary, references: c.references };
     return k;
   }, [tab.info]);
+
+  const engine = conn?.engine;
+  const target = useMemo(() => {
+    if (!engine || !set) return null;
+    if (tab.infoError) return `Could not read the columns of ${tab.table}: ${tab.infoError}`;
+    if (!tab.info) return null;
+    return targetOf(engine, tab.schema, tab.table, "*", set, tab.info.columns);
+  }, [engine, set, tab.info, tab.infoError, tab.schema, tab.table]);
 
   // ⌘↵ re-reads the rows
   useEffect(() => {
@@ -42,6 +51,14 @@ export function TablePane({ tab }: { tab: TableTab }) {
   const to = tab.offset + rows;
   const view = tab.view;
   const setView = (v: TableTab["view"]) => st.updateTab(tab.id, { view: v });
+  const edit: GridEdit = {
+    target,
+    connId: conn.id,
+    connName: conn.name,
+    database: session.database,
+    key: `${tab.id}:0`,
+    onSaved: (rs) => o?.kind === "done" && st.replaceSet(tab.id, o.sets.length - 1, rs),
+  };
 
   let rowsBody;
   if (busy)
@@ -71,6 +88,7 @@ export function TablePane({ tab }: { tab: TableTab }) {
         <ResultGrid
           set={set}
           keys={keys}
+          edit={edit}
           label={`Rows of ${tab.table}`}
           exportName={tab.table}
           lead={

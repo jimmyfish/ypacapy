@@ -1,5 +1,8 @@
 export type Engine = "postgres" | "mysql" | "sqlite";
-export type GuardLevel = "run" | "confirm" | "verify";
+/** The write guard: Run it, or Ask to confirm before any write. Passphrase protection is separate (Conn.passProtect). */
+export type GuardLevel = "run" | "confirm";
+/** Write guard for a new connection when Settings › Security has no default stored. Existing connections keep their own. */
+export const DEFAULT_GUARD: GuardLevel = "run";
 export type SslMode = "disable" | "prefer" | "require" | "verify-ca" | "verify-full";
 
 /** connections.toml: one connection, never its password (that is in the keychain). */
@@ -13,9 +16,17 @@ export interface Conn {
   user?: string;
   /** SQLite: the database file, opened in place */
   file?: string;
-  /** 1..6 */
+  /** 1..8, src/lib/connColors.ts */
   color: number;
   guard: GuardLevel;
+  /** Protect with passphrase: the kinds in `protect` ask for the app passphrase, whatever the guard; no effect without a passphrase */
+  passProtect?: boolean;
+  /** What to protect for this connection; missing = every kind */
+  protect?: string[];
+  /** with passProtect: Touch ID may stand in for the passphrase */
+  touchId?: boolean;
+  /** with passProtect: seconds this connection stays unlocked after the passphrase; missing = ask every time */
+  unlockWindow?: number;
   /** Options tab; each one missing = the value in Settings */
   rowLimit?: number;
   /** seconds */
@@ -31,6 +42,8 @@ export interface Conn {
   /** missing = Settings > Queries > Connection heartbeat */
   heartbeat?: boolean;
   lastOpened?: number;
+  /** ms since the epoch; missing on connections saved before it was recorded */
+  createdAt?: number;
 }
 
 /** settings.toml. Missing = default. */
@@ -51,13 +64,10 @@ export interface Settings {
   keepHistory?: boolean;
   heartbeat?: boolean;
   heartbeatEvery?: number;
-  /** Security: statement kinds the write guard asks about (all when missing) */
-  protect?: string[];
-  /** write guard for new connections; missing = confirm */
+  /** write guard for new connections; missing = DEFAULT_GUARD */
   defaultGuard?: GuardLevel;
-  touchId?: boolean;
-  /** seconds a passphrase or Touch ID lasts; 0 asks every time */
-  unlockWindow?: number;
+  /** ms: when the passphrase was last reset with macOS authentication (Forgot passphrase), shown in Security */
+  passphraseResetAt?: number;
   /** layout */
   sidebarWidth?: number;
   sidebarHidden?: boolean;
@@ -113,7 +123,8 @@ export interface ResultSet {
 export interface Ask {
   kind: "ask";
   kinds: string[];
-  level: GuardLevel;
+  /** confirm: the guard; verify: passphrase protection */
+  level: "confirm" | "verify";
   touchId: boolean;
   unreadable: boolean;
   error: string | null;
@@ -166,6 +177,8 @@ export interface RunState {
   runId?: string;
   startedAt?: number;
   outcome?: RunOutcome;
+  /** the SQL that gave the outcome (the selection, when only that ran) */
+  sql?: string;
 }
 
 export interface QueryTab {

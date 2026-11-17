@@ -42,10 +42,12 @@
   --color-warn: #a34a00;
   --color-bar: #2e67e5;
   --color-hit: #fff0b3; --color-hit-cur: #ffd24d; --color-hit-edge: #c79100;
-  /* project identity tiles: text on a tint, each pair 4.5:1 or better */
-  --proj-1-fg: #2e67e5; --proj-1-bg: #eef3fe; --proj-2-fg: #01804a; --proj-2-bg: #e8f6ef;
-  --proj-3-fg: #a34a00; --proj-3-bg: #fcefe5; --proj-4-fg: #6d3fd1; --proj-4-bg: #f1ecfd;
-  --proj-5-fg: #0b7285; --proj-5-bg: #e6f6f8; --proj-6-fg: #c2255c; --proj-6-bg: #fdecf2;
+  /* connection identity tiles: the Flat UI convention hue (src/lib/connColors.ts) fitted to 4.5:1 on its own tint.
+     1 River, 2 Emerald, 3 Carrot, 4 Amethyst, 5 Turquoise, 6 Alizarin, 7 Sunflower, 8 Asphalt */
+  --proj-1-fg: #256d9e; --proj-1-bg: #e7f3fb; --proj-2-fg: #1c7a44; --proj-2-bg: #e6f9ee;
+  --proj-3-fg: #a65b18; --proj-3-bg: #fcf0e4; --proj-4-fg: #8f52a7; --proj-4-bg: #f3ebf6;
+  --proj-5-fg: #117864; --proj-5-bg: #e4f7f3; --proj-6-fg: #b93d30; --proj-6-bg: #fceae8;
+  --proj-7-fg: #876e08; --proj-7-bg: #fdf8e2; --proj-8-fg: #34495e; --proj-8-bg: #e7e9ec;
   /* tag fills (flatuicolors.com, Flat UI): fixed in every theme and scheme, so a colour means the same thing everywhere */
   --tag-turquoise: #1abc9c; --tag-emerald: #2ecc71; --tag-cyan: #0097a7; --tag-river: #3498db; --tag-amethyst: #9b59b6; --tag-asphalt: #34495e;
   --tag-sunflower: #f1c40f; --tag-carrot: #e67e22; --tag-alizarin: #e74c3c; --tag-clouds: #ecf0f1; --tag-concrete: #95a5a6;
@@ -89,7 +91,7 @@
   :root:not([data-theme="light"]) {
     --color-canvas: #0e1218; --color-paper: #161b25; --color-paper-2: #1f2633; --color-paper-3: #1b212c; --color-thumb: #2c3546;
     --color-ink: #e3e8f2; --color-ink-2: #c3cbd9; --color-muted: #8a9bb8; --color-placeholder: #8a96a8;
-    --color-rule: #262e3c; --color-edge-soft: #2e3747; --color-edge-aa: #6b778c; --color-gutter: #7f9ad6; --color-bar: #4f85fc; --proj-1-fg: #8db0ff; --proj-1-bg: #1d2b4a; --proj-2-fg: #3fd18d; --proj-2-bg: #13302a; --proj-3-fg: #ffab70; --proj-3-bg: #3a2618; --proj-4-fg: #c0a6ff; --proj-4-bg: #2a2145; --proj-5-fg: #2bc2d6; --proj-5-bg: #10303a; --proj-6-fg: #ff7aa8; --proj-6-bg: #3d1a2a; --color-guide: #3a4457;
+    --color-rule: #262e3c; --color-edge-soft: #2e3747; --color-edge-aa: #6b778c; --color-gutter: #7f9ad6; --color-bar: #4f85fc; --proj-1-fg: #44a0de; --proj-1-bg: #1b3246; --proj-2-fg: #2ecc71; --proj-2-bg: #1a3b33; --proj-3-fg: #e67e22; --proj-3-bg: #3b2d24; --proj-4-fg: #b381c8; --proj-4-bg: #2e263f; --proj-5-fg: #1abc9c; --proj-5-bg: #17383a; --proj-6-fg: #eb695b; --proj-6-bg: #3c2429; --proj-7-fg: #f1c40f; --proj-7-bg: #3d3921; --proj-8-fg: #7d8b98; --proj-8-bg: #1b232f; --color-guide: #3a4457;
     --color-accent: #2e67e5; --color-accent-ink: #ffffff; --color-accent-soft: #1d2b4a; --color-link: #6f9bff; --color-focus: #6f9bff;
     --color-ok: #01bf71; --color-redir: #6cb6ff; --color-error: #ff5c5c; --color-warn: #f5b84b;
     --color-hit: rgb(245 184 75 / 0.22); --color-hit-cur: rgb(245 184 75 / 0.5); --color-hit-edge: #f5b84b;
@@ -105,7 +107,7 @@
 :root[data-theme="dark"] {
   --color-canvas: #0e1218; --color-paper: #161b25; --color-paper-2: #1f2633; --color-paper-3: #1b212c; --color-thumb: #2c3546;
   --color-ink: #e3e8f2; --color-ink-2: #c3cbd9; --color-muted: #8a9bb8; --color-placeholder: #8a96a8;
-  --color-rule: #262e3c; --color-edge-soft: #2e3747; --color-edge-aa: #6b778c; --color-gutter: #7f9ad6; --color-bar: #4f85fc; --proj-1-fg: #8db0ff; --proj-1-bg: #1d2b4a; --proj-2-fg: #3fd18d; --proj-2-bg: #13302a; --proj-3-fg: #ffab70; --proj-3-bg: #3a2618; --proj-4-fg: #c0a6ff; --proj-4-bg: #2a2145; --proj-5-fg: #2bc2d6; --proj-5-bg: #10303a; --proj-6-fg: #ff7aa8; --proj-6-bg: #3d1a2a; --color-guide: #3a4457;
+  --color-rule: #262e3c; --color-edge-soft: #2e3747; --color-edge-aa: #6b778c; --color-gutter: #7f9ad6; --color-bar: #4f85fc; --proj-1-fg: #44a0de; --proj-1-bg: #1b3246; --proj-2-fg: #2ecc71; --proj-2-bg: #1a3b33; --proj-3-fg: #e67e22; --proj-3-bg: #3b2d24; --proj-4-fg: #b381c8; --proj-4-bg: #2e263f; --proj-5-fg: #1abc9c; --proj-5-bg: #17383a; --proj-6-fg: #eb695b; --proj-6-bg: #3c2429; --proj-7-fg: #f1c40f; --proj-7-bg: #3d3921; --proj-8-fg: #7d8b98; --proj-8-bg: #1b232f; --color-guide: #3a4457;
   --color-accent: #2e67e5; --color-accent-ink: #ffffff; --color-accent-soft: #1d2b4a; --color-link: #6f9bff; --color-focus: #6f9bff;
   --color-ok: #01bf71; --color-redir: #6cb6ff; --color-error: #ff5c5c; --color-warn: #f5b84b;
     --color-hit: rgb(245 184 75 / 0.22); --color-hit-cur: rgb(245 184 75 / 0.5); --color-hit-edge: #f5b84b;

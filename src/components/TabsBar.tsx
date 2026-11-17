@@ -7,7 +7,6 @@ import { Check, ChevronDown, Fingerprint, PanelLeftClose, PanelLeftOpen, Plus, S
 const LEVELS: [GuardLevel, string, typeof Shield][] = [
   ["run", "Run it", ShieldOff],
   ["confirm", "Ask to confirm", Shield],
-  ["verify", "Ask for passphrase", Fingerprint],
 ];
 
 /** The write guard of the open connection: voidHTTP's environment picker and menu. */
@@ -18,7 +17,9 @@ function GuardPicker() {
   const ref = useDismiss(open, () => setOpen(false));
   if (!conn) return null;
   const level = conn.guard;
-  const [, label, Icon] = LEVELS.find(([l]) => l === level)!;
+  const [, label, Icon] = LEVELS.find(([l]) => l === level) ?? LEVELS[1];
+  // passphrase protection sits beside the guard, not in it: shown as a fingerprint on the picker
+  const protectedByPass = passSet && !!conn.passProtect;
   return (
     <div className="menu-anchor env-group guard" ref={ref}>
       <button
@@ -27,12 +28,13 @@ function GuardPicker() {
         data-level={level}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Write guard for ${conn.name}: ${label}`}
+        aria-label={`Write guard for ${conn.name}: ${label}${protectedByPass ? ", passphrase protection on" : ""}`}
         title={`Write guard for ${conn.name}`}
         onClick={() => setOpen(!open)}
       >
         <Icon {...icoC("guard-ico")} />
         <span className="env-name">{label}</span>
+        {protectedByPass && <Fingerprint {...icoC("guard-pass")} />}
         <ChevronDown {...ico} />
       </button>
       {open && (
@@ -44,8 +46,6 @@ function GuardPicker() {
               type="button"
               role="menuitemradio"
               aria-checked={l === level}
-              disabled={l === "verify" && !passSet}
-              title={l === "verify" && !passSet ? "Set a passphrase in Settings › Security first" : undefined}
               onClick={() => {
                 setOpen(false);
                 void useStore.getState().setGuard(l);
@@ -56,8 +56,7 @@ function GuardPicker() {
               <Check {...icoC("tick")} />
             </button>
           ))}
-          {level === "verify" && <p className="menu-note">Lowering it asks for the passphrase first</p>}
-          {!passSet && <p className="menu-note">Ask for passphrase needs a passphrase, set in Settings › Security</p>}
+          {protectedByPass && <p className="menu-note">Protected statements also ask for the passphrase. Change that in the connection's Options</p>}
         </div>
       )}
     </div>

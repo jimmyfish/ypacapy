@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isDirty, useCurrent, useStore } from "../store";
 import { ENGINE_LABEL, ENGINE_NAME, formatSql } from "../lib/sql";
 import { duration } from "../lib/time";
-import type { QueryTab, RunOutcome, RunState } from "../types";
-import { ResultGrid } from "./ResultGrid";
+import { returnsRows, sourceOf, statements, targetOf, type EditTarget } from "../lib/edit";
+import { api, errText } from "../lib/api";
+import type { QueryTab, ResultSet, RunOutcome, RunState } from "../types";
+import { ResultGrid, type GridEdit } from "./ResultGrid";
 import { SqlEditor } from "./SqlEditor";
 import { useDismiss } from "./useDismiss";
 import { ChevronDown, CircleCheck, WandSparkles, ico } from "./Icon";
@@ -150,6 +152,45 @@ export function ErrorState({ o, onReconnect }: { o: Extract<RunOutcome, { kind: 
   );
 }
 
+/**
+ * The table a query result can be edited in: the select that gave it, read for its one table, and that
+ * table's columns from the catalog (one lookup per run). A string says why it cannot be edited; null: reading.
+ */
+function useEditTarget(tab: QueryTab, shown: ResultSet | undefined, index: number): EditTarget | string | null {
+  const { conn, session } = useCurrent();
+  const o = tab.run.outcome;
+  const sets = o?.kind === "done" ? o.sets.length : 0;
+  const src = (() => {
+    if (!conn || !session || !shown) return "";
+    if (!tab.run.sql) return "Run the query again to edit its rows.";
+    const rowStmts = statements(tab.run.sql).filter(returnsRows);
+    if (rowStmts.length !== sets) return "Could not tell which statement gave these rows.";
+    const s = sourceOf(rowStmts[index], conn.engine);
+    if (typeof s === "string") return s;
+    const schema = s.schema ?? (conn.engine === "postgres" ? session.schema || session.info?.defaultSchema || "public" : conn.engine === "mysql" ? session.database : "main");
+    return { ...s, schema };
+  })();
+  const lookup = typeof src === "object" ? `${tab.run.runId}|${src.schema}|${src.table}` : "";
+  const [cols, setCols] = useState<{ lookup: string; cols?: Awaited<ReturnType<typeof api.tableInfo>>["columns"]; err?: string } | null>(null);
+  useEffect(() => {
+    if (!lookup || typeof src !== "object" || !conn || !session) return;
+    let live = true;
+    api.tableInfo(conn.id, session.database, src.schema, src.table).then(
+      (info) => live && setCols({ lookup, cols: info.columns }),
+      (e) => live && setCols({ lookup, err: errText(e) }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [lookup]);
+  return useMemo(() => {
+    if (typeof src === "string") return src || null;
+    if (!conn || !shown || cols?.lookup !== lookup) return null;
+    if (cols.err) return `Could not read the columns of ${src.table}: ${cols.err}`;
+    return targetOf(conn.engine, src.schema, src.table, src.items, shown, cols.cols ?? []);
+  }, [typeof src === "string" ? src : lookup, cols, shown, conn?.engine]);
+}
+
 function QueryResults({ tab }: { tab: QueryTab }) {
   const { conn, session } = useCurrent();
   const [sub, setSub] = useState<"results" | "messages">("results");
@@ -158,8 +199,12 @@ function QueryResults({ tab }: { tab: QueryTab }) {
   const run = tab.run;
   const o = run.outcome;
   const sets = o?.kind === "done" ? o.sets : [];
-  const shown = sets.length ? sets[Math.min(setIdx ?? sets.length - 1, sets.length - 1)] : undefined;
-  useEffect(() => setSetIdx(null), [o]);
+  const shownIdx = Math.min(setIdx ?? sets.length - 1, sets.length - 1);
+  const shown = sets.length ? sets[shownIdx] : undefined;
+  // a save replaces a set in place (same run): the picked set stays
+  useEffect(() => setSetIdx(null), [run.runId]);
+  const target = useEditTarget(tab, shown, shownIdx);
+  const edit: GridEdit | undefined = conn && session && shown ? { target, connId: conn.id, connName: conn.name, database: session.database, key: `${tab.id}:${shownIdx}`, onSaved: (rs) => st.replaceSet(tab.id, shownIdx, rs) } : undefined;
   const name = conn?.name ?? "";
 
   let body: ReactNode;
@@ -208,7 +253,7 @@ function QueryResults({ tab }: { tab: QueryTab }) {
       <div className="state">
         <div className="empty">
           <strong>{o.timeout ? "Stopped by the statement timeout" : "Cancelled"}</strong>
-          <span>{o.timeout ? "Settings › Queries sets how long a statement may run." : "The database was asked to stop the statement."}</span>
+          <span>{o.timeout ? "Settings › Queries sets how long a statement may run." : "ypacapy asked the database to stop the statement."}</span>
         </div>
       </div>
     );
@@ -217,6 +262,7 @@ function QueryResults({ tab }: { tab: QueryTab }) {
       <div className="state">
         <ResultGrid
           set={shown}
+          edit={edit}
           label={`Results of ${tab.title}`}
           exportName={tab.title}
           lead={
@@ -241,8 +287,7 @@ function QueryResults({ tab }: { tab: QueryTab }) {
         <div className="empty">
           {o.lastIsQuery ? (
             <>
-              <strong>The query ran and returned no rows</strong>
-              <span>Nothing matched. Widen the conditions and run it again.</span>
+              <strong>The query returned no rows</strong>
             </>
           ) : (
             <>

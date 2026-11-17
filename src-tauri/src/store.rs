@@ -51,7 +51,7 @@ impl LocalStore {
             .get_or_try_init(|| async {
                 let path = crate::paths::config_dir()?.join("ypacapy.db");
                 let opts = SqliteConnectOptions::new().filename(&path).create_if_missing(true);
-                let pool = SqlitePoolOptions::new().max_connections(2).connect_with(opts).await.map_err(|e| format!("cannot open {}: {e}", path.display()))?;
+                let pool = SqlitePoolOptions::new().max_connections(2).connect_with(opts).await.map_err(|e| format!("Could not open {}: {e}", path.display()))?;
                 sqlx::raw_sql(SCHEMA).execute(&pool).await.map_err(|e| e.to_string())?;
                 Ok::<_, String>(pool)
             })

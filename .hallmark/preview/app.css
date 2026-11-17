@@ -616,6 +616,12 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 .htime { margin-left: auto; color: var(--color-muted); font: var(--text-xs) var(--font-mono); font-variant-numeric: tabular-nums; }
 .htime + .hstatus { margin-left: var(--space-xs); min-width: 3ch; text-align: right; }
 
+/* Right-click menus: a result cell's opens at the pointer; a tree row's is its "…" menu */
+.menu.ctx-menu { position: fixed; top: 0; left: 0; right: auto; z-index: var(--z-modal); min-width: 200px; }
+.ctx-menu kbd { margin-left: auto; }
+.menu button:disabled { color: var(--color-muted); cursor: default; }
+.menu button:disabled:hover { background: none; }
+
 /* ======================================================================
    ypacapy: what a database tool adds to voidHTTP's kit. Only tokens; no literal colours.
    ====================================================================== */
@@ -751,7 +757,8 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 
 /* the write guard of the open connection: voidHTTP's environment picker and menu */
 .guard .env-picker .ico:last-child { width: 14px; height: 14px; color: var(--color-muted); }
-.guard .env-picker[data-level="verify"] .guard-ico { color: var(--color-link); }
+/* passphrase protection on: a fingerprint beside the guard's label */
+.guard .env-picker .guard-pass { width: 14px; height: 14px; color: var(--color-link); }
 .guard .env-picker[data-level="run"] .guard-ico { color: var(--color-warn); }
 .guard-menu { min-width: 280px; }
 .guard-menu button span { flex: 1; }
@@ -895,6 +902,12 @@ th[aria-sort="ascending"] .sort-ico, th[aria-sort="descending"] .sort-ico { colo
 /* Options tab: the rows of Settings (Security, Queries), set for this connection */
 .dialog .cx-h { display: flex; align-items: baseline; gap: var(--space-xs); margin: 0 0 var(--space-xs); color: var(--color-ink); font-size: var(--text-sm); font-weight: 600; }
 .cx-h-note { color: var(--color-muted); font-weight: 400; white-space: nowrap; }
+.set-item--pass .set-text { flex: 1; }
+.set-item--pass .set-text .desc { overflow: visible; white-space: normal; text-overflow: clip; }
+.pass-forgot { justify-self: start; padding: 0; border: none; background: none; color: var(--color-link); font-size: var(--text-sm); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.pass-forgot:hover { color: var(--color-ink); }
+.pass-forgot[hidden] { display: none; }
+.set-pane h3 .cx-h-note { margin-left: var(--space-2xs); font-size: var(--text-sm); }
 .cx-protect-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 var(--space-xs); }
 .cx-protect-head .cx-h { margin: 0; }
 .cx-panel .set-list { margin-bottom: var(--space-md); }
@@ -906,3 +919,9 @@ th[aria-sort="ascending"] .sort-ico, th[aria-sort="descending"] .sort-ico { colo
 .dialog .cx-foot { align-items: center; margin-top: var(--space-md); }
 .cx-foot #c-test { margin-right: auto; }
 .cx .test-line { margin-top: var(--space-md); overflow-wrap: anywhere; }
+
+/* security level menu: label over a one-line description */
+.guard-menu .gm-text { display: grid; gap: 1px; flex: 1; }
+.guard-menu .gm-text small { color: var(--color-muted); font-size: var(--text-sm); }
+.guard-menu button { min-height: 44px; }
+.guard .env-picker[data-level="none"] .guard-ico { color: var(--color-warn); }

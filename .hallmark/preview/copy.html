@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ypacapy wording review</title>
+<meta name="description" content="Each ypacapy UI string that read unclear or inconsistent, shown before and after the rewrite.">
+<link rel="stylesheet" href="./app.css">
+<link rel="stylesheet" href="./preview.css">
+<link rel="stylesheet" href="./copy.css">
+<script src="./themes.js"></script>
+</head>
+<body>
+<header class="pv-bar">
+  <strong>ypacapy preview · wording</strong>
+  <nav class="pv-screens" aria-label="Screens">
+    <a class="btn btn--quiet" href="./home.html" style="min-height:var(--control)">Home</a>
+    <a class="btn btn--quiet" href="./index.html" style="min-height:var(--control)">Query</a>
+    <a class="btn btn--quiet" href="./table.html" style="min-height:var(--control)">Table</a>
+    <a class="btn btn--quiet" href="./settings.html" style="min-height:var(--control)">Settings</a>
+    <a class="btn btn--quiet" href="./connect.html" style="min-height:var(--control)">New connection</a>
+    <a class="btn btn--quiet" href="./copy.html" style="min-height:var(--control)" aria-current="page">Wording</a>
+  </nav>
+  <div class="pv-states" role="group" aria-label="Show">
+    <button type="button" data-view-set="both" aria-pressed="true">Both</button>
+    <button type="button" data-view-set="now" aria-pressed="false">Before</button>
+    <button type="button" data-view-set="proposed" aria-pressed="false">After</button>
+  </div>
+  <div class="pv-theme" role="group" aria-label="Mac appearance">
+    <button type="button" data-os-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-os-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<div class="cr-scroll">
+  <main class="cr" data-view="both">
+    <div>
+      <h1>Wording review</h1>
+      <p class="cr-lead">20 strings from src/ and src-tauri/ that read unclear or used two names for one thing, all now changed in the code. Each one is shown in the style it renders with: the old text on the left, the new text on the right in a blue frame.</p>
+    </div>
+    <p class="cr-clean">The scan found no words from the banned list, no em dashes, no puffery, no binary contrasts and no emoji. Most of the copy is already plain and concrete, so the fixes are small.</p>
+    <div class="cr-cols" aria-hidden="true"><span class="cr-col-now">Before</span><span class="cr-col-next">After</span></div>
+    <section class="cr-group" aria-labelledby="g-connections">
+      <h2 id="g-connections">Connections</h2>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="cr-dlg"><h3>Remove local.db?</h3><p>The connection goes from ypacapy. The database file stays where it is.</p><footer><span class="btn">Cancel</span><span class="btn btn--danger">Remove</span></footer></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="cr-dlg"><h3>Remove local.db?</h3><p>ypacapy forgets the connection. The database file stays where it is.</p><footer><span class="btn">Cancel</span><span class="btn btn--danger">Remove</span></footer></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Unclear verb.</b> “Goes from ypacapy” leaves the reader to work out who does what. Name the actor.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="cr-dlg"><h3>Remove shop_prod?</h3><p>The connection and its keychain password go from this Mac. The database is not touched.</p><footer><span class="btn">Cancel</span><span class="btn btn--danger">Remove</span></footer></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="cr-dlg"><h3>Remove shop_prod?</h3><p>ypacapy removes the connection and its keychain password from this Mac. The database is not touched.</p><footer><span class="btn">Cancel</span><span class="btn btn--danger">Remove</span></footer></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Unclear verb.</b> Same fix, for server connections.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Write guard</span><span class="desc">Ask to confirm asks before any write</span></div></div></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Write guard</span><span class="desc">What happens before a write runs</span></div></div></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Label defines itself.</b> The description turns one option’s name into a verb. The tab bar’s menu already says “Before a write runs on shop_prod”, so reuse that.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Driver</span><span class="desc">VoiceOver reads the picker as “Connection type”</span></div></div></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Driver</span><span class="desc">VoiceOver reads the picker as “Driver”</span></div></div></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Two names for one field.</b> Sighted users read Driver, VoiceOver users hear Connection type. Make the aria-label match the visible label.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="cr-text">The write guard is Run it or Ask to confirm.</div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="cr-text">Pick Run it or Ask to confirm for the write guard.</div></samp></div>
+          </div>
+          <p class="cr-why"><b>Error states the rule, not the fix.</b> The errors beside it lead with the action (“Choose the database file”). This one should too.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+    </section>
+    <section class="cr-group" aria-labelledby="g-query-and-results">
+      <h2 id="g-query-and-results">Query and results</h2>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="empty"><strong>The query ran and returned no rows</strong><span>Nothing matched. Widen the conditions and run it again.</span></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="empty"><strong>The query returned no rows</strong></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Advice built on a guess.</b> The query may have no where clause, so “widen the conditions” can be wrong. “Ran and” repeats what “returned” already says.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="empty"><strong>Cancelled</strong><span>The database was asked to stop the statement.</span></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="empty"><strong>Cancelled</strong><span>ypacapy asked the database to stop the statement.</span></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Passive voice.</b> Say who asked.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="cr-btns"><span class="set-label">2 changes</span><span class="btn btn--primary">Submit</span><span class="btn">Revert</span></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="cr-btns"><span class="set-label">2 changes</span><span class="btn btn--primary">Save</span><span class="btn">Revert</span></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Two names for one action.</b> The button says Submit, but its shortcut is ⌘S, the toast says “Saved 2 changes” and the error says “Nothing was saved”. Call it Save everywhere.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="cr-dlg"><h3>Discard 2 unsaved changes?</h3><p>Running again reads the rows anew. Submit first to keep the changes.</p><footer><span class="btn">Cancel</span><span class="btn btn--danger">Discard</span></footer></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="cr-dlg"><h3>Discard 2 unsaved changes?</h3><p>Running again reloads the rows. Save first to keep the changes.</p><footer><span class="btn">Cancel</span><span class="btn btn--danger">Discard</span></footer></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Stiff word.</b> “Anew” is stiff. Submit becomes Save to match the row above.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="cr-toast"><span>Open tabs not kept: &lt;error&gt;</span></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="cr-toast"><span>Could not save open tabs: &lt;error&gt;</span></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Clipped headline grammar.</b> Every other failure reads “Could not …” (connect, format, read the catalog).</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="empty"><strong>Nothing matches “ordrs”</strong><span>The filter checks the table, view and function names of the schemas loaded so far.</span></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="empty"><strong>Nothing matches “ordrs”</strong><span>Searches table, view and function names in the schemas loaded so far.</span></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Object doing a person’s verb (minor).</b> Same facts, fewer words. Optional.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="empty"><strong>Nothing matches</strong><span>History search looks at the SQL text.</span></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="empty"><strong>Nothing matches</strong><span>Searches the SQL text.</span></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Object doing a person’s verb (minor).</b> Saved queries has the same shape: “The search looks at names and SQL.” becomes “Searches names and SQL.” Optional.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+    </section>
+    <section class="cr-group" aria-labelledby="g-settings">
+      <h2 id="g-settings">Settings</h2>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Colour scheme</span></div></div></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Color scheme</span></div></div></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Two spellings.</b> The connection dialog says Color and Connection color, but Settings says Colour scheme. Pick one.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Query console font</span></div></div></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Editor font</span></div></div></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Two names for one surface.</b> The editor’s own aria-label is “SQL editor”, and nothing else in the app says console. The preview bar’s “Console font” follows.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+    </section>
+    <section class="cr-group" aria-labelledby="g-settings-security">
+      <h2 id="g-settings-security">Settings › Security</h2>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Passphrase</span><span class="desc">Not set. Set one to protect statements with it</span></div></div></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Passphrase</span><span class="desc">Not set. With one, the statements you pick ask for it before they run</span></div></div></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Vague.</b> “Protect statements with it” does not say what the protection does. The new text says it in the words What to protect uses.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Protect new connections with passphrase</span><span class="desc">What to protect asks for the passphrase, whatever the write guard</span></div></div></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Protect new connections with passphrase</span><span class="desc">The statements picked below ask for it, even under Run it</span></div></div></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Heading used as a subject.</b> “What to protect” is a section title, not something that asks. “Whatever the write guard” hides the case that matters, which is Run it.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Open with Touch ID</span><span class="desc">This Mac has no Touch ID ready</span></div></div></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="set-list"><div class="set-item"><div class="set-text"><span class="set-label">Open with Touch ID</span><span class="desc">Touch ID is not available on this Mac</span></div></div></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Odd phrasing.</b> “No Touch ID ready” reads like a translation.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="cr-dlg"><h3>Change passphrase protection</h3><footer><span class="btn">Cancel</span><span class="btn btn--primary">Open for changes</span></footer></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="cr-dlg"><h3>Change passphrase protection</h3><footer><span class="btn">Cancel</span><span class="btn btn--primary">Unlock</span></footer></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Vague button.</b> The switch beside it says Lock, and the setting above says “Stay unlocked for”. Use the same verb.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="cr-dlg"><h3>Disable passphrase</h3><p>Passphrase protection turns off on every connection, and Open with Touch ID turns off. Write guards stay as they are.</p><footer><span class="btn">Cancel</span><span class="btn btn--danger">Disable passphrase</span></footer></div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="cr-dlg"><h3>Disable passphrase</h3><p>This turns off passphrase protection on every connection, and Open with Touch ID. Write guards stay as they are.</p><footer><span class="btn">Cancel</span><span class="btn btn--danger">Disable passphrase</span></footer></div></samp></div>
+          </div>
+          <p class="cr-why"><b>Repeated verb.</b> “Turns off” appears twice in one sentence.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+    </section>
+    <section class="cr-group" aria-labelledby="g-errors-from-the-rust-side">
+      <h2 id="g-errors-from-the-rust-side">Errors from the Rust side</h2>
+        <article class="cr-item">
+          <div class="cr-pair">
+            <div class="cr-side cr-side--before" role="group" aria-label="Before"><samp class="cr-box"><div class="cr-text">cannot read ~/.config/ypacapy/settings.toml: &lt;error&gt;</div></samp></div>
+            <div class="cr-side cr-side--after" role="group" aria-label="After"><samp class="cr-box"><div class="cr-text">Could not read ~/.config/ypacapy/settings.toml: &lt;error&gt;</div></samp></div>
+          </div>
+          <p class="cr-why"><b>Mixed case.</b> These reach the UI in lowercase, while every other message is in sentence case and says “Could not”. “settings must be a table” gets the same fix.</p>
+          <ul class="cr-where"><li>Applied: the old text is no longer in the code.</li></ul>
+        </article>
+    </section>
+  </main>
+</div>
+<script>
+(() => {
+  const T = window.YpaThemes, root = document.documentElement, main = document.querySelector(".cr");
+  const q = new URLSearchParams(location.search);
+  const st = { os: q.get("os") === "dark" ? "dark" : "light", view: ["now", "proposed"].includes(q.get("view")) ? q.get("view") : "both" };
+  let set = [];
+  function apply() {
+    const id = q.get(st.os) || T.DEFAULT_SCHEME[st.os];
+    set.forEach((k) => root.style.removeProperty(k)); set = [];
+    const sc = T.findScheme(id);
+    root.dataset.theme = sc ? (T.isDark(sc) ? "dark" : "light") : T.BUILTIN[id]?.dark ? "dark" : "light";
+    if (sc) Object.entries(T.schemeTokens(sc)).forEach(([k, v]) => { root.style.setProperty(k, v); set.push(k); });
+    main.dataset.view = st.view;
+    document.querySelectorAll("[data-os-set]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.osSet === st.os)));
+    document.querySelectorAll("[data-view-set]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.viewSet === st.view)));
+    const u = new URL(location);
+    st.os === "dark" ? u.searchParams.set("os", "dark") : u.searchParams.delete("os");
+    st.view === "both" ? u.searchParams.delete("view") : u.searchParams.set("view", st.view);
+    history.replaceState(null, "", u);
+    document.querySelectorAll(".pv-screens a").forEach((a) => {
+      const base = a.dataset.base || (a.dataset.base = a.getAttribute("href"));
+      const t = new URL(base, location.href); if (st.os === "dark") t.searchParams.set("os", "dark");
+      a.setAttribute("href", t.href);
+    });
+  }
+  document.querySelectorAll("[data-os-set]").forEach((b) => b.addEventListener("click", () => { st.os = b.dataset.osSet; apply(); }));
+  document.querySelectorAll("[data-view-set]").forEach((b) => b.addEventListener("click", () => { st.view = b.dataset.viewSet; apply(); }));
+  apply();
+})();
+</script>
+</body>
+</html>

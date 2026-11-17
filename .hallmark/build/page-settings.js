@@ -10,11 +10,14 @@
   beat.addEventListener("change", () => { $("[data-when-beat]").hidden = !beat.checked; });
   // Security: passphrase set or not; set, change and disable each open their own dialog; change and disable need the current one
   let passSet = false;
-  let renderPass = () => {
+  const renderPass = () => {
+    const strictOpt = $('#sec-level option[value="strict"]');
+    strictOpt.disabled = !passSet;
+    strictOpt.textContent = passSet ? "Strict" : "Strict (set a passphrase below)";
+    if (!passSet && $("#sec-level").value === "strict") $("#sec-level").value = "low";
     $$("[data-pass]").forEach((c) => { c.hidden = c.dataset.pass !== (passSet ? "set" : "none"); });
-    $("[data-pass-desc]").textContent = passSet ? "Set, in the macOS keychain" : "Not set";
+    $("[data-pass-desc]").textContent = passSet ? "Set, in the macOS keychain" : "Not set. With one, the statements you pick ask for it before they run";
     $$("[data-needs-pass]").forEach((r) => { r.hidden = !passSet; });
-    if (!passSet) $("#sec-touch").checked = false;
   };
   const openSub = (k) => {
     $$("[data-sub]").forEach((d) => { d.hidden = d.dataset.sub !== k; });
@@ -36,35 +39,15 @@
     inputs.forEach((i) => i.setAttribute("aria-invalid", String(!i.value)));
     if (empty) { err.textContent = "Fill in every field."; empty.focus(); return; }
     const pair = inputs.slice(-2);
-    if (form.dataset.subForm === "unlock") { unlocked = true; renderLock(); closeSub(); return; }
     if (form.dataset.subForm !== "disable" && pair[0].value !== pair[1].value) { pair[1].setAttribute("aria-invalid", "true"); err.textContent = "The two passphrases differ."; pair[1].focus(); return; }
     passSet = form.dataset.subForm !== "disable"; renderPass(); closeSub();
   }));
-  // What to protect: locked by default; unlocking takes the passphrase once and lasts until Settings closes or Lock
-  let unlocked = false;
-  const renderLock = () => {
-    $$("#protect .switch").forEach((sw) => { sw.disabled = !unlocked; });
-    const t = $("#protect-toggle");
-    $("use", t).setAttribute("href", unlocked ? "#i-lock-open" : "#i-lock");
-    $("span", t).textContent = unlocked ? "Lock" : "Change";
-  };
-  $("#protect-toggle").addEventListener("click", () => {
-    if (unlocked) { unlocked = false; renderLock(); return; }
-    openSub("unlock");
-    $("[data-touch-hint]").hidden = !$("#sec-touch").checked;
-  });
-  const _renderPass = renderPass;
-  renderPass = () => { _renderPass(); if (!passSet) unlocked = false; renderLock(); };
   renderPass();
-  // the passphrase and what it protects only matter for Ask for passphrase: shown only then, as in the connection dialog
-  const renderGuard = () => { $("[data-when-verify]").hidden = $("#sec-guard").value !== "verify"; };
-  $("#sec-guard").addEventListener("change", renderGuard);
   window.pvShow = (k) => {
     closeSub();
-    $("#sec-guard").value = k === "security" ? "confirm" : "verify"; renderGuard();
+    $("#sec-level").value = "none";
     if (["appearance", "queries", "data"].includes(k)) { go(k); return; }
     go("security");
-    passSet = k !== "security" && k !== "pass-new"; unlocked = k === "protect-open"; renderPass();
-    if (k === "protect-unlock") { openSub("unlock"); $("[data-touch-hint]").hidden = !$("#sec-touch").checked; }
-    if (k === "pass-new") openSub("new"); else if (k === "pass-change") openSub("change"); else if (k === "pass-disable") openSub("disable");
+    passSet = k !== "security" && k !== "pass-new"; renderPass();
+    if (k === "pass-new") openSub("new"); else if (k === "pass-change") openSub("change"); else if (k === "pass-disable") openSub("disable"); else if (k === "pass-reset") openSub("reset");
   };

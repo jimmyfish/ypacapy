@@ -1,91 +1,93 @@
 # Graph Report - ypacapy  (2026-11-17)
 
 ## Corpus Check
-- 43 files · ~66,836 words
+- 47 files · ~77,534 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 10 file(s) not represented in the graph (top: .css 5, (none) 4, .lock 1)
+- Unclassified: 11 file(s) not represented in the graph (top: .css 6, (none) 4, .lock 1)
 
 ## Summary
-- 787 nodes · 1611 edges · 55 communities (38 shown, 17 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 47 edges (avg confidence: 0.86)
+- 861 nodes · 1813 edges · 60 communities (38 shown, 22 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 58 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1548293a`
+- Built from commit: `34b03e25`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- Modals.tsx
+- store.ts
 - State
 - Hallmark Preview Screens
 - conns.rs
 - Query Executor Types
 - NPM Dependencies
-- Result Grid Icons
-- SQL Parser Dependencies
-- Async Pool Primitives
-- App.tsx
+- ResultGrid.tsx
+- guard.rs
+- TabsBar.tsx
+- edit.ts
 - keychain.rs
-- Sidebar Icons and Cells
-- Query and Table Panes
+- Sidebar.tsx
+- Picker.tsx
 - New Connection Preview
 - Tauri App Config
-- TabsBar.tsx
+- App.tsx
 - DB Catalog and Execute
-- Engine Connect Helpers
-- .get
+- run_error
+- settings.rs
 - TypeScript Config
 - Native Menu
-- Statement Classifier
-- Passphrase sub-dialogs (set, change, disable, unlock)
-- Font Discovery
-- Write Guard State
-- Passphrase Auth Commands
+- Modals.tsx
+- Exec
+- store.rs
+- sql.ts
+- themes.ts
+- types.ts
 - Tauri Capabilities
 - Agent Graph Workflow
-- themes.ts
+- Applied
 - run_query
 - App Icon
-- types.ts
+- classify
 - Cargo Crate
-- Exec
+- GuardState
+- react
+- Passphrase sub-dialogs (set, change, disable, unlock)
+- QueryTab
 - QueryPane.tsx
-- store.ts
-- Modals
-- Home.tsx
-- AppearancePane
-- .stream
-- Approval
 - classify_stmt
+- Approval
+- GuardLevel
+- Settings
+- Approval
+- schema_objects
 
 ## God Nodes (most connected - your core abstractions)
-1. `State` - 35 edges
-2. `useStore` - 30 edges
-3. `SettingsState` - 17 edges
-4. `useCurrent()` - 16 edges
-5. `GuardState` - 15 edges
-6. `compilerOptions` - 15 edges
-7. `LocalStore` - 14 edges
-8. `ConnectModal()` - 14 edges
-9. `ResultGrid()` - 14 edges
+1. `State` - 38 edges
+2. `useStore` - 31 edges
+3. `ResultGrid()` - 19 edges
+4. `ConnectModal()` - 17 edges
+5. `useCurrent()` - 17 edges
+6. `GuardState` - 16 edges
+7. `LocalStore` - 15 edges
+8. `compilerOptions` - 15 edges
+9. `react` - 15 edges
 10. `Pool` - 14 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `AppearancePane()` --implements--> `Settings Appearance pane`  [INFERRED]
   src/components/Modals.tsx → .hallmark/preview/settings.html
-- `QueriesPane()` --implements--> `Settings Queries pane`  [INFERRED]
-  src/components/Modals.tsx → .hallmark/preview/settings.html
 - `SecurityPane()` --implements--> `Settings Security pane`  [INFERRED]
   src/components/Modals.tsx → .hallmark/preview/settings.html
 - `settings.html (Settings design preview)` --conceptually_related_to--> `SettingsModal()`  [INFERRED]
   .hallmark/preview/settings.html → src/components/Modals.tsx
+- `PassDialog()` --implements--> `Passphrase sub-dialogs (set, change, disable, unlock)`  [INFERRED]
+  src/components/Modals.tsx → .hallmark/preview/settings.html
 - `TablePane()` --implements--> `table.html (Table design preview)`  [INFERRED]
   src/components/TablePane.tsx → .hallmark/preview/table.html
 
 ## Import Cycles
 - 1-file cycle: `src-tauri/src/keychain.rs -> src-tauri/src/keychain.rs`
-- 2-file cycle: `src-tauri/src/guard.rs -> src-tauri/src/settings.rs -> src-tauri/src/guard.rs`
 
 ## Hyperedges (group relationships)
 - **Settings dialog panes** — hallmark_preview_settings_appearance_pane, hallmark_preview_settings_queries_pane, hallmark_preview_settings_security_pane, hallmark_preview_settings_data_on_this_mac_pane [EXTRACTED 1.00]
@@ -95,59 +97,59 @@
 - **Write guard and passphrase protection flow** — hallmark_preview_settings_write_guard_picker, hallmark_preview_settings_what_to_protect, hallmark_preview_settings_passphrase_dialogs, hallmark_preview_settings_security_pane [INFERRED 0.85]
 - **Duplicated preview harness script (theme, fonts, URL carry) across screens** — hallmark_preview_connect_apply, hallmark_preview_home_apply, hallmark_preview_index_apply, hallmark_preview_connect_writeurl, hallmark_preview_home_writeurl, hallmark_preview_index_writeurl, hallmark_preview_index_ypathemes [INFERRED 0.95]
 
-## Communities (55 total, 17 thin omitted)
+## Communities (60 total, 22 thin omitted)
 
-### Community 0 - "Modals.tsx"
-Cohesion: 0.09
-Nodes (21): COLORS, CONN_TABS, ConnectModal(), ConnTab, connUrl(), GUARDS, MONO_FONTS, MY_SSL (+13 more)
+### Community 0 - "store.ts"
+Cohesion: 0.16
+Nodes (13): flushWorkspace(), lastWritten, Modal, newQuery(), readWorkspace(), restored, saveTimers, SettingsSection (+5 more)
 
 ### Community 1 - "State"
 Cohesion: 0.08
-Nodes (3): State, Saved, Settings
+Nodes (3): Edits, State, Saved
 
 ### Community 2 - "Hallmark Preview Screens"
-Cohesion: 0.05
-Nodes (45): connect.html (New connection preview), apply() (theme/density), writeUrl(), home.html (Home / Connections preview), apply() (theme/density), Connection tabs strip (app-strip / ptabs), Connections list (On this Mac), writeUrl() (+37 more)
+Cohesion: 0.06
+Nodes (43): connect.html (New connection preview), apply() (theme/density), writeUrl(), home.html (Home / Connections preview), apply() (theme/density), Connection tabs strip (app-strip / ptabs), Connections list (On this Mac), writeUrl() (+35 more)
 
 ### Community 3 - "conns.rs"
-Cohesion: 0.07
-Nodes (38): Conn, ConnFile, ConnLock, delete_connection(), Engine, Mysql, Postgres, Sqlite (+30 more)
+Cohesion: 0.11
+Nodes (33): clear_pass_protect(), Conn, conn(), ConnFile, ConnLock, delete_connection(), Engine, Mysql (+25 more)
 
 ### Community 4 - "Query Executor Types"
 Cohesion: 0.06
-Nodes (10): Affected, HARD_CAP, impl_affected!, impl_cells!, impl_raw!, RunRequest, TableColumn, TableIndex (+2 more)
+Nodes (9): Affected, HARD_CAP, impl_affected!, impl_cells!, impl_raw!, TableColumn, TableIndex, TableInfo (+1 more)
 
 ### Community 5 - "NPM Dependencies"
 Cohesion: 0.07
 Nodes (38): dependencies, lucide-react@0.460.0, react@^18.3.1, react-dom@^18.3.1, sql-formatter@15.9.0, @tauri-apps/api@^2.0.0, @tauri-apps/plugin-dialog@^2.0.0, @tauri-apps/plugin-opener@^2 (+30 more)
 
-### Community 6 - "Result Grid Icons"
-Cohesion: 0.10
-Nodes (18): Cell(), GridRow, jsonHtml(), ResultGrid(), TYPE_ICON, boolOf(), csvCell(), Format (+10 more)
+### Community 6 - "ResultGrid.tsx"
+Cohesion: 0.08
+Nodes (27): Cell(), CellEditor(), CellMenu(), ColKey, GridRow, jsonHtml(), MenuButton(), MenuItem (+19 more)
 
-### Community 7 - "SQL Parser Dependencies"
+### Community 7 - "guard.rs"
 Cohesion: 0.07
-Nodes (13): ALTER, available(), CREATE, DELETE, DROP, GRANT, INSERT, passphrase_status() (+5 more)
+Nodes (14): ALTER, Ask, available(), CREATE, DELETE, DROP, GRANT, INSERT (+6 more)
 
-### Community 8 - "Async Pool Primitives"
-Cohesion: 0.24
-Nodes (13): now_ms(), clear_history(), delete_saved(), HISTORY_MAX, HistoryEntry, list_history(), list_saved(), load_workspace() (+5 more)
+### Community 8 - "TabsBar.tsx"
+Cohesion: 0.14
+Nodes (4): ico, icoLg, LEVELS, ENGINE_LABEL
 
-### Community 9 - "App.tsx"
-Cohesion: 0.15
-Nodes (11): index.html (Vite app entry), App(), AppStrip(), SIDEBAR_DEFAULT, stack(), useTypeTokens(), GuardPicker(), TabsBar() (+3 more)
+### Community 9 - "edit.ts"
+Cohesion: 0.17
+Nodes (19): useEditTarget(), AFTER_FROM, column(), editStatements(), ident(), isName(), kw(), literal() (+11 more)
 
 ### Community 10 - "keychain.rs"
-Cohesion: 0.12
-Nodes (17): set_passphrase(), check_passphrase(), clear_passphrase(), delete(), derive(), get(), get_string(), has_passphrase() (+9 more)
+Cohesion: 0.13
+Nodes (16): check_passphrase(), clear_passphrase(), delete(), derive(), get(), get_string(), has_passphrase(), hex() (+8 more)
 
-### Community 11 - "Sidebar Icons and Cells"
-Cohesion: 0.12
-Nodes (18): icoC(), MenuButton(), ENGINE_OF(), HistorySide(), MenuItem, Row(), RowMore(), SavedSide() (+10 more)
+### Community 11 - "Sidebar.tsx"
+Cohesion: 0.14
+Nodes (10): ENGINE_OF(), HistorySide(), MenuItem, RowMore(), useDismiss(), clock(), clockOf, dayLabel() (+2 more)
 
-### Community 12 - "Query and Table Panes"
-Cohesion: 0.19
-Nodes (13): ConnWork(), CtxSelect(), Elapsed(), ErrorState(), QueryContext(), QueryPane(), QueryResults(), RunGroup() (+5 more)
+### Community 12 - "Picker.tsx"
+Cohesion: 0.14
+Nodes (21): ConnTile(), EngineIcon(), fill(), GLYPHS, ld(), Mysql(), Postgres(), Sqlite() (+13 more)
 
 ### Community 13 - "New Connection Preview"
 Cohesion: 0.11
@@ -157,49 +159,53 @@ Nodes (16): New connection dialog form, window.pvShow (connect states), save_con
 Cohesion: 0.10
 Nodes (19): app, security, windows, build, beforeBuildCommand, beforeDevCommand, devUrl, frontendDist (+11 more)
 
-### Community 15 - "TabsBar.tsx"
+### Community 15 - "App.tsx"
 Cohesion: 0.14
-Nodes (3): ico, icoLg, LEVELS
+Nodes (21): App(), AppStrip(), ConnWork(), SIDEBAR_DEFAULT, stack(), useTypeTokens(), address(), Home() (+13 more)
 
 ### Community 16 - "DB Catalog and Execute"
-Cohesion: 0.23
-Nodes (14): catalog(), conn(), execute(), first(), on_pool!, Open, open(), open_connection() (+6 more)
+Cohesion: 0.27
+Nodes (15): apply(), catalog(), conn(), execute(), first(), on_pool!, Open, open() (+7 more)
 
-### Community 17 - "Engine Connect Helpers"
+### Community 17 - "run_error"
 Cohesion: 0.20
 Nodes (13): capitalise(), connect(), host_of(), password_for(), pg_position(), Pool, Lite, My (+5 more)
 
-### Community 18 - ".get"
-Cohesion: 0.36
-Nodes (9): col(), err_text(), load_schema(), schema_objects(), SchemaObjects, table_catalog(), table_info(), TreeTable (+1 more)
+### Community 18 - "settings.rs"
+Cohesion: 0.20
+Nodes (8): config_dir(), config_path(), write_atomic(), load_settings(), read_file(), save_settings(), SettingsState, strip_nulls()
 
 ### Community 19 - "TypeScript Config"
 Cohesion: 0.12
 Nodes (16): compilerOptions, isolatedModules, jsx, lib, module, moduleResolution, noEmit, noFallthroughCasesInSwitch (+8 more)
 
 ### Community 20 - "Native Menu"
-Cohesion: 0.11
-Nodes (7): Cells, start_heartbeat(), build(), CLOSE_TAB, CLOSE_WINDOW, on_event(), SETTINGS
+Cohesion: 0.08
+Nodes (9): Cells, RawExec, RawItem, start_heartbeat(), build(), CLOSE_TAB, CLOSE_WINDOW, on_event() (+1 more)
 
-### Community 21 - "Statement Classifier"
-Cohesion: 0.21
-Nodes (11): Classified, classify(), classify_tokens(), dialect(), fallback_tokenizer(), kinds(), reads_never_ask(), row_limit_target() (+3 more)
+### Community 21 - "Modals.tsx"
+Cohesion: 0.06
+Nodes (47): Settings Data on this Mac pane, Settings Queries pane, ALL_KINDS, AppearancePane(), CONN_TABS, ConnectModal(), ConnTab, connUrl() (+39 more)
 
-### Community 23 - "Passphrase sub-dialogs (set, change, disable, unlock)"
-Cohesion: 0.25
-Nodes (9): openSub() (settings preview), Passphrase sub-dialogs (set, change, disable, unlock), window.pvShow (settings state switcher), renderLock() (settings preview), renderPass() (settings preview), Settings Security pane, What to protect (protected statement kinds), PassDialog() (+1 more)
-
-### Community 24 - "Font Discovery"
+### Community 22 - "Exec"
 Cohesion: 0.33
-Nodes (5): FontList, list_fonts(), mono_names(), named_mono(), scan()
+Nodes (7): Collected, ColMeta, done(), Exec, Cancelled, Done, ResultSet
 
-### Community 25 - "Write Guard State"
-Cohesion: 0.25
-Nodes (6): Approval, Confirm, Passphrase, TouchId, Ask, check()
+### Community 23 - "store.rs"
+Cohesion: 0.14
+Nodes (19): new_id(), now_ms(), FontList, list_fonts(), mono_names(), named_mono(), scan(), clear_history() (+11 more)
 
-### Community 26 - "Passphrase Auth Commands"
-Cohesion: 0.24
-Nodes (8): authenticate(), disable_passphrase(), GuardState, Inner, lock_protect(), unlock_protect(), verify(), verify_for_lowering()
+### Community 24 - "sql.ts"
+Cohesion: 0.21
+Nodes (12): Props, SqlEditor, DIALECT, ENGINE_NAME, esc(), formatSql(), highlightInline(), highlightSql() (+4 more)
+
+### Community 25 - "themes.ts"
+Cohesion: 0.18
+Nodes (20): useTheme(), alpha(), BUILTIN, BuiltinId, contrast(), FAMILIES, findScheme(), fit() (+12 more)
+
+### Community 26 - "types.ts"
+Cohesion: 0.15
+Nodes (14): api, Conn, DEFAULT_GUARD, HistoryEntry, OpenInfo, RunOutcome, RunState, SchemaNode (+6 more)
 
 ### Community 27 - "Tauri Capabilities"
 Cohesion: 0.33
@@ -209,70 +215,66 @@ Nodes (5): description, identifier, permissions, $schema, windows
 Cohesion: 0.60
 Nodes (3): Graph freshness hooks (PostToolUse + git post-commit), graphify knowledge graph (graphify-out/), CLAUDE.md (symlink to AGENTS.md)
 
-### Community 29 - "themes.ts"
-Cohesion: 0.17
-Nodes (21): useTheme(), alpha(), BUILTIN, BuiltinId, contrast(), DEFAULT_SCHEME, FAMILIES, findScheme() (+13 more)
+### Community 29 - "Applied"
+Cohesion: 0.40
+Nodes (5): Applied, Done, Failed, Miss, TimedOut
 
 ### Community 30 - "run_query"
-Cohesion: 0.21
-Nodes (9): cancel_query(), close_connection(), DbState, run_query(), RunOutcome, Ask, Cancelled, Done (+1 more)
+Cohesion: 0.17
+Nodes (13): apply_edits(), cancel_query(), close_connection(), DbState, EditRequest, plural(), run_query(), RunOutcome (+5 more)
 
 ### Community 31 - "App Icon"
 Cohesion: 0.67
 Nodes (3): ypacapy App Icon, Blue Gradient Rounded Tile, Database Cylinder Glyph
 
-### Community 32 - "types.ts"
-Cohesion: 0.15
-Nodes (15): api, Ask, HistoryEntry, OpenInfo, ResultSet, RunOutcome, RunState, SchemaNode (+7 more)
+### Community 32 - "classify"
+Cohesion: 0.21
+Nodes (11): Classified, classify(), classify_tokens(), dialect(), fallback_tokenizer(), kinds(), reads_never_ask(), row_limit_target() (+3 more)
 
-### Community 40 - "Exec"
-Cohesion: 0.29
-Nodes (8): Collected, ColMeta, done(), Exec, Cancelled, Done, ResultSet, sqlite_runs()
+### Community 36 - "GuardState"
+Cohesion: 0.18
+Nodes (10): authenticate(), authenticate_owner(), check(), disable_passphrase(), evaluate(), GuardState, Inner, lock_protect() (+2 more)
+
+### Community 40 - "Passphrase sub-dialogs (set, change, disable, unlock)"
+Cohesion: 0.22
+Nodes (10): openSub() (settings preview), Passphrase sub-dialogs (set, change, disable, unlock), window.pvShow (settings state switcher), renderLock() (settings preview), renderPass() (settings preview), Settings Security pane, What to protect (protected statement kinds), set_passphrase() (+2 more)
 
 ### Community 42 - "QueryPane.tsx"
-Cohesion: 0.15
-Nodes (16): react, Props, SqlEditor, DIALECT, ENGINE_LABEL, ENGINE_NAME, esc(), formatSql() (+8 more)
+Cohesion: 0.19
+Nodes (15): CtxSelect(), Elapsed(), ErrorState(), QueryContext(), QueryResults(), RunGroup(), RunMeta(), GridEdit (+7 more)
 
-### Community 43 - "store.ts"
-Cohesion: 0.14
-Nodes (14): flushWorkspace(), lastWritten, Modal, newQuery(), readWorkspace(), restored, saveTimers, SettingsSection (+6 more)
+### Community 44 - "Approval"
+Cohesion: 0.50
+Nodes (4): Approval, Confirm, Passphrase, TouchId
 
-### Community 44 - "Modals"
-Cohesion: 0.27
-Nodes (11): Settings Data on this Mac pane, DataPane(), GuardModal(), LowerGuardModal(), Modals(), PromptModal(), QueriesPane(), SaveQueryModal() (+3 more)
-
-### Community 45 - "Home.tsx"
-Cohesion: 0.27
-Nodes (5): ConnTile(), address(), Home(), errText(), Conn
-
-### Community 46 - "AppearancePane"
-Cohesion: 0.33
-Nodes (9): AppearancePane(), FontRow(), PassphraseSection(), SchemeRow(), SecurityPane(), SetItem(), Select(), FontList (+1 more)
+### Community 49 - "schema_objects"
+Cohesion: 0.31
+Nodes (10): col(), err_text(), load_schema(), quote_ident(), schema_objects(), SchemaObjects, table_catalog(), table_info() (+2 more)
 
 ## Ambiguous Edges - Review These
 - `Password kept in macOS login keychain` → `Write guard (Run it / Ask to confirm / Ask for passphrase)`  [AMBIGUOUS]
   .hallmark/preview/index.html · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **36 isolated node(s):** `Confirm`, `Passphrase`, `TouchId`, `Mysql`, `Postgres` (+31 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 283 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **17 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **40 isolated node(s):** `Done`, `Ask`, `Error`, `Cancelled`, `Done` (+35 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 300 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **22 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Passphrase sub-dialogs (set, change, disable, unlock)` connect `Passphrase sub-dialogs (set, change, disable, unlock)` to `Passphrase Auth Commands`, `keychain.rs`?**
-  _High betweenness centrality (0.164) - this node is a cross-community bridge._
-- **What connects `Confirm`, `Passphrase`, `TouchId` to the rest of the system?**
-  _36 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Modals.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.08994708994708994 - nodes in this community are weakly interconnected._
-- **Why does `PassDialog()` connect `Passphrase sub-dialogs (set, change, disable, unlock)` to `Modals.tsx`, `Home.tsx`, `AppearancePane`?**
-  _High betweenness centrality (0.152) - this node is a cross-community bridge._
+- **Why does `Passphrase sub-dialogs (set, change, disable, unlock)` connect `Passphrase sub-dialogs (set, change, disable, unlock)` to `GuardState`, `Modals.tsx`?**
+  _High betweenness centrality (0.176) - this node is a cross-community bridge._
+- **What connects `Done`, `Ask`, `Error` to the rest of the system?**
+  _40 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `State` be split into smaller, more focused modules?**
   _Cohesion score 0.07977207977207977 - nodes in this community are weakly interconnected._
+- **Why does `PassDialog()` connect `Modals.tsx` to `Passphrase sub-dialogs (set, change, disable, unlock)`, `QueryPane.tsx`?**
+  _High betweenness centrality (0.163) - this node is a cross-community bridge._
+- **Should `Hallmark Preview Screens` be split into smaller, more focused modules?**
+  _Cohesion score 0.0563265306122449 - nodes in this community are weakly interconnected._
 - **Why does `GuardLevel` connect `conns.rs` to `Hallmark Preview Screens`?**
-  _High betweenness centrality (0.138) - this node is a cross-community bridge._
+  _High betweenness centrality (0.152) - this node is a cross-community bridge._
 
 ### Low-confidence Hints
 _AMBIGUOUS edges — the extractor was unsure. Verify before acting on these._

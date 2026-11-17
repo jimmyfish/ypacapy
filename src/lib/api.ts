@@ -9,7 +9,7 @@ export const api = {
   saveConnection: (conn: Conn, password: string | null) => invoke<Conn>("save_connection", { conn, password }),
   deleteConnection: (id: string) => invoke<void>("delete_connection", { id }),
   touchConnection: (id: string) => invoke<void>("touch_connection", { id }),
-  setGuard: (id: string, level: string, passphrase?: string, touchId?: boolean) => invoke<void>("set_guard", { id, level, passphrase, touchId }),
+  setGuard: (id: string, level: string) => invoke<void>("set_guard", { id, level }),
   testConnection: (conn: Conn, password: string | null) => invoke<{ server: string; ms: number }>("test_connection", { conn, password }),
   openConnection: (id: string, database?: string) => invoke<OpenInfo>("open_connection", { id, database }),
   closeConnection: (id: string) => invoke<void>("close_connection", { id }),
@@ -18,10 +18,14 @@ export const api = {
   runQuery: (req: { runId: string; connId: string; database?: string; schema?: string; sql: string; addLimit: boolean; approval?: Approval; history: boolean }) =>
     invoke<RunOutcome>("run_query", { req }),
   cancelQuery: (runId: string) => invoke<void>("cancel_query", { runId }),
+  /** one transaction; every statement must change exactly one row */
+  applyEdits: (req: { connId: string; database?: string; statements: string[]; approval?: Approval }) => invoke<RunOutcome>("apply_edits", { req }),
   passphraseStatus: () => invoke<{ set: boolean; touchIdAvailable: boolean }>("passphrase_status"),
   setPassphrase: (newPass: string, current?: string) => invoke<void>("set_passphrase", { new: newPass, current }),
   disablePassphrase: (current: string) => invoke<void>("disable_passphrase", { current }),
-  unlockProtect: (passphrase: string | undefined, touchId: boolean) => invoke<void>("unlock_protect", { passphrase, touchId }),
+  /** forgot it: macOS asks for Touch ID or the login password, then the new one replaces it */
+  resetPassphrase: (newPass: string) => invoke<void>("reset_passphrase", { new: newPass }),
+  unlockProtect: (connId: string, passphrase: string | undefined, touchId: boolean) => invoke<void>("unlock_protect", { connId, passphrase, touchId }),
   lockProtect: () => invoke<void>("lock_protect"),
   listHistory: (search?: string) => invoke<HistoryEntry[]>("list_history", { search, limit: 300 }),
   clearHistory: () => invoke<void>("clear_history"),

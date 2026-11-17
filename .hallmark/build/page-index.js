@@ -40,10 +40,25 @@
   // Query 2: take the hint, rewrite the column, run again
   $("#q2-fix").addEventListener("click", () => { const c = $("#q2-col"); c.textContent = "total"; c.classList.remove("q-err"); runQuery(); });
 
+  $$("[data-guard-close]").forEach((b) => b.addEventListener("click", () => { b.closest(".backdrop").hidden = true; }));
+  $$("#guard-confirm-dlg form, #guard-pass-dlg form").forEach((f) => f.addEventListener("submit", (e) => { e.preventDefault(); f.closest(".backdrop").hidden = true; }));
   window.pvShow = (k) => {
     clearTimeout(timer); sub = "results";
     tab = { "sql-error": "q2", wide: "q3", long: "q4" }[k] || "q1";
     if (k === "sql-error") { const c = $("#q2-col"); c.textContent = "totl"; c.classList.add("q-err"); }
-    state = { results: "full", running: "loading", empty: "empty", "sql-error": "error", lost: "lost", wide: "full", long: "full" }[k];
+    // the guard's two asks
+    const dlg = { "guard-confirm": "guard-confirm-dlg", "guard-pass": "guard-pass-dlg", "guard-pass-touch": "guard-pass-dlg", "guard-pass-wrong": "guard-pass-dlg" }[k];
+    // Use Touch ID only when Settings > Security > Open with Touch ID is on
+    $("#guard-touch").hidden = k !== "guard-pass-touch";
+    $$("#guard-confirm-dlg, #guard-pass-dlg").forEach((d) => { d.hidden = d.id !== dlg; });
+    const pin = $("#guard-pass-in"), wrong = k === "guard-pass-wrong";
+    pin.value = wrong ? "hunter2" : ""; wrong ? pin.setAttribute("aria-invalid", "true") : pin.removeAttribute("aria-invalid");
+    $("#guard-pass-err").hidden = !wrong;
+    state = { "level-menu": "full", "guard-confirm": "full", "guard-pass": "full", "guard-pass-touch": "full", "guard-pass-wrong": "full", "cell-menu": "full", "row-menu": "full", results: "full", running: "loading", empty: "empty", "sql-error": "error", lost: "lost", wide: "full", long: "full" }[k];
     render();
+    // the two right-click menus, opened as a right-click would
+    const at = (el, dx, dy) => { const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.left + dx, clientY: r.top + dy })); };
+    if (k === "level-menu") setTimeout(() => $("#guard-btn").click());
+    if (k === "cell-menu") setTimeout(() => { const td = $$("#res-q1 tbody tr")[2]?.cells[2] ?? $$(".grid-wrap[tabindex] tbody td:not(.rownum)").find((x) => x.offsetParent)?.closest("tr")?.cells[2]; if (td) at(td, 24, 12); });
+    if (k === "row-menu") setTimeout(() => { const row = $$(".row").find((r) => $(".row-more", r) && r.offsetParent && /order_items/.test(r.textContent)); if (row) at(row, 60, 10); });
   };

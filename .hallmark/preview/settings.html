@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ypacapy preview, settings</title>
-<meta name="description" content="Design preview of ypacapy Settings: theme and colour scheme per appearance, compact mode, three fonts, query defaults and where data lives.">
+<meta name="description" content="Design preview of ypacapy Settings: theme and color scheme per appearance, compact mode, three fonts, query defaults and where data lives.">
 <link rel="stylesheet" href="./app.css">
 <link rel="stylesheet" href="./preview.css">
 <script src="./themes.js"></script>
@@ -12,6 +12,7 @@
 <body>
 <!-- icons: Lucide v0.460.0 (ISC), inlined from lucide-react's icon nodes -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plug-zap" viewBox="0 0 24 24"><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="m2 22 3-3"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m18 3-4 4h6l-4 4"/></symbol>
   <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
   <symbol id="i-list-tree" viewBox="0 0 24 24"><path d="M21 12h-8"/><path d="M21 6H8"/><path d="M21 18h-8"/><path d="M3 6v4c0 1.1.9 2 2 2h3"/><path d="M3 10v6c0 1.1.9 2 2 2h3"/></symbol>
   <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
@@ -84,8 +85,7 @@
     <button type="button" data-show="pass-new" aria-pressed="false">Set passphrase</button>
     <button type="button" data-show="pass-change" aria-pressed="false">Change passphrase</button>
     <button type="button" data-show="pass-disable" aria-pressed="false">Disable passphrase</button>
-    <button type="button" data-show="protect-unlock" aria-pressed="false">Enter passphrase</button>
-    <button type="button" data-show="protect-open" aria-pressed="false">Protect open</button>
+    <button type="button" data-show="pass-reset" aria-pressed="false">Forgot passphrase</button>
     <button type="button" data-show="data" aria-pressed="false">Data on this Mac</button>
   </div>
   <div class="pv-theme" role="group" aria-label="Density" style="margin-left:auto">
@@ -151,7 +151,7 @@
         <div class="row" hidden style="--indent:40px" data-path="public/functions/touch_updated_at"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-function"/></svg><span class="name">touch_updated_at</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for touch_updated_at" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
         <div class="row" hidden style="--indent:40px" data-path="public/functions/refund_window"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-function"/></svg><span class="name">refund_window</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for refund_window" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
         <div class="row collection" data-path="audit"><button type="button" class="row-main" data-group="audit" aria-expanded="false"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-right"/></svg><span class="name">audit</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for audit" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
-        <div class="empty" id="tree-empty" hidden><strong>Nothing matches <span id="tree-empty-q"></span></strong><span>The filter checks table, view and function names.</span><button type="button" class="link" id="tree-clear">Clear the filter</button></div>
+        <div class="empty" id="tree-empty" hidden><strong>Nothing matches <span id="tree-empty-q"></span></strong><span>Searches table, view and function names in the schemas loaded so far.</span><button type="button" class="link" id="tree-clear">Clear the filter</button></div>
         <div class="menu row-menu" id="row-menu" role="menu" aria-label="Table actions" hidden>
           <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-table-2"/></svg>Open rows</button>
           <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg>New query on this table</button>
@@ -201,13 +201,13 @@
           <button type="button" class="icon-btn tab-add" aria-label="New query tab"><svg aria-hidden="true" class="ico"><use href="#i-plus"/></svg></button>
         </div>
         <div class="menu-anchor env-group guard">
-          <button type="button" class="env-picker" id="guard-btn" data-menu="guard-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Write guard for shop_prod: Ask to confirm" title="Write guard for shop_prod"><svg aria-hidden="true" class="ico guard-ico"><use href="#i-shield"/></svg><span class="env-name" id="guard-name">Ask to confirm</span><svg aria-hidden="true" class="ico"><use href="#i-chevron-down"/></svg></button>
-          <div class="menu guard-menu" id="guard-menu" role="menu" aria-label="Write guard for shop_prod" hidden>
-            <p class="menu-note">Before a write runs on shop_prod</p>
-            <button type="button" role="menuitemradio" aria-checked="false" data-guard="run" data-icon="shield-off"><svg aria-hidden="true" class="ico"><use href="#i-shield-off"/></svg><span>Run it</span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
-            <button type="button" role="menuitemradio" aria-checked="true" data-guard="confirm" data-icon="shield"><svg aria-hidden="true" class="ico"><use href="#i-shield"/></svg><span>Ask to confirm</span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
-            <button type="button" role="menuitemradio" aria-checked="false" data-guard="verify" data-icon="fingerprint"><svg aria-hidden="true" class="ico"><use href="#i-fingerprint"/></svg><span>Ask for passphrase</span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
-            <p class="menu-note" id="guard-lower" hidden>Lowering it asks for the passphrase first</p>
+          <button type="button" class="env-picker" id="guard-btn" data-menu="guard-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Security level for shop_prod: Low" title="Security level for shop_prod"><svg aria-hidden="true" class="ico guard-ico"><use href="#i-shield"/></svg><span class="env-name" id="guard-name">Low</span><svg aria-hidden="true" class="ico"><use href="#i-chevron-down"/></svg></button>
+          <div class="menu guard-menu" id="guard-menu" role="menu" aria-label="Security level for shop_prod" hidden>
+            <p class="menu-note">Security level for shop_prod</p>
+            <button type="button" role="menuitemradio" aria-checked="false" data-guard="none" data-icon="shield-off"><svg aria-hidden="true" class="ico"><use href="#i-shield-off"/></svg><span class="gm-text"><span>None</span><small>Every statement runs</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+            <button type="button" role="menuitemradio" aria-checked="true" data-guard="low" data-icon="shield"><svg aria-hidden="true" class="ico"><use href="#i-shield"/></svg><span class="gm-text"><span>Low</span><small>Confirm the picked statements</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+            <button type="button" role="menuitemradio" aria-checked="false" data-guard="strict" data-icon="lock"><svg aria-hidden="true" class="ico"><use href="#i-lock"/></svg><span class="gm-text"><span>Strict</span><small>Passphrase for the picked statements</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+            <p class="menu-note">Pick the statements in the connection's Options</p>
           </div>
         </div>
       </div>
@@ -343,7 +343,7 @@ Bank reference 88341-A."><span class="first">My card was charged twice for order
             </div>
           </div>
           <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Running on shop_prod</strong><span>Started 0.4&nbsp;s ago</span><button type="button" class="btn" id="cancel">Cancel</button></div></div>
-          <div class="state" data-when="empty" hidden><div class="empty"><strong>The query ran and returned no rows</strong><span>No customer had a refund in the last 30 days. Widen the interval on line 9 and run it again.</span></div></div>
+          <div class="state" data-when="empty" hidden><div class="empty"><strong>The query returned no rows</strong></div></div>
           <div class="state" data-when="error" hidden><div class="error-box">
             <strong>Column totl does not exist</strong>
             <span class="hint-line">PostgreSQL stopped at line 1 and suggests the column you may have meant.</span>
@@ -411,11 +411,11 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
                 </div>
               </div>
               <div class="set-item">
-                <div class="set-text"><label for="set-console-font">Query console font</label></div>
+                <div class="set-text"><label for="set-console-font">Editor font</label></div>
                 <div class="set-ctl">
                   <input id="set-console-font" class="field set-font" list="set-console-font-list" placeholder="System monospace" spellcheck="false" data-font-name="--font-mono">
                   <datalist id="set-console-font-list"><option value="SF Mono"></option><option value="Menlo"></option><option value="Monaco"></option><option value="Courier New"></option><option value="JetBrains Mono"></option></datalist>
-                  <span class="select-wrap"><select class="field set-size" aria-label="Query console font size" data-size="--font-size-code"><option value="11px">11</option><option value="12px">12</option><option value="">13</option><option value="14px">14</option><option value="15px">15</option><option value="16px">16</option><option value="18px">18</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span>
+                  <span class="select-wrap"><select class="field set-size" aria-label="Editor font size" data-size="--font-size-code"><option value="11px">11</option><option value="12px">12</option><option value="">13</option><option value="14px">14</option><option value="15px">15</option><option value="16px">16</option><option value="18px">18</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span>
                 </div>
               </div>
           <div class="set-sample" aria-label="Sample">
@@ -431,7 +431,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
         <div class="set-list">
               <div class="set-item">
                 <div class="set-text"><label for="set-limit">Row limit</label><span class="desc">Added to a select that has no limit of its own</span></div>
-                <div class="set-ctl"><span class="unit-field"><input id="set-limit" class="field" inputmode="numeric" value="500"><span class="unit">rows</span></span></div>
+                <div class="set-ctl"><span class="unit-field"><input id="set-limit" class="field" inputmode="numeric" value="100"><span class="unit">rows</span></span></div>
               </div>
               <div class="set-item">
                 <div class="set-text"><label for="set-timeout">Statement timeout</label></div>
@@ -454,75 +454,19 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
 
       <div class="set-pane" data-pane="security" hidden>
         <h3>Security</h3>
-        <p class="pane-note">Each connection can change its write guard in the tabs bar or in its Options.</p>
+        <p class="pane-note">The passphrase is one for the whole app. Each connection keeps its own security level (None, Low or Strict) and the statements it asks about, set in its Options or the tabs bar.</p>
         <div class="set-list">
               <div class="set-item">
-                <div class="set-text"><label for="sec-guard">Write guard</label><span class="desc">For new connections</span></div>
-                <div class="set-ctl"><span class="select-wrap"><select id="sec-guard" class="field set-choice"><option value="run">Run it</option><option value="confirm" selected>Ask to confirm</option><option value="verify">Ask for passphrase</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
+                <div class="set-text"><label for="sec-level">Default security level for new connections</label><span class="desc">Existing connections keep their own</span></div>
+                <div class="set-ctl"><span class="select-wrap"><select id="sec-level" class="field set-choice"><option value="none" selected>None</option><option value="low">Low</option><option value="strict">Strict</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
               </div>
         </div>
-        <div data-when-verify hidden>
         <div class="set-list">
-              <div class="set-item">
-                <div class="set-text"><span class="set-label">Passphrase</span><span class="desc" data-pass-desc>Not set</span></div>
+              <div class="set-item set-item--pass">
+                <div class="set-text"><span class="set-label">Passphrase</span><span class="desc" data-pass-desc>Not set</span><button type="button" class="pass-forgot" data-pass="set" data-open-sub="reset" hidden>Forgot passphrase?</button></div>
                 <div class="set-ctl" data-pass="none"><button type="button" class="btn" data-open-sub="new">Set passphrase</button></div>
                 <div class="set-ctl" data-pass="set" hidden><button type="button" class="btn" data-open-sub="change">Change passphrase</button><button type="button" class="btn btn--danger" data-open-sub="disable">Disable passphrase</button></div>
               </div>
-              <div class="set-item set-item--sub" data-needs-pass hidden>
-                <div class="set-text"><label for="sec-touch">Open with Touch ID</label></div>
-                <div class="set-ctl"><input id="sec-touch" class="switch" type="checkbox" role="switch"></div>
-              </div>
-              <div class="set-item set-item--sub" data-needs-pass hidden>
-                <div class="set-text"><label for="sec-window">Stay unlocked for</label></div>
-                <div class="set-ctl"><span class="select-wrap"><select id="sec-window" class="field set-choice"><option value="0" selected>Ask every time</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="900">15 minutes</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
-              </div>
-        </div>
-        <div class="protect-head" data-needs-pass hidden>
-          <h3>What to protect</h3>
-          <button type="button" class="btn btn--quiet" id="protect-toggle"><svg aria-hidden="true" class="ico"><use href="#i-lock"/></svg><span>Change</span></button>
-        </div>
-        <div class="set-list stmts" id="protect" data-needs-pass hidden>
-              <div class="set-item">
-                <div class="set-text"><label for="prot-0"><code class="stmt">INSERT</code></label></div>
-                <div class="set-ctl"><input id="prot-0" class="switch" type="checkbox" role="switch" checked disabled></div>
-              </div>
-              <div class="set-item">
-                <div class="set-text"><label for="prot-1"><code class="stmt">UPDATE</code></label></div>
-                <div class="set-ctl"><input id="prot-1" class="switch" type="checkbox" role="switch" checked disabled></div>
-              </div>
-              <div class="set-item">
-                <div class="set-text"><label for="prot-2"><code class="stmt">DELETE</code></label></div>
-                <div class="set-ctl"><input id="prot-2" class="switch" type="checkbox" role="switch" checked disabled></div>
-              </div>
-              <div class="set-item">
-                <div class="set-text"><label for="prot-3"><code class="stmt">REPLACE</code> <span class="tag">MySQL</span></label></div>
-                <div class="set-ctl"><input id="prot-3" class="switch" type="checkbox" role="switch" checked disabled></div>
-              </div>
-              <div class="set-item">
-                <div class="set-text"><label for="prot-4"><code class="stmt">ALTER</code></label></div>
-                <div class="set-ctl"><input id="prot-4" class="switch" type="checkbox" role="switch" checked disabled></div>
-              </div>
-              <div class="set-item">
-                <div class="set-text"><label for="prot-5"><code class="stmt">DROP</code></label></div>
-                <div class="set-ctl"><input id="prot-5" class="switch" type="checkbox" role="switch" checked disabled></div>
-              </div>
-              <div class="set-item">
-                <div class="set-text"><label for="prot-6"><code class="stmt">TRUNCATE</code></label></div>
-                <div class="set-ctl"><input id="prot-6" class="switch" type="checkbox" role="switch" checked disabled></div>
-              </div>
-              <div class="set-item">
-                <div class="set-text"><label for="prot-7"><code class="stmt">CREATE</code></label></div>
-                <div class="set-ctl"><input id="prot-7" class="switch" type="checkbox" role="switch" checked disabled></div>
-              </div>
-              <div class="set-item">
-                <div class="set-text"><label for="prot-8"><code class="stmt">GRANT</code></label></div>
-                <div class="set-ctl"><input id="prot-8" class="switch" type="checkbox" role="switch" checked disabled></div>
-              </div>
-              <div class="set-item">
-                <div class="set-text"><label for="prot-9"><code class="stmt">REVOKE</code></label></div>
-                <div class="set-ctl"><input id="prot-9" class="switch" type="checkbox" role="switch" checked disabled></div>
-              </div>
-        </div>
         </div>
       </div>
       <div class="set-pane" data-pane="data" hidden>
@@ -554,18 +498,18 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
     </div>
   </div>
   <div class="backdrop sub-backdrop" data-sub="unlock" hidden>
-    <div class="dialog" role="dialog" aria-modal="true" aria-label="Change what to protect">
-      <h2>Change what to protect</h2>
+    <div class="dialog" role="dialog" aria-modal="true" aria-label="Change passphrase protection">
+      <h2>Change passphrase protection</h2>
       <form data-sub-form="unlock" novalidate><label>Passphrase<input class="field" id="p-unlock" type="password" autocomplete="current-password" required aria-required="true"></label><p class="help" data-touch-hint hidden>Or use Touch ID.</p>
         <p class="help err" data-sub-err role="alert"></p>
-        <footer><button type="button" class="btn" data-sub-cancel>Cancel</button><button type="submit" class="btn btn--primary">Open for changes</button></footer>
+        <footer><button type="button" class="btn" data-sub-cancel>Cancel</button><button type="submit" class="btn btn--primary">Unlock</button></footer>
       </form>
     </div>
   </div>
   <div class="backdrop sub-backdrop" data-sub="new" hidden>
     <div class="dialog" role="dialog" aria-modal="true" aria-label="Set passphrase">
       <h2>Set passphrase</h2>
-      <form data-sub-form="new" novalidate><label>Passphrase<input class="field" id="p-new" type="password" autocomplete="new-password" required aria-required="true"></label><label>Type it again<input class="field" id="p-new2" type="password" autocomplete="new-password" required aria-required="true"></label><p class="help">It cannot be recovered.</p>
+      <form data-sub-form="new" novalidate><label>Passphrase<input class="field" id="p-new" type="password" autocomplete="new-password" required aria-required="true"></label><label>Type it again<input class="field" id="p-new2" type="password" autocomplete="new-password" required aria-required="true"></label><p class="help">It cannot be shown again. If you forget it, reset it with Touch ID or your login password.</p>
         <p class="help err" data-sub-err role="alert"></p>
         <footer><button type="button" class="btn" data-sub-cancel>Cancel</button><button type="submit" class="btn btn--primary">Set passphrase</button></footer>
       </form>
@@ -583,9 +527,18 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
   <div class="backdrop sub-backdrop" data-sub="disable" hidden>
     <div class="dialog" role="dialog" aria-modal="true" aria-label="Disable passphrase">
       <h2>Disable passphrase</h2>
-      <form data-sub-form="disable" novalidate><label>Current passphrase<input class="field" id="p-cur2" type="password" autocomplete="current-password" required aria-required="true"></label><p class="help">Connections set to Ask for passphrase fall back to Ask to confirm, and Open with Touch ID turns off.</p>
+      <form data-sub-form="disable" novalidate><label>Current passphrase<input class="field" id="p-cur2" type="password" autocomplete="current-password" required aria-required="true"></label><p class="help">This turns off passphrase protection on every connection, and Open with Touch ID. Write guards stay as they are.</p>
         <p class="help err" data-sub-err role="alert"></p>
         <footer><button type="button" class="btn" data-sub-cancel>Cancel</button><button type="submit" class="btn btn--danger">Disable passphrase</button></footer>
+      </form>
+    </div>
+  </div>
+  <div class="backdrop sub-backdrop" data-sub="reset" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-label="Reset passphrase">
+      <h2>Reset passphrase</h2>
+      <form data-sub-form="reset" novalidate><label>New passphrase<input class="field" id="p-rst" type="password" autocomplete="new-password" required aria-required="true"></label><label>Type it again<input class="field" id="p-rst2" type="password" autocomplete="new-password" required aria-required="true"></label><p class="help">The old passphrase cannot be shown, only replaced. macOS asks for Touch ID or your login password first. Connections keep their protection.</p>
+        <p class="help err" data-sub-err role="alert"></p>
+        <footer><button type="button" class="btn" data-sub-cancel>Cancel</button><button type="submit" class="btn btn--primary">Reset passphrase</button></footer>
       </form>
     </div>
   </div>
@@ -638,7 +591,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
       const slot = row.dataset.schemeRow;
       row.hidden = !auto && slot !== st.mode;
       if (row.hidden) return;
-      $("[data-scheme-label]", row).textContent = auto ? (slot === "light" ? "Light theme" : "Dark theme") : "Colour scheme";
+      $("[data-scheme-label]", row).textContent = auto ? (slot === "light" ? "Light theme" : "Dark theme") : "Color scheme";
       $("select", row).value = st[slot];
       const [bg, ...dots] = schemeSwatch(st[slot]);
       const d = $(".scheme-dots", row); d.style.background = bg; d.innerHTML = dots.map((c) => `<i style="background:${c}"></i>`).join("");
@@ -769,9 +722,30 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
       closeAll(); if (!open) return;
       m.hidden = false; b.setAttribute("aria-expanded", "true"); m.querySelector("button").focus();
     }));
+    // Right-click on a tree row opens the same menu as its "…"
+    $$(".row").forEach((row) => row.addEventListener("contextmenu", (e) => {
+      const b = $(".row-more", row); if (!b) return;
+      e.preventDefault(); closeAll(); b.click();
+    }));
     document.addEventListener("mousedown", (e) => { if (!e.target.closest(".menu, .row-more, [data-menu]")) closeAll(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
   }
+  // Right-click on a result cell: copy its value, or its row in the Copy button's formats. Opens at the pointer.
+  const cellMenu = document.createElement("div");
+  cellMenu.className = "menu ctx-menu"; cellMenu.id = "cell-menu"; cellMenu.hidden = true;
+  cellMenu.setAttribute("role", "menu"); cellMenu.setAttribute("aria-label", "Cell");
+  cellMenu.innerHTML = `<button type="button" role="menuitem" data-ctx="value">Copy value<kbd>⌘C</kbd></button><hr><p class="menu-note">Copy row as</p>${["Plain text", "JSON", "Markdown table", "CSV"].map((f) => `<button type="button" role="menuitem">${f}</button>`).join("")}`;
+  document.body.append(cellMenu);
+  $$("button", cellMenu).forEach((b) => b.addEventListener("click", () => { cellMenu.hidden = true; }));
+  const openCellMenu = (x, y, isNull) => {
+    $$(".menu:not([hidden])").forEach((m) => { m.hidden = true; });
+    $('[data-ctx="value"]', cellMenu).disabled = isNull;
+    cellMenu.hidden = false;
+    const r = cellMenu.getBoundingClientRect();
+    cellMenu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
+    cellMenu.style.top = `${y + r.height > innerHeight - 8 ? Math.max(8, y - r.height) : y}px`;
+    $("button:not(:disabled)", cellMenu).focus();
+  };
   // Grid: a cell is the unit. Click or arrow to a cell; the inspector under the grid shows its column, type, row and full value.
   // A head sorts the rows already on screen (no new query); the row numbers keep the order the database returned.
   $$(".grid-wrap[tabindex]").forEach((wrap) => {
@@ -797,6 +771,13 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
     wrap.addEventListener("click", (e) => {
       const td = e.target.closest("tbody td"); if (!td) return;
       pick(td.classList.contains("rownum") ? td.nextElementSibling : td);
+    });
+    wrap.addEventListener("contextmenu", (e) => {
+      let td = e.target.closest("tbody td"); if (!td) return;
+      e.preventDefault();
+      if (td.classList.contains("rownum")) td = td.nextElementSibling;
+      pick(td, false);
+      openCellMenu(e.clientX, e.clientY, td.classList.contains("null"));
     });
     wrap.addEventListener("keydown", (e) => {
       const d = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
@@ -838,21 +819,20 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
   }
 
   apply();
-  // Write guard of the open connection: one level, plus "every statement"; lowering from Touch ID asks first (in the app)
+  // Security level of the open connection: None, Low or Strict; lowering from Strict asks for the passphrase first (in the app)
   {
     const btn = $("#guard-btn");
     if (btn) {
-      const LABEL = { run: "Run it", confirm: "Ask to confirm", verify: "Ask for passphrase" };
+      const LABEL = { none: "None", low: "Low", strict: "Strict" };
       const setLevel = (lvl) => {
         $$("[data-guard]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.guard === lvl)));
         btn.dataset.level = lvl;
         $("#guard-name").textContent = LABEL[lvl];
         $(".guard-ico use", btn).setAttribute("href", `#i-${$(`[data-guard="${lvl}"]`).dataset.icon}`);
-        btn.setAttribute("aria-label", `Write guard for shop_prod: ${LABEL[lvl]}`);
-        $("#guard-lower").hidden = lvl !== "verify";
+        btn.setAttribute("aria-label", `Security level for shop_prod: ${LABEL[lvl]}`);
       };
       $$("[data-guard]").forEach((b) => b.addEventListener("click", () => { setLevel(b.dataset.guard); $("#guard-menu").hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); }));
-      setLevel("confirm");
+      setLevel("low");
     }
   }
 
@@ -868,11 +848,14 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
   beat.addEventListener("change", () => { $("[data-when-beat]").hidden = !beat.checked; });
   // Security: passphrase set or not; set, change and disable each open their own dialog; change and disable need the current one
   let passSet = false;
-  let renderPass = () => {
+  const renderPass = () => {
+    const strictOpt = $('#sec-level option[value="strict"]');
+    strictOpt.disabled = !passSet;
+    strictOpt.textContent = passSet ? "Strict" : "Strict (set a passphrase below)";
+    if (!passSet && $("#sec-level").value === "strict") $("#sec-level").value = "low";
     $$("[data-pass]").forEach((c) => { c.hidden = c.dataset.pass !== (passSet ? "set" : "none"); });
-    $("[data-pass-desc]").textContent = passSet ? "Set, in the macOS keychain" : "Not set";
+    $("[data-pass-desc]").textContent = passSet ? "Set, in the macOS keychain" : "Not set. With one, the statements you pick ask for it before they run";
     $$("[data-needs-pass]").forEach((r) => { r.hidden = !passSet; });
-    if (!passSet) $("#sec-touch").checked = false;
   };
   const openSub = (k) => {
     $$("[data-sub]").forEach((d) => { d.hidden = d.dataset.sub !== k; });
@@ -894,37 +877,17 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
     inputs.forEach((i) => i.setAttribute("aria-invalid", String(!i.value)));
     if (empty) { err.textContent = "Fill in every field."; empty.focus(); return; }
     const pair = inputs.slice(-2);
-    if (form.dataset.subForm === "unlock") { unlocked = true; renderLock(); closeSub(); return; }
     if (form.dataset.subForm !== "disable" && pair[0].value !== pair[1].value) { pair[1].setAttribute("aria-invalid", "true"); err.textContent = "The two passphrases differ."; pair[1].focus(); return; }
     passSet = form.dataset.subForm !== "disable"; renderPass(); closeSub();
   }));
-  // What to protect: locked by default; unlocking takes the passphrase once and lasts until Settings closes or Lock
-  let unlocked = false;
-  const renderLock = () => {
-    $$("#protect .switch").forEach((sw) => { sw.disabled = !unlocked; });
-    const t = $("#protect-toggle");
-    $("use", t).setAttribute("href", unlocked ? "#i-lock-open" : "#i-lock");
-    $("span", t).textContent = unlocked ? "Lock" : "Change";
-  };
-  $("#protect-toggle").addEventListener("click", () => {
-    if (unlocked) { unlocked = false; renderLock(); return; }
-    openSub("unlock");
-    $("[data-touch-hint]").hidden = !$("#sec-touch").checked;
-  });
-  const _renderPass = renderPass;
-  renderPass = () => { _renderPass(); if (!passSet) unlocked = false; renderLock(); };
   renderPass();
-  // the passphrase and what it protects only matter for Ask for passphrase: shown only then, as in the connection dialog
-  const renderGuard = () => { $("[data-when-verify]").hidden = $("#sec-guard").value !== "verify"; };
-  $("#sec-guard").addEventListener("change", renderGuard);
   window.pvShow = (k) => {
     closeSub();
-    $("#sec-guard").value = k === "security" ? "confirm" : "verify"; renderGuard();
+    $("#sec-level").value = "none";
     if (["appearance", "queries", "data"].includes(k)) { go(k); return; }
     go("security");
-    passSet = k !== "security" && k !== "pass-new"; unlocked = k === "protect-open"; renderPass();
-    if (k === "protect-unlock") { openSub("unlock"); $("[data-touch-hint]").hidden = !$("#sec-touch").checked; }
-    if (k === "pass-new") openSub("new"); else if (k === "pass-change") openSub("change"); else if (k === "pass-disable") openSub("disable");
+    passSet = k !== "security" && k !== "pass-new"; renderPass();
+    if (k === "pass-new") openSub("new"); else if (k === "pass-change") openSub("change"); else if (k === "pass-disable") openSub("disable"); else if (k === "pass-reset") openSub("reset");
   };
 pvStart();
 </script>

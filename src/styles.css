@@ -751,7 +751,8 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 
 /* the write guard of the open connection: voidHTTP's environment picker and menu */
 .guard .env-picker .ico:last-child { width: 14px; height: 14px; color: var(--color-muted); }
-.guard .env-picker[data-level="verify"] .guard-ico { color: var(--color-link); }
+/* passphrase protection on: a fingerprint beside the guard's label */
+.guard .env-picker .guard-pass { width: 14px; height: 14px; color: var(--color-link); }
 .guard .env-picker[data-level="run"] .guard-ico { color: var(--color-warn); }
 .guard-menu { min-width: 280px; }
 .guard-menu button span { flex: 1; }
@@ -924,13 +925,29 @@ body.row-resizing, body.row-resizing * { cursor: row-resize !important; user-sel
 /* the top block reads like the dialog title row: no gap to the tabs except the tab strip's own */
 .cx-head { grid-template-columns: max-content minmax(0, 1fr) max-content max-content; margin-bottom: var(--space-sm); }
 .cx-head .help { grid-column: 2 / 3; }
-/* colour: the select carries a dot of the chosen colour */
-.cx-color .select-wrap::before { content: ""; position: absolute; left: 12px; top: 50%; width: 10px; height: 10px; border-radius: 50%; background: var(--fg); transform: translateY(-50%); pointer-events: none; }
-.cx-color .field { width: 128px; padding-left: 30px; }
-/* driver: engine glyph on the left of the select */
-.cx-driver { position: relative; }
-.cx-driver .drv-ico { position: absolute; left: 10px; top: 50%; z-index: 1; width: 16px; height: 16px; transform: translateY(-50%); color: var(--color-muted); pointer-events: none; }
-.cx-driver .field { padding-left: 34px; }
+/* Picker (components/Picker.tsx): a field-styled button over a listbox whose options carry an icon */
+.picker { position: relative; display: inline-grid; }
+.picker-trigger { display: flex; align-items: center; gap: var(--space-xs); padding: 0 32px 0 var(--space-2xs); color: var(--color-ink); text-align: left; cursor: pointer; }
+.picker-trigger .picker-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-trigger .select-chev { position: absolute; top: 50%; right: 10px; width: 14px; height: 14px; transform: translateY(-50%); color: var(--color-muted); pointer-events: none; }
+/* the ring is for keyboard focus only: a mouse pick hands focus back to the field without lighting it up */
+.picker-trigger:focus:not(:focus-visible) { outline: none; }
+.picker-trigger[aria-expanded="true"] { border-color: var(--color-edge-aa); }
+/* portalled to <body> with a fixed left/top/width (Picker.tsx), above the dialog */
+.picker-menu { position: fixed; top: auto; right: auto; min-width: 0; z-index: calc(var(--z-modal) + 50); }
+.picker-menu .picker-opt { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-xs); padding: 0 var(--space-xs); }
+.picker-menu .picker-opt[aria-selected="true"] { background: var(--color-accent-soft); }
+.picker-menu .picker-opt[aria-selected="true"] .picker-label { font-weight: 600; }
+.picker-menu .picker-opt:hover, .picker-menu .picker-opt:focus-visible { background: var(--color-paper-3); }
+.picker-menu .picker-check { width: 14px; height: 14px; color: var(--color-link); }
+.picker-menu .picker-check.is-off { visibility: hidden; }
+.picker--color .picker-trigger { width: 160px; }
+/* engine: the brand glyph sits where the colour picker's 20px tile does, so labels line up */
+.picker--engine .engine-ico { flex-shrink: 0; margin: 0 2px; }
+.picker--engine .picker-trigger { padding-left: var(--space-xs); }
+/* driver: the picker fills its grid cell */
+.cx-driver { display: grid; }
+.picker--engine { display: grid; }
 /* tab strip runs edge to edge across the dialog, like a sheet's toolbar */
 .cx-tabs { margin: 0 calc(-1 * var(--space-lg)) var(--space-md); padding: 0 var(--space-lg); }
 .subtab[aria-selected="true"] { color: var(--color-link); border-bottom-color: var(--color-accent); font-weight: 600; }
@@ -940,6 +957,15 @@ body.row-resizing, body.row-resizing * { cursor: row-resize !important; user-sel
 /* Options tab: the rows of Settings (Security, Queries), set for this connection */
 .dialog .cx-h { display: flex; align-items: baseline; gap: var(--space-xs); margin: 0 0 var(--space-xs); color: var(--color-ink); font-size: var(--text-sm); font-weight: 600; }
 .cx-h-note { color: var(--color-muted); font-weight: 400; white-space: nowrap; }
+/* Security: the Passphrase row's text wraps (it carries the status, a reset note and Forgot passphrase?),
+   so the buttons beside it never squeeze it into an ellipsis */
+.set-item--pass .set-text { flex: 1; }
+.set-item--pass .set-text .desc { overflow: visible; white-space: normal; text-overflow: clip; }
+.pass-forgot { justify-self: start; padding: 0; border: none; background: none; color: var(--color-link); font-size: var(--text-sm); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.pass-forgot:hover { color: var(--color-ink); }
+.pass-forgot:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; border-radius: 2px; }
+.pass-reset { color: var(--color-warn); }
+.set-pane h3 .cx-h-note { margin-left: var(--space-2xs); font-size: var(--text-sm); }
 .cx-protect-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 var(--space-xs); }
 .cx-protect-head .cx-h { margin: 0; }
 .cx-panel .set-list { margin-bottom: var(--space-md); }
@@ -951,3 +977,33 @@ body.row-resizing, body.row-resizing * { cursor: row-resize !important; user-sel
 .dialog .cx-foot { align-items: center; margin-top: var(--space-md); }
 .cx-foot #c-test { margin-right: auto; }
 .cx .test-line { margin-top: var(--space-md); overflow-wrap: anywhere; }
+
+/* Right-click menus: a result cell's opens at the pointer; a tree row's is its "…" menu */
+.menu.ctx-menu { position: fixed; top: 0; left: 0; right: auto; z-index: var(--z-modal); min-width: 200px; }
+.ctx-menu kbd { margin-left: auto; }
+.menu button:disabled { color: var(--color-muted); cursor: default; }
+.menu button:disabled:hover { background: none; }
+
+/* ======================================================================
+   Editing result rows: a changed cell is green, a row marked for deletion red and struck through,
+   until Submit writes them or Revert drops them.
+   ====================================================================== */
+.edit-bar { display: flex; align-items: center; gap: var(--space-2xs); }
+.edit-bar .btn { min-height: 28px; padding-block: 0; }
+.edit-n { margin-right: var(--space-2xs); color: var(--color-ok); font: 600 var(--text-sm) var(--font-ui); font-variant-numeric: tabular-nums; }
+.grid td.cell-edit, .grid tbody tr:hover td.cell-edit { background: color-mix(in srgb, var(--color-ok) 18%, var(--color-paper)); }
+.grid td.cell-edit.cell-sel { background: color-mix(in srgb, var(--color-ok) 26%, var(--color-paper)); }
+.grid tr.row-edit .rownum { color: var(--color-ok); font-weight: 600; }
+.grid tr.row-del td, .grid tbody tr.row-del:hover td { background: color-mix(in srgb, var(--color-error) 14%, var(--color-paper)); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--color-error) 70%, transparent); }
+.grid tr.row-del .rownum { color: var(--color-error); text-decoration: none; }
+.grid tr.row-del td.cell-sel { background: color-mix(in srgb, var(--color-error) 22%, var(--color-paper)); }
+.grid td.cell-editing { position: relative; padding: 0; overflow: visible; box-shadow: inset 0 0 0 2px var(--color-focus); background: var(--color-paper); }
+.cell-input { display: block; box-sizing: border-box; width: 100%; min-width: 12ch; height: 34px; margin: 0; padding: 8px var(--space-md); border: 0; outline: 0; resize: none; overflow: hidden; background: transparent; color: var(--color-ink); font: inherit; line-height: 18px; white-space: pre; text-align: inherit; }
+.grid td.cell-editing.num .cell-input { text-align: right; }
+.edit-err { display: flex; align-items: flex-start; gap: var(--space-xs); margin: 0 var(--space-md) var(--space-xs); padding: var(--space-xs) var(--space-sm); border: 1px solid color-mix(in srgb, var(--color-error) 40%, var(--color-rule)); border-radius: var(--radius-control); background: color-mix(in srgb, var(--color-error) 7%, var(--color-paper)); }
+.edit-err-text { flex: 1; display: grid; gap: var(--space-3xs); min-width: 0; font-size: var(--text-sm); }
+.edit-err-text strong { color: var(--color-error); }
+.edit-err-text .hint-line { color: var(--color-ink-2); }
+.edit-err .db-says { margin: var(--space-3xs) 0 0; padding: var(--space-2xs) var(--space-sm); max-height: 8em; overflow: auto; }
+.ins-edited { color: var(--color-ok); font-weight: 600; }
+.ins-deleted { color: var(--color-error); font-weight: 600; }

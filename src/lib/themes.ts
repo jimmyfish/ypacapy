@@ -4,6 +4,8 @@
  * Mirror: .hallmark/preview/themes.js. Keep the two in step. Taken from voidHTTP; ypacapy ships the Ayu and Atom One families.
  */
 
+import { CONN_HEX_BY_ID } from "./connColors";
+
 /** A Ghostty theme, verbatim: background, foreground and palette 0..15. */
 interface Ghostty {
   bg: string;
@@ -137,7 +139,8 @@ export function schemeTokens(s: Scheme): Record<string, string> {
     "--j-punct": muted,
     "color-scheme": dark ? "dark" : "light",
   };
-  [blue, green, orange, magenta, cyan, red].forEach((c, i) => {
+  // connection tiles keep the Flat UI convention hue in every scheme; only the tint and fit follow the background
+  CONN_HEX_BY_ID.forEach((c, i) => {
     const bg = mix(B, c, dark ? 0.18 : 0.12);
     t[`--proj-${i + 1}-fg`] = fit(c, bg);
     t[`--proj-${i + 1}-bg`] = bg;

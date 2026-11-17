@@ -615,3 +615,9 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 /* history rows: when it was sent, then the status */
 .htime { margin-left: auto; color: var(--color-muted); font: var(--text-xs) var(--font-mono); font-variant-numeric: tabular-nums; }
 .htime + .hstatus { margin-left: var(--space-xs); min-width: 3ch; text-align: right; }
+
+/* Right-click menus: a result cell's opens at the pointer; a tree row's is its "…" menu */
+.menu.ctx-menu { position: fixed; top: 0; left: 0; right: auto; z-index: var(--z-modal); min-width: 200px; }
+.ctx-menu kbd { margin-left: auto; }
+.menu button:disabled { color: var(--color-muted); cursor: default; }
+.menu button:disabled:hover { background: none; }

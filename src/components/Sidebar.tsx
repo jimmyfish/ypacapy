@@ -26,12 +26,7 @@ export interface MenuItem {
 }
 
 /** A tree row's "…" menu, inside the row (voidHTTP's row menu). */
-function RowMore({ name, items, onOpen }: { name: string; items: MenuItem[]; onOpen?: (open: boolean) => void }) {
-  const [open, setOpenState] = useState(false);
-  const setOpen = (v: boolean) => {
-    setOpenState(v);
-    onOpen?.(v);
-  };
+function RowMore({ name, items, open, setOpen }: { name: string; items: MenuItem[]; open: boolean; setOpen: (open: boolean) => void }) {
   const ref = useDismiss(open, () => setOpen(false));
   return (
     // display: contents keeps the button and menu where the row's CSS expects them; the span only scopes outside clicks
@@ -77,17 +72,26 @@ function RowMore({ name, items, onOpen }: { name: string; items: MenuItem[]; onO
   );
 }
 
-/** One tree row; its "…" menu (name + items) marks the row while open. */
+/** One tree row; its "…" menu (name + items) marks the row while open. A right-click opens the same menu. */
 function Row({ indent, current, className = "", children, name, items }: { indent?: number; current?: boolean; className?: string; children: ReactNode; name?: string; items?: MenuItem[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const hasMenu = !!(name && items);
   return (
     <div
       className={`row ${className}${menuOpen ? " menu-open" : ""}`.trim()}
       style={indent ? ({ "--indent": `${indent}px` } as React.CSSProperties) : undefined}
       aria-current={current ? "page" : undefined}
+      onContextMenu={
+        hasMenu
+          ? (e) => {
+              e.preventDefault();
+              setMenuOpen(true);
+            }
+          : undefined
+      }
     >
       {children}
-      {name && items && <RowMore name={name} items={items} onOpen={setMenuOpen} />}
+      {hasMenu && <RowMore name={name!} items={items!} open={menuOpen} setOpen={setMenuOpen} />}
     </div>
   );
 }
@@ -217,7 +221,7 @@ function SchemaSide() {
         {q && !anyLeaf && (
           <div className="empty">
             <strong>Nothing matches "{filter.trim()}"</strong>
-            <span>The filter checks the table, view and function names of the schemas loaded so far.</span>
+            <span>Searches table, view and function names in the schemas loaded so far.</span>
             <button type="button" className="link" onClick={() => setFilter("")}>
               Clear the filter
             </button>
@@ -287,7 +291,7 @@ function HistorySide() {
         {!history.length && (
           <div className="empty">
             <strong>{search ? "Nothing matches" : "No queries yet"}</strong>
-            <span>{search ? "History search looks at the SQL text." : "Each query you run is kept here, on this Mac."}</span>
+            <span>{search ? "Searches the SQL text." : "Each query you run is kept here, on this Mac."}</span>
           </div>
         )}
         {days.map(([d, items]) => (
@@ -365,7 +369,7 @@ function SavedSide() {
         {!folders.length && (
           <div className="empty">
             <strong>{q ? "Nothing matches" : "No saved queries"}</strong>
-            <span>{q ? "The search looks at names and SQL." : "Save a query from its tab (⌘S) to keep it here."}</span>
+            <span>{q ? "Searches names and SQL." : "Save a query from its tab (⌘S) to keep it here."}</span>
           </div>
         )}
         {folders.map(([folder, items]) =>

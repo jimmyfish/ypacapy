@@ -10,7 +10,7 @@ const LUCIDE = process.env.LUCIDE_ICONS || `${process.env.HOME}/Playgrounds/rea/
 fs.writeFileSync(`${OUT}/app.css`, fs.readFileSync(`${SP}app.css.base`, "utf8") + fs.readFileSync(`${SP}ypacapy.css`, "utf8"));
 
 // ---------- icons: Lucide v0.460.0 nodes, read as text from voidHTTP's lucide-react ----------
-const ICONS = ["database", "list-tree", "history", "bookmark", "house", "server", "hard-drive", "x", "plus", "settings", "search", "refresh-cw",
+const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "house", "server", "hard-drive", "x", "plus", "settings", "search", "refresh-cw",
   "ellipsis", "chevron-down", "chevron-right", "chevron-left", "folder", "eye", "square-function", "table-2", "square-code", "panel-left-close",
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus"];
@@ -146,7 +146,7 @@ ${item("public/views/open_orders", "eye", "open_orders")}
 ${group("public/functions", "Functions", 3, 16, false)}
 ${["order_total", "touch_updated_at", "refund_window"].map((n) => item(`public/functions/${n}`, "square-function", n).replace('class="row"', 'class="row" hidden')).join("\n")}
 ${group("audit", "audit", 2, 0, false, false)}
-        <div class="empty" id="tree-empty" hidden><strong>Nothing matches <span id="tree-empty-q"></span></strong><span>The filter checks table, view and function names.</span><button type="button" class="link" id="tree-clear">Clear the filter</button></div>
+        <div class="empty" id="tree-empty" hidden><strong>Nothing matches <span id="tree-empty-q"></span></strong><span>Searches table, view and function names in the schemas loaded so far.</span><button type="button" class="link" id="tree-clear">Clear the filter</button></div>
         <div class="menu row-menu" id="row-menu" role="menu" aria-label="Table actions" hidden>
           <button type="button" role="menuitem">${ic("table-2")}Open rows</button>
           <button type="button" role="menuitem">${ic("square-code")}New query on this table</button>
@@ -197,13 +197,13 @@ ${TABS.map(([id, icon, label, href]) => `          <div class="tab" data-tab="${
           <button type="button" class="icon-btn tab-add" aria-label="New query tab">${ic("plus")}</button>
         </div>
         <div class="menu-anchor env-group guard">
-          <button type="button" class="env-picker" id="guard-btn" data-menu="guard-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Write guard for shop_prod: Ask to confirm" title="Write guard for shop_prod">${ic("shield", "guard-ico")}<span class="env-name" id="guard-name">Ask to confirm</span>${ic("chevron-down")}</button>
-          <div class="menu guard-menu" id="guard-menu" role="menu" aria-label="Write guard for shop_prod" hidden>
-            <p class="menu-note">Before a write runs on shop_prod</p>
-            <button type="button" role="menuitemradio" aria-checked="false" data-guard="run" data-icon="shield-off">${ic("shield-off")}<span>Run it</span>${ic("check", "tick")}</button>
-            <button type="button" role="menuitemradio" aria-checked="true" data-guard="confirm" data-icon="shield">${ic("shield")}<span>Ask to confirm</span>${ic("check", "tick")}</button>
-            <button type="button" role="menuitemradio" aria-checked="false" data-guard="verify" data-icon="fingerprint">${ic("fingerprint")}<span>Ask for passphrase</span>${ic("check", "tick")}</button>
-            <p class="menu-note" id="guard-lower" hidden>Lowering it asks for the passphrase first</p>
+          <button type="button" class="env-picker" id="guard-btn" data-menu="guard-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Security level for shop_prod: Low" title="Security level for shop_prod">${ic("shield", "guard-ico")}<span class="env-name" id="guard-name">Low</span>${ic("chevron-down")}</button>
+          <div class="menu guard-menu" id="guard-menu" role="menu" aria-label="Security level for shop_prod" hidden>
+            <p class="menu-note">Security level for shop_prod</p>
+            <button type="button" role="menuitemradio" aria-checked="false" data-guard="none" data-icon="shield-off">${ic("shield-off")}<span class="gm-text"><span>None</span><small>Every statement runs</small></span>${ic("check", "tick")}</button>
+            <button type="button" role="menuitemradio" aria-checked="true" data-guard="low" data-icon="shield">${ic("shield")}<span class="gm-text"><span>Low</span><small>Confirm the picked statements</small></span>${ic("check", "tick")}</button>
+            <button type="button" role="menuitemradio" aria-checked="false" data-guard="strict" data-icon="lock">${ic("lock")}<span class="gm-text"><span>Strict</span><small>Passphrase for the picked statements</small></span>${ic("check", "tick")}</button>
+            <p class="menu-note">Pick the statements in the connection's Options</p>
           </div>
         </div>
       </div>`;
@@ -287,7 +287,7 @@ ${TICKET_ROWS}
             </div>${inspector("id", "int8", 1, "812")}
           </div>
           <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Running on shop_prod</strong><span>Started 0.4&nbsp;s ago</span><button type="button" class="btn" id="cancel">Cancel</button></div></div>
-          <div class="state" data-when="empty" hidden><div class="empty"><strong>The query ran and returned no rows</strong><span>No customer had a refund in the last 30 days. Widen the interval on line 9 and run it again.</span></div></div>
+          <div class="state" data-when="empty" hidden><div class="empty"><strong>The query returned no rows</strong></div></div>
           <div class="state" data-when="error" hidden><div class="error-box">
             <strong>Column totl does not exist</strong>
             <span class="hint-line">PostgreSQL stopped at line 1 and suggests the column you may have meant.</span>
@@ -323,7 +323,7 @@ ${states.map(([k, l], i) => `    <button type="button" data-show="${k}" aria-pre
   <div class="pv-fonts">
     <label>UI font <select data-font="--font-ui">${UI_FONTS}</select></label>
     <label>Table font <select data-font="--font-table">${MONO_FONTS}</select></label>
-    <label>Console font <select data-font="--font-mono">${MONO_FONTS}</select></label>
+    <label>Editor font <select data-font="--font-mono">${MONO_FONTS}</select></label>
     <label>Size <select data-size="--font-size-ui"><option value="">14</option><option value="13px">13</option><option value="15px">15</option><option value="16px">16</option></select></label>
   </div>` : ""}
   <div class="pv-theme" role="group" aria-label="Density" style="margin-left:${fonts ? 0 : "auto"}">
@@ -382,7 +382,7 @@ pages["home.html"] = page({
     <div class="home-inner">
       <div class="home-head">
         <div><h1>Connections</h1><p class="muted">Everything stays on this Mac, in ~/.config/ypacapy.</p></div>
-        <div class="home-actions"><button type="button" class="btn">${ic("folder-open")}Open SQLite file</button><button type="button" class="btn btn--primary" data-href="./connect.html">${ic("plus")}New connection</button></div>
+        <div class="home-actions"><button type="button" class="btn btn--primary" data-href="./connect.html">${ic("plus")}New connection</button></div>
       </div>
       <section>
         <h2>On this Mac</h2>
@@ -394,12 +394,45 @@ pages["home.html"] = page({
 </div>`,
 });
 
+// The write guard's ask, before a write runs. Ask to confirm: Run or Cancel. Passphrase protection (the
+// statement is in the connection's What to protect, a passphrase is set): the passphrase or Touch ID, whatever the guard.
+const guardDialogs = `
+<div class="backdrop" id="guard-confirm-dlg" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-label="Run this on shop_prod?">
+    <h2>Run this on shop_prod?</h2>
+    <form>
+      <p class="help">It changes data or structure on shop_prod:</p>
+      <div class="guard-kinds"><code class="stmt">DELETE</code></div>
+      <footer>
+        <button type="button" class="btn" data-guard-close>Cancel</button>
+        <button type="submit" class="btn btn--danger">Run</button>
+      </footer>
+    </form>
+  </div>
+</div>
+<div class="backdrop" id="guard-pass-dlg" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-label="Enter the passphrase to run this">
+    <h2>Enter the passphrase to run this</h2>
+    <form>
+      <p class="help">It changes data or structure on shop_prod:</p>
+      <div class="guard-kinds"><code class="stmt">DELETE</code></div>
+      <label>Passphrase<input class="field" type="password" id="guard-pass-in" autocomplete="current-password"></label>
+      <p class="help err" role="alert" id="guard-pass-err" hidden>That passphrase is not right.</p>
+      <footer>
+        <button type="button" class="btn" id="guard-touch" hidden>${ic("fingerprint")}Use Touch ID</button>
+        <button type="button" class="btn" data-guard-close>Cancel</button>
+        <button type="submit" class="btn btn--danger">Run</button>
+      </footer>
+    </form>
+  </div>
+</div>`;
+
 // Query
 pages["index.html"] = page({
   title: "ypacapy preview",
   desc: "Design preview of ypacapy, a local-only database explorer for macOS: the query console and its result grid.",
-  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["wide", "Many columns"], ["long", "Long text"]], true),
-  body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork }),
+  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["wide", "Many columns"], ["long", "Long text"], ["cell-menu", "Cell menu"], ["row-menu", "Sidebar menu"], ["level-menu", "Security level menu"], ["guard-confirm", "Low: confirm"], ["guard-pass", "Strict: passphrase"], ["guard-pass-touch", "Strict with Touch ID"], ["guard-pass-wrong", "Strict: wrong passphrase"]], true),
+  body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: guardDialogs }),
   script: js("page-index.js"),
 });
 
@@ -479,7 +512,9 @@ const setItem = (label, desc, ctl, forId) => `
               </div>`;
 const unit = (id, v, u) => `<span class="unit-field"><input id="${id}" class="field" inputmode="numeric" value="${v}"><span class="unit">${u}</span></span>`;
 const choice = (id, opts, value) => `<span class="select-wrap"><select id="${id}" class="field set-choice">${opts.map(([v, l]) => `<option value="${v}"${v === value ? " selected" : ""}>${l}</option>`).join("")}</select>${ic("chevron-down", "select-chev")}</span>`;
-const LEVELS = [["run", "Run it"], ["confirm", "Ask to confirm"], ["verify", "Ask for passphrase"]];
+const LEVELS = [["none", "None"], ["low", "Low"], ["strict", "Strict"]];
+// What each security level does with the statements ticked under it
+const LEVEL_DESC = { none: "Every statement runs", low: "Confirm the statements below", strict: "Passphrase for the statements below" };
 const STMTS = [["INSERT"], ["UPDATE"], ["DELETE"], ["REPLACE", "MySQL"], ["ALTER"], ["DROP"], ["TRUNCATE"], ["CREATE"], ["GRANT"], ["REVOKE"]];
 const passField = (id, label, auto) => `<label>${label}<input class="field" id="${id}" type="password" autocomplete="${auto}" required aria-required="true"></label>`;
 const subDialog = (key, title, body, primary, danger) => `
@@ -493,30 +528,23 @@ const subDialog = (key, title, body, primary, danger) => `
     </div>
   </div>`;
 const passDialogs = () =>
-  subDialog("unlock", "Change what to protect", passField("p-unlock", "Passphrase", "current-password") + '<p class="help" data-touch-hint hidden>Or use Touch ID.</p>', "Open for changes") +
-  subDialog("new", "Set passphrase", passField("p-new", "Passphrase", "new-password") + passField("p-new2", "Type it again", "new-password") + '<p class="help">It cannot be recovered.</p>', "Set passphrase") +
+  subDialog("unlock", "Change passphrase protection", passField("p-unlock", "Passphrase", "current-password") + '<p class="help" data-touch-hint hidden>Or use Touch ID.</p>', "Unlock") +
+  subDialog("new", "Set passphrase", passField("p-new", "Passphrase", "new-password") + passField("p-new2", "Type it again", "new-password") + '<p class="help">It cannot be shown again. If you forget it, reset it with Touch ID or your login password.</p>', "Set passphrase") +
   subDialog("change", "Change passphrase", passField("p-cur", "Current passphrase", "current-password") + passField("p-chg", "New passphrase", "new-password") + passField("p-chg2", "Type it again", "new-password"), "Change passphrase") +
-  subDialog("disable", "Disable passphrase", passField("p-cur2", "Current passphrase", "current-password") + '<p class="help">Connections set to Ask for passphrase fall back to Ask to confirm, and Open with Touch ID turns off.</p>', "Disable passphrase", true);
+  subDialog("disable", "Disable passphrase", passField("p-cur2", "Current passphrase", "current-password") + '<p class="help">This turns off passphrase protection on every connection, and Open with Touch ID. Write guards stay as they are.</p>', "Disable passphrase", true) +
+  subDialog("reset", "Reset passphrase", passField("p-rst", "New passphrase", "new-password") + passField("p-rst2", "Type it again", "new-password") + '<p class="help">The old passphrase cannot be shown, only replaced. macOS asks for Touch ID or your login password first. Connections keep their protection.</p>', "Reset passphrase");
 const securityPane = () => `
       <div class="set-pane" data-pane="security" hidden>
         <h3>Security</h3>
-        <p class="pane-note">Each connection can change its write guard in the tabs bar or in its Options.</p>
-        <div class="set-list">${setItem("Write guard", "For new connections", choice("sec-guard", LEVELS, "confirm"), "sec-guard")}
+        <p class="pane-note">The passphrase is one for the whole app. Each connection keeps its own security level (None, Low or Strict) and the statements it asks about, set in its Options or the tabs bar.</p>
+        <div class="set-list">${setItem("Default security level for new connections", "Existing connections keep their own", choice("sec-level", LEVELS, "none"), "sec-level")}
         </div>
-        <div data-when-verify hidden>
         <div class="set-list">
-              <div class="set-item">
-                <div class="set-text"><span class="set-label">Passphrase</span><span class="desc" data-pass-desc>Not set</span></div>
+              <div class="set-item set-item--pass">
+                <div class="set-text"><span class="set-label">Passphrase</span><span class="desc" data-pass-desc>Not set</span><button type="button" class="pass-forgot" data-pass="set" data-open-sub="reset" hidden>Forgot passphrase?</button></div>
                 <div class="set-ctl" data-pass="none"><button type="button" class="btn" data-open-sub="new">Set passphrase</button></div>
                 <div class="set-ctl" data-pass="set" hidden><button type="button" class="btn" data-open-sub="change">Change passphrase</button><button type="button" class="btn btn--danger" data-open-sub="disable">Disable passphrase</button></div>
-              </div>${setItem("Open with Touch ID", "", '<input id="sec-touch" class="switch" type="checkbox" role="switch">', "sec-touch").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-needs-pass hidden")}${setItem("Stay unlocked for", "", choice("sec-window", [["0", "Ask every time"], ["60", "1 minute"], ["300", "5 minutes"], ["900", "15 minutes"]], "0"), "sec-window").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-needs-pass hidden")}
-        </div>
-        <div class="protect-head" data-needs-pass hidden>
-          <h3>What to protect</h3>
-          <button type="button" class="btn btn--quiet" id="protect-toggle">${ic("lock")}<span>Change</span></button>
-        </div>
-        <div class="set-list stmts" id="protect" data-needs-pass hidden>${STMTS.map(([k, tag], i) => setItem(`<code class="stmt">${k}</code>${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-${i}" class="switch" type="checkbox" role="switch" checked disabled>`, `prot-${i}`)).join("")}
-        </div>
+              </div>
         </div>
       </div>`;
 const sw = (id, on) => `<input id="${id}" class="switch" type="checkbox" role="switch"${on ? " checked" : ""}>`;
@@ -527,8 +555,8 @@ const schemeRow = (slot) => `
               </div>`;
 pages["settings.html"] = page({
   title: "ypacapy preview, settings",
-  desc: "Design preview of ypacapy Settings: theme and colour scheme per appearance, compact mode, three fonts, query defaults and where data lives.",
-  barHtml: bar("settings", [["appearance", "Appearance"], ["queries", "Queries"], ["security", "Security"], ["pass-set", "Passphrase set"], ["pass-new", "Set passphrase"], ["pass-change", "Change passphrase"], ["pass-disable", "Disable passphrase"], ["protect-unlock", "Enter passphrase"], ["protect-open", "Protect open"], ["data", "Data on this Mac"]]),
+  desc: "Design preview of ypacapy Settings: theme and color scheme per appearance, compact mode, three fonts, query defaults and where data lives.",
+  barHtml: bar("settings", [["appearance", "Appearance"], ["queries", "Queries"], ["security", "Security"], ["pass-set", "Passphrase set"], ["pass-new", "Set passphrase"], ["pass-change", "Change passphrase"], ["pass-disable", "Disable passphrase"], ["pass-reset", "Forgot passphrase"], ["data", "Data on this Mac"]]),
   body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: `
 <div class="backdrop" data-close="./index.html">
   <div class="dialog wide" role="dialog" aria-modal="true" aria-label="Settings">
@@ -542,7 +570,7 @@ pages["settings.html"] = page({
       </ul>
       <div class="set-pane" data-pane="appearance">
         <h3>Appearance</h3>
-        <div class="set-list">${setItem("Theme", "", `<div class="seg seg--lg" role="group" aria-label="Theme"><button type="button" data-set-theme="auto" aria-pressed="true">Auto</button><button type="button" data-set-theme="light" aria-pressed="false">Light</button><button type="button" data-set-theme="dark" aria-pressed="false">Dark</button></div>`)}${schemeRow("light")}${schemeRow("dark")}${setItem("Compact mode", "", sw("set-compact", false), "set-compact")}${fontRow("set-ui-font", "Interface font", "", "System default", "--font-ui", "--font-size-ui", [12, 13, 14, 15, 16], 14)}${fontRow("set-table-font", "Table font", "", "System monospace", "--font-table", "--font-size-table", [11, 12, 13, 14, 15, 16], 13)}${fontRow("set-console-font", "Query console font", "", "System monospace", "--font-mono", "--font-size-code", [11, 12, 13, 14, 15, 16, 18], 13)}
+        <div class="set-list">${setItem("Theme", "", `<div class="seg seg--lg" role="group" aria-label="Theme"><button type="button" data-set-theme="auto" aria-pressed="true">Auto</button><button type="button" data-set-theme="light" aria-pressed="false">Light</button><button type="button" data-set-theme="dark" aria-pressed="false">Dark</button></div>`)}${schemeRow("light")}${schemeRow("dark")}${setItem("Compact mode", "", sw("set-compact", false), "set-compact")}${fontRow("set-ui-font", "Interface font", "", "System default", "--font-ui", "--font-size-ui", [12, 13, 14, 15, 16], 14)}${fontRow("set-table-font", "Table font", "", "System monospace", "--font-table", "--font-size-table", [11, 12, 13, 14, 15, 16], 13)}${fontRow("set-console-font", "Editor font", "", "System monospace", "--font-mono", "--font-size-code", [11, 12, 13, 14, 15, 16, 18], 13)}
           <div class="set-sample" aria-label="Sample">
             <span class="set-sample-ui">Refunds by customer <span class="muted">Saved queries / Reports</span></span>
             <code><span class="q-k">select</span> c.email, <span class="q-f">count</span>(*) <span class="q-k">from</span> orders</code>
@@ -553,7 +581,7 @@ pages["settings.html"] = page({
       </div>
       <div class="set-pane" data-pane="queries" hidden>
         <h3>Queries</h3>
-        <div class="set-list">${setItem("Row limit", "Added to a select that has no limit of its own", unit("set-limit", "500", "rows"), "set-limit")}${setItem("Statement timeout", "", unit("set-timeout", "30", "s"), "set-timeout")}${setItem("Keep query history", "", sw("set-hist", true), "set-hist")}${setItem("Connection heartbeat", "Sends select 1 on every open connection, for servers that drop idle ones", sw("set-beat", false), "set-beat")}${setItem("Every", "Below the server idle timeout", unit("set-beat-every", "30", "s"), "set-beat-every").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-beat hidden")}
+        <div class="set-list">${setItem("Row limit", "Added to a select that has no limit of its own", unit("set-limit", "100", "rows"), "set-limit")}${setItem("Statement timeout", "", unit("set-timeout", "30", "s"), "set-timeout")}${setItem("Keep query history", "", sw("set-hist", true), "set-hist")}${setItem("Connection heartbeat", "Sends select 1 on every open connection, for servers that drop idle ones", sw("set-beat", false), "set-beat")}${setItem("Every", "Below the server idle timeout", unit("set-beat-every", "30", "s"), "set-beat-every").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-beat hidden")}
         </div>
       </div>
 ${securityPane()}
@@ -572,11 +600,11 @@ ${securityPane()}
 // New connection: a data-source dialog. Name and colour on top, then tabs; right-aligned labels, fields to the right
 const csel = (id, opts, cur, extra = "") => `<span class="select-wrap"${extra}><select class="field" id="${id}">${opts.map(([v, t]) => `<option value="${v}"${v === cur ? " selected" : ""}>${t}</option>`).join("")}</select>${ic("chevron-down", "select-chev")}</span>`;
 const lab = (id, t) => `<label for="${id}">${t}</label>`;
-const COLORS = [["1", "Blue"], ["2", "Green"], ["3", "Orange"], ["4", "Violet"], ["5", "Teal"], ["6", "Pink"]];
+const COLORS = [["5", "Turquoise"], ["2", "Emerald"], ["7", "Sunflower"], ["3", "Carrot"], ["6", "Alizarin"], ["1", "River"], ["8", "Asphalt"], ["4", "Amethyst"]];
 pages["connect.html"] = page({
   title: "ypacapy preview, new connection",
   desc: "Design preview of adding a PostgreSQL, MySQL or SQLite connection in ypacapy, with its password kept in the macOS keychain.",
-  barHtml: bar("connect", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["url-only", "URL only"], ["options", "Options tab"], ["options-verify", "Ask for passphrase"], ["options-nopass", "Ask, no passphrase set"], ["ssl", "SSL tab"], ["advanced", "Advanced tab"], ["name-missing", "Name missing"], ["testing", "Testing"], ["test-ok", "Test passed"], ["test-failed", "Test failed"]]),
+  barHtml: bar("connect", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["url-only", "URL only"], ["options", "Options tab"], ["options-low", "Low"], ["options-strict", "Strict"], ["options-nopass", "No passphrase set"], ["ssl", "SSL tab"], ["advanced", "Advanced tab"], ["name-missing", "Name missing"], ["testing", "Testing"], ["test-ok", "Test passed"], ["test-failed", "Test failed"]]),
   body: `
 <div class="app">${strip("home")}
   <div class="home"><div class="home-inner"><div class="home-head"><div><h1>Connections</h1><p class="muted">Everything stays on this Mac, in ~/.config/ypacapy.</p></div></div></div></div>
@@ -610,27 +638,19 @@ pages["connect.html"] = page({
       </div>
 
       <div class="cx-panel" role="tabpanel" id="p-options" aria-labelledby="t-options" hidden>
-        <h3 class="cx-h">Write guard</h3>
-        <div class="set-list">${setItem("Write guard", "Lowering Ask for passphrase needs the passphrase", choice("c-guard", LEVELS, "confirm"), "c-guard")}
+        <h3 class="cx-h">Security</h3>
+        <div class="set-list">${setItem("Security level", LEVEL_DESC.none, choice("c-level", LEVELS, "none"), "c-level").replace('<span class="desc">', '<span class="desc" data-level-desc>')}${setItem("Open with Touch ID", "", '<input id="c-touch" class="switch" type="checkbox" role="switch">', "c-touch").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-strict hidden")}${setItem("Stay unlocked for", "After the passphrase, for this connection only", choice("c-window", [["0", "Ask every time"], ["60", "1 minute"], ["300", "5 minutes"], ["900", "15 minutes"]], "0"), "c-window").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-strict hidden")}
         </div>
-        <div data-when-verify hidden>
-        <h3 class="cx-h">Passphrase <span class="cx-h-note">You can set this in Settings › Security later</span></h3>
-        <div class="set-list">
-              <div class="set-item">
-                <div class="set-text"><span class="set-label">Passphrase</span><span class="desc" data-pass-desc>Not set</span></div>
-                <div class="set-ctl" data-pass="none"><button type="button" class="btn" data-open-sub="new">Set passphrase</button></div>
-                <div class="set-ctl" data-pass="set" hidden><button type="button" class="btn" data-open-sub="change">Change passphrase</button><button type="button" class="btn btn--danger" data-open-sub="disable">Disable passphrase</button></div>
-              </div>${setItem("Open with Touch ID", "", '<input id="sec-touch" class="switch" type="checkbox" role="switch">', "sec-touch").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-needs-pass hidden")}${setItem("Stay unlocked for", "", choice("sec-window", [["0", "Ask every time"], ["60", "1 minute"], ["300", "5 minutes"], ["900", "15 minutes"]], "0"), "sec-window").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-needs-pass hidden")}
+        <div data-when-guarded hidden>
+        <div class="protect-head cx-protect-head">
+          <h3 class="cx-h">Statements to ask about <span class="cx-h-note">For this connection</span></h3>
+          <button type="button" class="btn btn--quiet" id="protect-toggle" data-when-strict hidden>${ic("lock")}<span>Change</span></button>
         </div>
-        <div class="protect-head cx-protect-head" data-needs-pass hidden>
-          <h3 class="cx-h">What to protect <span class="cx-h-note">For every connection</span></h3>
-          <button type="button" class="btn btn--quiet" id="protect-toggle">${ic("lock")}<span>Change</span></button>
-        </div>
-        <div class="set-list stmts" id="protect" data-needs-pass hidden>${STMTS.map(([k, tag], i) => setItem(`<code class="stmt">${k}</code>${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-${i}" class="switch" type="checkbox" role="switch" checked disabled>`, `prot-${i}`)).join("")}
+        <div class="set-list stmts" id="protect">${STMTS.map(([k, tag], i) => setItem(`<code class="stmt">${k}</code>${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-${i}" class="switch" type="checkbox" role="switch" checked>`, `prot-${i}`)).join("")}
         </div>
         </div>
         <h3 class="cx-h">Queries <span class="cx-h-note">Empty uses the value in Settings</span></h3>
-        <div class="set-list">${setItem("Row limit", "Added to a select that has no limit of its own", '<span class="unit-field"><input id="c-limit" class="field" inputmode="numeric" placeholder="500"><span class="unit">rows</span></span>', "c-limit")}${setItem("Statement timeout", "0 lets a statement run as long as it takes", '<span class="unit-field"><input id="c-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "c-timeout")}${setItem("Connection heartbeat", "Keeps idle sessions open with select 1", choice("c-beat", [["app", "Use Settings (off)"], ["on", "On"], ["off", "Off"]], "app"), "c-beat")}
+        <div class="set-list">${setItem("Row limit", "Added to a select that has no limit of its own", '<span class="unit-field"><input id="c-limit" class="field" inputmode="numeric" placeholder="100"><span class="unit">rows</span></span>', "c-limit")}${setItem("Statement timeout", "0 lets a statement run as long as it takes", '<span class="unit-field"><input id="c-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "c-timeout")}${setItem("Connection heartbeat", "Keeps idle sessions open with select 1", choice("c-beat", [["app", "Use Settings (off)"], ["on", "On"], ["off", "Off"]], "app"), "c-beat")}
         </div>
       </div>
 
@@ -655,7 +675,8 @@ pages["connect.html"] = page({
       <footer class="cx-foot">
         <button type="submit" class="btn" value="test" id="c-test">Test connection</button>
         <button type="button" class="btn" data-href="./home.html">Cancel</button>
-        <button type="submit" class="btn btn--primary" value="save">Save</button>
+        <button type="submit" class="btn" value="save">Save</button>
+        <button type="submit" class="btn btn--primary" value="connect">${ic("plug-zap")}Save &amp; Connect</button>
       </footer>
     </form>
   </div>

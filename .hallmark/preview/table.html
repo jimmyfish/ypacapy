@@ -12,6 +12,7 @@
 <body>
 <!-- icons: Lucide v0.460.0 (ISC), inlined from lucide-react's icon nodes -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plug-zap" viewBox="0 0 24 24"><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="m2 22 3-3"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m18 3-4 4h6l-4 4"/></symbol>
   <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
   <symbol id="i-list-tree" viewBox="0 0 24 24"><path d="M21 12h-8"/><path d="M21 6H8"/><path d="M21 18h-8"/><path d="M3 6v4c0 1.1.9 2 2 2h3"/><path d="M3 10v6c0 1.1.9 2 2 2h3"/></symbol>
   <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
@@ -146,7 +147,7 @@
         <div class="row" hidden style="--indent:40px" data-path="public/functions/touch_updated_at"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-function"/></svg><span class="name">touch_updated_at</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for touch_updated_at" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
         <div class="row" hidden style="--indent:40px" data-path="public/functions/refund_window"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-function"/></svg><span class="name">refund_window</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for refund_window" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
         <div class="row collection" data-path="audit"><button type="button" class="row-main" data-group="audit" aria-expanded="false"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-right"/></svg><span class="name">audit</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for audit" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
-        <div class="empty" id="tree-empty" hidden><strong>Nothing matches <span id="tree-empty-q"></span></strong><span>The filter checks table, view and function names.</span><button type="button" class="link" id="tree-clear">Clear the filter</button></div>
+        <div class="empty" id="tree-empty" hidden><strong>Nothing matches <span id="tree-empty-q"></span></strong><span>Searches table, view and function names in the schemas loaded so far.</span><button type="button" class="link" id="tree-clear">Clear the filter</button></div>
         <div class="menu row-menu" id="row-menu" role="menu" aria-label="Table actions" hidden>
           <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-table-2"/></svg>Open rows</button>
           <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg>New query on this table</button>
@@ -196,13 +197,13 @@
           <button type="button" class="icon-btn tab-add" aria-label="New query tab"><svg aria-hidden="true" class="ico"><use href="#i-plus"/></svg></button>
         </div>
         <div class="menu-anchor env-group guard">
-          <button type="button" class="env-picker" id="guard-btn" data-menu="guard-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Write guard for shop_prod: Ask to confirm" title="Write guard for shop_prod"><svg aria-hidden="true" class="ico guard-ico"><use href="#i-shield"/></svg><span class="env-name" id="guard-name">Ask to confirm</span><svg aria-hidden="true" class="ico"><use href="#i-chevron-down"/></svg></button>
-          <div class="menu guard-menu" id="guard-menu" role="menu" aria-label="Write guard for shop_prod" hidden>
-            <p class="menu-note">Before a write runs on shop_prod</p>
-            <button type="button" role="menuitemradio" aria-checked="false" data-guard="run" data-icon="shield-off"><svg aria-hidden="true" class="ico"><use href="#i-shield-off"/></svg><span>Run it</span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
-            <button type="button" role="menuitemradio" aria-checked="true" data-guard="confirm" data-icon="shield"><svg aria-hidden="true" class="ico"><use href="#i-shield"/></svg><span>Ask to confirm</span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
-            <button type="button" role="menuitemradio" aria-checked="false" data-guard="verify" data-icon="fingerprint"><svg aria-hidden="true" class="ico"><use href="#i-fingerprint"/></svg><span>Ask for passphrase</span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
-            <p class="menu-note" id="guard-lower" hidden>Lowering it asks for the passphrase first</p>
+          <button type="button" class="env-picker" id="guard-btn" data-menu="guard-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Security level for shop_prod: Low" title="Security level for shop_prod"><svg aria-hidden="true" class="ico guard-ico"><use href="#i-shield"/></svg><span class="env-name" id="guard-name">Low</span><svg aria-hidden="true" class="ico"><use href="#i-chevron-down"/></svg></button>
+          <div class="menu guard-menu" id="guard-menu" role="menu" aria-label="Security level for shop_prod" hidden>
+            <p class="menu-note">Security level for shop_prod</p>
+            <button type="button" role="menuitemradio" aria-checked="false" data-guard="none" data-icon="shield-off"><svg aria-hidden="true" class="ico"><use href="#i-shield-off"/></svg><span class="gm-text"><span>None</span><small>Every statement runs</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+            <button type="button" role="menuitemradio" aria-checked="true" data-guard="low" data-icon="shield"><svg aria-hidden="true" class="ico"><use href="#i-shield"/></svg><span class="gm-text"><span>Low</span><small>Confirm the picked statements</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+            <button type="button" role="menuitemradio" aria-checked="false" data-guard="strict" data-icon="lock"><svg aria-hidden="true" class="ico"><use href="#i-lock"/></svg><span class="gm-text"><span>Strict</span><small>Passphrase for the picked statements</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+            <p class="menu-note">Pick the statements in the connection's Options</p>
           </div>
         </div>
       </div>
@@ -339,7 +340,7 @@
       const slot = row.dataset.schemeRow;
       row.hidden = !auto && slot !== st.mode;
       if (row.hidden) return;
-      $("[data-scheme-label]", row).textContent = auto ? (slot === "light" ? "Light theme" : "Dark theme") : "Colour scheme";
+      $("[data-scheme-label]", row).textContent = auto ? (slot === "light" ? "Light theme" : "Dark theme") : "Color scheme";
       $("select", row).value = st[slot];
       const [bg, ...dots] = schemeSwatch(st[slot]);
       const d = $(".scheme-dots", row); d.style.background = bg; d.innerHTML = dots.map((c) => `<i style="background:${c}"></i>`).join("");
@@ -470,9 +471,30 @@
       closeAll(); if (!open) return;
       m.hidden = false; b.setAttribute("aria-expanded", "true"); m.querySelector("button").focus();
     }));
+    // Right-click on a tree row opens the same menu as its "…"
+    $$(".row").forEach((row) => row.addEventListener("contextmenu", (e) => {
+      const b = $(".row-more", row); if (!b) return;
+      e.preventDefault(); closeAll(); b.click();
+    }));
     document.addEventListener("mousedown", (e) => { if (!e.target.closest(".menu, .row-more, [data-menu]")) closeAll(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
   }
+  // Right-click on a result cell: copy its value, or its row in the Copy button's formats. Opens at the pointer.
+  const cellMenu = document.createElement("div");
+  cellMenu.className = "menu ctx-menu"; cellMenu.id = "cell-menu"; cellMenu.hidden = true;
+  cellMenu.setAttribute("role", "menu"); cellMenu.setAttribute("aria-label", "Cell");
+  cellMenu.innerHTML = `<button type="button" role="menuitem" data-ctx="value">Copy value<kbd>⌘C</kbd></button><hr><p class="menu-note">Copy row as</p>${["Plain text", "JSON", "Markdown table", "CSV"].map((f) => `<button type="button" role="menuitem">${f}</button>`).join("")}`;
+  document.body.append(cellMenu);
+  $$("button", cellMenu).forEach((b) => b.addEventListener("click", () => { cellMenu.hidden = true; }));
+  const openCellMenu = (x, y, isNull) => {
+    $$(".menu:not([hidden])").forEach((m) => { m.hidden = true; });
+    $('[data-ctx="value"]', cellMenu).disabled = isNull;
+    cellMenu.hidden = false;
+    const r = cellMenu.getBoundingClientRect();
+    cellMenu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
+    cellMenu.style.top = `${y + r.height > innerHeight - 8 ? Math.max(8, y - r.height) : y}px`;
+    $("button:not(:disabled)", cellMenu).focus();
+  };
   // Grid: a cell is the unit. Click or arrow to a cell; the inspector under the grid shows its column, type, row and full value.
   // A head sorts the rows already on screen (no new query); the row numbers keep the order the database returned.
   $$(".grid-wrap[tabindex]").forEach((wrap) => {
@@ -498,6 +520,13 @@
     wrap.addEventListener("click", (e) => {
       const td = e.target.closest("tbody td"); if (!td) return;
       pick(td.classList.contains("rownum") ? td.nextElementSibling : td);
+    });
+    wrap.addEventListener("contextmenu", (e) => {
+      let td = e.target.closest("tbody td"); if (!td) return;
+      e.preventDefault();
+      if (td.classList.contains("rownum")) td = td.nextElementSibling;
+      pick(td, false);
+      openCellMenu(e.clientX, e.clientY, td.classList.contains("null"));
     });
     wrap.addEventListener("keydown", (e) => {
       const d = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
@@ -539,21 +568,20 @@
   }
 
   apply();
-  // Write guard of the open connection: one level, plus "every statement"; lowering from Touch ID asks first (in the app)
+  // Security level of the open connection: None, Low or Strict; lowering from Strict asks for the passphrase first (in the app)
   {
     const btn = $("#guard-btn");
     if (btn) {
-      const LABEL = { run: "Run it", confirm: "Ask to confirm", verify: "Ask for passphrase" };
+      const LABEL = { none: "None", low: "Low", strict: "Strict" };
       const setLevel = (lvl) => {
         $$("[data-guard]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.guard === lvl)));
         btn.dataset.level = lvl;
         $("#guard-name").textContent = LABEL[lvl];
         $(".guard-ico use", btn).setAttribute("href", `#i-${$(`[data-guard="${lvl}"]`).dataset.icon}`);
-        btn.setAttribute("aria-label", `Write guard for shop_prod: ${LABEL[lvl]}`);
-        $("#guard-lower").hidden = lvl !== "verify";
+        btn.setAttribute("aria-label", `Security level for shop_prod: ${LABEL[lvl]}`);
       };
       $$("[data-guard]").forEach((b) => b.addEventListener("click", () => { setLevel(b.dataset.guard); $("#guard-menu").hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); }));
-      setLevel("confirm");
+      setLevel("low");
     }
   }
 

@@ -10,7 +10,7 @@ pub fn config_dir() -> Result<PathBuf, String> {
         .ok_or("cannot find the home folder")?;
     let dir = home.join(".config").join("ypacapy");
     if !dir.exists() {
-        std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
+        std::fs::create_dir_all(&dir).map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
         // connection details are private to the user even without passwords
         #[cfg(unix)]
         {
@@ -24,8 +24,8 @@ pub fn config_dir() -> Result<PathBuf, String> {
 /// Writes through a temp file and a rename, so a crash never leaves half a file.
 pub fn write_atomic(path: &Path, contents: &str) -> Result<(), String> {
     let tmp = path.with_extension("tmp");
-    std::fs::write(&tmp, contents).map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
-    std::fs::rename(&tmp, path).map_err(|e| format!("cannot write {}: {e}", path.display()))
+    std::fs::write(&tmp, contents).map_err(|e| format!("Could not write {}: {e}", tmp.display()))?;
+    std::fs::rename(&tmp, path).map_err(|e| format!("Could not write {}: {e}", path.display()))
 }
 
 /// `~/x` to an absolute path; anything else as typed.
@@ -46,7 +46,7 @@ pub fn config_path() -> Result<String, String> {
 /// Export: the frontend picks the path with the save dialog, Rust writes the text.
 #[tauri::command]
 pub async fn write_text_file(path: String, contents: String) -> Result<(), String> {
-    tokio::task::spawn_blocking(move || std::fs::write(&path, contents).map_err(|e| format!("cannot write {path}: {e}")))
+    tokio::task::spawn_blocking(move || std::fs::write(&path, contents).map_err(|e| format!("Could not write {path}: {e}")))
         .await
         .map_err(|e| e.to_string())?
 }

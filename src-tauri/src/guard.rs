@@ -3,7 +3,7 @@
 //! sqlparser's tokenizer splits it at top-level semicolons and the leading keywords decide. Never a
 //! regex over the text. Text that cannot even be tokenized counts as unreadable, which asks too.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::ops::ControlFlow;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -16,10 +16,10 @@ use sqlparser::parser::Parser;
 use sqlparser::tokenizer::{Token, Tokenizer};
 use tauri::State;
 
-use crate::conns::{Engine, GuardLevel};
-use crate::settings::SettingsState;
+use crate::conns::{Conn, Engine, GuardLevel};
 
-/// Settings > Security > What to protect, in its order. SELECT never asks.
+/// Every statement kind that writes, in What to protect's order. Ask to confirm asks about all of them;
+/// passphrase protection about the ones in a connection's What to protect. SELECT never asks.
 pub const STATEMENTS: [&str; 10] = ["INSERT", "UPDATE", "DELETE", "REPLACE", "ALTER", "DROP", "TRUNCATE", "CREATE", "GRANT", "REVOKE"];
 const INSERT: usize = 0;
 const UPDATE: usize = 1;
@@ -269,9 +269,11 @@ fn statement_end(sql: &str, d: &dyn Dialect) -> usize {
 
 #[derive(Default)]
 struct Inner {
-    /// After a passphrase or Touch ID, guarded statements run without asking until then.
-    unlocked_until: Option<Instant>,
-    /// Settings > Security > What to protect, opened for changes until Settings closes.
+    /// Per connection id: after its passphrase or Touch ID, its protected statements run without
+    /// asking until then. Unlocking one connection never unlocks another.
+    unlocked_until: HashMap<String, Instant>,
+    /// What to protect and passphrase protection, opened for changes until Settings or the
+    /// connection dialog closes.
     protect_unlocked: bool,
 }
 
@@ -282,12 +284,16 @@ impl GuardState {
     pub fn protect_unlocked(&self) -> bool {
         self.0.lock().map(|g| g.protect_unlocked).unwrap_or(false)
     }
-    fn unlocked(&self) -> bool {
-        self.0.lock().ok().and_then(|g| g.unlocked_until).is_some_and(|t| Instant::now() < t)
+    fn unlocked(&self, conn_id: &str) -> bool {
+        self.0.lock().ok().and_then(|g| g.unlocked_until.get(conn_id).copied()).is_some_and(|t| Instant::now() < t)
     }
-    fn note_unlock(&self, secs: u64) {
+    fn note_unlock(&self, conn_id: &str, secs: u32) {
         if let Ok(mut g) = self.0.lock() {
-            g.unlocked_until = (secs > 0).then(|| Instant::now() + Duration::from_secs(secs));
+            if secs > 0 {
+                g.unlocked_until.insert(conn_id.to_string(), Instant::now() + Duration::from_secs(secs.into()));
+            } else {
+                g.unlocked_until.remove(conn_id);
+            }
         }
     }
     fn reset(&self) {
@@ -310,7 +316,7 @@ pub enum Approval {
 #[serde(rename_all = "camelCase")]
 pub struct Ask {
     pub kinds: Vec<&'static str>,
-    /// confirm or verify: the effective level (verify without a passphrase falls back to confirm)
+    /// confirm (the guard) or verify (passphrase protection)
     pub level: GuardLevel,
     pub touch_id: bool,
     pub unreadable: bool,
@@ -319,35 +325,48 @@ pub struct Ask {
 }
 
 /// Whether a run may go ahead. Ok(None): run. Ok(Some(ask)): ask first, then call again with an approval.
-pub async fn check(c: &Classified, level: GuardLevel, approval: Option<Approval>, settings: &SettingsState, guard: &GuardState) -> Result<Option<Ask>, String> {
-    let protect = settings.protect();
-    let kinds: Vec<&'static str> = c.names().into_iter().filter(|k| protect.iter().any(|p| p == k)).collect();
-    if (kinds.is_empty() && !c.unreadable) || level == GuardLevel::Run {
+///
+/// Two checks, the stronger first. Passphrase protection (when on and a passphrase is set): the kinds in
+/// the connection's What to protect, and unreadable text, ask for the passphrase, or Touch ID when the
+/// connection allows it, whatever the guard; the connection then stays unlocked for its own window.
+/// Otherwise the guard: Ask to confirm asks before any write or unreadable text; Run it runs.
+pub async fn check(c: &Classified, conn: &Conn, approval: Option<Approval>, guard: &GuardState) -> Result<Option<Ask>, String> {
+    let writes = c.names();
+    if writes.is_empty() && !c.unreadable {
         return Ok(None);
     }
-    let has_pass = tokio::task::spawn_blocking(crate::keychain::has_passphrase).await.map_err(|e| e.to_string())??;
-    let level = if level == GuardLevel::Verify && !has_pass { GuardLevel::Confirm } else { level };
-    let touch = level == GuardLevel::Verify && settings.bool("touchId", false);
-    let ask = |error: Option<String>| Ask { kinds: kinds.clone(), level, touch_id: touch, unreadable: c.unreadable, error };
-    match (level, approval) {
-        (GuardLevel::Confirm, Some(_)) => Ok(None),
-        (GuardLevel::Verify, _) if guard.unlocked() => Ok(None),
-        (GuardLevel::Verify, Some(Approval::Passphrase { passphrase })) => {
-            if tokio::task::spawn_blocking(move || crate::keychain::check_passphrase(&passphrase)).await.map_err(|e| e.to_string())?? {
-                guard.note_unlock(settings.u64("unlockWindow", 0));
-                Ok(None)
-            } else {
-                Ok(Some(ask(Some("That passphrase is not right.".into()))))
-            }
+    let has_pass = conn.pass_protect && tokio::task::spawn_blocking(crate::keychain::has_passphrase).await.map_err(|e| e.to_string())??;
+    let protect = conn.protect_list();
+    let guarded: Vec<&'static str> = writes.iter().copied().filter(|k| protect.contains(k)).collect();
+    if has_pass && (!guarded.is_empty() || c.unreadable) {
+        let touch = conn.touch_id;
+        let window = conn.unlock_window.unwrap_or(0);
+        let ask = |error: Option<String>| Ask { kinds: guarded.clone(), level: GuardLevel::Verify, touch_id: touch, unreadable: c.unreadable, error };
+        if guard.unlocked(&conn.id) {
+            return Ok(None);
         }
-        (GuardLevel::Verify, Some(Approval::TouchId)) if touch => match touchid::authenticate("run a statement that changes data".into()).await {
-            Ok(()) => {
-                guard.note_unlock(settings.u64("unlockWindow", 0));
-                Ok(None)
+        return match approval {
+            Some(Approval::Passphrase { passphrase }) => {
+                if tokio::task::spawn_blocking(move || crate::keychain::check_passphrase(&passphrase)).await.map_err(|e| e.to_string())?? {
+                    guard.note_unlock(&conn.id, window);
+                    Ok(None)
+                } else {
+                    Ok(Some(ask(Some("That passphrase is not right.".into()))))
+                }
             }
-            Err(e) => Ok(Some(ask(Some(e)))),
-        },
-        _ => Ok(Some(ask(None))),
+            Some(Approval::TouchId) if touch => match touchid::authenticate("run a statement that changes data".into()).await {
+                Ok(()) => {
+                    guard.note_unlock(&conn.id, window);
+                    Ok(None)
+                }
+                Err(e) => Ok(Some(ask(Some(e)))),
+            },
+            _ => Ok(Some(ask(None))),
+        };
+    }
+    match (conn.guard, approval) {
+        (GuardLevel::Run, _) | (_, Some(_)) => Ok(None),
+        _ => Ok(Some(Ask { kinds: writes, level: GuardLevel::Confirm, touch_id: false, unreadable: c.unreadable, error: None })),
     }
 }
 
@@ -387,19 +406,38 @@ pub async fn set_passphrase(new: String, current: Option<String>) -> Result<(), 
     tokio::task::spawn_blocking(move || crate::keychain::set_passphrase(&new)).await.map_err(|e| e.to_string())?
 }
 
-/// Disable the passphrase: connections on Ask for passphrase go back to Ask to confirm.
+/// Disable the passphrase: every connection's passphrase protection turns off; guards stay as they are.
 #[tauri::command]
 pub async fn disable_passphrase(current: String, guard: State<'_, GuardState>) -> Result<(), String> {
     verify(current).await?;
     tokio::task::spawn_blocking(crate::keychain::clear_passphrase).await.map_err(|e| e.to_string())??;
     guard.reset();
-    crate::conns::lower_verify_to_confirm()
+    crate::conns::clear_pass_protect()
 }
 
-/// Opens What to protect for changes until lock_protect (Settings closes).
+/// Forgot the passphrase: the Mac's owner (Touch ID or the login password) sets a new one. The old one
+/// cannot be shown: the keychain holds only its hash. Connections keep their protection; any unlock and
+/// open What to protect end, so the new passphrase is asked for from the next protected run.
 #[tauri::command]
-pub async fn unlock_protect(passphrase: Option<String>, touch_id: bool, settings: State<'_, SettingsState>, guard: State<'_, GuardState>) -> Result<(), String> {
-    if touch_id && settings.bool("touchId", false) {
+pub async fn reset_passphrase(new: String, guard: State<'_, GuardState>) -> Result<(), String> {
+    if new.is_empty() {
+        return Err("The passphrase cannot be empty.".into());
+    }
+    if !tokio::task::spawn_blocking(crate::keychain::has_passphrase).await.map_err(|e| e.to_string())?? {
+        return Err("No passphrase is set. Use Set passphrase.".into());
+    }
+    touchid::authenticate_owner("reset the ypacapy passphrase".into()).await?;
+    tokio::task::spawn_blocking(move || crate::keychain::set_passphrase(&new)).await.map_err(|e| e.to_string())??;
+    guard.reset();
+    Ok(())
+}
+
+/// Opens a connection's passphrase protection for changes until lock_protect (the connection dialog
+/// closes). Touch ID only when that connection, as saved, allows it.
+#[tauri::command]
+pub async fn unlock_protect(conn_id: String, passphrase: Option<String>, touch_id: bool, guard: State<'_, GuardState>) -> Result<(), String> {
+    let allows_touch = crate::conns::find(&conn_id).map(|c| c.touch_id).unwrap_or(false);
+    if touch_id && allows_touch {
         touchid::authenticate("change what the write guard protects".into()).await?;
     } else {
         verify(passphrase.unwrap_or_default()).await?;
@@ -417,18 +455,6 @@ pub fn lock_protect(guard: State<'_, GuardState>) {
     }
 }
 
-/// Lowering a connection from Ask for passphrase needs the passphrase (or Touch ID) first.
-pub async fn verify_for_lowering(passphrase: Option<String>, touch_id: bool, settings: &SettingsState) -> Result<(), String> {
-    if !tokio::task::spawn_blocking(crate::keychain::has_passphrase).await.map_err(|e| e.to_string())?? {
-        return Ok(());
-    }
-    if touch_id && settings.bool("touchId", false) {
-        touchid::authenticate("lower the write guard".into()).await
-    } else {
-        verify(passphrase.unwrap_or_default()).await
-    }
-}
-
 /// Touch ID through LocalAuthentication's LAContext (biometrics only; the passphrase is the fallback).
 mod touchid {
     #[cfg(target_os = "macos")]
@@ -438,17 +464,33 @@ mod touchid {
         unsafe { ctx.canEvaluatePolicy_error(LAPolicy::DeviceOwnerAuthenticationWithBiometrics) }.is_ok()
     }
 
+    /// Touch ID only: approving a protected run, opening What to protect.
     #[cfg(target_os = "macos")]
     pub async fn authenticate(reason: String) -> Result<(), String> {
+        evaluate(reason, false).await
+    }
+
+    /// The Mac's owner: Touch ID, or the login password when Touch ID is missing, off or locked out.
+    /// Resetting a forgotten passphrase. No weaker than the passphrase's own keychain item, which the
+    /// login password already controls.
+    #[cfg(target_os = "macos")]
+    pub async fn authenticate_owner(reason: String) -> Result<(), String> {
+        evaluate(reason, true).await
+    }
+
+    #[cfg(target_os = "macos")]
+    async fn evaluate(reason: String, owner: bool) -> Result<(), String> {
         tokio::task::spawn_blocking(move || {
             use block2::RcBlock;
             use objc2::runtime::Bool;
             use objc2_foundation::{NSError, NSString};
             use objc2_local_authentication::{LAContext, LAPolicy};
 
+            let policy = if owner { LAPolicy::DeviceOwnerAuthentication } else { LAPolicy::DeviceOwnerAuthenticationWithBiometrics };
+            let what = if owner { "macOS authentication" } else { "Touch ID" };
             let ctx = unsafe { LAContext::new() };
-            if let Err(e) = unsafe { ctx.canEvaluatePolicy_error(LAPolicy::DeviceOwnerAuthenticationWithBiometrics) } {
-                return Err(format!("Touch ID is not available: {}", e.localizedDescription()));
+            if let Err(e) = unsafe { ctx.canEvaluatePolicy_error(policy) } {
+                return Err(format!("{what} is not available: {}", e.localizedDescription()));
             }
             let (tx, rx) = std::sync::mpsc::channel::<Result<(), String>>();
             let reply = RcBlock::new(move |ok: Bool, err: *mut NSError| {
@@ -456,13 +498,13 @@ mod touchid {
                     Ok(())
                 } else {
                     // SAFETY: LocalAuthentication passes a valid NSError or nil
-                    Err(unsafe { err.as_ref() }.map(|e| e.localizedDescription().to_string()).unwrap_or_else(|| "Touch ID did not succeed".into()))
+                    Err(unsafe { err.as_ref() }.map(|e| e.localizedDescription().to_string()).unwrap_or_else(|| format!("{what} did not succeed")))
                 };
                 let _ = tx.send(res);
             });
-            unsafe { ctx.evaluatePolicy_localizedReason_reply(LAPolicy::DeviceOwnerAuthenticationWithBiometrics, &NSString::from_str(&reason), &reply) };
+            unsafe { ctx.evaluatePolicy_localizedReason_reply(policy, &NSString::from_str(&reason), &reply) };
             // the context must live until the reply arrives
-            let res = rx.recv().map_err(|_| "Touch ID was interrupted".to_string())?;
+            let res = rx.recv().map_err(|_| format!("{what} was interrupted"))?;
             drop(ctx);
             res
         })
@@ -478,6 +520,11 @@ mod touchid {
     #[cfg(not(target_os = "macos"))]
     pub async fn authenticate(_: String) -> Result<(), String> {
         Err("Touch ID is only available on macOS".into())
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    pub async fn authenticate_owner(_: String) -> Result<(), String> {
+        Err("macOS authentication is only available on macOS".into())
     }
 }
 

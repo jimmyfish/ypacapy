@@ -114,6 +114,8 @@ trait RawExec: Send {
     fn stream<'c>(&'c mut self, sql: &'c str) -> BoxStream<'c, RawItem<Self::Done, Self::Row>>;
     fn rows<'c>(&'c mut self, sql: &'c str) -> BoxFuture<'c, Result<Vec<Self::Row>, sqlx::Error>>;
     fn run<'c>(&'c mut self, sql: &'c str) -> BoxFuture<'c, Result<(), sqlx::Error>>;
+    /// rows the statement(s) changed
+    fn changed<'c>(&'c mut self, sql: &'c str) -> BoxFuture<'c, Result<u64, sqlx::Error>>;
 }
 macro_rules! impl_raw {
     ($conn:ty, $row:ty, $done:ty) => {
@@ -141,6 +143,18 @@ macro_rules! impl_raw {
                     let mut s = self.stream(sql);
                     while s.try_next().await?.is_some() {}
                     Ok(())
+                })
+            }
+            fn changed<'c>(&'c mut self, sql: &'c str) -> BoxFuture<'c, Result<u64, sqlx::Error>> {
+                Box::pin(async move {
+                    let mut s = self.stream(sql);
+                    let mut n = 0;
+                    while let Some(x) = s.try_next().await? {
+                        if let Either::Left(d) = x {
+                            n += d.affected();
+                        }
+                    }
+                    Ok(n)
                 })
             }
         }
@@ -969,10 +983,10 @@ pub async fn run_query(
 ) -> Result<RunOutcome, String> {
     let conn = conns::find(&req.conn_id)?;
     let c = guard::classify(&req.sql, conn.engine);
-    if let Some(ask) = guard::check(&c, conn.guard, req.approval, &settings, &guard_state).await? {
+    if let Some(ask) = guard::check(&c, &conn, req.approval, &guard_state).await? {
         return Ok(RunOutcome::Ask(ask));
     }
-    let row_limit = conn.row_limit.map(u64::from).unwrap_or_else(|| settings.u64("rowLimit", 500)) as usize;
+    let row_limit = conn.row_limit.map(u64::from).unwrap_or_else(|| settings.u64("rowLimit", 100)) as usize;
     let (sql, limit) = if req.add_limit && c.limitable && row_limit > 0 {
         (format!("{}\nlimit {row_limit}", &req.sql[..c.end]), Some(row_limit))
     } else {
@@ -1028,6 +1042,126 @@ pub async fn run_query(
                 engine: conn.engine,
                 database,
                 sql: req.sql.clone(),
+                started_at,
+                ms: ms as i64,
+                rows,
+                status: status.into(),
+                error,
+            })
+            .await;
+    }
+    Ok(outcome)
+}
+
+/// Changes made in the result grid: one UPDATE or DELETE per row, each keyed by the row's primary key.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditRequest {
+    conn_id: String,
+    database: Option<String>,
+    statements: Vec<String>,
+    approval: Option<Approval>,
+}
+
+enum Applied {
+    Done(u64),
+    /// statement `index` changed `n` rows, not one: rolled back
+    Miss { index: usize, n: u64 },
+    Failed { index: usize, err: sqlx::Error },
+    TimedOut,
+}
+
+/// All statements in one transaction; each must change exactly one row, or nothing is kept.
+async fn apply(open: &Open, stmts: &[String], timeout_s: u64) -> Result<Applied, sqlx::Error> {
+    let work = async {
+        on_pool!(&open.pool, p => {
+            let mut tx = p.begin().await?;
+            let mut total = 0;
+            for (index, s) in stmts.iter().enumerate() {
+                match RawExec::changed(&mut *tx, s).await {
+                    Ok(1) => total += 1,
+                    // dropping the transaction rolls it back
+                    Ok(n) => return Ok(Applied::Miss { index, n }),
+                    Err(err) => return Ok(Applied::Failed { index, err }),
+                }
+            }
+            tx.commit().await?;
+            Ok(Applied::Done(total))
+        })
+    };
+    if timeout_s == 0 {
+        return work.await;
+    }
+    tokio::time::timeout(Duration::from_secs(timeout_s), work).await.unwrap_or(Ok(Applied::TimedOut))
+}
+
+#[tauri::command]
+pub async fn apply_edits(
+    req: EditRequest,
+    state: State<'_, DbState>,
+    settings: State<'_, SettingsState>,
+    guard_state: State<'_, GuardState>,
+    store: State<'_, LocalStore>,
+) -> Result<RunOutcome, String> {
+    let conn = conns::find(&req.conn_id)?;
+    if req.statements.is_empty() {
+        return Err("Nothing to save.".into());
+    }
+    let sql = req.statements.iter().map(|s| format!("{s};")).collect::<Vec<_>>().join("\n");
+    let c = guard::classify(&sql, conn.engine);
+    if let Some(ask) = guard::check(&c, &conn, req.approval, &guard_state).await? {
+        return Ok(RunOutcome::Ask(ask));
+    }
+    let started_at = conns::now_ms();
+    let t = Instant::now();
+    let database = req.database.clone().unwrap_or_default();
+    let timeout_s = conn.statement_timeout.map(u64::from).unwrap_or_else(|| settings.u64("statementTimeout", 30));
+    let res = match state.get(&conn, &database).await {
+        Ok(open) => apply(&open, &req.statements, timeout_s).await.map(|a| (a, open.server.clone())),
+        Err(e) => Err(e),
+    };
+    let ms = t.elapsed().as_millis() as u64;
+    let failed = |e: &sqlx::Error, stmt: &str| run_error(e, conn.engine, stmt, &conn, ms);
+    let outcome = match res {
+        Ok((Applied::Done(n), server)) => RunOutcome::Done {
+            sets: vec![],
+            messages: vec![format!("{} changed", plural(n as usize, "row"))],
+            ms,
+            limit: None,
+            affected: Some(n),
+            ddl: false,
+            last_is_query: false,
+            server,
+        },
+        Ok((Applied::Miss { index, n }, _)) => RunOutcome::Error {
+            title: if n == 0 { "A row to change was not found".into() } else { format!("A change matched {n} rows, not one") },
+            says: Some(req.statements[index].clone()),
+            message: "Nothing was saved: the transaction was rolled back.".into(),
+            hint: Some(if n == 0 { "The row may have been changed or deleted since it was read. Refresh, then edit again.".into() } else { "Its key does not pick out a single row.".into() }),
+            lost: false,
+            ms,
+        },
+        Ok((Applied::Failed { index, err }, _)) => failed(&err, &req.statements[index]),
+        Ok((Applied::TimedOut, _)) => RunOutcome::Cancelled { ms, timeout: true },
+        Err(e) => failed(&e, &sql),
+    };
+    if let RunOutcome::Error { lost: true, .. } = outcome {
+        state.drop_conn(&conn.id).await;
+    }
+    if settings.bool("keepHistory", true) {
+        let (status, rows, error) = match &outcome {
+            RunOutcome::Done { affected, .. } => ("ok", affected.map(|a| a as i64), None),
+            RunOutcome::Error { title, .. } => ("error", None, Some(title.clone())),
+            _ => ("cancelled", None, None),
+        };
+        let _ = store
+            .add_history(HistoryEntry {
+                id: 0,
+                conn_id: conn.id.clone(),
+                conn_name: conn.name.clone(),
+                engine: conn.engine,
+                database,
+                sql,
                 started_at,
                 ms: ms as i64,
                 rows,
@@ -1102,6 +1236,10 @@ mod tests {
             file: std::env::var("YPACAPY_TEST_SQLITE").ok(),
             color: 1,
             guard: Default::default(),
+            pass_protect: false,
+            touch_id: false,
+            unlock_window: None,
+            protect: None,
             row_limit: None,
             statement_timeout: None,
             ssl_mode: None,
@@ -1110,6 +1248,7 @@ mod tests {
             connect_timeout: None,
             heartbeat: None,
             last_opened: None,
+            created_at: None,
         }
     }
 
@@ -1232,6 +1371,14 @@ mod tests {
         assert_eq!(s.columns[5].ty, "integer");
         let r = done(execute(&o, None, "update t set name = 'b' where id = 2", 100, CancellationToken::new(), 10).await.unwrap());
         assert_eq!(r.affected, Some(1));
+        // grid edits: one transaction, each statement exactly one row, else nothing is kept
+        let stmts = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert!(matches!(apply(&o, &stmts(&["update \"t\" set \"name\" = 'x' where \"id\" = '1'", "delete from \"t\" where \"id\" = '2'"]), 10).await.unwrap(), Applied::Done(2)));
+        assert_eq!(raw_rows(&o.pool, "select name, (select count(*) from t) from t").await.unwrap(), vec![vec![Some("x".into()), Some("1".into())]]);
+        assert!(matches!(apply(&o, &stmts(&["update t set name = 'y' where id = 1", "update t set name = 'z' where id = 9"]), 10).await.unwrap(), Applied::Miss { index: 1, n: 0 }));
+        assert!(matches!(apply(&o, &stmts(&["update t set name = 'y' where id = 1", "update t set nope = 1 where id = 1"]), 10).await.unwrap(), Applied::Failed { index: 1, .. }));
+        assert_eq!(first(&raw_rows(&o.pool, "select name from t").await.unwrap()), "x");
+        raw_rows(&o.pool, "insert into t (id, name) values (2, 'b')").await.unwrap();
         raw_rows(&o.pool, "create table c (id integer primary key); create table o (id integer primary key, c_id integer references c (id) on delete cascade, s text); create index o_s on o (s desc)").await.unwrap();
         let objs = schema_objects(&o.pool, Engine::Sqlite, "main").await.unwrap();
         assert_eq!(objs.tables.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(), ["c", "o", "t"]);

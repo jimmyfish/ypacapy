@@ -81,20 +81,20 @@
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     if (!validate()) { selectTab("general"); name.focus(); return; }
-    if (f("c-guard").value === "verify" && !passSet) { selectTab("options"); setLine("", "Ask for passphrase needs a passphrase. Set one in Options."); line.classList.add("fail"); return; }
     setLine("testing");
     setTimeout(() => setLine("", `Not sent: the preview has no backend; the app calls ${e.submitter.value === "save" ? "save_connection" : "test_connection"} here`), 600);
   });
 
-  // Passphrase: the Settings > Security rows and dialogs, here too. One passphrase for the whole app;
-  // without it, Ask for passphrase cannot be picked
+  // Security level: None, Low (confirm) or Strict (passphrase). Strict needs a passphrase, set in Settings › Security;
+  // Touch ID and Stay unlocked for belong to Strict; the statements list to Low and Strict
   let passSet = true;
+  const LEVEL_DESC = { none: "Every statement runs", low: "Confirm the statements below", strict: "Passphrase for the statements below" };
   const renderPass = () => {
-    $$("[data-pass]").forEach((c) => { c.hidden = c.dataset.pass !== (passSet ? "set" : "none"); });
-    $("[data-pass-desc]").textContent = passSet ? "Set, in the macOS keychain" : "Not set. Ask for passphrase needs one";
-    $$("[data-needs-pass]").forEach((r) => { r.hidden = !passSet; });
-    if (!passSet) $("#sec-touch").checked = false;
-    if (typeof renderLock === "function") renderLock();
+    const sel = f("c-level"), strictOpt = $('option[value="strict"]', sel);
+    strictOpt.disabled = !passSet;
+    strictOpt.textContent = passSet ? "Strict" : "Strict (needs a passphrase, in Settings)";
+    if (!passSet && sel.value === "strict") sel.value = "low";
+    if (typeof renderLevel === "function") renderLevel();
   };
   const openSub = (k) => {
     $$("[data-sub]").forEach((d) => { d.hidden = d.dataset.sub !== k; });
@@ -123,7 +123,7 @@
   let unlocked = false;
   const renderLock = () => {
     if (!passSet) unlocked = false;
-    $$("#protect .switch").forEach((sw) => { sw.disabled = !unlocked; });
+    $$("#protect .switch").forEach((sw) => { sw.disabled = f("c-level").value === "strict" && !unlocked; });
     const t = f("protect-toggle");
     $("use", t).setAttribute("href", unlocked ? "#i-lock-open" : "#i-lock");
     $("span", t).textContent = unlocked ? "Lock" : "Change";
@@ -131,20 +131,27 @@
   f("protect-toggle").addEventListener("click", () => {
     if (unlocked) { unlocked = false; renderLock(); return; }
     openSub("unlock");
-    $("[data-touch-hint]").hidden = !f("sec-touch").checked;
+    $("[data-touch-hint]").hidden = !f("c-touch").checked;
   });
 
-  // the passphrase and what it protects only matter for Ask for passphrase: shown only then
-  const renderGuard = () => { $("[data-when-verify]").hidden = f("c-guard").value !== "verify"; };
-  f("c-guard").addEventListener("change", renderGuard);
+  const renderLevel = () => {
+    const lvl = f("c-level").value;
+    $("[data-level-desc]").textContent = LEVEL_DESC[lvl];
+    $$("[data-when-strict]").forEach((r) => { r.hidden = lvl !== "strict"; });
+    $("[data-when-guarded]").hidden = lvl === "none";
+    // Strict locks the list behind the passphrase; Low leaves it open
+    if (lvl !== "strict") unlocked = false;
+    $$("#protect .switch").forEach((sw) => { sw.disabled = lvl === "strict" && !unlocked; });
+  };
+  f("c-level").addEventListener("change", renderLevel);
 
   window.pvShow = (k) => {
     setType(k === "url-only" ? "url" : "default");
     setEngine(["mysql", "sqlite"].includes(k) ? k : "postgres");
-    selectTab({ options: "options", "options-verify": "options", "options-nopass": "options", ssl: "ssl", advanced: "advanced" }[k] || "general");
-    f("c-guard").value = ["options-verify", "options-nopass"].includes(k) ? "verify" : "confirm"; renderGuard();
+    selectTab({ options: "options", "options-low": "options", "options-strict": "options", "options-nopass": "options", ssl: "ssl", advanced: "advanced" }[k] || "general");
+    f("c-level").value = k === "options-low" ? "low" : k === "options-strict" ? "strict" : "none";
     closeSub();
-    passSet = k !== "options-nopass"; unlocked = false; renderPass();
+    passSet = k !== "options-nopass"; unlocked = false; renderPass(); renderLock();
     name.value = k === "name-missing" ? "" : k === "sqlite" ? "analytics" : "shop_prod";
     if (k === "name-missing") validate(); else { name.removeAttribute("aria-invalid"); help.classList.remove("err"); help.textContent = ""; }
     f("c-file").value = k === "sqlite" ? "~/data/analytics.sqlite" : "";

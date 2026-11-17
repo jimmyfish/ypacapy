@@ -114,7 +114,8 @@ function schemeTokens(s) {
     "--j-punct": muted,
     "color-scheme": dark ? "dark" : "light",
   };
-  [blue, green, orange, magenta, cyan, red].forEach((c, i) => {
+  // connection tiles keep the Flat UI convention hue in every scheme (src/lib/connColors.ts, by id 1..8)
+  ["#3498db", "#2ecc71", "#e67e22", "#9b59b6", "#1abc9c", "#e74c3c", "#f1c40f", "#34495e"].forEach((c, i) => {
     const bg = mix(B, c, dark ? 0.18 : 0.12);
     t[`--proj-${i + 1}-fg`] = fit(c, bg);
     t[`--proj-${i + 1}-bg`] = bg;

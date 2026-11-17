@@ -42,8 +42,18 @@
 
   $$("[data-guard-close]").forEach((b) => b.addEventListener("click", () => { b.closest(".backdrop").hidden = true; }));
   $$("#guard-confirm-dlg form, #guard-pass-dlg form").forEach((f) => f.addEventListener("submit", (e) => { e.preventDefault(); f.closest(".backdrop").hidden = true; }));
+  // History: Clear asks first and empties only this connection's list
+  const hcDlg = $("#hist-clear-dlg");
+  function histEmpty(none) { $("#hist-list").hidden = none; $("#hist-none").hidden = !none; $("#hist-clear").disabled = none; }
+  $("#hist-clear").addEventListener("click", () => { hcDlg.hidden = false; });
+  $$("[data-hc-close]").forEach((b) => b.addEventListener("click", () => { hcDlg.hidden = true; }));
+  $("#hist-clear-dlg form").addEventListener("submit", (e) => { e.preventDefault(); hcDlg.hidden = true; histEmpty(true); });
   window.pvShow = (k) => {
     clearTimeout(timer); sub = "results";
+    const hist = k.startsWith("history");
+    $(`.rail-item[data-rail="${hist ? "history" : "schema"}"]`).click();
+    histEmpty(k === "history-none");
+    hcDlg.hidden = k !== "history-clear";
     tab = { "sql-error": "q2", wide: "q3", long: "q4" }[k] || "q1";
     if (k === "sql-error") { const c = $("#q2-col"); c.textContent = "totl"; c.classList.add("q-err"); }
     // the guard's two asks
@@ -54,7 +64,7 @@
     const pin = $("#guard-pass-in"), wrong = k === "guard-pass-wrong";
     pin.value = wrong ? "hunter2" : ""; wrong ? pin.setAttribute("aria-invalid", "true") : pin.removeAttribute("aria-invalid");
     $("#guard-pass-err").hidden = !wrong;
-    state = { "level-menu": "full", "guard-confirm": "full", "guard-pass": "full", "guard-pass-touch": "full", "guard-pass-wrong": "full", "cell-menu": "full", "row-menu": "full", results: "full", running: "loading", empty: "empty", "sql-error": "error", lost: "lost", wide: "full", long: "full" }[k];
+    state = { history: "full", "history-clear": "full", "history-none": "full", "level-menu": "full", "guard-confirm": "full", "guard-pass": "full", "guard-pass-touch": "full", "guard-pass-wrong": "full", "cell-menu": "full", "row-menu": "full", results: "full", running: "loading", empty: "empty", "sql-error": "error", lost: "lost", wide: "full", long: "full" }[k];
     render();
     // the two right-click menus, opened as a right-click would
     const at = (el, dx, dy) => { const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.left + dx, clientY: r.top + dy })); };

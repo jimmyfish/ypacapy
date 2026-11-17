@@ -172,17 +172,20 @@
       </div>
     </aside>
     <aside class="sidebar" data-side="history" hidden>
-      <div class="side-head"><h2>History</h2><button type="button" class="btn btn--quiet">Clear</button></div>
-      <div class="side-tools"><div class="search"><svg aria-hidden="true" class="ico"><use href="#i-search"/></svg><input class="field" placeholder="Search history" aria-label="Search history" autocomplete="off" spellcheck="false"></div></div>
-      <div class="tree">
+      <div class="side-head"><h2>History</h2><button type="button" class="btn btn--quiet" id="hist-clear">Clear</button></div>
+      <div class="side-tools"><div class="search"><svg aria-hidden="true" class="ico"><use href="#i-search"/></svg><input class="field" placeholder="Search shop_prod history" aria-label="Search shop_prod history" autocomplete="off" spellcheck="false"></div></div>
+      <div class="tree" id="hist-list">
         <div class="day">Today</div>
-        <div class="row"><button type="button" class="row-main"><span class="e e-postgres">PG</span><span class="name hq">select c.email, count(*) as refunds</span><span class="htime">09:41</span><span class="hstatus rows">14</span></button></div>
-        <div class="row"><button type="button" class="row-main"><span class="e e-postgres">PG</span><span class="name hq">select id, totl from orders</span><span class="htime">09:38</span><span class="hstatus fail">error</span></button></div>
-        <div class="row"><button type="button" class="row-main"><span class="e e-postgres">PG</span><span class="name hq">select * from orders where status</span><span class="htime">09:30</span><span class="hstatus rows">20</span></button></div>
-        <div class="row"><button type="button" class="row-main"><span class="e e-sqlite">SQLITE</span><span class="name hq">select day, sum(views) from page_views</span><span class="htime">08:55</span><span class="hstatus rows">31</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="shop_prod / shop&#10;select c.email, count(*) as refunds from customers c join refunds r on r.customer_id = c.id group by c.email"><span class="name hq">select c.email, count(*) as refunds from customers c join refunds r on r.customer_id = c.id group by c.email</span><span class="htime">09:41</span><span class="hstatus rows">14</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="shop_prod / shop&#10;select id, totl from orders"><span class="name hq">select id, totl from orders</span><span class="htime">09:38</span><span class="hstatus fail">error</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="shop_prod / shop&#10;select * from orders where status = 'open'"><span class="name hq">select * from orders where status = 'open'</span><span class="htime">09:30</span><span class="hstatus rows">20</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="shop_prod / shop_staging&#10;select count(*) from orders where created_at > now() - interval '1 day'"><span class="hdb">shop_staging</span><span class="name hq">select count(*) from orders where created_at > now() - interval '1 day'</span><span class="htime">08:55</span><span class="hstatus rows">1</span></button></div>
         <div class="day">Yesterday</div>
-        <div class="row"><button type="button" class="row-main"><span class="e e-postgres">PG</span><span class="name hq">update shipments set carrier = 'dhl'</span><span class="htime">17:12</span><span class="hstatus rows">3</span></button></div>
-        <div class="row"><button type="button" class="row-main"><span class="e e-mysql">MYSQL</span><span class="name hq">show processlist</span><span class="htime">16:40</span><span class="hstatus rows">8</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="shop_prod / shop&#10;update shipments set carrier = 'dhl' where id in (4410, 4411, 4415)"><span class="name hq">update shipments set carrier = 'dhl' where id in (4410, 4411, 4415)</span><span class="htime">17:12</span><span class="hstatus rows">3</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="shop_prod / shop&#10;select pid, state, query from pg_stat_activity"><span class="name hq">select pid, state, query from pg_stat_activity</span><span class="htime">16:40</span><span class="hstatus rows">8</span></button></div>
+      </div>
+      <div class="tree" id="hist-none" hidden>
+        <div class="empty"><strong>No queries on shop_prod yet</strong><span>Each query you run is kept here, on this Mac.</span></div>
       </div>
     </aside>
     <aside class="sidebar" data-side="saved" hidden>

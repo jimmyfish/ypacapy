@@ -69,6 +69,8 @@
 
 /* history: when, then rows or error, like voidHTTP's response history */
 .hstatus.rows { color: var(--color-ok); }
+/* history is per connection: a run on another database than the picked one names it, muted, before the SQL */
+.hdb { flex-shrink: 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 var(--space-2xs); border-radius: 4px; background: var(--color-paper-3); color: var(--color-muted); font: var(--text-xs)/1.6 var(--font-mono); }
 
 /* New connection: voidHTTP's dialog labels, two to a line where they pair */
 .pair { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: var(--space-sm); }

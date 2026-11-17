@@ -159,22 +159,41 @@ ${group("audit", "audit", 2, 0, false, false)}
         </div>
       </div>
     </aside>`;
-const hrow = (engine, label, sql, time, status, cls) => `        <div class="row"><button type="button" class="row-main"><span class="e e-${engine}">${label}</span><span class="name hq">${sql}</span><span class="htime">${time}</span><span class="hstatus ${cls}">${status}</span></button></div>`;
+// History belongs to the open connection: only shop_prod's runs show here, and removing a connection removes them.
+// The engine label is gone (every row is shop_prod). A row run on another database than the one picked in the query
+// line names that database before the SQL; opening a row opens it on shop_prod, on that database.
+const hrow = (sql, time, status, cls, db = "") => `        <div class="row"><button type="button" class="row-main" title="shop_prod / ${db || "shop"}&#10;${esc(sql)}">${db ? `<span class="hdb">${db}</span>` : ""}<span class="name hq">${esc(sql)}</span><span class="htime">${time}</span><span class="hstatus ${cls}">${status}</span></button></div>`;
 const historySide = `
     <aside class="sidebar" data-side="history" hidden>
-      <div class="side-head"><h2>History</h2><button type="button" class="btn btn--quiet">Clear</button></div>
-      <div class="side-tools"><div class="search">${ic("search")}<input class="field" placeholder="Search history" aria-label="Search history" autocomplete="off" spellcheck="false"></div></div>
-      <div class="tree">
+      <div class="side-head"><h2>History</h2><button type="button" class="btn btn--quiet" id="hist-clear">Clear</button></div>
+      <div class="side-tools"><div class="search">${ic("search")}<input class="field" placeholder="Search shop_prod history" aria-label="Search shop_prod history" autocomplete="off" spellcheck="false"></div></div>
+      <div class="tree" id="hist-list">
         <div class="day">Today</div>
-${hrow("postgres", "PG", "select c.email, count(*) as refunds", "09:41", "14", "rows")}
-${hrow("postgres", "PG", "select id, totl from orders", "09:38", "error", "fail")}
-${hrow("postgres", "PG", "select * from orders where status", "09:30", "20", "rows")}
-${hrow("sqlite", "SQLITE", "select day, sum(views) from page_views", "08:55", "31", "rows")}
+${hrow("select c.email, count(*) as refunds from customers c join refunds r on r.customer_id = c.id group by c.email", "09:41", "14", "rows")}
+${hrow("select id, totl from orders", "09:38", "error", "fail")}
+${hrow("select * from orders where status = 'open'", "09:30", "20", "rows")}
+${hrow("select count(*) from orders where created_at > now() - interval '1 day'", "08:55", "1", "rows", "shop_staging")}
         <div class="day">Yesterday</div>
-${hrow("postgres", "PG", "update shipments set carrier = 'dhl'", "17:12", "3", "rows")}
-${hrow("mysql", "MYSQL", "show processlist", "16:40", "8", "rows")}
+${hrow("update shipments set carrier = 'dhl' where id in (4410, 4411, 4415)", "17:12", "3", "rows")}
+${hrow("select pid, state, query from pg_stat_activity", "16:40", "8", "rows")}
+      </div>
+      <div class="tree" id="hist-none" hidden>
+        <div class="empty"><strong>No queries on shop_prod yet</strong><span>Each query you run is kept here, on this Mac.</span></div>
       </div>
     </aside>`;
+const histClearDlg = `
+<div class="backdrop" id="hist-clear-dlg" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="hc-title">
+    <h2 id="hc-title">Clear shop_prod history?</h2>
+    <form>
+      <p class="help">Every query run on shop_prod is removed from ypacapy.db. Other connections' history and saved queries are not touched.</p>
+      <footer>
+        <button type="button" class="btn" data-hc-close>Cancel</button>
+        <button type="submit" class="btn btn--danger">Clear</button>
+      </footer>
+    </form>
+  </div>
+</div>`;
 const savedSide = `
     <aside class="sidebar" data-side="saved" hidden>
       <div class="side-head"><h2>Saved queries</h2></div>
@@ -514,7 +533,7 @@ const manyHtml = `
 pages["home.html"] = page({
   title: "ypacapy preview, home",
   desc: "Design preview of ypacapy's Home: every connection on this Mac, gathered into groups you can open, fold, rename and ungroup.",
-  barHtml: bar("home", [["grouped", "Groups"], ["folded", "Group folded"], ["group-menu", "Group menu"], ["move-menu", "Move to group"], ["rename", "Renaming a group"], ["new-group", "New group"], ["no-groups", "No groups yet"], ["many", "40 connections"], ["search", "Search"], ["search-empty", "Search, no match"], ["dragging", "Dragging a card"]]),
+  barHtml: bar("home", [["grouped", "Groups"], ["folded", "Group folded"], ["group-menu", "Group menu"], ["move-menu", "Move to group"], ["rename", "Renaming a group"], ["new-group", "New group"], ["no-groups", "No groups yet"], ["many", "40 connections"], ["search", "Search"], ["search-empty", "Search, no match"], ["dragging", "Dragging a card"], ["remove", "Remove connection"]]),
   body: `
 <div class="app">${strip("home")}
   <div class="home">
@@ -544,6 +563,18 @@ ${manyHtml}
         <p class="muted group-hint">${ic("folder-input")}To make a group, drag a card or use its Move to group button. You can also fill in Group when you add a connection.</p>
       </section>
     </div>
+  </div>
+</div>
+<div class="backdrop" id="remove-dlg" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="rm-title">
+    <h2 id="rm-title">Remove shop_prod?</h2>
+    <form>
+      <p class="help">ypacapy removes the connection, its keychain password and its query history from this Mac. Saved queries stay. The database is not touched.</p>
+      <footer>
+        <button type="button" class="btn" data-rm-close>Cancel</button>
+        <button type="submit" class="btn btn--danger">Remove</button>
+      </footer>
+    </form>
   </div>
 </div>
 <div class="backdrop" id="new-group-dlg" hidden>
@@ -599,8 +630,8 @@ const guardDialogs = `
 pages["index.html"] = page({
   title: "ypacapy preview",
   desc: "Design preview of ypacapy, a local-only database explorer for macOS: the query console and its result grid.",
-  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["wide", "Many columns"], ["long", "Long text"], ["cell-menu", "Cell menu"], ["row-menu", "Sidebar menu"], ["level-menu", "Security level menu"], ["guard-confirm", "Low: confirm"], ["guard-pass", "Strict: passphrase"], ["guard-pass-touch", "Strict with Touch ID"], ["guard-pass-wrong", "Strict: wrong passphrase"]], true),
-  body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: guardDialogs }),
+  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["wide", "Many columns"], ["long", "Long text"], ["cell-menu", "Cell menu"], ["row-menu", "Sidebar menu"], ["level-menu", "Security level menu"], ["guard-confirm", "Low: confirm"], ["guard-pass", "Strict: passphrase"], ["guard-pass-touch", "Strict with Touch ID"], ["guard-pass-wrong", "Strict: wrong passphrase"], ["history", "History"], ["history-clear", "Clear history"], ["history-none", "History, none yet"]], true),
+  body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: guardDialogs + histClearDlg }),
   script: js("page-index.js"),
 });
 

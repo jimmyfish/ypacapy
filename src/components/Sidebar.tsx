@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useCurrent, useStore, type SideView } from "../store";
-import { api } from "../lib/api";
+import { api, errText } from "../lib/api";
 import { estimate } from "../lib/cells";
-import { ENGINE_LABEL, quoteIdent } from "../lib/sql";
+import { quoteIdent } from "../lib/sql";
 import { clockOf, dayLabel, startOfDay } from "../lib/time";
-import type { Engine, Saved } from "../types";
+import type { Saved } from "../types";
 import { useDismiss } from "./useDismiss";
 import { ChevronDown, ChevronRight, Copy, Ellipsis, Eye, Folder, Plus, RefreshCw, Search, SquareCode, SquareFunction, Table2, Trash2, icoC, ico } from "./Icon";
 
@@ -232,16 +232,17 @@ function SchemaSide() {
   );
 }
 
-const ENGINE_OF = (e: Engine) => <span className={`e e-${e}`}>{ENGINE_LABEL[e]}</span>;
-
+// History belongs to the open connection: only its runs show, Clear empties only its list, and removing the
+// connection removes its history. A run on another database than the picked one names that database.
 function HistorySide() {
   const history = useStore((s) => s.history);
+  const { id, conn, session } = useCurrent();
   const [search, setSearch] = useState("");
   const st = useStore.getState();
   useEffect(() => {
     const t = setTimeout(() => void useStore.getState().loadHistory(search.trim() || undefined), 200);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, id]);
   const days = useMemo(() => {
     const out: [number, typeof history][] = [];
     for (const h of history) {
@@ -253,11 +254,13 @@ function HistorySide() {
     return out;
   }, [history]);
 
-  const openEntry = (sql: string, connId: string) => {
+  const name = conn?.name ?? "";
+  const picked = session?.database ?? "";
+  // opens on this connection, on the database it ran on
+  const openEntry = async (sql: string, database: string) => {
     const s = useStore.getState();
-    if (s.currentId !== connId && s.conns.some((c) => c.id === connId)) {
-      void s.openConn(connId).then(() => useStore.getState().newQueryTab(sql));
-    } else s.newQueryTab(sql);
+    if (database && database !== picked) await s.setDatabase(database);
+    useStore.getState().newQueryTab(sql);
   };
 
   return (
@@ -271,10 +274,16 @@ function HistorySide() {
           onClick={() =>
             st.openModal({
               kind: "confirm",
-              title: "Clear history?",
-              message: "Every query in history is removed from ypacapy.db. Saved queries are not touched.",
+              title: `Clear ${name} history?`,
+              message: `Every query run on ${name} is removed from ypacapy.db. Other connections' history and saved queries are not touched.`,
               confirmLabel: "Clear",
-              onConfirm: () => void api.clearHistory().then(() => useStore.getState().loadHistory()),
+              onConfirm: () => {
+                if (!id) return;
+                api.clearHistory(id).then(
+                  () => useStore.getState().loadHistory(),
+                  (e) => useStore.getState().showToast(errText(e)),
+                );
+              },
             })
           }
         >
@@ -284,13 +293,13 @@ function HistorySide() {
       <div className="side-tools">
         <div className="search">
           <Search {...ico} />
-          <input className="field" placeholder="Search history" aria-label="Search history" autoComplete="off" spellCheck={false} value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input className="field" placeholder={`Search ${name} history`} aria-label={`Search ${name} history`} autoComplete="off" spellCheck={false} value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       </div>
       <div className="tree">
         {!history.length && (
           <div className="empty">
-            <strong>{search ? "Nothing matches" : "No queries yet"}</strong>
+            <strong>{search ? "Nothing matches" : `No queries on ${name} yet`}</strong>
             <span>{search ? "Searches the SQL text." : "Each query you run is kept here, on this Mac."}</span>
           </div>
         )}
@@ -299,8 +308,8 @@ function HistorySide() {
             <div className="day">{dayLabel(d)}</div>
             {items.map((h) => (
               <div className="row" key={h.id}>
-                <button type="button" className="row-main" title={`${h.connName}${h.database ? ` / ${h.database}` : ""}\n${h.sql}`} onClick={() => openEntry(h.sql, h.connId)}>
-                  {ENGINE_OF(h.engine)}
+                <button type="button" className="row-main" title={`${name}${h.database ? ` / ${h.database}` : ""}\n${h.sql}`} onClick={() => void openEntry(h.sql, h.database)}>
+                  {h.database && h.database !== picked && <span className="hdb">{h.database}</span>}
                   <span className="name hq">{h.sql.replace(/\s+/g, " ").trim()}</span>
                   <span className="htime">{clockOf(h.startedAt)}</span>
                   <span className={`hstatus ${h.status === "ok" ? "rows" : "fail"}`}>{h.status === "ok" ? (h.rows ?? "ok") : h.status === "error" ? "error" : "stopped"}</span>

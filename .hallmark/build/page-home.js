@@ -144,8 +144,19 @@
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && ghost) { endDrag(); } });
 
   const openMenu = (id) => $(`[data-menu="${id}"]`).click();
+  // Remove: asks first; the connection's query history goes with it
+  const rmDlg = $("#remove-dlg");
+  $$('.card-actions [aria-label^="Remove "]').forEach((b) => b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    $("#rm-title").textContent = `${b.getAttribute("aria-label")}?`;
+    rmDlg.hidden = false;
+  }));
+  $$("[data-rm-close]").forEach((b) => b.addEventListener("click", () => { rmDlg.hidden = true; }));
+  $("#remove-dlg form").addEventListener("submit", (e) => { e.preventDefault(); rmDlg.hidden = true; });
   window.pvShow = (k) => {
     endDrag();
+    if (k === "remove") $("#rm-title").textContent = "Remove shop_prod?";
+    rmDlg.hidden = k !== "remove";
     $$(".menu").forEach((m) => { m.hidden = true; });
     $$('[aria-haspopup="menu"]').forEach((b) => b.setAttribute("aria-expanded", "false"));
     $$(".conn-group").forEach((sec) => { toggle(sec, true); if ($(".group-rename", sec)) rename(sec, false); });

@@ -29,8 +29,9 @@ export const api = {
   resetPassphrase: (newPass: string) => invoke<void>("reset_passphrase", { new: newPass }),
   unlockProtect: (connId: string, passphrase: string | undefined, touchId: boolean) => invoke<void>("unlock_protect", { connId, passphrase, touchId }),
   lockProtect: () => invoke<void>("lock_protect"),
-  listHistory: (search?: string) => invoke<HistoryEntry[]>("list_history", { search, limit: 300 }),
-  clearHistory: () => invoke<void>("clear_history"),
+  /** one connection's history only */
+  listHistory: (connId: string, search?: string) => invoke<HistoryEntry[]>("list_history", { connId, search, limit: 300 }),
+  clearHistory: (connId: string) => invoke<void>("clear_history", { connId }),
   listSaved: () => invoke<Saved[]>("list_saved"),
   saveQuery: (q: Partial<Saved> & { name: string; sql: string }) => invoke<Saved>("save_query", { q }),
   deleteSaved: (id: string) => invoke<void>("delete_saved", { id }),

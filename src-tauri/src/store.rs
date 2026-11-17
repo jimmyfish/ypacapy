@@ -29,6 +29,7 @@ create table if not exists history (
   error text
 );
 create index if not exists history_started on history (started_at desc);
+create index if not exists history_conn on history (conn_id, started_at desc);
 create table if not exists saved (
   id text primary key,
   folder text not null default '',
@@ -53,6 +54,13 @@ impl LocalStore {
                 let opts = SqliteConnectOptions::new().filename(&path).create_if_missing(true);
                 let pool = SqlitePoolOptions::new().max_connections(2).connect_with(opts).await.map_err(|e| format!("Could not open {}: {e}", path.display()))?;
                 sqlx::raw_sql(SCHEMA).execute(&pool).await.map_err(|e| e.to_string())?;
+                // history of connections removed before removal took their history along (or while the app was
+                // closed); skipped when connections.toml cannot be read or lists nothing, so a bad or missing
+                // file never wipes history
+                if let Some(conns) = crate::conns::load().ok().filter(|c| !c.is_empty()) {
+                    let ids = serde_json::to_string(&conns.iter().map(|c| c.id.as_str()).collect::<Vec<_>>()).map_err(|e| e.to_string())?;
+                    sqlx::query("delete from history where conn_id not in (select value from json_each(?))").bind(ids).execute(&pool).await.map_err(|e| e.to_string())?;
+                }
                 Ok::<_, String>(pool)
             })
             .await
@@ -81,6 +89,13 @@ impl LocalStore {
             .map_err(|e| e.to_string())?;
         Ok(())
     }
+
+    /// Removes one connection's history: Clear in the History panel, and removing the connection.
+    pub async fn forget_history(&self, conn_id: &str) -> Result<(), String> {
+        let p = self.pool().await?;
+        sqlx::query("delete from history where conn_id = ?").bind(conn_id).execute(p).await.map_err(|e| e.to_string())?;
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -99,14 +114,16 @@ pub struct HistoryEntry {
     pub error: Option<String>,
 }
 
+/// One connection's history, newest first: the History panel shows only the open connection's runs.
 #[tauri::command]
-pub async fn list_history(search: Option<String>, limit: Option<i64>, store: State<'_, LocalStore>) -> Result<Vec<HistoryEntry>, String> {
+pub async fn list_history(conn_id: String, search: Option<String>, limit: Option<i64>, store: State<'_, LocalStore>) -> Result<Vec<HistoryEntry>, String> {
     let p = store.pool().await?;
     let like = format!("%{}%", search.unwrap_or_default().replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_"));
     let rows = sqlx::query(
         "select id, conn_id, conn_name, engine, database, sql, started_at, ms, rows, status, error from history \
-         where sql like ? escape '\\' order by started_at desc limit ?",
+         where conn_id = ? and sql like ? escape '\\' order by started_at desc limit ?",
     )
+    .bind(conn_id)
     .bind(like)
     .bind(limit.unwrap_or(300))
     .fetch_all(p)
@@ -133,10 +150,8 @@ pub async fn list_history(search: Option<String>, limit: Option<i64>, store: Sta
 }
 
 #[tauri::command]
-pub async fn clear_history(store: State<'_, LocalStore>) -> Result<(), String> {
-    let p = store.pool().await?;
-    sqlx::query("delete from history").execute(p).await.map_err(|e| e.to_string())?;
-    Ok(())
+pub async fn clear_history(conn_id: String, store: State<'_, LocalStore>) -> Result<(), String> {
+    store.forget_history(&conn_id).await
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

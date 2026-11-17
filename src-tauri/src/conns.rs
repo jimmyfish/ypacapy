@@ -290,14 +290,15 @@ pub async fn save_connection(mut conn: Conn, password: Option<String>, lock: Sta
 }
 
 #[tauri::command]
-pub async fn delete_connection(id: String, lock: State<'_, ConnLock>) -> Result<(), String> {
+pub async fn delete_connection(id: String, lock: State<'_, ConnLock>, store: State<'_, crate::store::LocalStore>) -> Result<(), String> {
     let account = keychain::conn_account(&id);
     tokio::task::spawn_blocking(move || keychain::delete(&account)).await.map_err(|e| e.to_string())??;
     update(&lock, |all| {
         all.retain(|c| c.id != id);
         Ok(())
     })?;
-    Ok(())
+    // its query history goes with it; saved queries stay
+    store.forget_history(&id).await
 }
 
 /// A group name as stored: trimmed, and None when that leaves nothing.

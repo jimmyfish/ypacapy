@@ -601,9 +601,14 @@ export const useStore = create<State>()((set, get) => {
       }
     },
 
+    // the open connection's history; nothing on Home
     async loadHistory(search) {
+      const id = get().currentId;
+      if (!id) return set({ history: [] });
       try {
-        set({ history: await api.listHistory(search) });
+        const history = await api.listHistory(id, search);
+        // a switch to another connection while this was loading: that connection's load wins
+        if (get().currentId === id) set({ history });
       } catch (e) {
         get().showToast(errText(e));
       }

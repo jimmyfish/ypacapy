@@ -175,7 +175,10 @@ export function Home() {
     st.openModal({
       kind: "confirm",
       title: `Remove ${c.name}?`,
-      message: c.engine === "sqlite" ? "ypacapy forgets the connection. The database file stays where it is." : "ypacapy removes the connection and its keychain password from this Mac. The database is not touched.",
+      message:
+        c.engine === "sqlite"
+          ? "ypacapy forgets the connection and its query history. Saved queries are kept. The database file stays where it is."
+          : "ypacapy removes the connection, its keychain password and its query history from this Mac. Saved queries stay. The database is not touched.",
       confirmLabel: "Remove",
       onConfirm: () => void st.deleteConn(c.id),
     });

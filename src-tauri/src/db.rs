@@ -352,8 +352,34 @@ async fn server_version(pool: &Pool, engine: Engine) -> Result<String, sqlx::Err
     })
 }
 
+/// The database a connection is limited to: its Database field, when filled (PostgreSQL and MySQL).
+fn pinned(conn: &Conn) -> Option<&str> {
+    match conn.engine {
+        Engine::Sqlite => None,
+        _ => conn.database.as_deref().map(str::trim).filter(|d| !d.is_empty()),
+    }
+}
+
+fn outside(db: &str) -> String {
+    format!("This connection is limited to the database {db}.")
+}
+
+/// MySQL: a schema is a database, so a connection limited to one database reads only that schema.
+fn check_schema(conn: &Conn, schema: &str) -> Result<(), String> {
+    match (conn.engine, pinned(conn)) {
+        (Engine::Mysql, Some(db)) if schema != db => Err(outside(db)),
+        _ => Ok(()),
+    }
+}
+
 impl DbState {
     async fn get(&self, conn: &Conn, database: &str) -> Result<Arc<Open>, sqlx::Error> {
+        // a connection with a Database field opens that database only
+        let database = match pinned(conn) {
+            Some(db) if !database.is_empty() && database != db => return Err(sqlx::Error::Configuration(outside(db).into())),
+            Some(db) => db,
+            None => database,
+        };
         let key = (conn.id.clone(), database.to_string());
         if let Some(o) = self.open.lock().await.get(&key) {
             return Ok(o.clone());
@@ -445,11 +471,18 @@ pub async fn open_connection(id: String, database: Option<String>, state: State<
                 .await?;
                 OpenInfo {
                     server: open.server.clone(),
-                    databases: databases.into_iter().filter_map(|r| r.into_iter().next().flatten()).collect(),
+                    databases: match pinned(&conn) {
+                        Some(db) => vec![db.to_string()],
+                        None => databases.into_iter().filter_map(|r| r.into_iter().next().flatten()).collect(),
+                    },
                     database: cur,
                     schemas: schemas.into_iter().filter_map(|r| r.into_iter().next().flatten()).collect(),
                     default_schema: def,
                 }
+            }
+            Engine::Mysql if pinned(&conn).is_some() => {
+                let db = pinned(&conn).unwrap_or_default().to_string();
+                OpenInfo { server: open.server.clone(), databases: vec![db.clone()], database: db.clone(), schemas: vec![db.clone()], default_schema: db }
             }
             Engine::Mysql => {
                 let dbs: Vec<String> = catalog(pool, "select cast(SCHEMA_NAME as char) from information_schema.SCHEMATA order by SCHEMA_NAME", &[])
@@ -503,6 +536,7 @@ fn quote_ident(engine: Engine, s: &str) -> String {
 #[tauri::command]
 pub async fn load_schema(id: String, database: Option<String>, schema: String, state: State<'_, DbState>) -> Result<SchemaObjects, String> {
     let conn = conns::find(&id)?;
+    check_schema(&conn, &schema)?;
     let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
     schema_objects(&open.pool, conn.engine, &schema).await
 }
@@ -617,6 +651,7 @@ pub async fn table_info(
     state: State<'_, DbState>,
 ) -> Result<TableInfo, String> {
     let conn = conns::find(&id)?;
+    check_schema(&conn, &schema)?;
     let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
     table_catalog(&open.pool, conn.engine, &schema, &table).await
 }

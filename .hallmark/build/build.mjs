@@ -712,6 +712,16 @@ const setItem = (label, desc, ctl, forId) => `
 const unit = (id, v, u) => `<span class="unit-field"><input id="${id}" class="field" inputmode="numeric" value="${v}"><span class="unit">${u}</span></span>`;
 const choice = (id, opts, value) => `<span class="select-wrap"><select id="${id}" class="field set-choice">${opts.map(([v, l]) => `<option value="${v}"${v === value ? " selected" : ""}>${l}</option>`).join("")}</select>${ic("chevron-down", "select-chev")}</span>`;
 const LEVELS = [["none", "None"], ["low", "Low"], ["strict", "Strict"]];
+// The security level as a menu in the tab bar's guard style: icon, name, what it does, a tick on the picked one.
+// The hidden select keeps the value and fires change, so the page scripts read it as before.
+const LEVEL_PICK = [["none", "None", "Every statement runs", "shield-off"], ["low", "Low", "Confirm the picked statements", "shield"], ["strict", "Strict", "Passphrase for the picked statements", "lock"]];
+const levelPick = (id, value) => `<div class="menu-anchor level-pick" data-level-pick="${id}">
+                  <select id="${id}" hidden aria-hidden="true" tabindex="-1">${LEVEL_PICK.map(([v, l]) => `<option value="${v}"${v === value ? " selected" : ""}>${l}</option>`).join("")}</select>
+                  <button type="button" class="field set-choice level-btn" id="${id}-btn" data-menu="${id}-menu" aria-haspopup="menu" aria-expanded="false">${ic("shield-off", "guard-ico")}<span class="env-name">None</span>${ic("chevron-down", "select-chev")}</button>
+                  <div class="menu guard-menu" id="${id}-menu" role="menu" aria-label="Security level" hidden>
+                    ${LEVEL_PICK.map(([v, l, d, icon]) => `<button type="button" role="menuitemradio" aria-checked="false" data-pick="${v}" data-icon="${icon}">${ic(icon)}<span class="gm-text"><span>${l}</span><small data-desc="${d}">${d}</small></span>${ic("check", "tick")}</button>`).join("")}
+                  </div>
+                </div>`;
 // What each security level does with the statements ticked under it
 const LEVEL_DESC = { none: "Every statement runs", low: "Confirm the statements below", strict: "Passphrase for the statements below" };
 const STMTS = [["INSERT"], ["UPDATE"], ["DELETE"], ["REPLACE", "MySQL"], ["ALTER"], ["DROP"], ["TRUNCATE"], ["CREATE"], ["GRANT"], ["REVOKE"]];
@@ -736,7 +746,7 @@ const securityPane = () => `
       <div class="set-pane" data-pane="security" hidden>
         <h3>Security</h3>
         <p class="pane-note">The passphrase is one for the whole app. Each connection keeps its own security level (None, Low or Strict) and the statements it asks about, set in its Options or the tabs bar.</p>
-        <div class="set-list">${setItem("Default security level for new connections", "Existing connections keep their own", choice("sec-level", LEVELS, "none"), "sec-level")}
+        <div class="set-list">${setItem("Default security level for new connections", "Existing connections keep their own", levelPick("sec-level", "none"), "sec-level-btn")}
         </div>
         <div class="set-list">
               <div class="set-item set-item--pass">
@@ -803,7 +813,7 @@ const COLORS = [["5", "Turquoise"], ["2", "Emerald"], ["7", "Sunflower"], ["3", 
 pages["connect.html"] = page({
   title: "ypacapy preview, new connection",
   desc: "Design preview of adding a PostgreSQL, MySQL or SQLite connection in ypacapy, with its password kept in the macOS keychain.",
-  barHtml: bar("connect", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["url-only", "URL only"], ["options", "Options tab"], ["options-low", "Low"], ["options-strict", "Strict"], ["options-nopass", "No passphrase set"], ["ssl", "SSL tab"], ["advanced", "Advanced tab"], ["name-missing", "Name missing"], ["testing", "Testing"], ["test-ok", "Test passed"], ["test-failed", "Test failed"]]),
+  barHtml: bar("connect", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["url-only", "URL only"], ["options", "Options tab"], ["options-low", "Low"], ["options-strict", "Strict"], ["options-nopass", "No passphrase set"], ["level-menu", "Security level menu"], ["group-menu", "Group menu"], ["group-new", "New group"], ["ssl", "SSL tab"], ["advanced", "Advanced tab"], ["name-missing", "Name missing"], ["testing", "Testing"], ["test-ok", "Test passed"], ["test-failed", "Test failed"]]),
   body: `
 <div class="app">${strip("home")}
   <div class="home"><div class="home-inner"><div class="home-head"><div><h1>Connections</h1><p class="muted">Everything stays on this Mac, in ~/.config/ypacapy.</p></div></div></div></div>
@@ -816,8 +826,13 @@ pages["connect.html"] = page({
         ${lab("c-name", "Name")}<input class="field" id="c-name" name="name" required aria-required="true" aria-describedby="c-name-h" autocomplete="off" spellcheck="false">
         ${lab("c-color", "Color")}<span class="cx-color" style="--fg: var(--proj-1-fg)">${csel("c-color", COLORS, "1")}</span>
         <span class="help cx-full" id="c-name-h"></span>
-        ${lab("c-group", "Group")}<input class="field cx-group" id="c-group" name="group" list="c-groups" placeholder="None" autocomplete="off" spellcheck="false">
-        <datalist id="c-groups"><option value="Production"></option><option value="Staging"></option></datalist>
+        ${lab("c-group-btn", "Group")}<div class="menu-anchor cx-group group-pick" data-groups="Production,Staging">
+          <input type="hidden" id="c-group" name="group" value="">
+          <button type="button" class="field group-btn" id="c-group-btn" data-menu="c-group-menu" aria-haspopup="menu" aria-expanded="false">${ic("folder-minus", "grp-ico")}<span class="env-name">No group</span>${ic("chevron-down", "select-chev")}</button>
+          <input class="field group-new" id="c-group-new" placeholder="New group name" aria-label="New group name" aria-describedby="c-group-h" autocomplete="off" spellcheck="false" hidden>
+          <div class="menu group-menu" id="c-group-menu" role="menu" aria-label="Group" hidden></div>
+        </div>
+        <span class="help cx-full group-help" id="c-group-h" hidden>Enter keeps the name. Escape goes back.</span>
       </div>
       <div class="subtabs cx-tabs" role="tablist" aria-label="Connection settings">
         ${[["general", "General"], ["options", "Options"], ["ssl", "SSL"], ["advanced", "Advanced"]].map(([k, t], i) => `<button type="button" class="subtab" role="tab" id="t-${k}" aria-controls="p-${k}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${t}</button>`).join("")}
@@ -840,7 +855,7 @@ pages["connect.html"] = page({
 
       <div class="cx-panel" role="tabpanel" id="p-options" aria-labelledby="t-options" hidden>
         <h3 class="cx-h">Security</h3>
-        <div class="set-list">${setItem("Security level", LEVEL_DESC.none, choice("c-level", LEVELS, "none"), "c-level").replace('<span class="desc">', '<span class="desc" data-level-desc>')}${setItem("Open with Touch ID", "", '<input id="c-touch" class="switch" type="checkbox" role="switch">', "c-touch").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-strict hidden")}${setItem("Stay unlocked for", "After the passphrase, for this connection only", choice("c-window", [["0", "Ask every time"], ["60", "1 minute"], ["300", "5 minutes"], ["900", "15 minutes"]], "0"), "c-window").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-strict hidden")}
+        <div class="set-list">${setItem("Security level", LEVEL_DESC.none, levelPick("c-level", "none"), "c-level-btn").replace('<span class="desc">', '<span class="desc" data-level-desc>')}${setItem("Open with Touch ID", "", '<input id="c-touch" class="switch" type="checkbox" role="switch">', "c-touch").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-strict hidden")}${setItem("Stay unlocked for", "After the passphrase, for this connection only", choice("c-window", [["0", "Ask every time"], ["60", "1 minute"], ["300", "5 minutes"], ["900", "15 minutes"]], "0"), "c-window").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-strict hidden")}
         </div>
         <div data-when-guarded hidden>
         <div class="protect-head cx-protect-head">

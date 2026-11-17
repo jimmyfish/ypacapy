@@ -9,6 +9,8 @@ import { systemFonts } from "../lib/fonts";
 import { BUILTIN, DEFAULT_SCHEME, FAMILIES, SCHEMES, schemeSwatch, type BuiltinId } from "../lib/themes";
 import { DEFAULT_LEVEL, LEVELS, STATEMENTS, type Approval, type Conn, type Engine, type SecurityLevel, type Settings, type SslMode } from "../types";
 import { Select } from "./Select";
+import { LevelSelect } from "./LevelPicker";
+import { GroupSelect } from "./GroupPicker";
 import { ColorPicker, EnginePicker } from "./Picker";
 import { when } from "../lib/time";
 import { CONN_COLOR_COUNT } from "../lib/connColors";
@@ -455,12 +457,7 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
               </span>
             )}
             <label htmlFor="c-group">Group</label>
-            <input id="c-group" className="field cx-group" list="c-groups" placeholder="None" autoComplete="off" spellCheck={false} value={group} onChange={(e) => setGroup(e.target.value)} />
-            <datalist id="c-groups">
-              {groups.map((g) => (
-                <option key={g} value={g} />
-              ))}
-            </datalist>
+            <GroupSelect id="c-group" value={group} groups={groups} onChange={setGroup} />
           </div>
 
           <div className="subtabs cx-tabs" role="tablist" aria-label="Connection settings">
@@ -899,13 +896,12 @@ function SecurityPane() {
       </p>
       <div className="set-list">
         <SetItem label="Default security level for new connections" desc="Existing connections keep their own" htmlFor="sec-level">
-          <Select id="sec-level" className="field set-choice" value={level} onChange={(e) => void set({ defaultLevel: e.target.value as SecurityLevel })}>
-            {LEVELS.map(([v, t]) => (
-              <option key={v} value={v} disabled={v === "strict" && !passSet && level !== "strict"}>
-                {v === "strict" && !passSet ? "Strict (set a passphrase below)" : t}
-              </option>
-            ))}
-          </Select>
+          <LevelSelect
+            id="sec-level"
+            value={level}
+            off={(v) => v === "strict" && !passSet && level !== "strict" && "Set a passphrase below first"}
+            onChange={(v) => void set({ defaultLevel: v })}
+          />
         </SetItem>
       </div>
       <PassphraseManager />
@@ -1029,13 +1025,12 @@ function SecuritySection({
       <h3 className="cx-h">Security</h3>
       <div className="set-list">
         <SetItem label="Security level" desc={locked ? "Locked. Use Change below to lower it" : desc} htmlFor="c-level">
-          <Select id="c-level" className="field set-choice" value={level} onChange={(e) => onLevel(e.target.value as SecurityLevel)}>
-            {LEVELS.map(([v, t]) => (
-              <option key={v} value={v} disabled={(v === "strict" && !pass.set && level !== "strict") || (locked && v !== "strict")}>
-                {v === "strict" && !pass.set ? "Strict (needs a passphrase, in Settings)" : t}
-              </option>
-            ))}
-          </Select>
+          <LevelSelect
+            id="c-level"
+            value={level}
+            off={(v) => (v === "strict" && !pass.set && level !== "strict" ? "Set a passphrase in Settings first" : locked && v !== "strict")}
+            onChange={onLevel}
+          />
         </SetItem>
         {level === "strict" && (
           <>

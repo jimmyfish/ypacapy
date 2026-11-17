@@ -94,7 +94,7 @@
     strictOpt.disabled = !passSet;
     strictOpt.textContent = passSet ? "Strict" : "Strict (needs a passphrase, in Settings)";
     if (!passSet && sel.value === "strict") sel.value = "low";
-    if (typeof renderLevel === "function") renderLevel();
+    sel.dispatchEvent(new Event("change"));
   };
   const openSub = (k) => {
     $$("[data-sub]").forEach((d) => { d.hidden = d.dataset.sub !== k; });
@@ -145,10 +145,45 @@
   };
   f("c-level").addEventListener("change", renderLevel);
 
+  // Group: a menu of the groups on Home. No group first, New group… last; New group turns the field into a name field.
+  // The hidden input keeps the value for the form; a new name lives in the list only until the connection is saved.
+  const gWrap = $(".group-pick"), gIn = f("c-group"), gBtn = f("c-group-btn"), gNew = f("c-group-new"), gMenu = f("c-group-menu"), gHelp = f("c-group-h");
+  let groups = gWrap.dataset.groups.split(",").filter(Boolean);
+  const icoUse = (name, cls) => `<svg class="ico${cls ? " " + cls : ""}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+  const closeGroup = () => { gMenu.hidden = true; gBtn.setAttribute("aria-expanded", "false"); };
+  const pickGroup = (g) => { gIn.value = g; gIn.dispatchEvent(new Event("change")); };
+  const drawGroup = () => {
+    const v = gIn.value, all = v && !groups.includes(v) ? [...groups, v].sort((a, b) => a.localeCompare(b)) : groups;
+    $(".env-name", gBtn).textContent = v || "No group";
+    $(".grp-ico use", gBtn).setAttribute("href", `#i-${v ? "folder" : "folder-minus"}`);
+    gBtn.toggleAttribute("data-none", !v);
+    gMenu.innerHTML = [["", "No group", "folder-minus"], ...all.map((g) => [g, g, "folder"])]
+      .map(([g, label, icon]) => `<button type="button" role="menuitemradio" aria-checked="${g === v}" data-g="${g.replace(/"/g, "&quot;")}">${icoUse(icon)}<span class="menu-name">${label}</span>${icoUse("check", "tick")}</button>`)
+      .join("") + `<hr><button type="button" role="menuitem" data-new-group>${icoUse("folder-plus")}New group…</button>`;
+    $$("[data-g]", gMenu).forEach((b) => b.addEventListener("click", () => { closeGroup(); pickGroup(b.dataset.g); gBtn.focus(); }));
+    $("[data-new-group]", gMenu).addEventListener("click", () => { closeGroup(); naming(true); });
+  };
+  const naming = (on) => {
+    gBtn.hidden = on; gNew.hidden = !on; gHelp.hidden = !on;
+    if (on) { gNew.value = ""; gNew.focus(); } else gBtn.focus();
+  };
+  const keepNew = () => {
+    const g = gNew.value.trim();
+    if (g) pickGroup(g);
+    naming(false);
+  };
+  gNew.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); keepNew(); }
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); naming(false); }
+  });
+  gNew.addEventListener("blur", () => { if (!gNew.hidden) keepNew(); });
+  gIn.addEventListener("change", drawGroup);
+  drawGroup();
+
   window.pvShow = (k) => {
     setType(k === "url-only" ? "url" : "default");
     setEngine(["mysql", "sqlite"].includes(k) ? k : "postgres");
-    selectTab({ options: "options", "options-low": "options", "options-strict": "options", "options-nopass": "options", ssl: "ssl", advanced: "advanced" }[k] || "general");
+    selectTab({ options: "options", "level-menu": "options", "options-low": "options", "options-strict": "options", "options-nopass": "options", ssl: "ssl", advanced: "advanced" }[k] || "general");
     f("c-level").value = k === "options-low" ? "low" : k === "options-strict" ? "strict" : "none";
     closeSub();
     passSet = k !== "options-nopass"; unlocked = false; renderPass(); renderLock();
@@ -160,5 +195,10 @@
     if (k === "url-only") f("c-url").value = "postgresql://ops@loophealth-staging.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com:5432/postgres?sslmode=require";
     setLine({ testing: "testing", "test-ok": "ok", "test-failed": "fail" }[k] || "");
     // New connection here (a group's menu or its New connection card): Group starts with that group
-    f("c-group").value = q.get("group") || "";
+    f("c-group").value = k === "group-menu" ? "Production" : q.get("group") || "";
+    naming(false); drawGroup();
+    if (k === "group-menu") { gMenu.hidden = false; gBtn.setAttribute("aria-expanded", "true"); }
+    if (k === "group-new") { naming(true); gNew.value = "Analytics"; }
+    // the level picker, open
+    const lm = f("c-level-menu"); lm.hidden = k !== "level-menu"; f("c-level-btn").setAttribute("aria-expanded", String(k === "level-menu"));
   };

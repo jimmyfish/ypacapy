@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { isDirty, useCurrent, useStore } from "../store";
-import { LEVELS, type SecurityLevel } from "../types";
+import { LEVELS } from "../types";
 import { useDismiss } from "./useDismiss";
-import { Check, ChevronDown, Lock, PanelLeftClose, PanelLeftOpen, Plus, Shield, ShieldOff, SquareCode, Table2, X, icoC, ico } from "./Icon";
-
-const LEVEL_ICON: Record<SecurityLevel, typeof Shield> = { none: ShieldOff, low: Shield, strict: Lock };
+import { LEVEL_ICON, LevelItems } from "./LevelPicker";
+import { ChevronDown, PanelLeftClose, PanelLeftOpen, Plus, ShieldOff, SquareCode, Table2, X, icoC, ico } from "./Icon";
 
 /** The security level of the open connection: voidHTTP's environment picker and menu. Lowering from Strict asks for the passphrase (store.setLevel). */
 function GuardPicker() {
@@ -35,30 +34,14 @@ function GuardPicker() {
       {open && (
         <div className="menu guard-menu" role="menu" aria-label={`Security level for ${conn.name}`}>
           <p className="menu-note">Security level for {conn.name}</p>
-          {LEVELS.map(([l, text, desc]) => {
-            const I = LEVEL_ICON[l];
-            const off = l === "strict" && !passSet && level !== "strict";
-            return (
-              <button
-                key={l}
-                type="button"
-                role="menuitemradio"
-                aria-checked={l === level}
-                disabled={off}
-                onClick={() => {
-                  setOpen(false);
-                  void useStore.getState().setLevel(l);
-                }}
-              >
-                <I {...ico} />
-                <span className="gm-text">
-                  <span>{text}</span>
-                  <small>{off ? "Set a passphrase in Settings first" : desc}</small>
-                </span>
-                <Check {...icoC("tick")} />
-              </button>
-            );
-          })}
+          <LevelItems
+            value={level}
+            off={(l) => l === "strict" && !passSet && level !== "strict" && "Set a passphrase in Settings first"}
+            onPick={(l) => {
+              setOpen(false);
+              void useStore.getState().setLevel(l);
+            }}
+          />
           <p className="menu-note">Pick the statements in the connection's Options</p>
         </div>
       )}

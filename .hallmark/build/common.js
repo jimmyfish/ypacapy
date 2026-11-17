@@ -166,6 +166,30 @@
       m.hidden = true; $(`[data-menu="${m.id}"]`).setAttribute("aria-expanded", "false"); wrap.focus();
     }));
   }
+  // Security level pickers in dialogs: the menu sets the hidden select; the select's value and disabled options draw the button and menu
+  $$("[data-level-pick]").forEach((wrap) => {
+    const sel = $("select", wrap), btn = $(".level-btn", wrap), menu = $(".menu", wrap);
+    const draw = () => {
+      const v = sel.value, item = $(`[data-pick="${v}"]`, menu);
+      $(".env-name", btn).textContent = $(".gm-text > span", item).textContent;
+      $(".guard-ico use", btn).setAttribute("href", `#i-${item.dataset.icon}`);
+      btn.dataset.level = v;
+      btn.setAttribute("aria-label", `Security level: ${$(".env-name", btn).textContent}`);
+      $$("[data-pick]", menu).forEach((b) => {
+        const opt = $(`option[value="${b.dataset.pick}"]`, sel), small = $("small", b);
+        b.setAttribute("aria-checked", String(b.dataset.pick === v));
+        b.disabled = opt.disabled;
+        small.textContent = opt.disabled && b.dataset.pick === "strict" ? "Set a passphrase in Settings first" : small.dataset.desc;
+      });
+    };
+    sel.addEventListener("change", draw);
+    $$("[data-pick]", menu).forEach((b) => b.addEventListener("click", () => {
+      menu.hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus();
+      if (sel.value === b.dataset.pick) return;
+      sel.value = b.dataset.pick; sel.dispatchEvent(new Event("change"));
+    }));
+    draw();
+  });
   // Menus: the row "…" menu and Run's menu; Escape or a click elsewhere closes them
   {
     const rowMenu = $("#row-menu");

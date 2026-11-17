@@ -643,6 +643,7 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 .ctx-select select:hover { background: var(--color-paper-2); }
 .ctx-select select:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
 .ctx-select .ico { position: absolute; right: var(--space-2xs); width: 14px; height: 14px; color: var(--color-muted); pointer-events: none; }
+.ctx-fixed { height: 28px; padding: 0 var(--space-2xs); color: var(--color-ink); }
 .url-field .where-k { padding: 0 var(--space-2xs) 0 var(--space-sm); font: 700 var(--text-md) var(--font-mono); color: var(--sql-keyword); }
 .url-field .where-in { font-family: var(--font-mono); font-size: var(--text-code); }
 
@@ -747,6 +748,13 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 
 /* Settings > Security */
 .set-choice { width: 240px; }
+/* Security level in a dialog: a field that opens the guard menu */
+.level-btn { display: flex; align-items: center; gap: var(--space-xs); position: relative; padding-right: 32px; text-align: left; cursor: pointer; }
+.level-btn .guard-ico { width: 16px; height: 16px; color: var(--color-muted); flex-shrink: 0; }
+.level-btn .env-name { flex: 1; }
+.level-btn .select-chev { position: absolute; top: 50%; right: 10px; width: 14px; height: 14px; transform: translateY(-50%); color: var(--color-muted); }
+.level-btn[aria-expanded="true"] { border-color: var(--color-focus); }
+.level-pick .guard-menu { width: max-content; }
 .sec-conn { display: inline-flex; align-items: center; gap: var(--space-xs); }
 .set-pane h3 + .set-list + h3 { margin-top: var(--space-lg); }
 .set-item .set-text .desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1073,6 +1081,18 @@ body.row-resizing, body.row-resizing * { cursor: row-resize !important; user-sel
 /* Connection dialog: Group sits under Name, as wide as Name and Color together */
 .cx-head > label[for="c-group"] { grid-column: 1; }
 .cx-head .cx-group { grid-column: 2 / -1; }
+/* Group: a field that opens the groups menu; New group… turns it into a name field */
+.group-pick { display: grid; gap: var(--space-2xs); }
+.group-btn { display: flex; align-items: center; gap: var(--space-xs); position: relative; padding-right: 32px; text-align: left; cursor: pointer; }
+.group-btn .grp-ico { width: 16px; height: 16px; color: var(--color-muted); flex-shrink: 0; }
+.group-btn .env-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.group-btn[data-none] .env-name { color: var(--color-muted); }
+.group-btn .select-chev { position: absolute; top: 50%; right: 10px; width: 14px; height: 14px; transform: translateY(-50%); color: var(--color-muted); }
+.group-btn[aria-expanded="true"] { border-color: var(--color-focus); }
+.group-menu { left: 0; right: auto; min-width: 100%; max-height: 280px; overflow-y: auto; }
+.group-menu .menu-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.group-menu button .tick { color: var(--color-link); }
+.group-menu button[aria-checked="false"] .tick { visibility: hidden; }
 
 /* Drag a card onto a group to move it (voidHTTP's pointer drag: HTML5 drag and drop is unreliable in the webview).
    The card fades, a ghost follows the pointer, the group under it lights up, and a "new group" zone opens at the end.

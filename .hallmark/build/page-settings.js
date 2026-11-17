@@ -15,6 +15,7 @@
     strictOpt.disabled = !passSet;
     strictOpt.textContent = passSet ? "Strict" : "Strict (set a passphrase below)";
     if (!passSet && $("#sec-level").value === "strict") $("#sec-level").value = "low";
+    $("#sec-level").dispatchEvent(new Event("change"));
     $$("[data-pass]").forEach((c) => { c.hidden = c.dataset.pass !== (passSet ? "set" : "none"); });
     $("[data-pass-desc]").textContent = passSet ? "Set, in the macOS keychain" : "Not set. With one, the statements you pick ask for it before they run";
     $$("[data-needs-pass]").forEach((r) => { r.hidden = !passSet; });

@@ -753,6 +753,13 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 
 /* Settings > Security */
 .set-choice { width: 240px; }
+/* Security level in a dialog: a field that opens the guard menu */
+.level-btn { display: flex; align-items: center; gap: var(--space-xs); position: relative; padding-right: 32px; text-align: left; cursor: pointer; }
+.level-btn .guard-ico { width: 16px; height: 16px; color: var(--color-muted); flex-shrink: 0; }
+.level-btn .env-name { flex: 1; }
+.level-btn .select-chev { position: absolute; top: 50%; right: 10px; width: 14px; height: 14px; transform: translateY(-50%); color: var(--color-muted); }
+.level-btn[aria-expanded="true"] { border-color: var(--color-focus); }
+.level-pick .guard-menu { width: max-content; }
 .sec-conn { display: inline-flex; align-items: center; gap: var(--space-xs); }
 .set-pane h3 + .set-list + h3 { margin-top: var(--space-lg); }
 .set-item .set-text .desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -990,6 +997,20 @@ th[aria-sort="ascending"] .sort-ico, th[aria-sort="descending"] .sort-ico { colo
 
 /* Connection dialog: Group sits under Name, as wide as Name and Color together */
 .cx-head .cx-group { grid-column: 2 / -1; }
+/* Group: a field that opens the groups menu; New group… turns it into a name field */
+.group-pick { display: grid; }
+.group-btn { display: flex; align-items: center; gap: var(--space-xs); position: relative; padding-right: 32px; text-align: left; cursor: pointer; }
+.group-btn .grp-ico { width: 16px; height: 16px; color: var(--color-muted); flex-shrink: 0; }
+.group-btn .env-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.group-btn[data-none] .env-name { color: var(--color-muted); }
+.group-btn .select-chev { position: absolute; top: 50%; right: 10px; width: 14px; height: 14px; transform: translateY(-50%); color: var(--color-muted); }
+.group-btn[aria-expanded="true"] { border-color: var(--color-focus); }
+.group-btn[hidden], .group-new[hidden] { display: none; }
+.group-menu { left: 0; right: auto; min-width: 100%; max-height: 280px; overflow-y: auto; }
+.group-menu .menu-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.group-menu button .tick { color: var(--color-link); }
+.group-menu button[aria-checked="false"] .tick { visibility: hidden; }
+.cx-head .group-help { grid-column: 2 / -1; }
 
 /* Drag a card onto a group to move it (voidHTTP's pointer drag: HTML5 drag and drop is unreliable in the webview).
    The card fades, a ghost follows the pointer, the group under it lights up, and a "new group" zone opens at the end.

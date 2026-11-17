@@ -13,6 +13,13 @@ import { ChevronDown, CircleCheck, WandSparkles, ico } from "./Icon";
 /** The connection's database and schema pickers, inside the query line's filled field. */
 function CtxSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
   const opts = options.includes(value) || !value ? options : [value, ...options];
+  // one choice, e.g. a connection limited to its database: a label, not a menu
+  if (value && opts.length <= 1)
+    return (
+      <span className="ctx-select ctx-fixed" aria-label={label}>
+        {value}
+      </span>
+    );
   return (
     <span className="ctx-select">
       <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>

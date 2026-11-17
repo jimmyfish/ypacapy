@@ -469,8 +469,14 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
         <p class="pane-note">The passphrase is one for the whole app. Each connection keeps its own security level (None, Low or Strict) and the statements it asks about, set in its Options or the tabs bar.</p>
         <div class="set-list">
               <div class="set-item">
-                <div class="set-text"><label for="sec-level">Default security level for new connections</label><span class="desc">Existing connections keep their own</span></div>
-                <div class="set-ctl"><span class="select-wrap"><select id="sec-level" class="field set-choice"><option value="none" selected>None</option><option value="low">Low</option><option value="strict">Strict</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
+                <div class="set-text"><label for="sec-level-btn">Default security level for new connections</label><span class="desc">Existing connections keep their own</span></div>
+                <div class="set-ctl"><div class="menu-anchor level-pick" data-level-pick="sec-level">
+                  <select id="sec-level" hidden aria-hidden="true" tabindex="-1"><option value="none" selected>None</option><option value="low">Low</option><option value="strict">Strict</option></select>
+                  <button type="button" class="field set-choice level-btn" id="sec-level-btn" data-menu="sec-level-menu" aria-haspopup="menu" aria-expanded="false"><svg aria-hidden="true" class="ico guard-ico"><use href="#i-shield-off"/></svg><span class="env-name">None</span><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></button>
+                  <div class="menu guard-menu" id="sec-level-menu" role="menu" aria-label="Security level" hidden>
+                    <button type="button" role="menuitemradio" aria-checked="false" data-pick="none" data-icon="shield-off"><svg aria-hidden="true" class="ico"><use href="#i-shield-off"/></svg><span class="gm-text"><span>None</span><small data-desc="Every statement runs">Every statement runs</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button><button type="button" role="menuitemradio" aria-checked="false" data-pick="low" data-icon="shield"><svg aria-hidden="true" class="ico"><use href="#i-shield"/></svg><span class="gm-text"><span>Low</span><small data-desc="Confirm the picked statements">Confirm the picked statements</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button><button type="button" role="menuitemradio" aria-checked="false" data-pick="strict" data-icon="lock"><svg aria-hidden="true" class="ico"><use href="#i-lock"/></svg><span class="gm-text"><span>Strict</span><small data-desc="Passphrase for the picked statements">Passphrase for the picked statements</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+                  </div>
+                </div></div>
               </div>
         </div>
         <div class="set-list">
@@ -725,6 +731,30 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
       m.hidden = true; $(`[data-menu="${m.id}"]`).setAttribute("aria-expanded", "false"); wrap.focus();
     }));
   }
+  // Security level pickers in dialogs: the menu sets the hidden select; the select's value and disabled options draw the button and menu
+  $$("[data-level-pick]").forEach((wrap) => {
+    const sel = $("select", wrap), btn = $(".level-btn", wrap), menu = $(".menu", wrap);
+    const draw = () => {
+      const v = sel.value, item = $(`[data-pick="${v}"]`, menu);
+      $(".env-name", btn).textContent = $(".gm-text > span", item).textContent;
+      $(".guard-ico use", btn).setAttribute("href", `#i-${item.dataset.icon}`);
+      btn.dataset.level = v;
+      btn.setAttribute("aria-label", `Security level: ${$(".env-name", btn).textContent}`);
+      $$("[data-pick]", menu).forEach((b) => {
+        const opt = $(`option[value="${b.dataset.pick}"]`, sel), small = $("small", b);
+        b.setAttribute("aria-checked", String(b.dataset.pick === v));
+        b.disabled = opt.disabled;
+        small.textContent = opt.disabled && b.dataset.pick === "strict" ? "Set a passphrase in Settings first" : small.dataset.desc;
+      });
+    };
+    sel.addEventListener("change", draw);
+    $$("[data-pick]", menu).forEach((b) => b.addEventListener("click", () => {
+      menu.hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus();
+      if (sel.value === b.dataset.pick) return;
+      sel.value = b.dataset.pick; sel.dispatchEvent(new Event("change"));
+    }));
+    draw();
+  });
   // Menus: the row "…" menu and Run's menu; Escape or a click elsewhere closes them
   {
     const rowMenu = $("#row-menu");
@@ -878,6 +908,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
     strictOpt.disabled = !passSet;
     strictOpt.textContent = passSet ? "Strict" : "Strict (set a passphrase below)";
     if (!passSet && $("#sec-level").value === "strict") $("#sec-level").value = "low";
+    $("#sec-level").dispatchEvent(new Event("change"));
     $$("[data-pass]").forEach((c) => { c.hidden = c.dataset.pass !== (passSet ? "set" : "none"); });
     $("[data-pass-desc]").textContent = passSet ? "Set, in the macOS keychain" : "Not set. With one, the statements you pick ask for it before they run";
     $$("[data-needs-pass]").forEach((r) => { r.hidden = !passSet; });

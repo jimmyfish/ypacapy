@@ -90,6 +90,9 @@
     <button type="button" data-show="options-low" aria-pressed="false">Low</button>
     <button type="button" data-show="options-strict" aria-pressed="false">Strict</button>
     <button type="button" data-show="options-nopass" aria-pressed="false">No passphrase set</button>
+    <button type="button" data-show="level-menu" aria-pressed="false">Security level menu</button>
+    <button type="button" data-show="group-menu" aria-pressed="false">Group menu</button>
+    <button type="button" data-show="group-new" aria-pressed="false">New group</button>
     <button type="button" data-show="ssl" aria-pressed="false">SSL tab</button>
     <button type="button" data-show="advanced" aria-pressed="false">Advanced tab</button>
     <button type="button" data-show="name-missing" aria-pressed="false">Name missing</button>
@@ -141,8 +144,13 @@
         <label for="c-name">Name</label><input class="field" id="c-name" name="name" required aria-required="true" aria-describedby="c-name-h" autocomplete="off" spellcheck="false">
         <label for="c-color">Color</label><span class="cx-color" style="--fg: var(--proj-1-fg)"><span class="select-wrap"><select class="field" id="c-color"><option value="5">Turquoise</option><option value="2">Emerald</option><option value="7">Sunflower</option><option value="3">Carrot</option><option value="6">Alizarin</option><option value="1" selected>River</option><option value="8">Asphalt</option><option value="4">Amethyst</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></span>
         <span class="help cx-full" id="c-name-h"></span>
-        <label for="c-group">Group</label><input class="field cx-group" id="c-group" name="group" list="c-groups" placeholder="None" autocomplete="off" spellcheck="false">
-        <datalist id="c-groups"><option value="Production"></option><option value="Staging"></option></datalist>
+        <label for="c-group-btn">Group</label><div class="menu-anchor cx-group group-pick" data-groups="Production,Staging">
+          <input type="hidden" id="c-group" name="group" value="">
+          <button type="button" class="field group-btn" id="c-group-btn" data-menu="c-group-menu" aria-haspopup="menu" aria-expanded="false"><svg aria-hidden="true" class="ico grp-ico"><use href="#i-folder-minus"/></svg><span class="env-name">No group</span><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></button>
+          <input class="field group-new" id="c-group-new" placeholder="New group name" aria-label="New group name" aria-describedby="c-group-h" autocomplete="off" spellcheck="false" hidden>
+          <div class="menu group-menu" id="c-group-menu" role="menu" aria-label="Group" hidden></div>
+        </div>
+        <span class="help cx-full group-help" id="c-group-h" hidden>Enter keeps the name. Escape goes back.</span>
       </div>
       <div class="subtabs cx-tabs" role="tablist" aria-label="Connection settings">
         <button type="button" class="subtab" role="tab" id="t-general" aria-controls="p-general" aria-selected="true" tabindex="0">General</button><button type="button" class="subtab" role="tab" id="t-options" aria-controls="p-options" aria-selected="false" tabindex="-1">Options</button><button type="button" class="subtab" role="tab" id="t-ssl" aria-controls="p-ssl" aria-selected="false" tabindex="-1">SSL</button><button type="button" class="subtab" role="tab" id="t-advanced" aria-controls="p-advanced" aria-selected="false" tabindex="-1">Advanced</button>
@@ -167,8 +175,14 @@
         <h3 class="cx-h">Security</h3>
         <div class="set-list">
               <div class="set-item">
-                <div class="set-text"><label for="c-level">Security level</label><span class="desc" data-level-desc>Every statement runs</span></div>
-                <div class="set-ctl"><span class="select-wrap"><select id="c-level" class="field set-choice"><option value="none" selected>None</option><option value="low">Low</option><option value="strict">Strict</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
+                <div class="set-text"><label for="c-level-btn">Security level</label><span class="desc" data-level-desc>Every statement runs</span></div>
+                <div class="set-ctl"><div class="menu-anchor level-pick" data-level-pick="c-level">
+                  <select id="c-level" hidden aria-hidden="true" tabindex="-1"><option value="none" selected>None</option><option value="low">Low</option><option value="strict">Strict</option></select>
+                  <button type="button" class="field set-choice level-btn" id="c-level-btn" data-menu="c-level-menu" aria-haspopup="menu" aria-expanded="false"><svg aria-hidden="true" class="ico guard-ico"><use href="#i-shield-off"/></svg><span class="env-name">None</span><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></button>
+                  <div class="menu guard-menu" id="c-level-menu" role="menu" aria-label="Security level" hidden>
+                    <button type="button" role="menuitemradio" aria-checked="false" data-pick="none" data-icon="shield-off"><svg aria-hidden="true" class="ico"><use href="#i-shield-off"/></svg><span class="gm-text"><span>None</span><small data-desc="Every statement runs">Every statement runs</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button><button type="button" role="menuitemradio" aria-checked="false" data-pick="low" data-icon="shield"><svg aria-hidden="true" class="ico"><use href="#i-shield"/></svg><span class="gm-text"><span>Low</span><small data-desc="Confirm the picked statements">Confirm the picked statements</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button><button type="button" role="menuitemradio" aria-checked="false" data-pick="strict" data-icon="lock"><svg aria-hidden="true" class="ico"><use href="#i-lock"/></svg><span class="gm-text"><span>Strict</span><small data-desc="Passphrase for the picked statements">Passphrase for the picked statements</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+                  </div>
+                </div></div>
               </div>
               <div class="set-item set-item--sub" data-when-strict hidden>
                 <div class="set-text"><label for="c-touch">Open with Touch ID</label></div>
@@ -486,6 +500,30 @@
       m.hidden = true; $(`[data-menu="${m.id}"]`).setAttribute("aria-expanded", "false"); wrap.focus();
     }));
   }
+  // Security level pickers in dialogs: the menu sets the hidden select; the select's value and disabled options draw the button and menu
+  $$("[data-level-pick]").forEach((wrap) => {
+    const sel = $("select", wrap), btn = $(".level-btn", wrap), menu = $(".menu", wrap);
+    const draw = () => {
+      const v = sel.value, item = $(`[data-pick="${v}"]`, menu);
+      $(".env-name", btn).textContent = $(".gm-text > span", item).textContent;
+      $(".guard-ico use", btn).setAttribute("href", `#i-${item.dataset.icon}`);
+      btn.dataset.level = v;
+      btn.setAttribute("aria-label", `Security level: ${$(".env-name", btn).textContent}`);
+      $$("[data-pick]", menu).forEach((b) => {
+        const opt = $(`option[value="${b.dataset.pick}"]`, sel), small = $("small", b);
+        b.setAttribute("aria-checked", String(b.dataset.pick === v));
+        b.disabled = opt.disabled;
+        small.textContent = opt.disabled && b.dataset.pick === "strict" ? "Set a passphrase in Settings first" : small.dataset.desc;
+      });
+    };
+    sel.addEventListener("change", draw);
+    $$("[data-pick]", menu).forEach((b) => b.addEventListener("click", () => {
+      menu.hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus();
+      if (sel.value === b.dataset.pick) return;
+      sel.value = b.dataset.pick; sel.dispatchEvent(new Event("change"));
+    }));
+    draw();
+  });
   // Menus: the row "…" menu and Run's menu; Escape or a click elsewhere closes them
   {
     const rowMenu = $("#row-menu");
@@ -718,7 +756,7 @@
     strictOpt.disabled = !passSet;
     strictOpt.textContent = passSet ? "Strict" : "Strict (needs a passphrase, in Settings)";
     if (!passSet && sel.value === "strict") sel.value = "low";
-    if (typeof renderLevel === "function") renderLevel();
+    sel.dispatchEvent(new Event("change"));
   };
   const openSub = (k) => {
     $$("[data-sub]").forEach((d) => { d.hidden = d.dataset.sub !== k; });
@@ -769,10 +807,45 @@
   };
   f("c-level").addEventListener("change", renderLevel);
 
+  // Group: a menu of the groups on Home. No group first, New group… last; New group turns the field into a name field.
+  // The hidden input keeps the value for the form; a new name lives in the list only until the connection is saved.
+  const gWrap = $(".group-pick"), gIn = f("c-group"), gBtn = f("c-group-btn"), gNew = f("c-group-new"), gMenu = f("c-group-menu"), gHelp = f("c-group-h");
+  let groups = gWrap.dataset.groups.split(",").filter(Boolean);
+  const icoUse = (name, cls) => `<svg class="ico${cls ? " " + cls : ""}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+  const closeGroup = () => { gMenu.hidden = true; gBtn.setAttribute("aria-expanded", "false"); };
+  const pickGroup = (g) => { gIn.value = g; gIn.dispatchEvent(new Event("change")); };
+  const drawGroup = () => {
+    const v = gIn.value, all = v && !groups.includes(v) ? [...groups, v].sort((a, b) => a.localeCompare(b)) : groups;
+    $(".env-name", gBtn).textContent = v || "No group";
+    $(".grp-ico use", gBtn).setAttribute("href", `#i-${v ? "folder" : "folder-minus"}`);
+    gBtn.toggleAttribute("data-none", !v);
+    gMenu.innerHTML = [["", "No group", "folder-minus"], ...all.map((g) => [g, g, "folder"])]
+      .map(([g, label, icon]) => `<button type="button" role="menuitemradio" aria-checked="${g === v}" data-g="${g.replace(/"/g, "&quot;")}">${icoUse(icon)}<span class="menu-name">${label}</span>${icoUse("check", "tick")}</button>`)
+      .join("") + `<hr><button type="button" role="menuitem" data-new-group>${icoUse("folder-plus")}New group…</button>`;
+    $$("[data-g]", gMenu).forEach((b) => b.addEventListener("click", () => { closeGroup(); pickGroup(b.dataset.g); gBtn.focus(); }));
+    $("[data-new-group]", gMenu).addEventListener("click", () => { closeGroup(); naming(true); });
+  };
+  const naming = (on) => {
+    gBtn.hidden = on; gNew.hidden = !on; gHelp.hidden = !on;
+    if (on) { gNew.value = ""; gNew.focus(); } else gBtn.focus();
+  };
+  const keepNew = () => {
+    const g = gNew.value.trim();
+    if (g) pickGroup(g);
+    naming(false);
+  };
+  gNew.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); keepNew(); }
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); naming(false); }
+  });
+  gNew.addEventListener("blur", () => { if (!gNew.hidden) keepNew(); });
+  gIn.addEventListener("change", drawGroup);
+  drawGroup();
+
   window.pvShow = (k) => {
     setType(k === "url-only" ? "url" : "default");
     setEngine(["mysql", "sqlite"].includes(k) ? k : "postgres");
-    selectTab({ options: "options", "options-low": "options", "options-strict": "options", "options-nopass": "options", ssl: "ssl", advanced: "advanced" }[k] || "general");
+    selectTab({ options: "options", "level-menu": "options", "options-low": "options", "options-strict": "options", "options-nopass": "options", ssl: "ssl", advanced: "advanced" }[k] || "general");
     f("c-level").value = k === "options-low" ? "low" : k === "options-strict" ? "strict" : "none";
     closeSub();
     passSet = k !== "options-nopass"; unlocked = false; renderPass(); renderLock();
@@ -784,7 +857,12 @@
     if (k === "url-only") f("c-url").value = "postgresql://ops@loophealth-staging.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com:5432/postgres?sslmode=require";
     setLine({ testing: "testing", "test-ok": "ok", "test-failed": "fail" }[k] || "");
     // New connection here (a group's menu or its New connection card): Group starts with that group
-    f("c-group").value = q.get("group") || "";
+    f("c-group").value = k === "group-menu" ? "Production" : q.get("group") || "";
+    naming(false); drawGroup();
+    if (k === "group-menu") { gMenu.hidden = false; gBtn.setAttribute("aria-expanded", "true"); }
+    if (k === "group-new") { naming(true); gNew.value = "Analytics"; }
+    // the level picker, open
+    const lm = f("c-level-menu"); lm.hidden = k !== "level-menu"; f("c-level-btn").setAttribute("aria-expanded", String(k === "level-menu"));
   };
 pvStart();
 </script>

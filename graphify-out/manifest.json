@@ -102,10 +102,10 @@
     "semantic_hash": "715b65d6cc18d5c4d0a6f7aa69987ccc"
   },
   "src/App.tsx": {
-    "mtime": 1794829936.3525214,
-    "seen": 1794845024.5401769,
-    "ast_hash": "b26070f21c289903b46b29073a1511ae",
-    "semantic_hash": "b26070f21c289903b46b29073a1511ae"
+    "mtime": 1794908933.032312,
+    "seen": 1794908935.497441,
+    "ast_hash": "99fb7fc6d192b39f0f249436a12e1dce",
+    "semantic_hash": ""
   },
   "src/components/ConnTile.tsx": {
     "mtime": 1794908327.4605787,
@@ -246,33 +246,33 @@
     "semantic_hash": "68b2561792597071c31052d4f422f30b"
   },
   ".hallmark/preview/connect.html": {
-    "mtime": 1794908528.7214622,
-    "seen": 1794908530.36922,
-    "ast_hash": "d1ec91bf0244ed61bde73c5a1c9adcef",
+    "mtime": 1794908871.7433124,
+    "seen": 1794908935.497458,
+    "ast_hash": "fe47e4b66ea06c13b6eb2e8a88e987c7",
     "semantic_hash": ""
   },
   ".hallmark/preview/home.html": {
-    "mtime": 1794908528.7200134,
-    "seen": 1794908530.3692212,
-    "ast_hash": "39bc26bdc6e6538751c95b7d61876b17",
+    "mtime": 1794908871.7422245,
+    "seen": 1794908935.49746,
+    "ast_hash": "c4bdf4426b6774bd3b6e7a6a7cc435d8",
     "semantic_hash": ""
   },
   ".hallmark/preview/index.html": {
-    "mtime": 1794908528.7208595,
-    "seen": 1794908530.369222,
-    "ast_hash": "359b4c396b39e0a3ec1b707262a9e5a1",
+    "mtime": 1794908871.7427719,
+    "seen": 1794908935.49746,
+    "ast_hash": "2e8ceb814a7843d2fc8f5c38a2b359d4",
     "semantic_hash": ""
   },
   ".hallmark/preview/settings.html": {
-    "mtime": 1794908528.7212281,
-    "seen": 1794908530.369222,
-    "ast_hash": "25c440161c8bb0bd50d1dc55d1ebce26",
+    "mtime": 1794908871.7431884,
+    "seen": 1794908935.497461,
+    "ast_hash": "45971c8d6a413f9b68cbc27b64b4655a",
     "semantic_hash": ""
   },
   ".hallmark/preview/table.html": {
-    "mtime": 1794908528.7210343,
-    "seen": 1794908530.3692229,
-    "ast_hash": "3d5ade0bb94d99218767945129097e69",
+    "mtime": 1794908871.7429526,
+    "seen": 1794908935.497461,
+    "ast_hash": "3fd58e552dc852d2c59defbe7cf90977",
     "semantic_hash": ""
   },
   "AGENTS.md": {

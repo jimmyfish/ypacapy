@@ -1100,3 +1100,13 @@ body.cards-dragging .group-drop-new { display: flex; }
    feather) on the connection's colour; no PG / MYSQL / SQLITE word by the address. The drag ghost's small tile shrinks it. */
 .proj-tile .engine-ico { width: 22px; height: 22px; }
 .proj-tile--sm .engine-ico { width: 13px; height: 13px; }
+
+/* Connection tabs in the title strip wear the connection's colour, so a red (production) connection is seen at a
+   glance: every open connection tab is filled with its tint; the active one adds a ring and a solid tile in the
+   connection colour. --fg / --bg sit on the tab (App.tsx) and match the tile's own, so tab, ring and tile are one colour. */
+.ptab--project { background: var(--bg); color: var(--fg); }
+.ptab--project:hover { background: color-mix(in srgb, var(--fg) 16%, var(--bg)); color: var(--fg); }
+.ptab--project[aria-current="page"] { background: var(--bg); color: var(--color-ink); box-shadow: inset 0 0 0 1.5px var(--fg); }
+.ptab--project[aria-current="page"] .proj-tile { background: var(--fg); color: var(--color-paper); }
+.ptab--project .ptab-close { color: inherit; }
+.ptab--project .ptab-close:hover { background: color-mix(in srgb, var(--fg) 18%, transparent); color: var(--fg); }

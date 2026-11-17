@@ -98,16 +98,18 @@ const inspector = (col, type, row, value) => `
             </div>`;
 
 // ---------- shell: title strip, rail, panel ----------
-const CONNS = [["shop_prod", "server", 1, "postgres"], ["analytics.sqlite", "hard-drive", 2, "sqlite"], ["legacy_cms", "server", 3, "mysql"]];
+const CONNS = [["shop_prod", "server", 6, "postgres"], ["analytics.sqlite", "hard-drive", 2, "sqlite"], ["legacy_cms", "server", 3, "mysql"]];
 const tile = (icon, n, sm = true) => `<span class="proj-tile${sm ? " proj-tile--sm" : ""}" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)">${ic(icon)}</span>`;
 const strip = (current) => `
   <!-- title strip: the native macOS traffic lights sit in the empty 84px on the left (not drawn here) -->
+  <!-- a connection tab carries its colour (--fg/--bg) on the tab itself; the tile inside inherits it, so tab, ring and
+       tile are always one colour. The tile shows the engine glyph, as on the Home cards. -->
   <div class="app-strip" data-tauri-drag-region>
     <nav class="ptabs" aria-label="Connections">
       <button type="button" class="ptab" data-href="./home.html"${current === "home" ? ' aria-current="page"' : ""}>${ic("house")}Home</button>
       <span class="ptab-sep" aria-hidden="true"></span>
-${CONNS.slice(0, 2).map(([name, icon, n]) => `      <div class="ptab ptab--project"${current === name ? ' aria-current="page"' : ""}>
-        <button type="button" class="ptab-main" data-href="./index.html">${tile(icon, n)}${name}</button>
+${CONNS.slice(0, 2).map(([name, , n, engine]) => `      <div class="ptab ptab--project" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)"${current === name ? ' aria-current="page"' : ""}>
+        <button type="button" class="ptab-main" data-href="./index.html"><span class="proj-tile proj-tile--sm">${engIco(engine, 13)}</span>${name}</button>
         <button type="button" class="icon-btn ptab-close" aria-label="Close ${name}">${ic("x")}</button>
       </div>`).join("\n")}
     </nav>
@@ -311,6 +313,9 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
 const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["settings", "Settings"], ["connect", "New connection"]];
 const UI_FONTS = `<option value="">System</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option><option value="Avenir Next, Avenir, sans-serif">Avenir</option><option value="Georgia, serif">Georgia</option>`;
 const MONO_FONTS = `<option value="">System mono</option><option value="Menlo, monospace">Menlo</option><option value="'Courier New', monospace">Courier</option><option value="Monaco, monospace">Monaco</option>`;
+// preview-only: recolour the first connection tab (shop_prod) to try each connection colour on the title strip
+const TAB_COLORS = [["5", "Turquoise"], ["2", "Emerald"], ["7", "Sunflower"], ["3", "Carrot"], ["6", "Alizarin (red)"], ["1", "River"], ["8", "Asphalt"], ["4", "Amethyst"]]
+  .map(([v, l]) => `<option value="${v}"${v === "6" ? " selected" : ""}>${l}</option>`).join("");
 const bar = (cur, states = [], fonts = false) => `
 <header class="pv-bar">
   <strong>ypacapy preview · ${cur === "index" ? "query" : cur}</strong>
@@ -319,14 +324,15 @@ ${SCREENS.map(([f, l]) => `    <a class="btn btn--quiet" href="./${f}.html" styl
   </nav>${states.length ? `
   <div class="pv-states" role="group" aria-label="States">
 ${states.map(([k, l], i) => `    <button type="button" data-show="${k}" aria-pressed="${i === 0}">${l}</button>`).join("\n")}
-  </div>` : ""}${fonts ? `
+  </div>` : ""}
   <div class="pv-fonts">
+    <label>shop_prod colour <select data-tabc>${TAB_COLORS}</select></label>${fonts ? `
     <label>UI font <select data-font="--font-ui">${UI_FONTS}</select></label>
     <label>Table font <select data-font="--font-table">${MONO_FONTS}</select></label>
     <label>Editor font <select data-font="--font-mono">${MONO_FONTS}</select></label>
-    <label>Size <select data-size="--font-size-ui"><option value="">14</option><option value="13px">13</option><option value="15px">15</option><option value="16px">16</option></select></label>
-  </div>` : ""}
-  <div class="pv-theme" role="group" aria-label="Density" style="margin-left:${fonts ? 0 : "auto"}">
+    <label>Size <select data-size="--font-size-ui"><option value="">14</option><option value="13px">13</option><option value="15px">15</option><option value="16px">16</option></select></label>` : ""}
+  </div>
+  <div class="pv-theme" role="group" aria-label="Density" style="margin-left:0">
     <button type="button" data-density-set="" aria-pressed="true">Default</button>
     <button type="button" data-density-set="compact" aria-pressed="false">Compact</button>
   </div>

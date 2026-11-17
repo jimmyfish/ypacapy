@@ -1,17 +1,17 @@
 # Graph Report - ypacapy  (2026-11-17)
 
 ## Corpus Check
-- 47 files · ~95,459 words
+- 47 files · ~96,785 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 11 file(s) not represented in the graph (top: .css 6, (none) 4, .lock 1)
 
 ## Summary
-- 887 nodes · 1888 edges · 67 communities (47 shown, 20 thin omitted)
+- 887 nodes · 1891 edges · 67 communities (47 shown, 20 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 58 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `54bc624e`
+- Built from commit: `1cb4c3dd`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -88,12 +88,12 @@
   .hallmark/preview/settings.html → src/components/Modals.tsx
 - `AppearancePane()` --implements--> `Settings Appearance pane`  [INFERRED]
   src/components/Modals.tsx → .hallmark/preview/settings.html
-- `SecurityPane()` --implements--> `Settings Security pane`  [INFERRED]
-  src/components/Modals.tsx → .hallmark/preview/settings.html
 - `PassDialog()` --implements--> `Passphrase sub-dialogs (set, change, disable, unlock)`  [INFERRED]
   src/components/Modals.tsx → .hallmark/preview/settings.html
-- `ResultGrid()` --implements--> `Result grid with cell inspector and on-screen sort`  [INFERRED]
-  src/components/ResultGrid.tsx → .hallmark/preview/settings.html
+- `SecurityPane()` --implements--> `Settings Security pane`  [INFERRED]
+  src/components/Modals.tsx → .hallmark/preview/settings.html
+- `TablePane()` --implements--> `table.html (Table design preview)`  [INFERRED]
+  src/components/TablePane.tsx → .hallmark/preview/table.html
 
 ## Import Cycles
 - 1-file cycle: `src-tauri/src/keychain.rs -> src-tauri/src/keychain.rs`

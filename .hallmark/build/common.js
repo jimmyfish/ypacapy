@@ -99,6 +99,19 @@
     const u = new URL(location); u.searchParams.set("show", k); history.replaceState(null, "", u);
   }
   shows.forEach((b) => b.addEventListener("click", () => show(b.dataset.show)));
+  // preview-only: the shop_prod colour picker in the bar recolours its title-strip tab and rides in the URL as ?tabc=
+  function tabColor(n) {
+    const tab = $(".ptab--project");
+    if (tab) { tab.style.setProperty("--fg", `var(--proj-${n}-fg)`); tab.style.setProperty("--bg", `var(--proj-${n}-bg)`); }
+  }
+  $$("select[data-tabc]").forEach((sel) => {
+    const n = q.get("tabc"); if (n) { sel.value = n; tabColor(n); }
+    sel.addEventListener("change", () => {
+      tabColor(sel.value);
+      const u = new URL(location); sel.value === "6" ? u.searchParams.delete("tabc") : u.searchParams.set("tabc", sel.value);
+      history.replaceState(null, "", u); writeUrl();
+    });
+  });
   function pvStart() { if (!shows.length) return; const k = q.get("show"); show(shows.some((b) => b.dataset.show === k) ? k : shows[0].dataset.show); }
 
   // ---------- the app itself (shipped behaviour) ----------

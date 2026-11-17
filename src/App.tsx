@@ -10,6 +10,7 @@ import { Home } from "./components/Home";
 import { ConnTile } from "./components/ConnTile";
 import { DEFAULT_SCHEME, findScheme, isDark } from "./lib/themes";
 import { schemeTokens } from "./lib/themes";
+import { connColorId } from "./lib/connColors";
 import { Bookmark, Database, HistoryIcon, House, ListTree, Settings, X, ico, icoLg } from "./components/Icon";
 
 export const SIDEBAR_DEFAULT = 296;
@@ -96,10 +97,17 @@ function AppStrip() {
         {openIds.map((id) => {
           const c = conns.find((x) => x.id === id);
           if (!c) return null;
+          const n = connColorId(c.color);
+          // the tab wears the connection's colour (fill, ring, tile), so a production connection is seen at a glance
           return (
-            <div key={id} className="ptab ptab--project" aria-current={view === "conn" && current === id ? "page" : undefined}>
+            <div
+              key={id}
+              className="ptab ptab--project"
+              style={{ "--fg": `var(--proj-${n}-fg)`, "--bg": `var(--proj-${n}-bg)` } as React.CSSProperties}
+              aria-current={view === "conn" && current === id ? "page" : undefined}
+            >
               <button type="button" className="ptab-main" onClick={() => st.openConn(id)}>
-                <ConnTile conn={c} small />
+                <ConnTile conn={c} small typed />
                 {c.name}
               </button>
               <button type="button" className="icon-btn ptab-close" aria-label={`Close ${c.name}`} onClick={() => st.closeConn(id)}>

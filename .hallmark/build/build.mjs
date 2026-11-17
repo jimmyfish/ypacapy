@@ -13,7 +13,7 @@ fs.writeFileSync(`${OUT}/app.css`, fs.readFileSync(`${SP}app.css.base`, "utf8") 
 const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "house", "server", "hard-drive", "x", "plus", "settings", "search", "refresh-cw",
   "ellipsis", "chevron-down", "chevron-right", "chevron-left", "folder", "eye", "square-function", "table-2", "square-code", "panel-left-close",
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
-  "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus"];
+  "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus"];
 function symbol(name) {
   const src = fs.readFileSync(`${LUCIDE}/${name}.js`, "utf8");
   const start = src.indexOf("[", src.indexOf("createLucideIcon("));
@@ -364,34 +364,196 @@ pvStart();
 const js = (f) => fs.readFileSync(`${SP}${f}`, "utf8");
 const pages = {};
 
+// Engine glyphs, the same as src/components/EngineIcon.tsx (adopted from opengrip): a PostgreSQL elephant, a MySQL
+// dolphin, an SQLite feather, 16x16 in their brand colours. Each fill is a light-dark() pair, so it follows color-scheme.
+const ENGINE_NAME = { postgres: "PostgreSQL", mysql: "MySQL", sqlite: "SQLite" };
+const ld = (l, d) => `light-dark(${l}, ${d})`;
+const ENGINE_GLYPH = {
+  postgres: `<path d="M4.2 3C5.4 1.9 7.6 1.5 9.6 1.9C12.4 2.5 14 4.5 13.7 7.4C13.5 9.2 12.6 10.4 11.3 10.7L11.5 13.2C11.5 14 10.7 14.5 10 14L9.1 13.3V11C7.8 11.1 6.6 10.8 5.7 10.1C5.4 11.2 4.8 12.2 3.8 12.5C3 12.7 2.4 11.9 2.8 11.2C3.4 10.1 3.3 8.8 2.9 7.6C2.4 5.9 2.8 4.2 4.2 3Z" style="fill:${ld("#336791", "#4c82b5")};stroke:${ld("#ffffff", "#e6eef5")}" stroke-width="0.8" stroke-linejoin="round"/><path d="M9.6 4.5C10.8 5.3 11.3 6.8 10.8 8.4" style="stroke:${ld("#ffffff", "#e6eef5")}" stroke-width="0.8" stroke-linecap="round"/><circle cx="7.6" cy="5.4" r="0.8" style="fill:${ld("#ffffff", "#e6eef5")}"/>`,
+  mysql: `<path d="M1.5 12C3.1 8.3 6.3 5.7 10.2 5.2C11 4.1 12.1 3.3 13.6 3.1C13.2 4 13.1 4.9 13.4 5.7C14.2 6.6 14.6 7.9 14.4 9.3C13.8 8.5 12.8 8 11.7 8C8.7 8 5.4 9.6 1.5 12Z" style="fill:${ld("#00758f", "#2a9bb5")}"/><path d="M11.8 9.7C12.4 10.9 12.3 12.4 11.5 13.7C11.3 12.5 10.6 11.6 9.7 11.1" style="stroke:${ld("#f29111", "#f5a742")}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`,
+  sqlite: `<path d="M2 3.5C2 2.67 2.67 2 3.5 2H10.2L7.6 14H3.5C2.67 14 2 13.33 2 12.5V3.5Z" style="fill:${ld("#0f80cc", "#3d8fd1")}"/><path d="M14.2 1.4C11.3 2.4 9.3 5.4 8.6 9.3L8 14H8.9L9.5 9.7C12.6 8.6 14.5 5.4 14.2 1.4Z" style="fill:${ld("#0b4f82", "#9ccbf0")}"/><path d="M13.4 2.9C11.7 4.6 10.4 6.9 9.5 9.6" style="stroke:${ld("#bfe0f7", "#1e3a52")}" stroke-width="0.7" stroke-linecap="round"/>`,
+};
+const engIco = (engine, size = 14) => `<svg class="engine-ico" width="${size}" height="${size}" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">${ENGINE_GLYPH[engine]}</svg>`;
+
 // Home
-const card = ([name, icon, n, engine], [head, tail], when) => `
-          <div class="project-card conn-card">
-            <button type="button" class="project-open" aria-label="Open ${name}, ${head}${tail}" title="${head}${tail}" data-href="./index.html"></button>
-            ${tile(icon, n, false)}
-            <span class="conn-id"><span class="proj-name">${name}</span><span class="proj-cols"><span class="e e-${engine}">${{ postgres: "PG", sqlite: "SQLITE", mysql: "MYSQL" }[engine]}</span><span class="addr"><span class="addr-head">${head}</span><span class="addr-tail">${tail}</span></span></span></span>
-            <span class="proj-when">${when}</span>
+// A connection card. Its actions (Move to group, Edit, Remove) show on hover; Move to group opens a menu of the groups.
+const GROUPS = ["Production", "Staging"];
+const card = ([name, icon, n, engine], [head, tail], when, o = {}) => `
+          <div class="project-card conn-card"${o.id ? ` data-card="${o.id}"` : ""} data-q="${esc(`${name} ${head}${tail} ${{ postgres: "postgresql pg", mysql: "mysql", sqlite: "sqlite" }[engine]} ${o.group || ""}`.toLowerCase())}">
+            <button type="button" class="project-open" aria-label="Open ${name}, ${head}${tail}" data-href="./index.html"></button>
+            <span class="proj-tile" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)">${engIco(engine, 22)}</span>
+            <span class="conn-id"><span class="proj-name">${name}</span><span class="proj-cols"><span class="sr-only">${ENGINE_NAME[engine]}</span><span class="addr"><span class="addr-head">${head}</span><span class="addr-tail">${tail}</span></span></span></span>
+            <span class="proj-when">${when}</span>${o.id ? `
+            <span class="card-actions">
+              <span class="menu-anchor">
+                <button type="button" class="icon-btn" title="Move to group" aria-label="Move ${name} to a group" aria-haspopup="menu" aria-expanded="false" data-menu="move-${o.id}">${ic("folder-input")}</button>
+                <div class="menu move-menu" id="move-${o.id}" role="menu" aria-label="Move ${name} to" hidden>
+                  <p class="menu-note">Move ${name} to</p>
+${(o.groups || GROUPS).map((g) => `                  <button type="button" role="menuitemradio" aria-checked="${g === o.group}">${ic("folder")}<span class="menu-name">${g}</span>${ic("check", "tick")}</button>`).join("\n")}
+                  <hr>
+                  <button type="button" role="menuitem" data-new-group>${ic("folder-plus")}New group…</button>${o.group ? `
+                  <button type="button" role="menuitem">${ic("folder-minus")}Remove from group</button>` : ""}
+                </div>
+              </span>
+              <button type="button" class="icon-btn" title="Edit connection" aria-label="Edit ${name}" data-href="./connect.html">${ic("pencil")}</button>
+              <button type="button" class="icon-btn" title="Remove connection" aria-label="Remove ${name}">${ic("x")}</button>
+            </span>` : ""}
           </div>`;
+const newCard = (group) => `
+          <button type="button" class="project-card project-card--new conn-card" data-href="./connect.html${group ? `?group=${encodeURIComponent(group)}` : ""}">${ic("plus")}New connection</button>`;
+// A group: a folding head (name, how many, how many open) with Open all and a "…" menu, over its cards
+const groupSection = (id, name, cards, { open = 0 } = {}) => `
+      <section class="conn-group" data-group-id="${id}">
+        <div class="group-head">
+          <button type="button" class="group-toggle" aria-expanded="true" aria-controls="g-${id}">${ic("chevron-down", "g-caret")}<h2 data-group-name>${name}</h2><span class="group-count">${cards.length}</span></button>
+          <input class="field group-rename" aria-label="Group name" value="${name}" spellcheck="false" hidden>
+          ${open ? `<span class="group-live"><span class="dot" aria-hidden="true"></span>${open} open</span>` : ""}
+          <span class="drop-note">Drop to move into ${name}</span>
+          <span class="group-actions">
+            <button type="button" class="btn" title="Open every connection in ${name}">${ic("plug-zap")}Open all</button>
+            <span class="menu-anchor">
+              <button type="button" class="icon-btn" title="More actions" aria-label="More actions for ${name}" aria-haspopup="menu" aria-expanded="false" data-menu="gm-${id}">${ic("ellipsis")}</button>
+              <div class="menu" id="gm-${id}" role="menu" aria-label="Actions for ${name}" hidden>
+                <button type="button" role="menuitem" data-href="./connect.html?group=${encodeURIComponent(name)}">${ic("plus")}New connection here</button>
+                <button type="button" role="menuitem" data-rename>${ic("pencil")}Rename group</button>${open ? `
+                <button type="button" role="menuitem">${ic("x")}Close ${open} open</button>` : ""}
+                <hr>
+                <button type="button" role="menuitem">${ic("folder-minus")}Ungroup</button>
+                <p class="menu-note">Ungroup keeps the connections. They move to Ungrouped.</p>
+              </div>
+            </span>
+          </span>
+        </div>
+        <div class="projects" id="g-${id}">${cards.join("")}${newCard(name)}
+        </div>
+      </section>`;
+const C = {
+  shop: card(CONNS[0], ["localhost", ":5432 / shop"], "Opened today at 09:41", { id: "shop", group: "Production" }),
+  cms: card(CONNS[2], ["10.0.4.12", ":3306 / cms"], "Opened yesterday at 16:40", { id: "cms", group: "Production" }),
+  staging: card(["loophealth-staging", "server", 4, "postgres"], ["loophealth-staging-3may.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com", ":5432 / postgres"], "Opened today at 09:12", { id: "staging", group: "Staging" }),
+  analytics: card(CONNS[1], ["~/data/", "analytics.sqlite"], "Opened today at 08:30", { id: "analytics" }),
+  backup: card(["production.sqlite", "hard-drive", 2, "sqlite"], ["~/Shelter/data/rabbit/backup/", "production.sqlite"], "Opened today at 08:55", { id: "backup" }),
+};
+// 40 connections: six groups (Archive folded) and nine strays, for how Home reads at scale
+const RDS = (h) => `${h}.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com`;
+const MANY = [
+  ["Production", 1, [
+    ["shop_prod", "postgres", 1, RDS("shop-prod"), ":5432 / shop", "Opened today at 09:41"],
+    ["orders_prod", "postgres", 1, RDS("orders-prod"), ":5432 / orders", "Opened today at 09:20"],
+    ["inventory_prod", "postgres", 5, RDS("inventory-prod"), ":5432 / inventory", "Opened yesterday at 17:02"],
+    ["legacy_cms", "mysql", 3, "10.0.4.12", ":3306 / cms", "Opened yesterday at 16:40"],
+    ["auth_prod", "postgres", 7, RDS("auth-prod"), ":5432 / auth", "Opened 3 days ago"],
+    ["search_prod", "mysql", 6, "10.0.4.31", ":3306 / search", "Opened 4 days ago"],
+    ["notifications_prod", "postgres", 8, RDS("notifications-prod"), ":5432 / notify", "Opened last week"],
+    ["reporting_replica", "postgres", 4, RDS("reporting-replica-1"), ":5432 / reporting", "Opened last week"],
+  ]],
+  ["Staging", 0, [
+    ["loophealth-staging", "postgres", 4, RDS("loophealth-staging-3may"), ":5432 / postgres", "Opened today at 09:12"],
+    ["shop_staging", "postgres", 1, RDS("shop-staging"), ":5432 / shop", "Opened yesterday at 11:15"],
+    ["orders_staging", "postgres", 1, RDS("orders-staging"), ":5432 / orders", "Opened 2 days ago"],
+    ["cms_staging", "mysql", 3, "10.1.4.12", ":3306 / cms", "Opened 5 days ago"],
+    ["auth_staging", "postgres", 7, RDS("auth-staging"), ":5432 / auth", "Opened last week"],
+    ["search_staging", "mysql", 6, "10.1.4.31", ":3306 / search", "Not opened yet"],
+  ]],
+  ["Analytics", 0, [
+    ["warehouse", "postgres", 8, RDS("warehouse"), ":5432 / dwh", "Opened today at 08:12"],
+    ["events_2026.sqlite", "sqlite", 2, "~/data/events/", "events_2026.sqlite", "Opened today at 07:58"],
+    ["clickstream", "mysql", 6, "10.2.0.8", ":3306 / clicks", "Opened 2 days ago"],
+    ["cohorts.sqlite", "sqlite", 2, "~/data/analytics/", "cohorts.sqlite", "Opened 3 days ago"],
+    ["metabase_app", "postgres", 5, "10.2.0.15", ":5432 / metabase", "Opened 2 weeks ago"],
+  ]],
+  ["Payments", 0, [
+    ["ledger_prod", "postgres", 7, RDS("ledger-prod"), ":5432 / ledger", "Opened yesterday at 15:30"],
+    ["payouts_prod", "postgres", 7, RDS("payouts-prod"), ":5432 / payouts", "Opened 3 days ago"],
+    ["ledger_staging", "postgres", 1, RDS("ledger-staging"), ":5432 / ledger", "Opened last week"],
+    ["recon.sqlite", "sqlite", 2, "~/Finance/recon/", "recon.sqlite", "Opened 2 weeks ago"],
+  ]],
+  ["Local dev", 0, [
+    ["shop_dev", "postgres", 1, "localhost", ":5432 / shop_dev", "Opened today at 10:02"],
+    ["orders_dev", "postgres", 1, "localhost", ":5432 / orders_dev", "Opened yesterday at 18:44"],
+    ["cms_dev", "mysql", 3, "localhost", ":3306 / cms", "Opened 2 days ago"],
+    ["fixtures.sqlite", "sqlite", 2, "~/code/shop/test/", "fixtures.sqlite", "Opened 4 days ago"],
+    ["docker_pg16", "postgres", 4, "127.0.0.1", ":55432 / postgres", "Opened last week"],
+  ]],
+  ["Archive", 0, [
+    ["shop_prod_2024", "postgres", 4, RDS("shop-prod-2024-snapshot"), ":5432 / shop", "Opened 3 months ago"],
+    ["cms_old", "mysql", 3, "10.0.9.2", ":3306 / cms_old", "Opened 5 months ago"],
+    ["migration_2025.sqlite", "sqlite", 2, "~/Archive/", "migration_2025.sqlite", "Not opened yet"],
+  ]],
+];
+const STRAYS = [
+  ["analytics.sqlite", "sqlite", 2, "~/data/", "analytics.sqlite", "Opened today at 08:30"],
+  ["production.sqlite", "sqlite", 2, "~/Shelter/data/rabbit/backup/", "production.sqlite", "Opened today at 08:55"],
+  ["scratch", "postgres", 5, "localhost", ":5432 / scratch", "Opened yesterday at 22:10"],
+  ["vendor_demo", "mysql", 6, "demo.vendor-db.example.com", ":3306 / demo", "Opened 2 days ago"],
+  ["Chinook.sqlite", "sqlite", 2, "~/Downloads/", "Chinook.sqlite", "Opened 3 days ago"],
+  ["interview_task", "postgres", 8, "localhost", ":5432 / interview", "Opened last week"],
+  ["supabase_side_project", "postgres", 4, "db.xyzabc.supabase.co", ":5432 / postgres", "Opened last week"],
+  ["wp_blog", "mysql", 3, "127.0.0.1", ":3306 / wordpress", "Opened 3 weeks ago"],
+  ["Northwind.sqlite", "sqlite", 2, "~/Downloads/", "Northwind.sqlite", "Not opened yet"],
+];
+const MANY_GROUPS = MANY.map(([g]) => g);
+const manyCard = ([name, engine, n, head, tail, when], group, i) =>
+  card([name, engine === "sqlite" ? "hard-drive" : "server", n, engine], [head, tail], when, { id: `m${i}`, group, groups: MANY_GROUPS });
+let mi = 0;
+const manyHtml = `
+      <div class="conn-groups" data-when="many" hidden>${MANY.map(([g, open, list]) => groupSection(`m-${g.toLowerCase().replace(/\W+/g, "-")}`, g, list.map((c) => manyCard(c, g, mi++)), { open })).join("")}
+      <section class="conn-group" data-group-id="m-none">
+        <div class="group-head"><h2>Ungrouped</h2><span class="group-count">${STRAYS.length}</span><span class="drop-note">Drop to remove from its group</span></div>
+        <div class="projects">${STRAYS.map((c) => manyCard(c, undefined, mi++)).join("")}${newCard("")}
+        </div>
+      </section>
+      <div class="group-drop-new" aria-hidden="true">${ic("folder-plus")}Drop here to make a new group</div>
+      </div>`;
 pages["home.html"] = page({
   title: "ypacapy preview, home",
-  desc: "Design preview of ypacapy's Home: every connection on this Mac, and how to reach each one.",
-  barHtml: bar("home"),
+  desc: "Design preview of ypacapy's Home: every connection on this Mac, gathered into groups you can open, fold, rename and ungroup.",
+  barHtml: bar("home", [["grouped", "Groups"], ["folded", "Group folded"], ["group-menu", "Group menu"], ["move-menu", "Move to group"], ["rename", "Renaming a group"], ["new-group", "New group"], ["no-groups", "No groups yet"], ["many", "40 connections"], ["search", "Search"], ["search-empty", "Search, no match"], ["dragging", "Dragging a card"]]),
   body: `
 <div class="app">${strip("home")}
   <div class="home">
     <div class="home-inner">
       <div class="home-head">
         <div><h1>Connections</h1><p class="muted">Everything stays on this Mac, in ~/.config/ypacapy.</p></div>
-        <div class="home-actions"><button type="button" class="btn btn--primary" data-href="./connect.html">${ic("plus")}New connection</button></div>
-      </div>
-      <section>
-        <h2>On this Mac</h2>
-        <div class="projects">${card(CONNS[0], ["localhost", ":5432 / shop"], "Opened today at 09:41")}${card(["loophealth-staging", "server", 4, "postgres"], ["loophealth-staging-3may.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com", ":5432 / postgres"], "Opened today at 09:12")}${card(["production.sqlite", "hard-drive", 2, "sqlite"], ["~/Shelter/data/rabbit/backup/", "production.sqlite"], "Opened today at 08:55")}${card(CONNS[2], ["10.0.4.12", ":3306 / cms"], "Opened yesterday at 16:40")}
-          <button type="button" class="project-card project-card--new conn-card" data-href="./connect.html">${ic("plus")}New connection</button>
+        <div class="home-actions">
+          <div class="search home-search">${ic("search")}<input class="field" id="home-q" type="search" placeholder="Search connections" aria-label="Search connections by name, host, user, database, file, engine or group" aria-describedby="home-q-h" autocomplete="off" spellcheck="false"><button type="button" class="icon-btn search-clear" id="home-q-clear" aria-label="Clear search" title="Clear search  Esc" hidden>${ic("x")}</button><kbd aria-hidden="true">⌘F</kbd></div>
+          <button type="button" class="btn btn--primary" data-href="./connect.html">${ic("plus")}New connection</button>
         </div>
-      </section>    </div>
+      </div>
+      <p class="sr-only" id="home-q-h">Enter opens the first match. Escape clears the search.</p>
+      <div class="empty home-empty" id="home-empty" hidden><strong>No connection matches <span id="home-empty-q"></span></strong><span>Searches names, hosts, users, databases, files, engines and groups.</span><button type="button" class="link" id="home-clear">Clear the search</button></div>
+      <div class="conn-groups" data-when="grouped">${groupSection("prod", "Production", [C.shop, C.cms], { open: 1 })}${groupSection("staging", "Staging", [C.staging])}
+      <section class="conn-group" data-group-id="none">
+        <div class="group-head"><h2>Ungrouped</h2><span class="group-count">2</span><span class="drop-note">Drop to remove from its group</span></div>
+        <div class="projects">${C.analytics}${C.backup}${newCard("")}
+        </div>
+      </section>
+      <div class="group-drop-new" aria-hidden="true">${ic("folder-plus")}Drop here to make a new group</div>
+      </div>
+${manyHtml}
+      <section data-when="flat" hidden>
+        <h2>On this Mac</h2>
+        <div class="projects">${card(CONNS[0], ["localhost", ":5432 / shop"], "Opened today at 09:41", { id: "f-shop" })}${card(["loophealth-staging", "server", 4, "postgres"], ["loophealth-staging-3may.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com", ":5432 / postgres"], "Opened today at 09:12", { id: "f-staging" })}${card(["production.sqlite", "hard-drive", 2, "sqlite"], ["~/Shelter/data/rabbit/backup/", "production.sqlite"], "Opened today at 08:55", { id: "f-backup" })}${card(CONNS[2], ["10.0.4.12", ":3306 / cms"], "Opened yesterday at 16:40", { id: "f-cms" })}${newCard("")}
+        </div>
+        <p class="muted group-hint">${ic("folder-input")}To make a group, drag a card or use its Move to group button. You can also fill in Group when you add a connection.</p>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="backdrop" id="new-group-dlg" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ng-title">
+    <h2 id="ng-title">New group</h2>
+    <form>
+      <label>Name<input class="field" id="ng-name" autocomplete="off" spellcheck="false" placeholder="Production"></label>
+      <p class="help"><span id="ng-who">shop_prod</span> moves into it.</p>
+      <footer>
+        <button type="button" class="btn" data-ng-close>Cancel</button>
+        <button type="submit" class="btn btn--primary">Create</button>
+      </footer>
+    </form>
   </div>
 </div>`,
+  script: js("page-home.js"),
 });
 
 // The write guard's ask, before a write runs. Ask to confirm: Run or Cancel. Passphrase protection (the
@@ -617,6 +779,8 @@ pages["connect.html"] = page({
         ${lab("c-name", "Name")}<input class="field" id="c-name" name="name" required aria-required="true" aria-describedby="c-name-h" autocomplete="off" spellcheck="false">
         ${lab("c-color", "Color")}<span class="cx-color" style="--fg: var(--proj-1-fg)">${csel("c-color", COLORS, "1")}</span>
         <span class="help cx-full" id="c-name-h"></span>
+        ${lab("c-group", "Group")}<input class="field cx-group" id="c-group" name="group" list="c-groups" placeholder="None" autocomplete="off" spellcheck="false">
+        <datalist id="c-groups"><option value="Production"></option><option value="Staging"></option></datalist>
       </div>
       <div class="subtabs cx-tabs" role="tablist" aria-label="Connection settings">
         ${[["general", "General"], ["options", "Options"], ["ssl", "SSL"], ["advanced", "Advanced"]].map(([k, t], i) => `<button type="button" class="subtab" role="tab" id="t-${k}" aria-controls="p-${k}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${t}</button>`).join("")}

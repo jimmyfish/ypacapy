@@ -159,4 +159,6 @@
     toUrl();
     if (k === "url-only") f("c-url").value = "postgresql://ops@loophealth-staging.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com:5432/postgres?sslmode=require";
     setLine({ testing: "testing", "test-ok": "ok", "test-failed": "fail" }[k] || "");
+    // New connection here (a group's menu or its New connection card): Group starts with that group
+    f("c-group").value = q.get("group") || "";
   };

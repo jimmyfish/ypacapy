@@ -80,6 +80,9 @@ pub struct Conn {
     /// 1..8, the tile colour (src/lib/connColors.ts)
     #[serde(default = "one")]
     pub color: u8,
+    /// Home groups connections under this name; missing = ungrouped
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
     #[serde(default)]
     pub level: SecurityLevel,
     /// Before security levels: the write guard and Protect with passphrase. load() turns them into
@@ -245,6 +248,7 @@ pub fn list_connections() -> Result<Vec<Conn>, String> {
 #[tauri::command]
 pub async fn save_connection(mut conn: Conn, password: Option<String>, lock: State<'_, ConnLock>, guard: State<'_, crate::guard::GuardState>) -> Result<Conn, String> {
     conn.name = conn.name.trim().to_string();
+    conn.group = clean_group(conn.group.take());
     if conn.name.is_empty() {
         return Err("Give the connection a name so you can find it again".into());
     }
@@ -291,6 +295,25 @@ pub async fn delete_connection(id: String, lock: State<'_, ConnLock>) -> Result<
     tokio::task::spawn_blocking(move || keychain::delete(&account)).await.map_err(|e| e.to_string())??;
     update(&lock, |all| {
         all.retain(|c| c.id != id);
+        Ok(())
+    })?;
+    Ok(())
+}
+
+/// A group name as stored: trimmed, and None when that leaves nothing.
+fn clean_group(g: Option<String>) -> Option<String> {
+    g.map(|g| g.trim().to_string()).filter(|g| !g.is_empty())
+}
+
+/// Moves connections into a group, or out of every group with None. Renaming or ungrouping a group
+/// is this with all of its connections.
+#[tauri::command]
+pub fn set_group(ids: Vec<String>, group: Option<String>, lock: State<'_, ConnLock>) -> Result<(), String> {
+    let group = clean_group(group);
+    update(&lock, |all| {
+        for c in all.iter_mut().filter(|c| ids.contains(&c.id)) {
+            c.group = group.clone();
+        }
         Ok(())
     })?;
     Ok(())
@@ -400,5 +423,17 @@ mod tests {
         assert!(lowers_protection(&strict, &longer));
         assert!(!lowers_protection(&touch, &strict));
         assert!(!lowers_protection(&longer, &strict));
+    }
+
+    #[test]
+    fn group_is_trimmed_and_blank_is_none() {
+        assert_eq!(clean_group(Some("  prod ".into())), Some("prod".into()));
+        assert_eq!(clean_group(Some("   ".into())), None);
+        assert_eq!(clean_group(None), None);
+        // stored only when set
+        let mut c = conn(false, None);
+        assert!(!toml::to_string(&c).unwrap().contains("group"));
+        c.group = Some("prod".into());
+        assert!(toml::to_string(&c).unwrap().contains("group = \"prod\""));
     }
 }

@@ -8,6 +8,8 @@ export const api = {
   listConnections: () => invoke<Conn[]>("list_connections"),
   saveConnection: (conn: Conn, password: string | null) => invoke<Conn>("save_connection", { conn, password }),
   deleteConnection: (id: string) => invoke<void>("delete_connection", { id }),
+  /** group null takes them out of every group */
+  setGroup: (ids: string[], group: string | null) => invoke<void>("set_group", { ids, group }),
   touchConnection: (id: string) => invoke<void>("touch_connection", { id }),
   setLevel: (id: string, level: SecurityLevel, approval?: Approval) => invoke<void>("set_level", { id, level, approval }),
   testConnection: (conn: Conn, password: string | null) => invoke<{ server: string; ms: number }>("test_connection", { conn, password }),

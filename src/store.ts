@@ -9,7 +9,7 @@ export type SideView = "schema" | "history" | "saved";
 
 export type Modal =
   | { kind: "settings"; section?: SettingsSection }
-  | { kind: "connect"; conn?: Conn }
+  | { kind: "connect"; conn?: Conn; group?: string }
   | { kind: "confirm"; title: string; message: string; confirmLabel?: string; onConfirm: () => void }
   | { kind: "prompt"; title: string; label: string; initial: string; onSubmit: (v: string) => void }
   | { kind: "saveQuery"; tabId: string }
@@ -48,6 +48,10 @@ interface State {
 
   refreshConns(): Promise<void>;
   deleteConn(id: string): Promise<void>;
+  /** moves connections into a group; null takes them out of every group */
+  setGroup(ids: string[], group: string | null): Promise<void>;
+  /** opens every connection given, leaving the first one in front */
+  openConns(ids: string[]): void;
   openConn(id: string): Promise<void>;
   closeConn(id: string): Promise<void>;
   goHome(): void;
@@ -284,6 +288,21 @@ export const useStore = create<State>()((set, get) => {
         get().showToast(errText(e));
       }
       await get().refreshConns();
+    },
+
+    async setGroup(ids, group) {
+      try {
+        await api.setGroup(ids, group);
+      } catch (e) {
+        get().showToast(errText(e));
+      }
+      await get().refreshConns();
+    },
+
+    openConns(ids) {
+      if (!ids.length) return;
+      for (const id of ids) void get().openConn(id);
+      set({ currentId: ids[0] });
     },
 
     async openConn(id) {

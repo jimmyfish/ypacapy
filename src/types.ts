@@ -27,6 +27,8 @@ export interface Conn {
   file?: string;
   /** 1..8, src/lib/connColors.ts */
   color: number;
+  /** Home groups connections under this name; missing = ungrouped */
+  group?: string;
   level: SecurityLevel;
   /** Low and Strict: the statements they ask about; missing = every kind */
   protect?: string[];
@@ -78,6 +80,8 @@ export interface Settings {
   /** layout */
   sidebarWidth?: number;
   sidebarHidden?: boolean;
+  /** Home: the connection groups shown folded */
+  closedGroups?: string[];
 }
 
 export const STATEMENTS: [string, string?][] = [["INSERT"], ["UPDATE"], ["DELETE"], ["REPLACE", "MySQL"], ["ALTER"], ["DROP"], ["TRUNCATE"], ["CREATE"], ["GRANT"], ["REVOKE"]];

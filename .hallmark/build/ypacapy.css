@@ -302,3 +302,93 @@ th[aria-sort="ascending"] .sort-ico, th[aria-sort="descending"] .sort-ico { colo
 .guard-menu .gm-text small { color: var(--color-muted); font-size: var(--text-sm); }
 .guard-menu button { min-height: 44px; }
 .guard .env-picker[data-level="none"] .guard-ico { color: var(--color-warn); }
+
+/* ---------- Home: connection groups ---------- */
+/* Each group: a folding head (caret, name, count, how many open) with Open all and a "…" menu, over its cards.
+   Ungrouped comes last and has no actions. Without any group, Home keeps the one "On this Mac" list. */
+.conn-groups { display: flex; flex-direction: column; gap: var(--space-xl); }
+.group-head { display: flex; align-items: center; gap: var(--space-xs); min-height: 32px; margin-bottom: var(--space-sm); }
+.home .group-head h2 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.group-toggle { display: inline-flex; align-items: center; gap: var(--space-2xs); min-width: 0; min-height: 32px; margin-left: calc(-1 * var(--space-2xs)); padding: 0 var(--space-xs) 0 var(--space-2xs); border: none; border-radius: 6px; background: none; color: var(--color-ink); cursor: pointer; }
+.group-toggle:hover { background: var(--color-paper-3); }
+.group-toggle:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 0; }
+.group-toggle[hidden] { display: none; }
+.group-toggle .g-caret { color: var(--color-muted); }
+.group-count { color: var(--color-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.group-live { display: inline-flex; align-items: center; gap: var(--space-2xs); color: var(--color-muted); font-size: var(--text-sm); }
+.group-live .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-ok); }
+.group-rename { width: min(320px, 100%); min-height: 32px; font-size: var(--text-lg); font-weight: 600; }
+.group-rename[hidden] { display: none; }
+/* Open all and "…" stay quiet until the head is pointed at or focused, or its menu is open */
+.group-actions { display: flex; align-items: center; gap: var(--space-3xs); margin-left: auto; opacity: 0; transition: opacity var(--dur-micro) var(--ease-out); }
+.group-head:hover .group-actions, .group-head:focus-within .group-actions, .group-actions:has([aria-expanded="true"]) { opacity: 1; }
+.group-actions .btn { min-height: 28px; font-size: var(--text-sm); }
+.group-actions .menu { min-width: 240px; }
+.group-actions .menu .menu-note { max-width: 240px; white-space: normal; }
+.conn-group .projects[hidden] { display: none; }
+
+/* Card actions: Move to group, Edit, Remove. Shown on hover, and while the card's menu is open */
+/* the buttons fade, not their box: opacity on the box would carry into the open menu and let the page show through */
+.conn-card .card-actions .icon-btn { opacity: 0; transition: opacity var(--dur-micro) var(--ease-out), background-color var(--dur-micro) var(--ease-out); }
+.conn-card:hover .card-actions .icon-btn, .conn-card:focus-within .card-actions .icon-btn, .conn-card.menu-open .card-actions .icon-btn { opacity: 1; }
+.conn-card.menu-open { z-index: 2; border-color: var(--color-accent); }
+/* they sit in the footer row, right of "Opened …", so they never cover the name or address. "Opened …" makes
+   room for them only while they show (one line, so no card changes height); a long one ends in an ellipsis */
+.project-card.conn-card > .card-actions { top: auto; bottom: calc(var(--space-md) - 4px); right: var(--space-sm); }
+.conn-card .card-actions .icon-btn { min-width: 28px; min-height: 28px; border-radius: 6px; }
+.conn-card .proj-when { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conn-card:hover .proj-when, .conn-card:focus-within .proj-when, .conn-card.menu-open .proj-when { padding-right: 96px; }
+.card-actions .menu-anchor { display: inline-grid; }
+.move-menu { min-width: 220px; }
+.move-menu .menu-name { overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+.move-menu [aria-checked] .tick { margin-left: auto; color: var(--color-link); }
+.move-menu [aria-checked="false"] .tick { visibility: hidden; }
+.group-hint { display: flex; align-items: center; gap: var(--space-xs); margin-top: var(--space-md); font-size: var(--text-sm); }
+
+/* Home search: beside New connection. While it holds text, cards that miss and groups with no match hide,
+   folded groups open, each count reads "n of m", and the dashed New connection cards step aside */
+.home-search { flex: none; width: 280px; }
+.home-search .field { padding-right: 44px; }
+.home-search .field::-webkit-search-cancel-button { display: none; }
+.home-search kbd { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.home-search .field:focus ~ kbd, .home-search .field:not(:placeholder-shown) ~ kbd { display: none; }
+/* the clear button takes the ⌘F hint's place while the field holds text */
+.home-search .search-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); min-width: 24px; min-height: 24px; border-radius: 6px; }
+.home-search .search-clear .ico { position: static; transform: none; width: 14px; height: 14px; }
+.home-search .search-clear:hover { background: var(--color-paper-2); color: var(--color-ink); }
+.home-search .search-clear[hidden] { display: none; }
+.project-card[hidden], .conn-group[hidden], .home-empty[hidden] { display: none; }
+.home-empty { padding: var(--space-xl) 0; }
+.home-empty .link { padding: 0; border: none; background: none; color: var(--color-link); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 720px) { .home-actions { width: 100%; } .home-search { flex: 1; width: auto; } }
+
+/* Connection dialog: Group sits under Name, as wide as Name and Color together */
+.cx-head .cx-group { grid-column: 2 / -1; }
+
+/* Drag a card onto a group to move it (voidHTTP's pointer drag: HTML5 drag and drop is unreliable in the webview).
+   The card fades, a ghost follows the pointer, the group under it lights up, and a "new group" zone opens at the end.
+   While dragging every group takes a padded box with a matching negative margin, so nothing moves when one lights up. */
+.conn-card { user-select: none; -webkit-user-select: none; }
+.conn-card.dragging { opacity: 0.4; }
+body.cards-dragging, body.cards-dragging * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+body.cards-dragging .conn-group { margin: calc(-1 * var(--space-sm)); padding: var(--space-sm); border-radius: 14px; transition: background-color var(--dur-micro) var(--ease-out), box-shadow var(--dur-micro) var(--ease-out); }
+.conn-group.drop-target { background: var(--color-accent-soft); box-shadow: inset 0 0 0 1px var(--color-accent); }
+.conn-group.drop-target .group-head h2, .conn-group.drop-target > .group-head > h2 { color: var(--color-link); }
+.drop-note { display: none; color: var(--color-link); font-size: var(--text-sm); font-weight: 600; }
+.conn-group.drop-target .drop-note { display: inline; }
+.group-drop-new { display: none; align-items: center; justify-content: center; gap: var(--space-xs); min-height: 72px; border: 1px dashed var(--color-edge-soft); border-radius: var(--radius-card); color: var(--color-muted); font-weight: 600; }
+body.cards-dragging .group-drop-new { display: flex; }
+.group-drop-new.drop-target { border-color: var(--color-accent); background: var(--color-accent-soft); color: var(--color-link); }
+.drag-ghost {
+  position: fixed; top: 0; left: 0; z-index: var(--z-tooltip); display: flex; align-items: center; gap: var(--space-xs); max-width: 260px;
+  height: 32px; padding: 0 var(--space-sm) 0 var(--space-2xs); border-radius: var(--radius-control); pointer-events: none;
+  background: var(--color-paper); color: var(--color-ink); font-size: var(--text-sm); font-weight: 600; white-space: nowrap; overflow: hidden;
+  box-shadow: 0 0 0 1px var(--color-rule), 0 10px 28px var(--color-shadow);
+}
+.drag-ghost .proj-tile { flex: none; }
+
+/* Home cards: the tile shows the connection type as its engine glyph (PostgreSQL elephant, MySQL dolphin, SQLite
+   feather) on the connection's colour; no PG / MYSQL / SQLITE word by the address. The drag ghost's small tile shrinks it. */
+.proj-tile .engine-ico { width: 22px; height: 22px; }
+.proj-tile--sm .engine-ico { width: 13px; height: 13px; }

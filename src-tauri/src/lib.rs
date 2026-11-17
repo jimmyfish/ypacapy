@@ -124,6 +124,7 @@ pub fn run() {
             conns::delete_connection,
             conns::touch_connection,
             conns::set_level,
+            conns::set_group,
             db::test_connection,
             db::open_connection,
             db::close_connection,

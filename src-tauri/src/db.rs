@@ -1235,6 +1235,7 @@ mod tests {
             user: std::env::var("USER").ok(),
             file: std::env::var("YPACAPY_TEST_SQLITE").ok(),
             color: 1,
+            group: None,
             level: Default::default(),
             guard: None,
             pass_protect: false,

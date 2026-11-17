@@ -66,6 +66,10 @@
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
   <symbol id="i-wand-sparkles" viewBox="0 0 24 24"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></symbol>
   <symbol id="i-file-plus" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M12 18v-6"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol>
+  <symbol id="i-folder-input" viewBox="0 0 24 24"><path d="M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1"/><path d="M2 13h10"/><path d="m9 16 3-3-3-3"/></symbol>
+  <symbol id="i-folder-minus" viewBox="0 0 24 24"><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-folder-plus" viewBox="0 0 24 24"><path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
 </svg>
 
 <header class="pv-bar">
@@ -132,6 +136,8 @@
         <label for="c-name">Name</label><input class="field" id="c-name" name="name" required aria-required="true" aria-describedby="c-name-h" autocomplete="off" spellcheck="false">
         <label for="c-color">Color</label><span class="cx-color" style="--fg: var(--proj-1-fg)"><span class="select-wrap"><select class="field" id="c-color"><option value="5">Turquoise</option><option value="2">Emerald</option><option value="7">Sunflower</option><option value="3">Carrot</option><option value="6">Alizarin</option><option value="1" selected>River</option><option value="8">Asphalt</option><option value="4">Amethyst</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></span>
         <span class="help cx-full" id="c-name-h"></span>
+        <label for="c-group">Group</label><input class="field cx-group" id="c-group" name="group" list="c-groups" placeholder="None" autocomplete="off" spellcheck="false">
+        <datalist id="c-groups"><option value="Production"></option><option value="Staging"></option></datalist>
       </div>
       <div class="subtabs cx-tabs" role="tablist" aria-label="Connection settings">
         <button type="button" class="subtab" role="tab" id="t-general" aria-controls="p-general" aria-selected="true" tabindex="0">General</button><button type="button" class="subtab" role="tab" id="t-options" aria-controls="p-options" aria-selected="false" tabindex="-1">Options</button><button type="button" class="subtab" role="tab" id="t-ssl" aria-controls="p-ssl" aria-selected="false" tabindex="-1">SSL</button><button type="button" class="subtab" role="tab" id="t-advanced" aria-controls="p-advanced" aria-selected="false" tabindex="-1">Advanced</button>
@@ -759,6 +765,8 @@
     toUrl();
     if (k === "url-only") f("c-url").value = "postgresql://ops@loophealth-staging.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com:5432/postgres?sslmode=require";
     setLine({ testing: "testing", "test-ok": "ok", "test-failed": "fail" }[k] || "");
+    // New connection here (a group's menu or its New connection card): Group starts with that group
+    f("c-group").value = q.get("group") || "";
   };
 pvStart();
 </script>

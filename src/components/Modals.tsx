@@ -45,7 +45,7 @@ export function Modals() {
     case "saveQuery":
       return <SaveQueryModal tabId={modal.tabId} onClose={close} />;
     case "connect":
-      return <ConnectModal conn={modal.conn} onClose={close} />;
+      return <ConnectModal conn={modal.conn} group={modal.group} onClose={close} />;
     case "settings":
       return <SettingsModal section={modal.section} onClose={close} />;
     case "guard":
@@ -269,8 +269,11 @@ function OptUnit({ id, value, unit, placeholder, onChange }: { id: string; value
   );
 }
 
-function ConnectModal({ conn, onClose }: { conn?: Conn; onClose: () => void }) {
+function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; group?: string; onClose: () => void }) {
   const conns = useStore((s) => s.conns);
+  // Home groups it under this name; a group's menu or New connection card starts it there
+  const [group, setGroup] = useState(conn?.group ?? initialGroup ?? "");
+  const groups = [...new Set(conns.map((c) => c.group).filter((g): g is string => !!g))].sort((a, b) => a.localeCompare(b));
   const settings = useStore((s) => s.settings);
   const [tab, setTab] = useState<ConnTab>("general");
   const [engine, setEngine] = useState<Engine>(conn?.engine ?? "postgres");
@@ -344,6 +347,7 @@ function ConnectModal({ conn, onClose }: { conn?: Conn; onClose: () => void }) {
     name: name.trim(),
     engine,
     color,
+    group: group.trim() || undefined,
     level,
     protect: storedList(protection.list),
     // Touch ID and the unlock window mean something only under Strict
@@ -450,6 +454,13 @@ function ConnectModal({ conn, onClose }: { conn?: Conn; onClose: () => void }) {
                 Give the connection a name so you can find it again
               </span>
             )}
+            <label htmlFor="c-group">Group</label>
+            <input id="c-group" className="field cx-group" list="c-groups" placeholder="None" autoComplete="off" spellCheck={false} value={group} onChange={(e) => setGroup(e.target.value)} />
+            <datalist id="c-groups">
+              {groups.map((g) => (
+                <option key={g} value={g} />
+              ))}
+            </datalist>
           </div>
 
           <div className="subtabs cx-tabs" role="tablist" aria-label="Connection settings">

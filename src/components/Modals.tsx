@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { DEFAULT_ROW_LIMIT, useStore, type Modal, type SettingsSection } from "../store";
 import { api, errText } from "../lib/api";
 import { highlightInline } from "../lib/sql";
@@ -12,9 +12,29 @@ import { Select } from "./Select";
 import { LevelSelect } from "./LevelPicker";
 import { GroupSelect } from "./GroupPicker";
 import { ColorPicker, EnginePicker } from "./Picker";
-import { when } from "../lib/time";
+import { ago, when } from "../lib/time";
 import { CONN_COLOR_COUNT } from "../lib/connColors";
-import { CircleAlert, CircleCheck, Fingerprint, FolderOpen, KeyRound, Lock, LockOpen, PlugZap, ShieldCheck, Terminal, Type, ico } from "./Icon";
+import { useUpdates } from "../updates";
+import { RELEASES_URL } from "../lib/updater";
+import { DEV_BUILD } from "../build";
+import { AboutModal } from "./AboutModal";
+import {
+  CircleAlert,
+  CircleArrowDown,
+  CircleCheck,
+  ExternalLink,
+  Fingerprint,
+  FolderOpen,
+  KeyRound,
+  Lock,
+  LockOpen,
+  PlugZap,
+  ShieldCheck,
+  Terminal,
+  TriangleAlert,
+  Type,
+  ico,
+} from "./Icon";
 
 export function Modals() {
   const modal = useStore((s) => s.modal);
@@ -52,6 +72,8 @@ export function Modals() {
       return <SettingsModal section={modal.section} onClose={close} />;
     case "guard":
       return <GuardModal m={modal} onClose={close} />;
+    case "about":
+      return <AboutModal onClose={close} />;
   }
 }
 
@@ -667,6 +689,7 @@ function SettingsModal({ section: initial, onClose }: { section?: SettingsSectio
     ["queries", "Queries", <Terminal {...ico} key="q" />],
     ["security", "Security", <ShieldCheck {...ico} key="s" />],
     ["data", "Data on this Mac", <Lock {...ico} key="d" />],
+    ["updates", "Updates", <CircleArrowDown {...ico} key="u" />],
   ];
   return (
     <Shell title="Settings" onClose={onClose} wide>
@@ -681,7 +704,17 @@ function SettingsModal({ section: initial, onClose }: { section?: SettingsSectio
             </li>
           ))}
         </ul>
-        {section === "appearance" ? <AppearancePane /> : section === "queries" ? <QueriesPane /> : section === "security" ? <SecurityPane /> : <DataPane />}
+        {section === "appearance" ? (
+          <AppearancePane />
+        ) : section === "queries" ? (
+          <QueriesPane />
+        ) : section === "security" ? (
+          <SecurityPane />
+        ) : section === "updates" ? (
+          <UpdatesPane />
+        ) : (
+          <DataPane />
+        )}
       </div>
     </Shell>
   );
@@ -1242,6 +1275,139 @@ function PassDialog({ kind, connId = "", touch, onClose, onDone }: { kind: SubKi
   );
 }
 
+const releaseLink = (label: string) => (
+  <button type="button" className="upd-link" onClick={() => void openUrl(RELEASES_URL)}>
+    {label}
+    <ExternalLink {...ico} />
+  </button>
+);
+
+/** Settings > Updates (voidHTTP's UpdatesPane): the running version and what the updater knows, the launch check, release notes. */
+function UpdatesPane() {
+  const auto = useStore((s) => s.settings.autoUpdateCheck !== false);
+  const setSettings = useStore((s) => s.setSettings);
+  const u = useUpdates();
+  const st = u.state;
+
+  // a dev build never checks, so an update never replaces it
+  if (DEV_BUILD) {
+    const where = [DEV_BUILD.describe, DEV_BUILD.branch && `on branch ${DEV_BUILD.branch}`].filter(Boolean).join(" ");
+    return (
+      <div className="set-pane">
+        <h3>Updates</h3>
+        <div className="set-list">
+          <SetItem label={`ypacapy ${u.version}`} desc={`${where ? `${where} · ` : ""}updates are off in dev builds`}>
+            {releaseLink("Get the release")}
+          </SetItem>
+          <div className="set-item" aria-disabled="true">
+            <div className="set-text">
+              <label htmlFor="set-auto-update">Check automatically</label>
+              <span className="desc">Off in dev builds, so an update never replaces this build</span>
+            </div>
+            <div className="set-ctl">
+              <input id="set-auto-update" className="switch" type="checkbox" role="switch" checked={false} disabled readOnly />
+            </div>
+          </div>
+          <SetItem label="Release notes" desc="What changed in each version">
+            {releaseLink("Open on GitHub")}
+          </SetItem>
+        </div>
+      </div>
+    );
+  }
+
+  const pct = st.kind === "downloading" && st.total ? Math.floor((st.received / st.total) * 100) : undefined;
+  let status: ReactNode;
+  let action: ReactNode = (
+    <button type="button" className="btn" disabled={st.kind === "checking"} onClick={() => void u.check()}>
+      {st.kind === "checking" ? "Checking…" : "Check for updates"}
+    </button>
+  );
+  if (st.kind === "checking") status = "Checking…";
+  else if (st.kind === "current")
+    status = (
+      <span className="set-status ok">
+        <CircleCheck {...ico} />
+        Up to date{u.checkedAt ? ` · checked ${ago(u.checkedAt)}` : ""}
+      </span>
+    );
+  else if (st.kind === "available") {
+    status = (
+      <span className="set-status new">
+        <CircleArrowDown {...ico} />
+        {st.version} is available
+      </span>
+    );
+    action = (
+      <button type="button" className="btn btn--primary" onClick={() => void u.install()}>
+        Install update
+      </button>
+    );
+  } else if (st.kind === "downloading" || st.kind === "installing") {
+    status = st.kind === "installing" ? `Installing ${st.version}…` : `Downloading ${st.version}${pct !== undefined ? ` · ${pct}%` : "…"}`;
+    action = null;
+  } else if (st.kind === "ready") {
+    status = (
+      <span className="set-status ok">
+        <CircleCheck {...ico} />
+        {st.version} is installed · restart to finish
+      </span>
+    );
+    action = (
+      <button type="button" className="btn btn--primary" onClick={() => void u.restart()}>
+        Restart now
+      </button>
+    );
+  } else if (st.kind === "error") {
+    status = (
+      <span className="set-status bad" title={st.message}>
+        <TriangleAlert {...ico} />
+        {u.failed === "install" ? `Couldn't install ${u.target ?? "the update"}` : "Couldn't check for updates"}
+      </span>
+    );
+    if (u.failed === "install")
+      action = (
+        <button type="button" className="btn" onClick={() => void u.install()}>
+          Try again
+        </button>
+      );
+  } else status = "Not checked yet";
+
+  return (
+    <div className="set-pane">
+      <h3>Updates</h3>
+      <div className="set-list">
+        <div className="set-item">
+          <div className="set-text">
+            <span className="set-label">ypacapy {u.version}</span>
+            <span className="desc">{status}</span>
+          </div>
+          <div className="set-ctl">{action}</div>
+        </div>
+        <div className="set-item">
+          <div className="set-text">
+            <label htmlFor="set-auto-update">Check automatically</label>
+            <span className="desc">Look for a new version when ypacapy opens</span>
+          </div>
+          <div className="set-ctl">
+            <input
+              id="set-auto-update"
+              className="switch"
+              type="checkbox"
+              role="switch"
+              checked={auto}
+              onChange={(e) => void setSettings({ autoUpdateCheck: e.target.checked ? undefined : false })}
+            />
+          </div>
+        </div>
+        <SetItem label="Release notes" desc="What changed in each version">
+          {releaseLink("Open on GitHub")}
+        </SetItem>
+      </div>
+    </div>
+  );
+}
+
 function DataPane() {
   const [dir, setDir] = useState("");
   useEffect(() => {
@@ -1260,7 +1426,7 @@ function DataPane() {
         <SetItem label="Passwords" desc="Never synced to iCloud">
           macOS login keychain
         </SetItem>
-        <SetItem label="Network">Only the databases you add</SetItem>
+        <SetItem label="Network">The databases you add, and GitHub for updates</SetItem>
       </div>
       <button type="button" className="btn" disabled={!dir} onClick={() => void revealItemInDir(dir).catch((e) => useStore.getState().showToast(errText(e)))}>
         <FolderOpen {...ico} />

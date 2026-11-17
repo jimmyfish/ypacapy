@@ -1158,3 +1158,208 @@ body.cards-dragging .group-drop-new { display: flex; }
 .ptab--project[aria-current="page"] .proj-tile { background: var(--fg); color: var(--color-paper); }
 .ptab--project .ptab-close { color: inherit; }
 .ptab--project .ptab-close:hover { background: color-mix(in srgb, var(--fg) 18%, transparent); color: var(--fg); }
+
+/* in-app updates, taken as is from voidHTTP (its preview .hallmark/preview/updates.html, approved 2026-11-13): a chip in the title strip
+ * beside the Settings gear, a popover under it for each step, and the Updates pane in Settings */
+/* title strip: the chip sits in .strip-end, beside the gear */
+.upd-anchor { position: relative; display: flex; align-items: center; flex-shrink: 0; }
+.upd-chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 8px;
+  border: none; border-radius: var(--radius-pill); background: var(--color-accent-soft); color: var(--color-link);
+  font-size: var(--text-sm); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.upd-chip .ico { width: 14px; height: 14px; }
+.upd-chip:hover { filter: brightness(0.97); }
+.upd-chip[aria-expanded="true"] { box-shadow: 0 0 0 1px var(--color-link); }
+.upd-chip:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+/* ready: the one step that wants a click, so it is filled */
+.upd-chip--ready { background: var(--color-accent); color: var(--color-accent-ink); }
+.upd-chip--ready:hover { filter: brightness(1.08); }
+.upd-chip--error { background: transparent; color: var(--color-error); box-shadow: inset 0 0 0 1px var(--color-error); }
+.upd-spin { animation: upd-spin 0.9s linear infinite; }
+@keyframes upd-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .upd-spin { animation: none; } }
+
+/* popover: the .menu surface, wider and padded like a small card */
+.upd-pop {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: var(--z-dropdown); width: 320px;
+  display: grid; gap: var(--space-sm); padding: var(--space-md); border-radius: 10px;
+  background: var(--color-paper); box-shadow: 0 0 0 1px var(--color-rule), 0 8px 24px var(--color-shadow);
+  color: var(--color-ink); font-size: var(--text-md); -webkit-user-select: text; user-select: text;
+}
+.upd-pop[hidden] { display: none; }
+.upd-head { display: grid; gap: var(--space-3xs); }
+.upd-title { display: flex; align-items: center; gap: var(--space-xs); margin: 0; font-size: var(--text-md); font-weight: 600; }
+.upd-title .ico { width: 16px; height: 16px; flex-shrink: 0; }
+.upd-title .ok { color: var(--color-ok); }
+.upd-title .bad { color: var(--color-error); }
+.upd-sub { color: var(--color-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.upd-notes {
+  max-height: 156px; overflow: auto; margin: 0; padding: var(--space-xs) var(--space-sm) var(--space-xs) 26px;
+  border-radius: var(--radius-control); background: var(--color-paper-2); font-size: var(--text-sm); line-height: 1.5;
+}
+.upd-notes li + li { margin-top: var(--space-3xs); }
+.upd-err {
+  margin: 0; padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-control); background: var(--color-paper-2);
+  color: var(--color-error); font: var(--text-sm) / 1.45 var(--font-mono); overflow-wrap: anywhere;
+}
+.upd-bar { height: 6px; border-radius: var(--radius-pill); background: var(--color-paper-3); overflow: hidden; }
+.upd-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--color-accent); }
+.upd-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); color: var(--color-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.upd-actions { display: flex; justify-content: flex-end; gap: var(--space-xs); margin-top: var(--space-2xs); }
+.upd-actions .upd-link { margin-right: auto; }
+.upd-link {
+  display: inline-flex; align-items: center; gap: 4px; padding: 0; border: none; background: none;
+  color: var(--color-link); font-size: var(--text-sm); text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 3px;
+}
+.upd-link .ico { width: 12px; height: 12px; }
+.upd-link:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; border-radius: 2px; }
+
+/* Settings > Updates */
+.set-ctl .btn { white-space: nowrap; }
+.set-status { display: inline-flex; align-items: center; gap: 6px; }
+.set-status .ico { width: 14px; height: 14px; }
+.set-status.ok { color: var(--color-ok); }
+.set-status.new { color: var(--color-link); font-weight: 600; }
+.set-status.bad { color: var(--color-error); }
+
+/* About ypacapy, from voidHTTP (its preview .hallmark/preview/about.html, approved 2026-11-16): replaces the native macOS About panel.
+ * voidHTTP draws updates as a request; ypacapy draws them as a query. The orbit becomes an onsen: the capybara icon soaks,
+ * water rings spread flat under it and steam rises above. */
+.about {
+  position: relative; width: 420px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow: hidden auto; overscroll-behavior: contain;
+  border-radius: var(--radius-card); background: var(--color-paper); border: 1px solid var(--color-rule);
+  box-shadow: 0 24px 64px var(--color-shadow); -webkit-user-select: text; user-select: text;
+}
+.about-close { position: absolute; top: var(--space-xs); right: var(--space-xs); z-index: 1; }
+
+.about-hero {
+  position: relative; display: grid; justify-items: center; gap: var(--space-2xs);
+  padding: var(--space-xl) var(--space-lg) var(--space-md); text-align: center; isolation: isolate;
+  background: radial-gradient(120% 90% at 50% 0%, var(--color-accent-soft), transparent 70%);
+}
+.about-onsen { position: relative; display: grid; place-items: center; width: 88px; height: 88px; margin-bottom: var(--space-xs); cursor: pointer; }
+.about-onsen img {
+  position: relative; width: 88px; height: 88px; filter: drop-shadow(0 6px 14px var(--color-shadow));
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: about-settle 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.about-onsen:hover img { transform: translateY(-2px) rotate(-4deg); }
+.about-onsen:active img { transform: translateY(3px) scale(0.97); transition-duration: 0.1s; }
+/* water rings: flat ellipses at the icon's waterline, drifting outward at 15% so they stay in the background */
+.about-onsen i {
+  position: absolute; left: 0; right: 0; bottom: 6px; height: 30px; z-index: -1; border-radius: 50%; opacity: 0; pointer-events: none;
+  border: 1.5px solid color-mix(in srgb, var(--color-accent) 50%, transparent);
+}
+.about-onsen.ping i { animation: about-ripple 6s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; }
+.about-onsen.ping i:nth-child(3) { animation-delay: 2s; }
+.about-onsen.ping i:nth-child(4) { animation-delay: 4s; }
+/* steam: three soft wisps rising off the bath, out of step */
+.about-onsen .steam { position: absolute; left: 50%; top: -14px; display: flex; gap: 9px; transform: translateX(-50%); pointer-events: none; }
+.about-onsen .steam b {
+  display: block; width: 5px; height: 16px; border-radius: var(--radius-pill); opacity: 0;
+  background: color-mix(in srgb, var(--color-muted) 45%, transparent); filter: blur(2px);
+  animation: about-steam 3.6s ease-in-out infinite;
+}
+.about-onsen .steam b:nth-child(2) { animation-delay: 1.2s; height: 20px; }
+.about-onsen .steam b:nth-child(3) { animation-delay: 2.4s; }
+@keyframes about-settle {
+  from { transform: translateY(8px) scale(0.9); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes about-ripple {
+  0% { transform: scale(0.7); opacity: 0; }
+  15% { opacity: 0.2; }
+  100% { transform: scale(2.4, 1.8); opacity: 0; }
+}
+@keyframes about-steam {
+  0% { transform: translateY(10px) scaleY(0.6); opacity: 0; }
+  35% { opacity: 0.7; }
+  100% { transform: translate(3px, -14px) scaleY(1.2); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .about-onsen img { animation: none; transition: none; }
+  .about-onsen:hover img, .about-onsen:active img { transform: none; }
+  .about-onsen.ping i, .about-onsen .steam b { animation: none; }
+}
+.about-name { margin: 0; font-size: var(--text-3xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+.about-name span { color: var(--color-accent); }
+.about-tag { margin: 0; color: var(--color-muted); font-size: var(--text-md); }
+
+/* version: one click copies it for a bug report */
+.about-ver {
+  display: inline-flex; align-items: center; gap: 6px; height: 24px; margin-top: var(--space-xs); padding: 0 8px 0 10px;
+  border: none; border-radius: var(--radius-pill); background: var(--color-paper-2); color: var(--color-ink-2);
+  font: 600 var(--text-xs) / 1 var(--font-mono); font-variant-numeric: tabular-nums;
+}
+.about-ver .ico { width: 12px; height: 12px; color: var(--color-muted); }
+.about-ver:hover { background: var(--color-paper-3); box-shadow: inset 0 0 0 1px var(--color-rule); }
+.about-ver:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.about-ver[data-copied] { color: var(--color-ok); }
+.about-ver[data-copied] .ico { color: var(--color-ok); }
+
+/* the licence, as a response: what voidHTTP shows all day */
+.about-body { display: grid; gap: var(--space-sm); padding: var(--space-xs) var(--space-lg) var(--space-lg); }
+.about-res { border: 1px solid var(--color-rule); border-radius: 10px; overflow: hidden; font: var(--text-code) / 1.5 var(--font-mono); }
+.about-res-line {
+  display: flex; align-items: center; gap: var(--space-xs); padding: 7px var(--space-sm);
+  background: var(--color-paper-2); border-bottom: 1px solid var(--color-rule);
+}
+.about-res-line .m { font-weight: 700; color: var(--m-get); }
+.about-res-line .url { color: var(--color-ink-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.about-res-line .status { margin-left: auto; font-weight: 700; color: var(--color-ok); white-space: nowrap; }
+.about-res dl { display: grid; grid-template-columns: max-content 1fr; gap: 3px var(--space-sm); margin: 0; padding: var(--space-xs) var(--space-sm) 10px; }
+.about-res dt { color: var(--j-key); }
+.about-res dt::after { content: ":"; color: var(--j-punct); }
+.about-res dd { margin: 0; color: var(--color-ink); }
+.about-res dd.deny { color: var(--color-error); }
+/* the whole query is the point, so it wraps instead of ending in an ellipsis; the status stays on its first line */
+.about-res-line:has(.about-sql) { align-items: baseline; }
+.about-res-line .about-sql { flex: 1; min-width: 0; white-space: normal; overflow-wrap: anywhere; font: inherit; color: var(--color-ink-2); }
+.about-res-line:has(.about-sql) .status { align-self: flex-start; }
+/* a result row: column names muted, no JSON colon */
+.about-res dt { color: var(--color-muted); }
+.about-res dt::after { content: none; }
+/* updates, as a query: 0 rows when current, 1 row when there is one, a progress edge while it downloads, "awaiting commit" to restart */
+.about-res-line { position: relative; }
+.about-res-line .status.redir { color: var(--color-redir); }
+.about-res-line .status.fail { color: var(--color-error); }
+.about-res-line .status.wait { display: inline-flex; align-items: center; gap: 5px; color: var(--color-muted); font-weight: 400; }
+.about-res-line .status.wait .ico { width: 13px; height: 13px; }
+.about-res-line .status.busy { color: var(--color-link); }
+/* download progress fills the line's bottom edge */
+.about-prog { position: absolute; left: 0; bottom: -1px; height: 2px; width: var(--p, 0%); background: var(--color-accent); transition: width 0.3s ease; }
+.about-upd-body { display: grid; gap: var(--space-xs); padding: 10px var(--space-sm) var(--space-sm); font: var(--text-sm) / 1.45 var(--font-ui); }
+.about-upd-row { display: flex; align-items: center; gap: var(--space-sm); }
+.about-upd-text { display: grid; flex: 1; min-width: 0; margin: 0; color: var(--color-ink); }
+.about-upd-text .sub { color: var(--color-muted); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.about-upd-row .btn { flex-shrink: 0; gap: 6px; height: 28px; min-height: 28px; padding: 0 10px; font-size: var(--text-sm); white-space: nowrap; }
+.about-upd-row .btn .ico { width: 14px; height: 14px; }
+/* release notes: first 3 changes, the rest behind "Show all" (AboutModal slices the list); expanded, the list scrolls inside a fixed height
+ * so a long changelog never pushes the dialog off the window */
+.about-upd .upd-notes { max-height: none; overflow: visible; margin: 0; }
+.about-notes { display: grid; gap: var(--space-2xs); }
+.about-notes[data-open] .upd-notes { max-height: 184px; overflow: auto; overscroll-behavior: contain; }
+.about-notes-more { justify-self: start; margin-left: 2px; }
+.about-notes-more .ico { transition: transform 0.2s ease; }
+.about-notes[data-open] .about-notes-more .ico { transform: rotate(180deg); }
+.about-upd .upd-err { font-size: var(--text-xs); }
+.about-upd .upd-link { margin-right: auto; }
+.about-upd[hidden] { display: none; }
+
+.about-foot { margin: 0; text-align: center; color: var(--color-muted); font-size: var(--text-xs); }
+
+.about-links { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3xs); }
+.about-links .btn { gap: 6px; height: 28px; min-height: 28px; padding: 0 10px; font-size: var(--text-sm); }
+.about-links .btn .ico { width: 14px; height: 14px; }
+.build-tag {
+  display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px 0 7px; flex-shrink: 0;
+  border: none; border-radius: var(--radius-pill); white-space: nowrap; cursor: default;
+  font: 700 var(--text-xs) / 1 var(--font-mono); letter-spacing: 0.04em; font-variant-numeric: tabular-nums;
+  --c: var(--color-warn);
+  color: var(--c); background: color-mix(in srgb, var(--c) 11%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 32%, transparent);
+}
+.about-verline { display: flex; align-items: center; gap: var(--space-2xs); margin-top: var(--space-xs); }
+.about-verline .about-ver { margin-top: 0; }
+.about-res dd .muted { color: var(--color-muted); }
+.about-res dd.warn { color: var(--color-warn); }

@@ -4,11 +4,12 @@ import { tableSelect } from "./lib/sql";
 import { editCount, type Edits } from "./lib/edit";
 import type { Approval, Ask, ColumnsEntry, Conn, HistoryEntry, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
 
-export type SettingsSection = "appearance" | "queries" | "security" | "data";
+export type SettingsSection = "appearance" | "queries" | "security" | "data" | "updates";
 export type SideView = "schema" | "history" | "saved";
 
 export type Modal =
   | { kind: "settings"; section?: SettingsSection }
+  | { kind: "about" }
   | { kind: "connect"; conn?: Conn; group?: string }
   | { kind: "confirm"; title: string; message: string; confirmLabel?: string; onConfirm: () => void }
   | { kind: "prompt"; title: string; label: string; initial: string; onSubmit: (v: string) => void }

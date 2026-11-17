@@ -17,6 +17,8 @@ mod menu {
     pub const CLOSE_TAB: &str = "close_tab";
     pub const CLOSE_WINDOW: &str = "close_window";
     pub const SETTINGS: &str = "settings";
+    pub const ABOUT: &str = "about";
+    pub const CHECK_UPDATES: &str = "check_updates";
 
     /// As voidHTTP: ⌘W closes the tab (handled by the frontend), "Close Window" moves to ⇧⌘W.
     pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
@@ -27,7 +29,9 @@ mod menu {
             pkg.name.clone(),
             true,
             &[
-                &PredefinedMenuItem::about(app, None, None)?,
+                // As voidHTTP: our own About dialog (the native panel takes plain text only), and the update check
+                &MenuItem::with_id(app, ABOUT, format!("About {}", pkg.name), true, None::<&str>)?,
+                &MenuItem::with_id(app, CHECK_UPDATES, "Check for Updates…", true, None::<&str>)?,
                 &PredefinedMenuItem::separator(app)?,
                 &MenuItem::with_id(app, SETTINGS, "Settings…", true, Some("CmdOrCtrl+,"))?,
                 &PredefinedMenuItem::separator(app)?,
@@ -80,6 +84,12 @@ mod menu {
             }
             SETTINGS => {
                 let _ = app.emit("menu:settings", ());
+            }
+            ABOUT => {
+                let _ = app.emit("menu:about", ());
+            }
+            CHECK_UPDATES => {
+                let _ = app.emit("menu:check-updates", ());
             }
             CLOSE_WINDOW => {
                 if let Some(w) = app.get_webview_window("main") {

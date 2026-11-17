@@ -14,7 +14,7 @@ const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "hous
   "ellipsis", "chevron-down", "chevron-right", "chevron-left", "folder", "eye", "square-function", "table-2", "square-code", "panel-left-close",
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus",
-  "circle-arrow-down", "loader-circle", "triangle-alert", "external-link"];
+  "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy"];
 function symbol(name) {
   const src = fs.readFileSync(`${LUCIDE}/${name}.js`, "utf8");
   const start = src.indexOf("[", src.indexOf("createLucideIcon("));
@@ -354,7 +354,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
       </div>`;
 
 // ---------- preview bar ----------
-const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"]];
+const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["about", "About"]];
 const UI_FONTS = `<option value="">System</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option><option value="Avenir Next, Avenir, sans-serif">Avenir</option><option value="Georgia, serif">Georgia</option>`;
 const MONO_FONTS = `<option value="">System mono</option><option value="Menlo, monospace">Menlo</option><option value="'Courier New', monospace">Courier</option><option value="Monaco, monospace">Monaco</option>`;
 // preview-only: recolour the first connection tab (shop_prod) to try each connection colour on the title strip
@@ -981,6 +981,73 @@ pages["updates.html"] = page({
   barHtml: bar("updates", [["available-open", "Available"], ["available", "Available, closed"], ["downloading", "Downloading"], ["installing", "Installing"], ["ready", "Ready to restart"], ["failed", "Install failed"], ["none", "Up to date (no chip)"]]),
   body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, chip: UPD_CHIP }),
   script: js("page-updates.js"),
+});
+
+// About ypacapy, ported from voidHTTP's AboutModal (replaces the native macOS About panel, opened from the app menu).
+// voidHTTP draws its update card as a request; ypacapy draws it as a query, since that is what ypacapy shows all day.
+// Brand touches: the icon soaks in an onsen (water rings under it, steam above), "capy" picked out in the name, the palindrome in the foot.
+const K = (t) => `<span class="q-k">${t}</span>`, TB = (t) => `<span class="q-tb">${t}</span>`, S = (t) => `<span class="q-s">'${t}'</span>`;
+const SQL_CHECK = `${K("select")} * ${K("from")} ${TB("releases")} ${K("where")} version &gt; ${S("0.0.1")}`;
+const SQL_INSTALL = `${K("insert into")} ${TB("app")} ${K("values")} (${S("0.0.2")})`;
+const qline = (sql, status, prog) => `
+            <div class="about-res-line"><code class="about-sql">${sql}</code>${status}${prog !== undefined ? `<i class="about-prog" style="--p:${prog}%"></i>` : ""}</div>`;
+const qst = (cls, t) => `<span class="status${cls ? " " + cls : ""}">${t}</span>`;
+const qwait = (t) => `<span class="status wait">${ic("loader-circle", "upd-spin")}${t}</span>`;
+const updRowA = (text, ctl = "") => `
+              <div class="about-upd-row"><p class="about-upd-text">${text}</p>${ctl}</div>`;
+const checkAgain = (dis) => `<button type="button" class="btn"${dis ? " disabled" : ""}>${ic("refresh-cw")}Check again</button>`;
+const ABOUT_NOTES = [...UPD_NOTES, "Settings &gt; Updates", "Fix: Row count estimate on views", "Fix: Touch ID prompt shown twice"];
+const aboutCard = (st, line, body) => `
+          <div class="about-res about-upd" data-about="${st}" aria-label="Updates" aria-live="polite" hidden>${line}
+            <div class="about-upd-body">${body}
+            </div>
+          </div>`;
+const ABOUT_CARDS = [
+  aboutCard("checking", qline(SQL_CHECK, qwait("running")), updRowA('Looking for a new version…<span class="sub">github.com/jimmyfish/ypacapy</span>', checkAgain(true))),
+  aboutCard("current", qline(SQL_CHECK, qst("redir", "0 rows")), updRowA('You\'re on the latest version.<span class="sub">Checked just now</span>', checkAgain())),
+  aboutCard("available", qline(SQL_CHECK, qst("", "1 row")), updRowA('<strong>ypacapy 0.0.2 is out</strong><span class="sub">You have 0.0.1 · released 20 Nov 2026</span>') + `
+              <div class="about-notes"><ul class="upd-notes">${ABOUT_NOTES.slice(0, 3).map((l) => `<li>${l}</li>`).join("")}</ul><ul class="upd-notes" data-more hidden>${ABOUT_NOTES.slice(3).map((l) => `<li>${l}</li>`).join("")}</ul><button type="button" class="upd-link about-notes-more" aria-expanded="false" data-more-btn>Show all ${ABOUT_NOTES.length} changes${ic("chevron-down")}</button></div>` +
+    updRowA("", `<button type="button" class="upd-link" title="${REL}/tag/v0.0.2">Release notes${ic("external-link")}</button><button type="button" class="btn btn--primary" data-about-go="downloading">${ic("circle-arrow-down")}Install update</button>`).replace('<p class="about-upd-text"></p>', "")),
+  aboutCard("downloading", qline(SQL_INSTALL, qst("busy", "42%"), 42), updRowA('Downloading 0.0.2 · 42%<span class="sub">4.1 of 9.8 MB · you can keep working</span>')),
+  aboutCard("installing", qline(SQL_INSTALL, qwait("verifying"), 100), updRowA('Installing 0.0.2…<span class="sub">Downloaded and verified</span>')),
+  aboutCard("ready", qline(SQL_INSTALL, qst("busy", "awaiting commit")), updRowA('<strong>0.0.2 is installed</strong><span class="sub">Restart ypacapy to commit it.</span>', `<button type="button" class="btn btn--primary">${ic("refresh-cw")}Restart now</button>`)),
+  aboutCard("failed", qline(SQL_INSTALL, qst("fail", "rolled back")), `
+              <p class="upd-err">the signature of the downloaded update does not match the public key</p>` +
+    updRowA('ypacapy 0.0.1 is unchanged.', `<button type="button" class="upd-link" title="${REL}/latest">Download from GitHub${ic("external-link")}</button><button type="button" class="btn" data-about-go="downloading">Try again</button>`)),
+  // a dev build: where it comes from, as a one-row result, in place of the update card
+  `
+          <div class="about-res" data-about="dev" aria-label="Build" hidden>${qline(`${K("select")} * ${K("from")} ${TB("build")}`, qst("", "1 row"))}
+            <dl><dt>channel</dt><dd>dev</dd><dt>version</dt><dd>v0.0.1-4-g1a19d06+<span class="muted"> · 4 commits after v0.0.1</span></dd><dt>branch</dt><dd>v0.0.1</dd><dt>commit</dt><dd>1a19d06<span class="muted"> + uncommitted changes</span></dd><dt>started</dt><dd>17 Nov 2026, 19:40</dd><dt>updates</dt><dd class="warn">off in dev builds</dd></dl>
+          </div>`,
+].join("");
+pages["about.html"] = page({
+  title: "ypacapy preview, about",
+  desc: "Design preview of About ypacapy: the capybara icon in its onsen, the copyable version, and updates drawn as a query.",
+  barHtml: bar("about", [["current", "Up to date"], ["checking", "Checking"], ["available", "Update available"], ["downloading", "Downloading"], ["installing", "Installing"], ["ready", "Ready to restart"], ["failed", "Install failed"], ["dev", "Dev build"]]),
+  body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: `
+<div class="backdrop" data-close="./index.html">
+  <div class="about" role="dialog" aria-modal="true" aria-labelledby="about-name">
+    <button type="button" class="icon-btn about-close" aria-label="Close" data-href="./index.html">${ic("x")}</button>
+    <header class="about-hero">
+      <div class="about-onsen ping" aria-hidden="true">
+        <span class="steam"><b></b><b></b><b></b></span>
+        <i></i><i></i><i></i>
+        <img src="../../public/app-icon.png" alt="">
+      </div>
+      <h2 class="about-name" id="about-name" title="Reads the same both ways">ypa<span>capy</span></h2>
+      <p class="about-tag">A calm database explorer. Everything stays on this Mac.</p>
+      <div class="about-verline"><span class="build-tag" data-about-dev hidden>dev</span><button type="button" class="about-ver" title="Copy version"><span data-ver>v0.0.1</span>${ic("copy")}</button></div>
+    </header>
+    <div class="about-body">${ABOUT_CARDS}
+      <nav class="about-links" aria-label="Links">
+        <button type="button" class="btn btn--quiet" title="https://github.com/jimmyfish/ypacapy">${ic("github")}GitHub</button>
+        <button type="button" class="btn btn--quiet" title="https://github.com/jimmyfish/ypacapy/issues/new">${ic("circle-dot")}Report an issue</button>
+      </nav>
+      <p class="about-foot">ypacapy, capy in a mirror. Reads the same both ways.</p>
+    </div>
+  </div>
+</div>` }),
+  script: js("page-about.js"),
 });
 
 for (const old of ["table.css", "settings.css", "connect.css"]) fs.rmSync(`${OUT}/${old}`, { force: true });

@@ -12,6 +12,7 @@ import { DEFAULT_SCHEME, findScheme, isDark } from "./lib/themes";
 import { schemeTokens } from "./lib/themes";
 import { connColorId } from "./lib/connColors";
 import { useUpdates } from "./updates";
+import { UpdateChip } from "./components/UpdateChip";
 import { Bookmark, Database, HistoryIcon, House, ListTree, Settings, X, ico, icoLg } from "./components/Icon";
 
 export const SIDEBAR_DEFAULT = 296;
@@ -119,6 +120,7 @@ function AppStrip() {
         })}
       </nav>
       <div className="strip-end">
+        <UpdateChip />
         <button type="button" className="icon-btn strip-settings" title="Settings  ⌘," aria-label="Settings" aria-expanded={settingsOpen} onClick={() => st.openModal({ kind: "settings" })}>
           <Settings {...ico} />
         </button>
@@ -188,7 +190,7 @@ export default function App() {
   }, []);
 
   // Updates: one quiet check once settings have loaded (autoUpdateCheck: false turns it off).
-  // Dev builds never check (src/updates.ts). The result waits in useUpdates for the update UI.
+  // Dev builds never check (src/updates.ts). The title-strip chip shows what it finds.
   useEffect(() => {
     if (!loaded || useStore.getState().settings.autoUpdateCheck === false) return;
     void useUpdates.getState().check({ quiet: true });
@@ -226,6 +228,16 @@ export default function App() {
         }
       }),
       listen("menu:settings", () => useStore.getState().openModal({ kind: "settings" })),
+      // "About ypacapy" opens our own dialog instead of the native panel
+      listen("menu:about", () => useStore.getState().openModal({ kind: "about" })),
+      // "Check for Updates…": the chip's popover when there is something to act on, otherwise Settings > Updates
+      listen("menu:check-updates", async () => {
+        const u = useUpdates.getState();
+        const busy = ["downloading", "installing", "ready"].includes(u.state.kind);
+        const s = busy ? u.state : await u.check();
+        if (s.kind === "available" || busy) u.setPopover(true);
+        else useStore.getState().openModal({ kind: "settings", section: "updates" });
+      }),
     ];
     return () => offs.forEach((p) => p.then((off) => off()));
   }, []);

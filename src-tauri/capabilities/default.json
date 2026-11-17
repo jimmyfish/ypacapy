@@ -9,6 +9,8 @@
     "core:default",
     "dialog:allow-open",
     "dialog:allow-save",
+    "updater:default",
+    "process:allow-restart",
     "core:window:allow-start-dragging",
     "core:window:allow-toggle-maximize",
     {
@@ -19,6 +21,14 @@
         },
         {
           "path": "$HOME/.config/ypacapy"
+        }
+      ]
+    },
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://github.com/jimmyfish/ypacapy/*"
         }
       ]
     }

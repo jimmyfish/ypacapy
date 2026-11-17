@@ -44,10 +44,20 @@
     passSet = form.dataset.subForm !== "disable"; renderPass(); closeSub();
   }));
   renderPass();
+  // Updates: one status row per updater state; a dev build has the launch check off and locked
+  const updState = (st) => {
+    $$("[data-upd-st]").forEach((r) => { r.hidden = r.dataset.updSt !== st; });
+    const dev = st === "dev", auto = $("#set-auto-update");
+    auto.disabled = dev; auto.checked = !dev;
+    $("[data-upd-auto]").setAttribute("aria-disabled", String(dev));
+    $("[data-auto-desc]").textContent = dev ? "Off in dev builds, so an update never replaces this build" : "Look for a new version when ypacapy opens";
+  };
+  updState("current");
   window.pvShow = (k) => {
     closeSub();
     $("#sec-level").value = "none";
     if (["appearance", "queries", "data"].includes(k)) { go(k); return; }
+    if (k === "updates" || k.startsWith("upd-")) { go("updates"); updState(k === "updates" ? "current" : k.slice(4)); return; }
     go("security");
     passSet = k !== "security" && k !== "pass-new"; renderPass();
     if (k === "pass-new") openSub("new"); else if (k === "pass-change") openSub("change"); else if (k === "pass-disable") openSub("disable"); else if (k === "pass-reset") openSub("reset");

@@ -32,6 +32,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "macOS": {
       "signingIdentity": "-"
     },
@@ -42,5 +43,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJEQ0IzMkExODg0ODc2RTgKUldUb2RraUlvVExMdmYyUlFqZ0tmdDJCWUU3UG5qbFo3U29EbEo1c1ZTVFBCWnFvVERSaUdNOUQK",
+      "endpoints": ["https://github.com/jimmyfish/ypacapy/releases/latest/download/latest.json"]
+    }
   }
 }

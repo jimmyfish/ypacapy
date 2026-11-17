@@ -13,7 +13,8 @@ fs.writeFileSync(`${OUT}/app.css`, fs.readFileSync(`${SP}app.css.base`, "utf8") 
 const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "house", "server", "hard-drive", "x", "plus", "settings", "search", "refresh-cw",
   "ellipsis", "chevron-down", "chevron-right", "chevron-left", "folder", "eye", "square-function", "table-2", "square-code", "panel-left-close",
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
-  "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus"];
+  "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus",
+  "circle-arrow-down", "loader-circle", "triangle-alert", "external-link"];
 function symbol(name) {
   const src = fs.readFileSync(`${LUCIDE}/${name}.js`, "utf8");
   const start = src.indexOf("[", src.indexOf("createLucideIcon("));
@@ -100,7 +101,7 @@ const inspector = (col, type, row, value) => `
 // ---------- shell: title strip, rail, panel ----------
 const CONNS = [["shop_prod", "server", 6, "postgres"], ["analytics.sqlite", "hard-drive", 2, "sqlite"], ["legacy_cms", "server", 3, "mysql"]];
 const tile = (icon, n, sm = true) => `<span class="proj-tile${sm ? " proj-tile--sm" : ""}" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)">${ic(icon)}</span>`;
-const strip = (current) => `
+const strip = (current, chip = "") => `
   <!-- title strip: the native macOS traffic lights sit in the empty 84px on the left (not drawn here) -->
   <!-- a connection tab carries its colour (--fg/--bg) on the tab itself; the tile inside inherits it, so tab, ring and
        tile are always one colour. The tile shows the engine glyph, as on the Home cards. -->
@@ -113,7 +114,7 @@ ${CONNS.slice(0, 2).map(([name, , n, engine]) => `      <div class="ptab ptab--p
         <button type="button" class="icon-btn ptab-close" aria-label="Close ${name}">${ic("x")}</button>
       </div>`).join("\n")}
     </nav>
-    <div class="strip-end">
+    <div class="strip-end">${chip}
       <button type="button" class="icon-btn strip-settings" title="Settings  ⌘," aria-label="Settings" data-href="./settings.html">${ic("settings")}</button>
     </div>
   </div>`;
@@ -241,8 +242,8 @@ const runGroup = `
             </div>
           </div>`;
 
-const app = ({ current, side = "", work, overlay = "" }) => `
-<div class="app">${strip(current)}${rail}
+const app = ({ current, side = "", work, overlay = "", chip = "" }) => `
+<div class="app">${strip(current, chip)}${rail}
   <div class="panel">${side}
     <main class="work">${work}
     </main>
@@ -353,7 +354,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
       </div>`;
 
 // ---------- preview bar ----------
-const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["settings", "Settings"], ["connect", "New connection"]];
+const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"]];
 const UI_FONTS = `<option value="">System</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option><option value="Avenir Next, Avenir, sans-serif">Avenir</option><option value="Georgia, serif">Georgia</option>`;
 const MONO_FONTS = `<option value="">System mono</option><option value="Menlo, monospace">Menlo</option><option value="'Courier New', monospace">Courier</option><option value="Monaco, monospace">Monaco</option>`;
 // preview-only: recolour the first connection tab (shop_prod) to try each connection colour on the title strip
@@ -786,10 +787,29 @@ const schemeRow = (slot) => `
                 <div class="set-text"><label for="set-scheme-${slot}" data-scheme-label></label></div>
                 <div class="set-ctl"><span class="scheme-dots" aria-hidden="true"></span><span class="select-wrap"><select id="set-scheme-${slot}" class="field set-scheme" data-scheme="${slot}"></select>${ic("chevron-down", "select-chev")}</span></div>
               </div>`;
+// Settings > Updates (voidHTTP's UpdatesPane): the running version and what the updater knows, the launch check, release notes.
+// Each status row is one state of the same row; the preview bar picks which one shows.
+const REL = "https://github.com/jimmyfish/ypacapy/releases";
+const relLink = (label) => `<button type="button" class="upd-link" title="${REL}">${label}${ic("external-link")}</button>`;
+const updRow = (st, desc, ctl) => `
+              <div class="set-item" data-upd-st="${st}" hidden>
+                <div class="set-text"><span class="set-label">ypacapy 0.0.1</span><span class="desc">${desc}</span></div>
+                <div class="set-ctl">${ctl}</div>
+              </div>`;
+const updatesPane = () => `
+      <div class="set-pane" data-pane="updates" hidden>
+        <h3>Updates</h3>
+        <div class="set-list">${updRow("current", `<span class="set-status ok">${ic("circle-check")}Up to date · checked just now</span>`, '<button type="button" class="btn">Check for updates</button>')}${updRow("available", `<span class="set-status new">${ic("circle-arrow-down")}0.0.2 is available</span>`, '<button type="button" class="btn btn--primary" data-href="./updates.html?show=downloading">Install update</button>')}${updRow("error", `<span class="set-status bad" title="error sending request for url (https://github.com/jimmyfish/ypacapy/releases/latest/download/latest.json)">${ic("triangle-alert")}Couldn't check for updates</span>`, '<button type="button" class="btn">Check for updates</button>')}${updRow("dev", "v0.0.1-4-g1a19d06+ on branch v0.0.1 · updates are off in dev builds", relLink("Get the release"))}
+              <div class="set-item" data-upd-auto>
+                <div class="set-text"><label for="set-auto-update">Check automatically</label><span class="desc" data-auto-desc>Look for a new version when ypacapy opens</span></div>
+                <div class="set-ctl">${sw("set-auto-update", true)}</div>
+              </div>${setItem("Release notes", "What changed in each version", relLink("Open on GitHub"))}
+        </div>
+      </div>`;
 pages["settings.html"] = page({
   title: "ypacapy preview, settings",
   desc: "Design preview of ypacapy Settings: theme and color scheme per appearance, compact mode, three fonts, query defaults and where data lives.",
-  barHtml: bar("settings", [["appearance", "Appearance"], ["queries", "Queries"], ["security", "Security"], ["pass-set", "Passphrase set"], ["pass-new", "Set passphrase"], ["pass-change", "Change passphrase"], ["pass-disable", "Disable passphrase"], ["pass-reset", "Forgot passphrase"], ["data", "Data on this Mac"]]),
+  barHtml: bar("settings", [["appearance", "Appearance"], ["queries", "Queries"], ["security", "Security"], ["pass-set", "Passphrase set"], ["pass-new", "Set passphrase"], ["pass-change", "Change passphrase"], ["pass-disable", "Disable passphrase"], ["pass-reset", "Forgot passphrase"], ["data", "Data on this Mac"], ["updates", "Updates"], ["upd-available", "Update available"], ["upd-error", "Check failed"], ["upd-dev", "Dev build"]]),
   body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: `
 <div class="backdrop" data-close="./index.html">
   <div class="dialog wide" role="dialog" aria-modal="true" aria-label="Settings">
@@ -800,6 +820,7 @@ pages["settings.html"] = page({
         <li><button type="button" data-section="queries">${ic("terminal")}Queries</button></li>
         <li><button type="button" data-section="security">${ic("shield-check")}Security</button></li>
         <li><button type="button" data-section="data">${ic("lock")}Data on this Mac</button></li>
+        <li><button type="button" data-section="updates">${ic("circle-arrow-down")}Updates</button></li>
       </ul>
       <div class="set-pane" data-pane="appearance">
         <h3>Appearance</h3>
@@ -820,10 +841,11 @@ pages["settings.html"] = page({
 ${securityPane()}
       <div class="set-pane" data-pane="data" hidden>
         <h3>Data on this Mac</h3>
-        <div class="set-list">${setItem("Settings", "", '<span class="set-path">~/.config/ypacapy/settings.toml</span>')}${setItem("Connections", "No passwords", '<span class="set-path">~/.config/ypacapy/connections.toml</span>')}${setItem("History and saved queries", "", '<span class="set-path">~/.config/ypacapy/ypacapy.db</span>')}${setItem("Passwords", "Never synced to iCloud", "macOS login keychain")}${setItem("Network", "", "Only the databases you add")}
+        <div class="set-list">${setItem("Settings", "", '<span class="set-path">~/.config/ypacapy/settings.toml</span>')}${setItem("Connections", "No passwords", '<span class="set-path">~/.config/ypacapy/connections.toml</span>')}${setItem("History and saved queries", "", '<span class="set-path">~/.config/ypacapy/ypacapy.db</span>')}${setItem("Passwords", "Never synced to iCloud", "macOS login keychain")}${setItem("Network", "", "The databases you add, and GitHub for updates")}
         </div>
         <button type="button" class="btn">${ic("folder-open")}Show in Finder</button>
       </div>
+${updatesPane()}
     </div>
   </div>${passDialogs()}
 </div>` }),
@@ -922,6 +944,43 @@ pages["connect.html"] = page({
   </div>
 </div>${passDialogs()}`,
   script: js("page-connect.js"),
+});
+
+// In-app updates, ported from voidHTTP's UpdateChip: a chip in the title strip beside the gear, shown only while there is
+// an update to act on (available, downloading, ready, failed install), with a popover under it for each step.
+// The preview renders one anchor per step; the bar picks which one shows, and the chip toggles its popover.
+const UPD_NOTES = ["Connection groups on Home", "Coloured connection tabs", "Fix: History no longer jumps after a run"];
+const updAnchor = (st, chipCls, chipBody, pop) => `
+      <div class="upd-anchor" data-upd="${st}" hidden>
+        <button type="button" class="upd-chip${chipCls}" aria-haspopup="dialog" aria-expanded="false">${chipBody}</button>${pop ? `
+        <div class="upd-pop" role="dialog" hidden>${pop}
+        </div>` : ""}
+      </div>`;
+const updActions = (left, right) => `
+          <div class="upd-actions">${left}${right}</div>`;
+const UPD_CHIP = [
+  updAnchor("available", "", `${ic("circle-arrow-down")}Update 0.0.2`, `
+          <div class="upd-head"><p class="upd-title">ypacapy 0.0.2 is available</p><span class="upd-sub">You have 0.0.1 · released 20 Nov 2026</span></div>
+          <ul class="upd-notes">${UPD_NOTES.map((l) => `<li>${l}</li>`).join("")}</ul>${updActions('<button type="button" class="btn btn--quiet" data-upd-close>Later</button>', '<button type="button" class="btn btn--primary" data-upd-go="downloading">Install update</button>')}`),
+  updAnchor("downloading", "", `${ic("loader-circle", "upd-spin")}Updating 42%`, `
+          <div class="upd-head"><p class="upd-title">Downloading 0.0.2</p><span class="upd-sub">You can keep working while it downloads.</span></div>
+          <div class="upd-bar" role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="42"><i style="width:42%"></i></div>
+          <div class="upd-row"><span>4.1 of 9.8 MB</span><span>42%</span></div>`),
+  updAnchor("installing", "", `${ic("loader-circle", "upd-spin")}Installing`, `
+          <div class="upd-head"><p class="upd-title">Installing 0.0.2</p><span class="upd-sub">You can keep working while it installs.</span></div>
+          <div class="upd-bar" role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i style="width:100%"></i></div>`),
+  updAnchor("ready", " upd-chip--ready", `${ic("refresh-cw")}Restart to update`, `
+          <div class="upd-head"><p class="upd-title">${ic("circle-check", "ok")}0.0.2 is installed</p><span class="upd-sub">Restart ypacapy to start using it.</span></div>${updActions('<button type="button" class="btn btn--quiet" data-upd-close>Later</button>', '<button type="button" class="btn btn--primary">Restart now</button>')}`),
+  updAnchor("failed", " upd-chip--error", `${ic("triangle-alert")}Update failed`, `
+          <div class="upd-head"><p class="upd-title">${ic("triangle-alert", "bad")}Couldn't install 0.0.2</p><span class="upd-sub">ypacapy 0.0.1 is unchanged.</span></div>
+          <p class="upd-err">the signature of the downloaded update does not match the public key</p>${updActions(`<button type="button" class="upd-link" title="${REL}/latest">Download from GitHub${ic("external-link")}</button>`, '<button type="button" class="btn" data-upd-go="downloading">Try again</button>')}`),
+].join("");
+pages["updates.html"] = page({
+  title: "ypacapy preview, updates",
+  desc: "Design preview of ypacapy's in-app updates: the title-strip chip and its popover for each step, from voidHTTP.",
+  barHtml: bar("updates", [["available-open", "Available"], ["available", "Available, closed"], ["downloading", "Downloading"], ["installing", "Installing"], ["ready", "Ready to restart"], ["failed", "Install failed"], ["none", "Up to date (no chip)"]]),
+  body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, chip: UPD_CHIP }),
+  script: js("page-updates.js"),
 });
 
 for (const old of ["table.css", "settings.css", "connect.css"]) fs.rmSync(`${OUT}/${old}`, { force: true });

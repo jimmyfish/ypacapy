@@ -1,0 +1,51 @@
+# Keeps a compiled Rust dependency cache on master for release.yml to restore.
+#
+# GitHub only lets a run restore caches saved on its own ref or on the default branch,
+# so a cache saved by one release tag is invisible to the next. This builds the same
+# release target on master whenever the Rust dependencies change, under the same
+# shared-key that release.yml reads.
+
+name: cache
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - src-tauri/Cargo.lock
+      - src-tauri/Cargo.toml
+      - .github/workflows/cache.yml
+  # GitHub evicts a cache nobody has read for 7 days; a weekly run keeps it alive
+  # between releases (a cache hit counts as a read).
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [aarch64-apple-darwin, x86_64-apple-darwin]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          shared-key: macos-${{ matrix.target }}
+
+      - run: bun install --frozen-lockfile
+
+      # The same cargo build tauri-action runs (release profile, same target and
+      # features), without bundling or signing: only the compiled dependencies matter.
+      - run: bun tauri build --target ${{ matrix.target }} --no-bundle

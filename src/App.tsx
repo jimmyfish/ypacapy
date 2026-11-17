@@ -11,6 +11,7 @@ import { ConnTile } from "./components/ConnTile";
 import { DEFAULT_SCHEME, findScheme, isDark } from "./lib/themes";
 import { schemeTokens } from "./lib/themes";
 import { connColorId } from "./lib/connColors";
+import { useUpdates } from "./updates";
 import { Bookmark, Database, HistoryIcon, House, ListTree, Settings, X, ico, icoLg } from "./components/Icon";
 
 export const SIDEBAR_DEFAULT = 296;
@@ -185,6 +186,13 @@ export default function App() {
   useEffect(() => {
     void useStore.getState().init();
   }, []);
+
+  // Updates: one quiet check once settings have loaded (autoUpdateCheck: false turns it off).
+  // Dev builds never check (src/updates.ts). The result waits in useUpdates for the update UI.
+  useEffect(() => {
+    if (!loaded || useStore.getState().settings.autoUpdateCheck === false) return;
+    void useUpdates.getState().check({ quiet: true });
+  }, [loaded]);
 
   // app-wide keys: ⌘T new query, ⌘\ sidebar, ⌘S save; ⌘W and ⌘, come from the native menu
   useEffect(() => {

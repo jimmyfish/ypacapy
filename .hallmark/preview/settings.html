@@ -70,6 +70,10 @@
   <symbol id="i-folder-input" viewBox="0 0 24 24"><path d="M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1"/><path d="M2 13h10"/><path d="m9 16 3-3-3-3"/></symbol>
   <symbol id="i-folder-minus" viewBox="0 0 24 24"><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
   <symbol id="i-folder-plus" viewBox="0 0 24 24"><path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-circle-arrow-down" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="m8 12 4 4 4-4"/></symbol>
+  <symbol id="i-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol>
+  <symbol id="i-triangle-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-external-link" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
 </svg>
 
 <header class="pv-bar">
@@ -80,6 +84,7 @@
     <a class="btn btn--quiet" href="./table.html" style="min-height:var(--control)">Table</a>
     <a class="btn btn--quiet" href="./settings.html" style="min-height:var(--control)" aria-current="page">Settings</a>
     <a class="btn btn--quiet" href="./connect.html" style="min-height:var(--control)">New connection</a>
+    <a class="btn btn--quiet" href="./updates.html" style="min-height:var(--control)">Updates</a>
   </nav>
   <div class="pv-states" role="group" aria-label="States">
     <button type="button" data-show="appearance" aria-pressed="true">Appearance</button>
@@ -91,6 +96,10 @@
     <button type="button" data-show="pass-disable" aria-pressed="false">Disable passphrase</button>
     <button type="button" data-show="pass-reset" aria-pressed="false">Forgot passphrase</button>
     <button type="button" data-show="data" aria-pressed="false">Data on this Mac</button>
+    <button type="button" data-show="updates" aria-pressed="false">Updates</button>
+    <button type="button" data-show="upd-available" aria-pressed="false">Update available</button>
+    <button type="button" data-show="upd-error" aria-pressed="false">Check failed</button>
+    <button type="button" data-show="upd-dev" aria-pressed="false">Dev build</button>
   </div>
   <div class="pv-fonts">
     <label>shop_prod colour <select data-tabc><option value="5">Turquoise</option><option value="2">Emerald</option><option value="7">Sunflower</option><option value="3">Carrot</option><option value="6" selected>Alizarin (red)</option><option value="1">River</option><option value="8">Asphalt</option><option value="4">Amethyst</option></select></label>
@@ -389,6 +398,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
         <li><button type="button" data-section="queries"><svg aria-hidden="true" class="ico"><use href="#i-terminal"/></svg>Queries</button></li>
         <li><button type="button" data-section="security"><svg aria-hidden="true" class="ico"><use href="#i-shield-check"/></svg>Security</button></li>
         <li><button type="button" data-section="data"><svg aria-hidden="true" class="ico"><use href="#i-lock"/></svg>Data on this Mac</button></li>
+        <li><button type="button" data-section="updates"><svg aria-hidden="true" class="ico"><use href="#i-circle-arrow-down"/></svg>Updates</button></li>
       </ul>
       <div class="set-pane" data-pane="appearance">
         <h3>Appearance</h3>
@@ -511,10 +521,40 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
               </div>
               <div class="set-item">
                 <div class="set-text"><span class="set-label">Network</span></div>
-                <div class="set-ctl">Only the databases you add</div>
+                <div class="set-ctl">The databases you add, and GitHub for updates</div>
               </div>
         </div>
         <button type="button" class="btn"><svg aria-hidden="true" class="ico"><use href="#i-folder-open"/></svg>Show in Finder</button>
+      </div>
+
+      <div class="set-pane" data-pane="updates" hidden>
+        <h3>Updates</h3>
+        <div class="set-list">
+              <div class="set-item" data-upd-st="current" hidden>
+                <div class="set-text"><span class="set-label">ypacapy 0.0.1</span><span class="desc"><span class="set-status ok"><svg aria-hidden="true" class="ico"><use href="#i-circle-check"/></svg>Up to date · checked just now</span></span></div>
+                <div class="set-ctl"><button type="button" class="btn">Check for updates</button></div>
+              </div>
+              <div class="set-item" data-upd-st="available" hidden>
+                <div class="set-text"><span class="set-label">ypacapy 0.0.1</span><span class="desc"><span class="set-status new"><svg aria-hidden="true" class="ico"><use href="#i-circle-arrow-down"/></svg>0.0.2 is available</span></span></div>
+                <div class="set-ctl"><button type="button" class="btn btn--primary" data-href="./updates.html?show=downloading">Install update</button></div>
+              </div>
+              <div class="set-item" data-upd-st="error" hidden>
+                <div class="set-text"><span class="set-label">ypacapy 0.0.1</span><span class="desc"><span class="set-status bad" title="error sending request for url (https://github.com/jimmyfish/ypacapy/releases/latest/download/latest.json)"><svg aria-hidden="true" class="ico"><use href="#i-triangle-alert"/></svg>Couldn't check for updates</span></span></div>
+                <div class="set-ctl"><button type="button" class="btn">Check for updates</button></div>
+              </div>
+              <div class="set-item" data-upd-st="dev" hidden>
+                <div class="set-text"><span class="set-label">ypacapy 0.0.1</span><span class="desc">v0.0.1-4-g1a19d06+ on branch v0.0.1 · updates are off in dev builds</span></div>
+                <div class="set-ctl"><button type="button" class="upd-link" title="https://github.com/jimmyfish/ypacapy/releases">Get the release<svg aria-hidden="true" class="ico"><use href="#i-external-link"/></svg></button></div>
+              </div>
+              <div class="set-item" data-upd-auto>
+                <div class="set-text"><label for="set-auto-update">Check automatically</label><span class="desc" data-auto-desc>Look for a new version when ypacapy opens</span></div>
+                <div class="set-ctl"><input id="set-auto-update" class="switch" type="checkbox" role="switch" checked></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><span class="set-label">Release notes</span><span class="desc">What changed in each version</span></div>
+                <div class="set-ctl"><button type="button" class="upd-link" title="https://github.com/jimmyfish/ypacapy/releases">Open on GitHub<svg aria-hidden="true" class="ico"><use href="#i-external-link"/></svg></button></div>
+              </div>
+        </div>
       </div>
     </div>
   </div>
@@ -940,10 +980,20 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
     passSet = form.dataset.subForm !== "disable"; renderPass(); closeSub();
   }));
   renderPass();
+  // Updates: one status row per updater state; a dev build has the launch check off and locked
+  const updState = (st) => {
+    $$("[data-upd-st]").forEach((r) => { r.hidden = r.dataset.updSt !== st; });
+    const dev = st === "dev", auto = $("#set-auto-update");
+    auto.disabled = dev; auto.checked = !dev;
+    $("[data-upd-auto]").setAttribute("aria-disabled", String(dev));
+    $("[data-auto-desc]").textContent = dev ? "Off in dev builds, so an update never replaces this build" : "Look for a new version when ypacapy opens";
+  };
+  updState("current");
   window.pvShow = (k) => {
     closeSub();
     $("#sec-level").value = "none";
     if (["appearance", "queries", "data"].includes(k)) { go(k); return; }
+    if (k === "updates" || k.startsWith("upd-")) { go("updates"); updState(k === "updates" ? "current" : k.slice(4)); return; }
     go("security");
     passSet = k !== "security" && k !== "pass-new"; renderPass();
     if (k === "pass-new") openSub("new"); else if (k === "pass-change") openSub("change"); else if (k === "pass-disable") openSub("disable"); else if (k === "pass-reset") openSub("reset");

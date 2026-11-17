@@ -1,0 +1,107 @@
+# Builds ypacapy for macOS when a version tag (v0.2.0, v0.2.1, ...) is pushed, and
+# uploads it to a draft GitHub release together with latest.json, the manifest the
+# in-app updater reads. Publish the draft by hand: until then /releases/latest/ (and so
+# every installed copy) keeps pointing at the previous release.
+#
+# Required repository secrets (Settings > Secrets and variables > Actions):
+#   TAURI_SIGNING_PRIVATE_KEY           contents of ~/.tauri/ypacapy.key
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  the password chosen when generating it
+#
+# The app is ad-hoc signed (no Apple Developer ID), so a first install still needs
+# `xattr -cr /Applications/ypacapy.app`. Updates installed by the app itself do not.
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  # One draft release that both builds upload into.
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.release.outputs.result }}
+      body: ${{ steps.release.outputs.body }}
+    steps:
+      # CHANGELOG.md is read for the release notes
+      - uses: actions/checkout@v5
+      - id: release
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require("fs");
+            const tag = context.ref.replace("refs/tags/", "");
+            const version = tag.replace(/^v/, "");
+            // The notes are this version's section of CHANGELOG.md: from "## [x.y.z]" up to the
+            // next "## " heading or the "[x.y.z]: url" links at the end. It is the release body
+            // here and, through the build jobs, "notes" in latest.json, which the app's update
+            // chip and About dialog show.
+            const esc = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const changelog = fs.existsSync("CHANGELOG.md") ? fs.readFileSync("CHANGELOG.md", "utf8") : "";
+            const m = changelog.match(new RegExp(`^## \\[${esc}\\]([^\\n]*)\\n([\\s\\S]*?)(?=^## |^\\[[^\\]]+\\]: |(?![\\s\\S]))`, "m"));
+            const body = m ? m[2].trim() : "";
+            if (!body) core.warning(`No "## [${version}]" section in CHANGELOG.md; the release has no notes.`);
+            else if (/unreleased/i.test(m[1])) core.warning(`CHANGELOG.md still marks ${version} as Unreleased.`);
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              name: `ypacapy ${tag}`,
+              // Notes edited on the draft later reach the release page but not latest.json,
+              // which is written during the build: change CHANGELOG.md before tagging instead.
+              body,
+              draft: true,
+              prerelease: false,
+            });
+            // tauri-action does not read the body of a release it did not create: the build
+            // jobs pass this to it as releaseBody, which becomes "notes" in latest.json
+            core.setOutput("body", body);
+            return data.id;
+
+  # A separate build per architecture instead of one universal app, so each Mac downloads
+  # only its own half: latest.json maps darwin-aarch64 and darwin-x86_64 to their own
+  # .app.tar.gz. The builds run one after the other because each merges its platform into
+  # the release's latest.json, and two at once would overwrite each other's entry.
+  macos:
+    needs: create-release
+    runs-on: macos-latest
+    strategy:
+      max-parallel: 1
+      fail-fast: true
+      matrix:
+        target: [aarch64-apple-darwin, x86_64-apple-darwin]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # Restores the dependency cache that cache.yml builds on master: a tag run can only
+      # read caches from its own tag or the default branch. It never saves, so each
+      # release doesn't leave a ~550 MB cache that no later tag could read.
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          shared-key: macos-${{ matrix.target }}
+          save-if: false
+
+      - run: bun install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tauriScript: bun tauri
+          args: --target ${{ matrix.target }}
+          releaseId: ${{ needs.create-release.outputs.id }}
+          releaseBody: ${{ needs.create-release.outputs.body }}
+          includeUpdaterJson: true

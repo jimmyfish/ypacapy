@@ -82,6 +82,8 @@ export interface Settings {
   sidebarHidden?: boolean;
   /** Home: the connection groups shown folded */
   closedGroups?: string[];
+  /** Updates: check GitHub for a new version on launch; missing = on (as voidHTTP) */
+  autoUpdateCheck?: boolean;
 }
 
 export const STATEMENTS: [string, string?][] = [["INSERT"], ["UPDATE"], ["DELETE"], ["REPLACE", "MySQL"], ["ALTER"], ["DROP"], ["TRUNCATE"], ["CREATE"], ["GRANT"], ["REVOKE"]];

@@ -26,15 +26,23 @@ impl Engine {
     }
 }
 
-/// The write guard of one connection, picked in the tabs bar: Run or Confirm.
-/// Verify is what the guard asks for when passphrase protection applies (Ask.level), and what
-/// connections.toml held before passphrase protection moved out of the guard: load() turns a stored
-/// Verify into Confirm with `pass_protect` on.
+/// A connection's security level, picked in its Options or the tabs bar. None runs every statement;
+/// Low asks to confirm the statements in `protect`; Strict asks for the passphrase for them (or Touch ID
+/// when the connection allows it) and needs a passphrase set. A connection that never had one is None,
+/// the same as DEFAULT_LEVEL in src/types.ts.
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
 #[serde(rename_all = "lowercase")]
-pub enum GuardLevel {
-    /// a connection that never had its guard set runs, the same as DEFAULT_GUARD in src/types.ts
+pub enum SecurityLevel {
     #[default]
+    None,
+    Low,
+    Strict,
+}
+
+/// connections.toml before security levels: the write guard. Read once by load(), never written.
+#[derive(Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum LegacyGuard {
     Run,
     Confirm,
     Verify,
@@ -73,19 +81,20 @@ pub struct Conn {
     #[serde(default = "one")]
     pub color: u8,
     #[serde(default)]
-    pub guard: GuardLevel,
-    /// Protect with passphrase: the statements in `protect` ask for the app passphrase, whatever the
-    /// guard. Has no effect while no passphrase is set.
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub level: SecurityLevel,
+    /// Before security levels: the write guard and Protect with passphrase. load() turns them into
+    /// `level` and drops them; never written.
+    #[serde(default, skip_serializing)]
+    pub guard: Option<LegacyGuard>,
+    #[serde(default, skip_serializing)]
     pub pass_protect: bool,
-    /// What to protect, for this connection; missing = every kind
+    /// Low and Strict: the statements they ask about; missing = every kind
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub protect: Option<Vec<String>>,
-    /// With passphrase protection on: Touch ID may stand in for the passphrase
+    /// Strict: Touch ID may stand in for the passphrase
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub touch_id: bool,
-    /// With passphrase protection on: seconds this connection stays unlocked after the passphrase;
-    /// missing or 0 asks every time
+    /// Strict: seconds this connection stays unlocked after the passphrase; missing or 0 asks every time
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unlock_window: Option<u32>,
     /// Options tab. Each one missing = the value in Settings.
@@ -128,14 +137,14 @@ impl Conn {
     }
 }
 
-/// Whether going from `old` to `new` weakens passphrase protection: switching it off, dropping a kind,
-/// letting Touch ID stand in, or staying unlocked longer.
+/// Whether going from `old` to `new` weakens a Strict connection: a lower level, dropping a statement,
+/// letting Touch ID stand in, or staying unlocked longer. Only Strict is locked behind the passphrase.
 fn lowers_protection(old: &Conn, new: &Conn) -> bool {
-    if !old.pass_protect {
+    if old.level != SecurityLevel::Strict {
         return false;
     }
     let kept = new.protect_list();
-    !new.pass_protect
+    new.level != SecurityLevel::Strict
         || old.protect_list().iter().any(|k| !kept.contains(k))
         || (new.touch_id && !old.touch_id)
         || new.unlock_window.unwrap_or(0) > old.unlock_window.unwrap_or(0)
@@ -164,20 +173,39 @@ pub fn load() -> Result<Vec<Conn>, String> {
     };
     let f: ConnFile = toml::from_str(&text).map_err(|e| format!("{} is not valid: {e}", p.display()))?;
     let mut all = f.connections;
-    // files from before passphrase protection moved out of the guard: Ask for passphrase becomes
-    // Ask to confirm with passphrase protection on, keeping the app-wide What to protect it used
-    if all.iter().any(|c| c.guard == GuardLevel::Verify) {
-        let legacy = crate::settings::read_file().ok().and_then(|v| v.get("protect").and_then(|p| p.as_array()).map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect::<Vec<_>>()));
-        // without a passphrase Ask for passphrase already acted as Ask to confirm
+    // files from before security levels: the write guard and Protect with passphrase become one level
+    if all.iter().any(|c| c.guard.is_some() || c.pass_protect) {
         let has_pass = keychain::has_passphrase().unwrap_or(false);
-        for c in all.iter_mut().filter(|c| c.guard == GuardLevel::Verify) {
-            c.guard = GuardLevel::Confirm;
-            c.pass_protect = has_pass;
-            c.protect = legacy.clone();
+        // the oldest files kept What to protect app-wide, in settings.toml
+        let app_list = crate::settings::read_file().ok().and_then(|v| v.get("protect").and_then(|p| p.as_array()).map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect::<Vec<_>>()));
+        for c in all.iter_mut().filter(|c| c.guard.is_some() || c.pass_protect) {
+            to_level(c, has_pass, &app_list);
         }
         store(all.clone())?;
     }
     Ok(all)
+}
+
+/// One connection from before security levels: Ask for passphrase or Protect with passphrase becomes
+/// Strict (Low without a passphrase, as it already acted), Ask to confirm becomes Low with every
+/// statement (it asked before every write), Run it becomes None.
+fn to_level(c: &mut Conn, has_pass: bool, app_list: &Option<Vec<String>>) {
+    let verify = c.guard == Some(LegacyGuard::Verify);
+    if verify && c.protect.is_none() {
+        c.protect = app_list.clone();
+    }
+    c.level = if (c.pass_protect || verify) && has_pass {
+        SecurityLevel::Strict
+    } else if c.pass_protect || verify {
+        SecurityLevel::Low
+    } else if c.guard == Some(LegacyGuard::Confirm) {
+        c.protect = None;
+        SecurityLevel::Low
+    } else {
+        SecurityLevel::None
+    };
+    c.guard = None;
+    c.pass_protect = false;
 }
 
 fn store(conns: Vec<Conn>) -> Result<(), String> {
@@ -223,23 +251,20 @@ pub async fn save_connection(mut conn: Conn, password: Option<String>, lock: Sta
     if conn.engine == Engine::Sqlite && conn.file.as_deref().is_none_or(|f| f.trim().is_empty()) {
         return Err("Choose the database file".into());
     }
-    if conn.guard == GuardLevel::Verify {
-        return Err("Pick Run it or Ask to confirm for the write guard.".into());
-    }
     let is_new = conn.id.is_empty();
     if is_new {
         conn.id = new_id();
         conn.created_at = Some(now_ms());
     }
     let has_pass = tokio::task::spawn_blocking(keychain::has_passphrase).await.map_err(|e| e.to_string())??;
-    if !has_pass {
-        conn.pass_protect = false;
+    if conn.level == SecurityLevel::Strict && !has_pass {
+        return Err("Strict needs a passphrase. Set one in Settings › Security.".into());
     }
-    // weakening passphrase protection needs What to protect opened with the passphrase first (unlock_protect)
+    // weakening a Strict connection needs it opened with the passphrase first (unlock_protect)
     if !is_new && has_pass && !guard.protect_unlocked() {
         if let Ok(old) = find(&conn.id) {
             if lowers_protection(&old, &conn) {
-                return Err("Passphrase protection is locked. Enter the passphrase to change it.".into());
+                return Err("Strict is locked. Use Change and enter the passphrase to lower it.".into());
             }
         }
     }
@@ -252,8 +277,7 @@ pub async fn save_connection(mut conn: Conn, password: Option<String>, lock: Sta
     let saved = conn.clone();
     update(&lock, move |all| {
         match all.iter_mut().find(|c| c.id == conn.id) {
-            // the guard level is changed only through set_guard
-            Some(c) => *c = Conn { guard: c.guard, last_opened: c.last_opened, created_at: c.created_at, ..conn },
+            Some(c) => *c = Conn { last_opened: c.last_opened, created_at: c.created_at, ..conn },
             None => all.push(conn),
         }
         Ok(())
@@ -283,28 +307,36 @@ pub fn touch_connection(id: String, lock: State<'_, ConnLock>) -> Result<(), Str
     Ok(())
 }
 
-/// Changes a connection's write guard: Run it or Ask to confirm. Passphrase protection is separate
-/// (save_connection), so this never needs the passphrase.
+/// Changes a connection's security level (the tabs bar). Strict needs a passphrase set; lowering it from
+/// Strict needs the passphrase, or Touch ID when the connection allows it.
 #[tauri::command]
-pub async fn set_guard(id: String, level: GuardLevel, lock: State<'_, ConnLock>) -> Result<(), String> {
-    if level == GuardLevel::Verify {
-        return Err("Pick Run it or Ask to confirm for the write guard.".into());
+pub async fn set_level(id: String, level: SecurityLevel, approval: Option<crate::guard::Approval>, lock: State<'_, ConnLock>) -> Result<(), String> {
+    let cur = find(&id)?;
+    if cur.level == level {
+        return Ok(());
+    }
+    let has_pass = tokio::task::spawn_blocking(keychain::has_passphrase).await.map_err(|e| e.to_string())??;
+    if level == SecurityLevel::Strict && !has_pass {
+        return Err("Strict needs a passphrase. Set one in Settings › Security.".into());
+    }
+    if cur.level == SecurityLevel::Strict && has_pass {
+        crate::guard::approve_lowering(&cur, approval).await?;
     }
     update(&lock, |all| {
         if let Some(c) = all.iter_mut().find(|c| c.id == id) {
-            c.guard = level;
+            c.level = level;
         }
         Ok(())
     })?;
     Ok(())
 }
 
-/// The passphrase was disabled: every connection's passphrase protection turns off (its guard stays).
-pub fn clear_pass_protect() -> Result<(), String> {
+/// The passphrase was disabled: Strict connections become Low, so they still ask before the same statements.
+pub fn strict_to_low() -> Result<(), String> {
     let mut all = load()?;
-    if all.iter().any(|c| c.pass_protect) {
-        for c in all.iter_mut() {
-            c.pass_protect = false;
+    if all.iter().any(|c| c.level == SecurityLevel::Strict) {
+        for c in all.iter_mut().filter(|c| c.level == SecurityLevel::Strict) {
+            c.level = SecurityLevel::Low;
         }
         store(all)?;
     }
@@ -315,8 +347,9 @@ pub fn clear_pass_protect() -> Result<(), String> {
 mod tests {
     use super::*;
 
-    fn conn(pass_protect: bool, protect: Option<&[&str]>) -> Conn {
-        let toml = format!("id = \"x\"\nname = \"x\"\nengine = \"sqlite\"\npassProtect = {pass_protect}\n");
+    fn conn(strict: bool, protect: Option<&[&str]>) -> Conn {
+        let level = if strict { "strict" } else { "low" };
+        let toml = format!("id = \"x\"\nname = \"x\"\nengine = \"sqlite\"\nlevel = \"{level}\"\n");
         let mut c: Conn = toml::from_str(&toml).unwrap();
         c.protect = protect.map(|l| l.iter().map(|s| s.to_string()).collect());
         c
@@ -336,6 +369,26 @@ mod tests {
         assert!(!lowers_protection(&conn(true, Some(&["DROP"])), &conn(true, Some(&["DROP", "DELETE"]))));
         assert!(!lowers_protection(&conn(false, None), &conn(true, None)));
         assert!(!lowers_protection(&conn(false, Some(&["DROP"])), &conn(false, None)));
+    }
+
+    #[test]
+    fn old_guards_become_levels_never_weaker() {
+        let old = |extra: &str| -> Conn { toml::from_str(&format!("id = \"x\"\nname = \"x\"\nengine = \"sqlite\"\n{extra}")).unwrap() };
+        let level = |extra: &str, has_pass: bool| {
+            let mut c = old(extra);
+            to_level(&mut c, has_pass, &None);
+            (c.level, c.protect, c.guard, c.pass_protect)
+        };
+        assert_eq!(level("guard = \"run\"\n", true).0, SecurityLevel::None);
+        assert_eq!(level("guard = \"confirm\"\nprotect = [\"DROP\"]\n", true), (SecurityLevel::Low, None, None, false));
+        assert_eq!(level("guard = \"run\"\npassProtect = true\nprotect = [\"DROP\"]\n", true).0, SecurityLevel::Strict);
+        assert_eq!(level("guard = \"run\"\npassProtect = true\n", false).0, SecurityLevel::Low);
+        assert_eq!(level("guard = \"verify\"\n", true).0, SecurityLevel::Strict);
+        // written back without the old keys
+        let mut c = old("guard = \"confirm\"\npassProtect = true\n");
+        to_level(&mut c, true, &None);
+        let text = toml::to_string(&c).unwrap();
+        assert!(text.contains("level = \"strict\"") && !text.contains("guard") && !text.contains("passProtect"));
     }
 
     #[test]

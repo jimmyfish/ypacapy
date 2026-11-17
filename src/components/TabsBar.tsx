@@ -1,25 +1,21 @@
 import { useEffect, useState } from "react";
 import { isDirty, useCurrent, useStore } from "../store";
-import type { GuardLevel } from "../types";
+import { LEVELS, type SecurityLevel } from "../types";
 import { useDismiss } from "./useDismiss";
-import { Check, ChevronDown, Fingerprint, PanelLeftClose, PanelLeftOpen, Plus, Shield, ShieldOff, SquareCode, Table2, X, icoC, ico } from "./Icon";
+import { Check, ChevronDown, Lock, PanelLeftClose, PanelLeftOpen, Plus, Shield, ShieldOff, SquareCode, Table2, X, icoC, ico } from "./Icon";
 
-const LEVELS: [GuardLevel, string, typeof Shield][] = [
-  ["run", "Run it", ShieldOff],
-  ["confirm", "Ask to confirm", Shield],
-];
+const LEVEL_ICON: Record<SecurityLevel, typeof Shield> = { none: ShieldOff, low: Shield, strict: Lock };
 
-/** The write guard of the open connection: voidHTTP's environment picker and menu. */
+/** The security level of the open connection: voidHTTP's environment picker and menu. Lowering from Strict asks for the passphrase (store.setLevel). */
 function GuardPicker() {
   const { conn } = useCurrent();
   const passSet = useStore((s) => s.pass.set);
   const [open, setOpen] = useState(false);
   const ref = useDismiss(open, () => setOpen(false));
   if (!conn) return null;
-  const level = conn.guard;
-  const [, label, Icon] = LEVELS.find(([l]) => l === level) ?? LEVELS[1];
-  // passphrase protection sits beside the guard, not in it: shown as a fingerprint on the picker
-  const protectedByPass = passSet && !!conn.passProtect;
+  const level = conn.level;
+  const [, label] = LEVELS.find(([l]) => l === level) ?? LEVELS[0];
+  const Icon = LEVEL_ICON[level] ?? ShieldOff;
   return (
     <div className="menu-anchor env-group guard" ref={ref}>
       <button
@@ -28,35 +24,42 @@ function GuardPicker() {
         data-level={level}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Write guard for ${conn.name}: ${label}${protectedByPass ? ", passphrase protection on" : ""}`}
-        title={`Write guard for ${conn.name}`}
+        aria-label={`Security level for ${conn.name}: ${label}`}
+        title={`Security level for ${conn.name}`}
         onClick={() => setOpen(!open)}
       >
         <Icon {...icoC("guard-ico")} />
         <span className="env-name">{label}</span>
-        {protectedByPass && <Fingerprint {...icoC("guard-pass")} />}
         <ChevronDown {...ico} />
       </button>
       {open && (
-        <div className="menu guard-menu" role="menu" aria-label={`Write guard for ${conn.name}`}>
-          <p className="menu-note">Before a write runs on {conn.name}</p>
-          {LEVELS.map(([l, text, I]) => (
-            <button
-              key={l}
-              type="button"
-              role="menuitemradio"
-              aria-checked={l === level}
-              onClick={() => {
-                setOpen(false);
-                void useStore.getState().setGuard(l);
-              }}
-            >
-              <I {...ico} />
-              <span>{text}</span>
-              <Check {...icoC("tick")} />
-            </button>
-          ))}
-          {protectedByPass && <p className="menu-note">Protected statements also ask for the passphrase. Change that in the connection's Options</p>}
+        <div className="menu guard-menu" role="menu" aria-label={`Security level for ${conn.name}`}>
+          <p className="menu-note">Security level for {conn.name}</p>
+          {LEVELS.map(([l, text, desc]) => {
+            const I = LEVEL_ICON[l];
+            const off = l === "strict" && !passSet && level !== "strict";
+            return (
+              <button
+                key={l}
+                type="button"
+                role="menuitemradio"
+                aria-checked={l === level}
+                disabled={off}
+                onClick={() => {
+                  setOpen(false);
+                  void useStore.getState().setLevel(l);
+                }}
+              >
+                <I {...ico} />
+                <span className="gm-text">
+                  <span>{text}</span>
+                  <small>{off ? "Set a passphrase in Settings first" : desc}</small>
+                </span>
+                <Check {...icoC("tick")} />
+              </button>
+            );
+          })}
+          <p className="menu-note">Pick the statements in the connection's Options</p>
         </div>
       )}
     </div>

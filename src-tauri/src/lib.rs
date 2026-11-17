@@ -123,7 +123,7 @@ pub fn run() {
             conns::save_connection,
             conns::delete_connection,
             conns::touch_connection,
-            conns::set_guard,
+            conns::set_level,
             db::test_connection,
             db::open_connection,
             db::close_connection,

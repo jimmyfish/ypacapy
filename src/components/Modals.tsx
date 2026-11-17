@@ -7,7 +7,7 @@ import { api, errText } from "../lib/api";
 import { highlightInline } from "../lib/sql";
 import { systemFonts } from "../lib/fonts";
 import { BUILTIN, DEFAULT_SCHEME, FAMILIES, SCHEMES, schemeSwatch, type BuiltinId } from "../lib/themes";
-import { DEFAULT_GUARD, STATEMENTS, type Approval, type Conn, type Engine, type GuardLevel, type Settings, type SslMode } from "../types";
+import { DEFAULT_LEVEL, LEVELS, STATEMENTS, type Approval, type Conn, type Engine, type SecurityLevel, type Settings, type SslMode } from "../types";
 import { Select } from "./Select";
 import { ColorPicker, EnginePicker } from "./Picker";
 import { when } from "../lib/time";
@@ -140,13 +140,13 @@ function SaveQueryModal({ tabId, onClose }: { tabId: string; onClose: () => void
 
 function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onClose: () => void }) {
   const [pass, setPass] = useState("");
-  const verify = m.ask.level === "verify";
+  const verify = m.ask.level === "strict";
   const approve = (a: Approval) => {
     onClose();
     m.onApprove(a);
   };
   return (
-    <Shell title={verify ? "Enter the passphrase to run this" : "Run this on " + m.connName + "?"} onClose={onClose}>
+    <Shell title={m.title ?? (verify ? "Enter the passphrase to run this" : "Run this on " + m.connName + "?")} onClose={onClose}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -155,7 +155,7 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
           } else approve({ kind: "confirm" });
         }}
       >
-        <p className="help">{m.ask.unreadable ? "ypacapy could not read what this SQL does, so it asks first." : `It changes data or structure on ${m.connName}:`}</p>
+        <p className="help">{m.message ?? (m.ask.unreadable ? "ypacapy could not read what this SQL does, so it asks first." : `It changes data or structure on ${m.connName}:`)}</p>
         {m.ask.kinds.length > 0 && (
           <div className="guard-kinds">
             {m.ask.kinds.map((k) => (
@@ -187,7 +187,7 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
             Cancel
           </button>
           <button type="submit" className="btn btn--danger" autoFocus={!verify}>
-            Run
+            {m.title ? "Lower it" : "Run"}
           </button>
         </footer>
       </form>
@@ -199,7 +199,6 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
 
 const PORTS: Record<Engine, number | undefined> = { postgres: 5432, mysql: 3306, sqlite: undefined };
 const SSL_MODES: [SslMode, string][] = [["disable", "Disable"], ["prefer", "Prefer"], ["require", "Require"], ["verify-ca", "Verify CA"], ["verify-full", "Verify full"]];
-const GUARDS: [GuardLevel, string][] = [["run", "Run it"], ["confirm", "Ask to confirm"]];
 const ALL_KINDS = STATEMENTS.map(([k]) => k);
 /** a What to protect list as stored: missing when it holds every kind */
 const storedList = (l: string[]) => (l.length === ALL_KINDS.length ? undefined : l);
@@ -287,15 +286,20 @@ function ConnectModal({ conn, onClose }: { conn?: Conn; onClose: () => void }) {
   const [password, setPassword] = useState("");
   // the URL while it is being typed; null shows the one built from the fields
   const [urlDraft, setUrlDraft] = useState<string | null>(null);
-  const [guard, setGuard] = useState<GuardLevel>(conn?.guard ?? settings.defaultGuard ?? DEFAULT_GUARD);
-  // passphrase protection is the connection's own; a new one starts unprotected, every kind listed
+  const passSet = useStore((s) => s.pass.set);
+  // the connection's own level; a new one starts from Settings › Security (Low when that says Strict but no passphrase is set)
+  const [level, setLevel] = useState<SecurityLevel>(() => {
+    if (conn) return conn.level;
+    const d = settings.defaultLevel ?? DEFAULT_LEVEL;
+    return d === "strict" && !passSet ? "low" : d;
+  });
+  // what Low and Strict ask about, and Strict's Touch ID and unlock window; a new one lists every statement
   const [protection, setProtection] = useState<Protection>({
-    on: !!conn?.passProtect,
     touchId: !!conn?.touchId,
     window: conn?.unlockWindow ?? 0,
     list: conn?.protect ?? ALL_KINDS,
   });
-  // a connection's passphrase protection stays open for changes only while this dialog is open
+  // a Strict connection stays open for lowering only while this dialog is open
   useEffect(() => () => void api.lockProtect().catch(() => {}), []);
   const [rowLimit, setRowLimit] = useState(conn?.rowLimit ? String(conn.rowLimit) : "");
   const [stmtTimeout, setStmtTimeout] = useState(conn?.statementTimeout ? String(conn.statementTimeout) : "");
@@ -340,12 +344,11 @@ function ConnectModal({ conn, onClose }: { conn?: Conn; onClose: () => void }) {
     name: name.trim(),
     engine,
     color,
-    guard,
-    passProtect: protection.on || undefined,
+    level,
     protect: storedList(protection.list),
-    // Touch ID and the unlock window mean something only with protection on
-    touchId: (protection.on && protection.touchId) || undefined,
-    unlockWindow: protection.on && protection.window ? protection.window : undefined,
+    // Touch ID and the unlock window mean something only under Strict
+    touchId: (level === "strict" && protection.touchId) || undefined,
+    unlockWindow: level === "strict" && protection.window ? protection.window : undefined,
     rowLimit: optNum(rowLimit),
     statementTimeout: optNum(stmtTimeout),
     heartbeat: lite || heartbeat === "app" ? undefined : heartbeat === "on",
@@ -397,8 +400,6 @@ function ConnectModal({ conn, onClose }: { conn?: Conn; onClose: () => void }) {
       // a new connection without a password stores none; an edit keeps the keychain's when the field is empty
       const saved = await api.saveConnection(c, lite ? null : password ? password : conn ? null : "");
       const st = useStore.getState();
-      // an edit keeps the old guard (save_connection never changes it); a change goes through set_guard
-      if (conn && conn.guard !== guard) await api.setGuard(saved.id, guard);
       await st.refreshConns();
       onClose();
       // Save & connect opens it (reconnecting a live session so it picks up the change);
@@ -540,19 +541,14 @@ function ConnectModal({ conn, onClose }: { conn?: Conn; onClose: () => void }) {
           </div>
 
           <div className="cx-panel" role="tabpanel" id="cp-options" aria-labelledby="ct-options" hidden={tab !== "options"}>
-            <h3 className="cx-h">Write guard</h3>
-            <div className="set-list">
-              <SetItem label="Write guard" desc="What happens before a write runs" htmlFor="c-guard">
-                <Select id="c-guard" className="field set-choice" value={guard} onChange={(e) => (setGuard(e.target.value as GuardLevel), setLine(null))}>
-                  {GUARDS.map(([v, t]) => (
-                    <option key={v} value={v}>
-                      {t}
-                    </option>
-                  ))}
-                </Select>
-              </SetItem>
-            </div>
-            <ProtectSection connId={conn?.id} value={protection} onChange={setProtection} lockable={!!conn?.passProtect} />
+            <SecuritySection
+              connId={conn?.id}
+              level={level}
+              onLevel={(l) => (setLevel(l), setLine(null))}
+              value={protection}
+              onChange={setProtection}
+              lockable={conn?.level === "strict" && passSet}
+            />
             <h3 className="cx-h">
               Queries <span className="cx-h-note">Empty uses the value in Settings</span>
             </h3>
@@ -880,21 +876,22 @@ type SubKind = "unlock" | "new" | "change" | "disable" | "reset";
 function SecurityPane() {
   const s = useStore((st) => st.settings);
   const set = useStore((st) => st.setSettings);
-  const guard = s.defaultGuard ?? DEFAULT_GUARD;
+  const passSet = useStore((st) => st.pass.set);
+  const level = s.defaultLevel ?? DEFAULT_LEVEL;
 
   return (
     <div className="set-pane">
       <h3>Security</h3>
       <p className="pane-note">
-        The passphrase is one for the whole app. Each connection keeps its own write guard and passphrase protection (Touch ID, how long it stays unlocked, what to
-        protect), set in its Options.
+        The passphrase is one for the whole app. Each connection keeps its own security level (None, Low or Strict) and the statements it asks about, set in its
+        Options or the tabs bar.
       </p>
       <div className="set-list">
-        <SetItem label="Default write guard for new connections" desc="Existing connections keep their own" htmlFor="sec-guard">
-          <Select id="sec-guard" className="field set-choice" value={guard} onChange={(e) => void set({ defaultGuard: e.target.value as GuardLevel })}>
-            {GUARDS.map(([v, t]) => (
-              <option key={v} value={v}>
-                {t}
+        <SetItem label="Default security level for new connections" desc="Existing connections keep their own" htmlFor="sec-level">
+          <Select id="sec-level" className="field set-choice" value={level} onChange={(e) => void set({ defaultLevel: e.target.value as SecurityLevel })}>
+            {LEVELS.map(([v, t]) => (
+              <option key={v} value={v} disabled={v === "strict" && !passSet && level !== "strict"}>
+                {v === "strict" && !passSet ? "Strict (set a passphrase below)" : t}
               </option>
             ))}
           </Select>
@@ -971,13 +968,12 @@ function PassphraseManager() {
   );
 }
 
-/** One connection's passphrase protection, in its Options. */
+/** What a connection's Low and Strict ask about, and Strict's Touch ID and unlock window, in its Options. */
 interface Protection {
-  on: boolean;
   touchId: boolean;
   /** seconds it stays unlocked after the passphrase; 0 asks every time */
   window: number;
-  /** What to protect, every kind in STATEMENTS order when never changed */
+  /** the statements to ask about, every kind in STATEMENTS order when never changed */
   list: string[];
 }
 
@@ -989,11 +985,25 @@ const UNLOCK_WINDOWS: [number, string][] = [
 ];
 
 /**
- * Protect with passphrase, and under it Touch ID, Stay unlocked for and What to protect, for one connection.
- * Offered only once a passphrase is set (in Settings › Security). A connection already protected is locked:
- * weakening it needs the passphrase first (unlock_protect).
+ * A connection's security level, Strict's Touch ID and Stay unlocked for, and the statements Low and Strict
+ * ask about. Strict needs a passphrase (set in Settings › Security). A connection saved as Strict is locked:
+ * lowering it, dropping a statement, Touch ID on or a longer unlock needs the passphrase first (unlock_protect).
  */
-function ProtectSection({ connId, value, onChange, lockable }: { connId?: string; value: Protection; onChange: (p: Protection) => void; lockable: boolean }) {
+function SecuritySection({
+  connId,
+  level,
+  onLevel,
+  value,
+  onChange,
+  lockable,
+}: {
+  connId?: string;
+  level: SecurityLevel;
+  onLevel: (l: SecurityLevel) => void;
+  value: Protection;
+  onChange: (p: Protection) => void;
+  lockable: boolean;
+}) {
   const pass = useStore((st) => st.pass);
   // Touch ID opens it for changes only when the connection, as saved, allows Touch ID
   const savedTouch = useStore((st) => !!st.conns.find((c) => c.id === connId)?.touchId);
@@ -1001,48 +1011,45 @@ function ProtectSection({ connId, value, onChange, lockable }: { connId?: string
   const [unlocked, setUnlocked] = useState(false);
   const locked = lockable && !unlocked;
   const put = (p: Partial<Protection>) => onChange({ ...value, ...p });
+  const desc = LEVELS.find(([l]) => l === level)?.[2];
 
   return (
     <>
-      <h3 className="cx-h">
-        Passphrase <span className="cx-h-note">Set, changed and disabled in Settings › Security</span>
-      </h3>
+      <h3 className="cx-h">Security</h3>
       <div className="set-list">
-        {pass.set ? (
+        <SetItem label="Security level" desc={locked ? "Locked. Use Change below to lower it" : desc} htmlFor="c-level">
+          <Select id="c-level" className="field set-choice" value={level} onChange={(e) => onLevel(e.target.value as SecurityLevel)}>
+            {LEVELS.map(([v, t]) => (
+              <option key={v} value={v} disabled={(v === "strict" && !pass.set && level !== "strict") || (locked && v !== "strict")}>
+                {v === "strict" && !pass.set ? "Strict (needs a passphrase, in Settings)" : t}
+              </option>
+            ))}
+          </Select>
+        </SetItem>
+        {level === "strict" && (
           <>
-            <SetItem label="Protect with passphrase" desc={locked ? "Locked. Use Change below to weaken it" : "The statements picked below ask for it, even under Run it"} htmlFor="c-pass-protect">
-              <input id="c-pass-protect" className="switch" type="checkbox" role="switch" disabled={locked} checked={value.on} onChange={(e) => put({ on: e.target.checked })} />
+            <SetItem label="Open with Touch ID" htmlFor="c-touch" sub desc={pass.touchIdAvailable ? undefined : "This Mac has no Touch ID ready"}>
+              <input id="c-touch" className="switch" type="checkbox" role="switch" disabled={locked || !pass.touchIdAvailable} checked={value.touchId} onChange={(e) => put({ touchId: e.target.checked })} />
             </SetItem>
-            {value.on && (
-              <>
-                <SetItem label="Open with Touch ID" htmlFor="c-touch" sub desc={pass.touchIdAvailable ? undefined : "Touch ID is not available on this Mac"}>
-                  <input id="c-touch" className="switch" type="checkbox" role="switch" disabled={locked || !pass.touchIdAvailable} checked={value.touchId} onChange={(e) => put({ touchId: e.target.checked })} />
-                </SetItem>
-                <SetItem label="Stay unlocked for" desc="After the passphrase, for this connection only" htmlFor="c-window" sub>
-                  <Select id="c-window" className="field set-choice" disabled={locked} value={String(value.window)} onChange={(e) => put({ window: Number(e.target.value) })}>
-                    {UNLOCK_WINDOWS.map(([v, t]) => (
-                      <option key={v} value={v}>
-                        {t}
-                      </option>
-                    ))}
-                  </Select>
-                </SetItem>
-              </>
-            )}
+            <SetItem label="Stay unlocked for" desc="After the passphrase, for this connection only" htmlFor="c-window" sub>
+              <Select id="c-window" className="field set-choice" disabled={locked} value={String(value.window)} onChange={(e) => put({ window: Number(e.target.value) })}>
+                {UNLOCK_WINDOWS.map(([v, t]) => (
+                  <option key={v} value={v}>
+                    {t}
+                  </option>
+                ))}
+              </Select>
+            </SetItem>
           </>
-        ) : (
-          <SetItem label="No passphrase set" desc="Set one in Settings › Security to protect this connection">
-            {null}
-          </SetItem>
         )}
       </div>
-      {pass.set && value.on && (
+      {level !== "none" && (
         <>
           <div className="protect-head cx-protect-head">
             <h3 className="cx-h">
-              What to protect <span className="cx-h-note">For this connection</span>
+              Statements to ask about <span className="cx-h-note">For this connection</span>
             </h3>
-            {lockable && (
+            {lockable && level === "strict" && (
               <button
                 type="button"
                 className="btn btn--quiet"
@@ -1075,7 +1082,7 @@ function ProtectSection({ connId, value, onChange, lockable }: { connId?: string
                   className="switch"
                   type="checkbox"
                   role="switch"
-                  disabled={locked}
+                  disabled={level === "strict" && locked}
                   checked={value.list.includes(k)}
                   onChange={(e) => put({ list: ALL_KINDS.filter((x) => (x === k ? e.target.checked : value.list.includes(x))) })}
                 />

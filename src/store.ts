@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { api, errText } from "./lib/api";
 import { tableSelect } from "./lib/sql";
 import { editCount, type Edits } from "./lib/edit";
-import type { Approval, Ask, Conn, GuardLevel, HistoryEntry, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
+import type { Approval, Ask, Conn, HistoryEntry, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
 
 export type SettingsSection = "appearance" | "queries" | "security" | "data";
 export type SideView = "schema" | "history" | "saved";
@@ -13,7 +13,8 @@ export type Modal =
   | { kind: "confirm"; title: string; message: string; confirmLabel?: string; onConfirm: () => void }
   | { kind: "prompt"; title: string; label: string; initial: string; onSubmit: (v: string) => void }
   | { kind: "saveQuery"; tabId: string }
-  | { kind: "guard"; ask: Ask; connName: string; onApprove: (a: Approval) => void };
+  /** the passphrase or confirm ask before a run; with title and message, the passphrase before lowering Strict */
+  | { kind: "guard"; ask: Ask; connName: string; title?: string; message?: string; onApprove: (a: Approval) => void };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -53,7 +54,7 @@ interface State {
   reconnect(id: string): Promise<void>;
   setDatabase(db: string): Promise<void>;
   setSchema(schema: string): void;
-  setGuard(level: GuardLevel): Promise<void>;
+  setLevel(level: SecurityLevel, approval?: Approval): Promise<void>;
 
   toggle(path: string): void;
   loadSchema(schema: string): Promise<void>;
@@ -363,15 +364,27 @@ export const useStore = create<State>()((set, get) => {
       if (!get().sessions[id ?? ""]?.tree[schema]) void get().loadSchema(schema);
     },
 
-    async setGuard(level) {
+    async setLevel(level, approval) {
       const id = get().currentId;
       const conn = get().conns.find((c) => c.id === id);
-      if (!id || !conn || conn.guard === level) return;
+      if (!id || !conn || conn.level === level) return;
+      // lowering from Strict needs the passphrase first, or Touch ID when the connection allows it
+      const ask = (error: string | null) =>
+        get().openModal({
+          kind: "guard",
+          ask: { kind: "ask", kinds: [], level: "strict", touchId: !!conn.touchId && get().pass.touchIdAvailable, unreadable: false, error },
+          connName: conn.name,
+          title: `Lower ${conn.name} from Strict?`,
+          message: `Enter the passphrase to change it to ${level === "low" ? "Low" : "None"}.`,
+          onApprove: (a) => void get().setLevel(level, a),
+        });
+      if (conn.level === "strict" && get().pass.set && !approval) return ask(null);
       try {
-        await api.setGuard(id, level);
+        await api.setLevel(id, level, approval);
         await get().refreshConns();
       } catch (e) {
-        get().showToast(errText(e));
+        if (approval) ask(errText(e));
+        else get().showToast(errText(e));
       }
     },
 

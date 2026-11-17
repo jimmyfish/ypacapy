@@ -752,10 +752,12 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 /* the write guard of the open connection: voidHTTP's environment picker and menu */
 .guard .env-picker .ico:last-child { width: 14px; height: 14px; color: var(--color-muted); }
 /* passphrase protection on: a fingerprint beside the guard's label */
-.guard .env-picker .guard-pass { width: 14px; height: 14px; color: var(--color-link); }
-.guard .env-picker[data-level="run"] .guard-ico { color: var(--color-warn); }
+.guard .env-picker[data-level="none"] .guard-ico { color: var(--color-warn); }
 .guard-menu { min-width: 280px; }
-.guard-menu button span { flex: 1; }
+/* security level menu: the name over a one-line description */
+.guard-menu .gm-text { display: grid; gap: 1px; flex: 1; }
+.guard-menu .gm-text small { color: var(--color-muted); font-size: var(--text-sm); }
+.guard-menu button { min-height: 44px; }
 .guard-menu button .tick { color: var(--color-link); }
 .guard-menu button[aria-checked="false"] .tick { visibility: hidden; }
 .menu-note { padding: var(--space-xs) var(--space-sm) var(--space-2xs); color: var(--color-muted); font-size: var(--text-sm); }

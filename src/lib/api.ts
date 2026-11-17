@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Approval, Conn, HistoryEntry, OpenInfo, RunOutcome, Saved, SchemaObjects, Settings, TableInfo } from "../types";
+import type { Approval, Conn, HistoryEntry, OpenInfo, RunOutcome, Saved, SchemaObjects, SecurityLevel, Settings, TableInfo } from "../types";
 
 /** Every Tauri command, typed. Rust errors arrive as strings. */
 export const api = {
@@ -9,7 +9,7 @@ export const api = {
   saveConnection: (conn: Conn, password: string | null) => invoke<Conn>("save_connection", { conn, password }),
   deleteConnection: (id: string) => invoke<void>("delete_connection", { id }),
   touchConnection: (id: string) => invoke<void>("touch_connection", { id }),
-  setGuard: (id: string, level: string) => invoke<void>("set_guard", { id, level }),
+  setLevel: (id: string, level: SecurityLevel, approval?: Approval) => invoke<void>("set_level", { id, level, approval }),
   testConnection: (conn: Conn, password: string | null) => invoke<{ server: string; ms: number }>("test_connection", { conn, password }),
   openConnection: (id: string, database?: string) => invoke<OpenInfo>("open_connection", { id, database }),
   closeConnection: (id: string) => invoke<void>("close_connection", { id }),

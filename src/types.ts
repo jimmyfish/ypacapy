@@ -1,8 +1,17 @@
 export type Engine = "postgres" | "mysql" | "sqlite";
-/** The write guard: Run it, or Ask to confirm before any write. Passphrase protection is separate (Conn.passProtect). */
-export type GuardLevel = "run" | "confirm";
-/** Write guard for a new connection when Settings › Security has no default stored. Existing connections keep their own. */
-export const DEFAULT_GUARD: GuardLevel = "run";
+/**
+ * A connection's security level, for the statements it asks about (Conn.protect): None runs them, Low asks to
+ * confirm, Strict asks for the passphrase (needs one set, in Settings › Security). Other statements run.
+ */
+export type SecurityLevel = "none" | "low" | "strict";
+/** Level for a new connection when Settings › Security has no default stored. Existing connections keep their own. */
+export const DEFAULT_LEVEL: SecurityLevel = "none";
+/** Each level, its name and what it does: the tabs bar menu, Options and Settings */
+export const LEVELS: [SecurityLevel, string, string][] = [
+  ["none", "None", "Every statement runs"],
+  ["low", "Low", "Confirm the picked statements"],
+  ["strict", "Strict", "Passphrase for the picked statements"],
+];
 export type SslMode = "disable" | "prefer" | "require" | "verify-ca" | "verify-full";
 
 /** connections.toml: one connection, never its password (that is in the keychain). */
@@ -18,14 +27,12 @@ export interface Conn {
   file?: string;
   /** 1..8, src/lib/connColors.ts */
   color: number;
-  guard: GuardLevel;
-  /** Protect with passphrase: the kinds in `protect` ask for the app passphrase, whatever the guard; no effect without a passphrase */
-  passProtect?: boolean;
-  /** What to protect for this connection; missing = every kind */
+  level: SecurityLevel;
+  /** Low and Strict: the statements they ask about; missing = every kind */
   protect?: string[];
-  /** with passProtect: Touch ID may stand in for the passphrase */
+  /** Strict: Touch ID may stand in for the passphrase */
   touchId?: boolean;
-  /** with passProtect: seconds this connection stays unlocked after the passphrase; missing = ask every time */
+  /** Strict: seconds this connection stays unlocked after the passphrase; missing = ask every time */
   unlockWindow?: number;
   /** Options tab; each one missing = the value in Settings */
   rowLimit?: number;
@@ -64,8 +71,8 @@ export interface Settings {
   keepHistory?: boolean;
   heartbeat?: boolean;
   heartbeatEvery?: number;
-  /** write guard for new connections; missing = DEFAULT_GUARD */
-  defaultGuard?: GuardLevel;
+  /** security level for new connections; missing = DEFAULT_LEVEL */
+  defaultLevel?: SecurityLevel;
   /** ms: when the passphrase was last reset with macOS authentication (Forgot passphrase), shown in Security */
   passphraseResetAt?: number;
   /** layout */
@@ -123,8 +130,8 @@ export interface ResultSet {
 export interface Ask {
   kind: "ask";
   kinds: string[];
-  /** confirm: the guard; verify: passphrase protection */
-  level: "confirm" | "verify";
+  /** low: confirm; strict: the passphrase */
+  level: "low" | "strict";
   touchId: boolean;
   unreadable: boolean;
   error: string | null;

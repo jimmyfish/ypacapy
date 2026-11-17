@@ -16,7 +16,7 @@ use sqlparser::parser::Parser;
 use sqlparser::tokenizer::{Token, Tokenizer};
 use tauri::State;
 
-use crate::conns::{Conn, Engine, GuardLevel};
+use crate::conns::{Conn, Engine, SecurityLevel};
 
 /// Every statement kind that writes, in What to protect's order. Ask to confirm asks about all of them;
 /// passphrase protection about the ones in a connection's What to protect. SELECT never asks.
@@ -316,8 +316,8 @@ pub enum Approval {
 #[serde(rename_all = "camelCase")]
 pub struct Ask {
     pub kinds: Vec<&'static str>,
-    /// confirm (the guard) or verify (passphrase protection)
-    pub level: GuardLevel,
+    /// low (confirm) or strict (passphrase)
+    pub level: SecurityLevel,
     pub touch_id: bool,
     pub unreadable: bool,
     /// a wrong passphrase on the previous try
@@ -326,47 +326,59 @@ pub struct Ask {
 
 /// Whether a run may go ahead. Ok(None): run. Ok(Some(ask)): ask first, then call again with an approval.
 ///
-/// Two checks, the stronger first. Passphrase protection (when on and a passphrase is set): the kinds in
-/// the connection's What to protect, and unreadable text, ask for the passphrase, or Touch ID when the
-/// connection allows it, whatever the guard; the connection then stays unlocked for its own window.
-/// Otherwise the guard: Ask to confirm asks before any write or unreadable text; Run it runs.
+/// By the connection's security level, for the statements it asks about (and SQL that cannot be read):
+/// None runs; Low asks to confirm; Strict asks for the passphrase, or Touch ID when the connection allows
+/// it, and the connection then stays unlocked for its own window. Other statements run.
 pub async fn check(c: &Classified, conn: &Conn, approval: Option<Approval>, guard: &GuardState) -> Result<Option<Ask>, String> {
     let writes = c.names();
-    if writes.is_empty() && !c.unreadable {
+    if conn.level == SecurityLevel::None || (writes.is_empty() && !c.unreadable) {
         return Ok(None);
     }
-    let has_pass = conn.pass_protect && tokio::task::spawn_blocking(crate::keychain::has_passphrase).await.map_err(|e| e.to_string())??;
-    let protect = conn.protect_list();
-    let guarded: Vec<&'static str> = writes.iter().copied().filter(|k| protect.contains(k)).collect();
-    if has_pass && (!guarded.is_empty() || c.unreadable) {
-        let touch = conn.touch_id;
-        let window = conn.unlock_window.unwrap_or(0);
-        let ask = |error: Option<String>| Ask { kinds: guarded.clone(), level: GuardLevel::Verify, touch_id: touch, unreadable: c.unreadable, error };
-        if guard.unlocked(&conn.id) {
-            return Ok(None);
-        }
-        return match approval {
-            Some(Approval::Passphrase { passphrase }) => {
-                if tokio::task::spawn_blocking(move || crate::keychain::check_passphrase(&passphrase)).await.map_err(|e| e.to_string())?? {
-                    guard.note_unlock(&conn.id, window);
-                    Ok(None)
-                } else {
-                    Ok(Some(ask(Some("That passphrase is not right.".into()))))
-                }
-            }
-            Some(Approval::TouchId) if touch => match touchid::authenticate("run a statement that changes data".into()).await {
-                Ok(()) => {
-                    guard.note_unlock(&conn.id, window);
-                    Ok(None)
-                }
-                Err(e) => Ok(Some(ask(Some(e)))),
-            },
-            _ => Ok(Some(ask(None))),
-        };
+    let list = conn.protect_list();
+    let asked: Vec<&'static str> = writes.iter().copied().filter(|k| list.contains(k)).collect();
+    if asked.is_empty() && !c.unreadable {
+        return Ok(None);
     }
-    match (conn.guard, approval) {
-        (GuardLevel::Run, _) | (_, Some(_)) => Ok(None),
-        _ => Ok(Some(Ask { kinds: writes, level: GuardLevel::Confirm, touch_id: false, unreadable: c.unreadable, error: None })),
+    // Strict without a passphrase (it was disabled meanwhile) asks as Low does
+    let strict = conn.level == SecurityLevel::Strict && tokio::task::spawn_blocking(crate::keychain::has_passphrase).await.map_err(|e| e.to_string())??;
+    if !strict {
+        return Ok(match approval {
+            Some(_) => None,
+            None => Some(Ask { kinds: asked, level: SecurityLevel::Low, touch_id: false, unreadable: c.unreadable, error: None }),
+        });
+    }
+    let touch = conn.touch_id;
+    let window = conn.unlock_window.unwrap_or(0);
+    let ask = |error: Option<String>| Ask { kinds: asked.clone(), level: SecurityLevel::Strict, touch_id: touch, unreadable: c.unreadable, error };
+    if guard.unlocked(&conn.id) {
+        return Ok(None);
+    }
+    match approval {
+        Some(Approval::Passphrase { passphrase }) => {
+            if tokio::task::spawn_blocking(move || crate::keychain::check_passphrase(&passphrase)).await.map_err(|e| e.to_string())?? {
+                guard.note_unlock(&conn.id, window);
+                Ok(None)
+            } else {
+                Ok(Some(ask(Some("That passphrase is not right.".into()))))
+            }
+        }
+        Some(Approval::TouchId) if touch => match touchid::authenticate("run a statement that changes data".into()).await {
+            Ok(()) => {
+                guard.note_unlock(&conn.id, window);
+                Ok(None)
+            }
+            Err(e) => Ok(Some(ask(Some(e)))),
+        },
+        _ => Ok(Some(ask(None))),
+    }
+}
+
+/// Lowering a connection from Strict: the passphrase, or Touch ID when that connection allows it.
+pub async fn approve_lowering(conn: &Conn, approval: Option<Approval>) -> Result<(), String> {
+    match approval {
+        Some(Approval::TouchId) if conn.touch_id => touchid::authenticate("lower the security level".into()).await,
+        Some(Approval::Passphrase { passphrase }) => verify(passphrase).await,
+        _ => Err("Enter the passphrase to lower the security level.".into()),
     }
 }
 
@@ -406,13 +418,13 @@ pub async fn set_passphrase(new: String, current: Option<String>) -> Result<(), 
     tokio::task::spawn_blocking(move || crate::keychain::set_passphrase(&new)).await.map_err(|e| e.to_string())?
 }
 
-/// Disable the passphrase: every connection's passphrase protection turns off; guards stay as they are.
+/// Disable the passphrase: Strict connections become Low.
 #[tauri::command]
 pub async fn disable_passphrase(current: String, guard: State<'_, GuardState>) -> Result<(), String> {
     verify(current).await?;
     tokio::task::spawn_blocking(crate::keychain::clear_passphrase).await.map_err(|e| e.to_string())??;
     guard.reset();
-    crate::conns::clear_pass_protect()
+    crate::conns::strict_to_low()
 }
 
 /// Forgot the passphrase: the Mac's owner (Touch ID or the login password) sets a new one. The old one
@@ -432,8 +444,8 @@ pub async fn reset_passphrase(new: String, guard: State<'_, GuardState>) -> Resu
     Ok(())
 }
 
-/// Opens a connection's passphrase protection for changes until lock_protect (the connection dialog
-/// closes). Touch ID only when that connection, as saved, allows it.
+/// Opens a Strict connection for lowering changes until lock_protect (the connection dialog closes).
+/// Touch ID only when that connection, as saved, allows it.
 #[tauri::command]
 pub async fn unlock_protect(conn_id: String, passphrase: Option<String>, touch_id: bool, guard: State<'_, GuardState>) -> Result<(), String> {
     let allows_touch = crate::conns::find(&conn_id).map(|c| c.touch_id).unwrap_or(false);

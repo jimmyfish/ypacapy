@@ -402,9 +402,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1794933205.6085231,
-    "seen": 1794933206.274713,
-    "ast_hash": "af7f14c456fd677ff7b2fe2038e79d9f",
+    "mtime": 1794933748.3705,
+    "seen": 1794933749.326455,
+    "ast_hash": "79c2242478db53f4ad1d55d9a40336a4",
     "semantic_hash": ""
   },
   "docs/assets/icons/ban.svg": {
@@ -525,6 +525,18 @@
     "mtime": 1794921731.4376774,
     "seen": 1794933173.883281,
     "ast_hash": "1ab1ccc27ebafc5fd0f4568f2a698ed9",
+    "semantic_hash": ""
+  },
+  "docs/assets/build-window.mjs": {
+    "mtime": 1794933739.722178,
+    "seen": 1794933749.326415,
+    "ast_hash": "7903d1056e0e5606917617485aa1c881",
+    "semantic_hash": ""
+  },
+  "docs/assets/ypacapy-window.svg": {
+    "mtime": 1794933739.756976,
+    "seen": 1794933749.3264692,
+    "ast_hash": "3c972659f71ea3dda7b9d8bb3c2cf50d",
     "semantic_hash": ""
   }
 }

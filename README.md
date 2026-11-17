@@ -28,6 +28,10 @@ PostgreSQL, MySQL/MariaDB and SQLite, on a small Rust core.
 
 [**Download**](https://github.com/jimmyfish/ypacapy/releases/latest) · [What it does](#what-it-does) · [The write guard](#the-write-guard) · [Shortcuts](#shortcuts) · [Hack on it](#hack-on-it) · [Changelog](CHANGELOG.md)
 
+<br />
+
+<img src="docs/assets/ypacapy-window.svg" alt="Three stacked ypacapy windows: at the back, a revenue-by-city query with its results; in the middle, the orders table in the dark theme with a WHERE filter; in front, Home with connections grouped into Production, Staging and Local" width="100%" />
+
 </div>
 
 ---
@@ -167,6 +171,7 @@ bun run typecheck    # TypeScript check only
 
 - Dev builds (`bun tauri dev`, `bun tauri build --debug`) never check for updates, so the GitHub release never replaces them. About shows their commit, branch and tag instead.
 - New icon? `bunx tauri icon app-icon.svg` regenerates the lot. Then `touch src-tauri/src/lib.rs` so `tauri dev` embeds it again.
+- The window stack at the top is drawn, not screenshotted. `node docs/assets/build-window.mjs` redraws `docs/assets/ypacapy-window.svg` with fresh dummy data.
 - Tests that need the outside world are `#[ignore]`d. Inside `src-tauri`, `cargo test` runs the unit tests and `cargo test -- --ignored` adds the Keychain test and the PostgreSQL tests (a local server on `localhost:5432` that lets `$USER` in; they only select and use session temp tables).
 - Agents (and the humans steering them) start at [AGENTS.md](AGENTS.md), which explains the graphify knowledge graph in `graphify-out/`.
 

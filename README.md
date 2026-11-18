@@ -87,6 +87,15 @@ After that, the app updates itself. A little chip shows up in the title strip wh
 - **Edit in place.** A result that reads one table plainly (no join, group, union or distinct), with its full primary key, can be edited. Type over a cell, `⌘⌫` a row, then `⌘S`. All changes go in one transaction, one `UPDATE` or `DELETE` per row keyed by the primary key. If any statement touches more or fewer than one row, the whole thing rolls back.
 - **Table tabs:** rows with a `WHERE` filter and paging, plus the table's columns, indexes and foreign keys from the catalog.
 
+### <img src="docs/assets/icons/network.svg" width="20" height="20" align="top" alt="" /> ER diagrams
+
+- **Show diagram** on a schema, or on a table for that table and the tables it links to. PostgreSQL, MySQL/MariaDB and SQLite.
+- **You pick the tables.** A picker lists the schema's tables, with a filter, Select all, Unselect all and Add linked tables. Only the ticked tables are read, and only from the catalog: columns, keys and unique indexes, never a row. Views are left out, since they have no foreign keys.
+- **Tables from other schemas** that a picked table links to are drawn too, with a dashed border (PostgreSQL in both directions; MySQL for the tables a picked table references).
+- **Drag tables, pan, zoom.** Select a table to see the columns its keys link and the cardinality at each end (`1`, `*`, `0..1`). Double-click opens its rows. Switch between all columns, key columns or table names only.
+- **Save keeps the layout.** Save (`⌘S`) stores the picked tables, where each one sits, the zoom and the column choice with the connection, so Show diagram brings it back as saved, after a restart too. Nothing is saved on its own: the toolbar says *Not saved* until you save, and closing asks first. Tables ticked later are placed to the right of the saved ones; a table altered since keeps its place.
+- **Export** as a PNG (with or without the background) or JPG image, Mermaid `erDiagram` code, DBML for dbdiagram.io, or a diagrams.net `.drawio` file. Everything is written on your Mac; ypacapy never opens or sends anything to those sites.
+
 ### <img src="docs/assets/icons/history.svg" width="20" height="20" align="top" alt="" /> History and saved queries
 
 - **History** belongs to the open connection: its last 2,000 runs, searchable, with time, rows and status. Clear empties only that connection's list.
@@ -136,7 +145,7 @@ Hands off the mouse.
 | `⇧⌘W` | Close the window |
 | `⌘↵` | Run the selection, or the statement at the cursor (in a table tab: re-read the rows) |
 | `⇧⌘↵` | Run the whole editor |
-| `⌘S` | Save the query, or write the grid's pending edits |
+| `⌘S` | Save the query, write the grid's pending edits, or save a diagram's layout |
 | `⌘/` | Comment or uncomment the selected lines |
 | `⌘\` | Show or hide the sidebar |
 | `⌘F` | Find a connection on Home |
@@ -145,6 +154,7 @@ Hands off the mouse.
 | `↵` / `F2` | Edit the selected cell (or just start typing) |
 | `⌘⌫` | Delete or restore the selected row |
 | `⌘` + arrow | Jump to the edge of the grid |
+| `+` / `-` / `0` | Zoom a diagram in, out, or to actual size |
 
 ## <img src="docs/assets/icons/database.svg" width="24" height="24" align="top" alt="" /> Where's my data?
 
@@ -153,7 +163,7 @@ On your Mac, in one folder you can find, back up and delete:
 - **`~/.config/ypacapy/`** (on macOS too, not Application Support), created with mode `0700`:
   - `settings.toml`: your settings
   - `connections.toml`: every connection, minus the passwords
-  - `ypacapy.db`: history, saved queries and each connection's open tabs (SQLite)
+  - `ypacapy.db`: history, saved queries, and each connection's open tabs and saved diagrams (SQLite)
 - **The macOS login Keychain**, service `ypacapy`: connection passwords and the passphrase hash. Items are marked not synchronizable, so iCloud Keychain never copies them off the Mac. Nothing secret is ever written to a file.
 
 Files are written through a temp file and a rename, so a crash never leaves half a file. Settings › Data on this Mac › Show in Finder takes you there.

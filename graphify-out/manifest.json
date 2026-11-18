@@ -396,15 +396,15 @@
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1795001278.801036,
-    "seen": 1795001305.7750762,
-    "ast_hash": "b14bc977350d80af65cd9a50b29ae0c7",
+    "mtime": 1795022100.1932404,
+    "seen": 1795022104.590192,
+    "ast_hash": "a2510f5b89fa3699375dc8505121ac83",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1794939831.719151,
-    "seen": 1794980407.9304361,
-    "ast_hash": "e2e0846a2ebe4eb5aa1774460aa53b94",
+    "mtime": 1795022100.192804,
+    "seen": 1795022104.590194,
+    "ast_hash": "dabafb12cf5c9c2d9d46fb80853c8dcc",
     "semantic_hash": ""
   },
   "docs/assets/icons/ban.svg": {
@@ -651,6 +651,12 @@
     "mtime": 1795020499.335131,
     "seen": 1795020900.425091,
     "ast_hash": "3b23dab49b7bfae2d428f75da5d96587",
+    "semantic_hash": ""
+  },
+  "docs/assets/icons/network.svg": {
+    "mtime": 1795022100.0221574,
+    "seen": 1795022104.590204,
+    "ast_hash": "1ab6332013e424345dce1a618136af6f",
     "semantic_hash": ""
   }
 }

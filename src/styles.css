@@ -1091,10 +1091,10 @@ body.row-resizing, body.row-resizing * { cursor: row-resize !important; user-sel
 .conn-card .proj-when { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conn-card:hover .proj-when, .conn-card:focus-within .proj-when, .conn-card.menu-open .proj-when { padding-right: 96px; }
 .card-actions .menu-anchor { display: inline-grid; }
-.move-menu { min-width: 220px; }
-.move-menu .menu-name { overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
-.move-menu [aria-checked] .tick { margin-left: auto; color: var(--color-link); }
-.move-menu [aria-checked="false"] .tick { visibility: hidden; }
+.card-menu { min-width: 220px; }
+.card-menu .menu-name { overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+.card-menu [aria-checked] .tick { margin-left: auto; color: var(--color-link); }
+.card-menu [aria-checked="false"] .tick { visibility: hidden; }
 .group-hint { display: flex; align-items: center; gap: var(--space-xs); margin-top: var(--space-md); font-size: var(--text-sm); }
 
 /* Home search: beside New connection. While it holds text, cards that miss and groups with no match hide,

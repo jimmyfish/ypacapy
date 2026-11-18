@@ -339,6 +339,44 @@ pub async fn delete_connection(id: String, lock: State<'_, ConnLock>, store: Sta
     store.forget_history(&id).await
 }
 
+/// Copies a connection under a new id, named "<name> copy" (or "copy 2", "copy 3"…), in the same
+/// group, never opened yet. Its keychain password is copied too, so the copy connects as it is.
+#[tauri::command]
+pub async fn duplicate_connection(id: String, lock: State<'_, ConnLock>) -> Result<Conn, String> {
+    let src = find(&id)?;
+    let new_id = new_id();
+    let (from, to) = (keychain::conn_account(&id), keychain::conn_account(&new_id));
+    tokio::task::spawn_blocking(move || match keychain::get(&from)? {
+        Some(pw) => keychain::set(&to, &pw),
+        None => Ok(()),
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    let mut copy = Conn { id: new_id, created_at: Some(now_ms()), last_opened: None, ..src };
+    let saved = update(&lock, |all| {
+        copy.name = copy_name(&copy.name, all);
+        all.push(copy.clone());
+        Ok(())
+    });
+    if let Err(e) = saved {
+        // the copy was never listed, so its password must not linger
+        let account = keychain::conn_account(&copy.id);
+        let _ = tokio::task::spawn_blocking(move || keychain::delete(&account)).await;
+        return Err(e);
+    }
+    Ok(copy)
+}
+
+/// "<name> copy", or "<name> copy N" with the first N no connection uses.
+fn copy_name(name: &str, all: &[Conn]) -> String {
+    let taken = |n: &str| all.iter().any(|c| c.name == n);
+    let first = format!("{name} copy");
+    if !taken(&first) {
+        return first;
+    }
+    (2..).map(|n| format!("{name} copy {n}")).find(|n| !taken(n)).unwrap_or(first)
+}
+
 /// A group name as stored: trimmed, and None when that leaves nothing.
 fn clean_group(g: Option<String>) -> Option<String> {
     g.map(|g| g.trim().to_string()).filter(|g| !g.is_empty())
@@ -408,6 +446,14 @@ pub fn strict_to_low() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn copy_names_skip_taken_ones() {
+        let named = |n: &str| Conn { name: n.into(), ..conn(false, None) };
+        assert_eq!(copy_name("prod", &[named("prod")]), "prod copy");
+        assert_eq!(copy_name("prod", &[named("prod"), named("prod copy")]), "prod copy 2");
+        assert_eq!(copy_name("prod", &[named("prod copy"), named("prod copy 2")]), "prod copy 3");
+    }
 
     fn conn(strict: bool, protect: Option<&[&str]>) -> Conn {
         let level = if strict { "strict" } else { "low" };

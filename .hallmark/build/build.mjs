@@ -4,27 +4,38 @@
 import fs from "node:fs";
 const SP = new URL(".", import.meta.url).pathname;
 const OUT = new URL("../preview", import.meta.url).pathname;
-// icon nodes are read as text from voidHTTP's lucide-react 0.460.0; point LUCIDE elsewhere if that checkout moves
-const LUCIDE = process.env.LUCIDE_ICONS || `${process.env.HOME}/Playgrounds/rea/voidHTTP/node_modules/lucide-react/dist/esm/icons`;
+// icon nodes are read as text from ypacapy's own lucide-react (the version in package.json, as the app)
+const LUCIDE = process.env.LUCIDE_ICONS || new URL("../../node_modules/lucide-react/dist/esm/icons", import.meta.url).pathname;
+const LUCIDE_VERSION = JSON.parse(fs.readFileSync(new URL("../../node_modules/lucide-react/package.json", import.meta.url), "utf8")).version;
 
 fs.writeFileSync(`${OUT}/app.css`, fs.readFileSync(`${SP}app.css.base`, "utf8") + fs.readFileSync(`${SP}ypacapy.css`, "utf8"));
 
-// ---------- icons: Lucide v0.460.0 nodes, read as text from voidHTTP's lucide-react ----------
+// ---------- icons: Lucide nodes, read as text from lucide-react's icon files ----------
 const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "house", "server", "hard-drive", "x", "plus", "settings-2", "search", "refresh-cw",
-  "ellipsis", "chevron-down", "chevron-right", "chevron-left", "folder", "eye", "square-function", "table-2", "square-code", "panel-left-close",
+  "ellipsis", "ellipsis-vertical", "shredder", "chevron-down", "chevron-right", "chevron-left", "folder", "eye", "square-function", "table-2", "square-code", "panel-left-close",
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus", "pin", "pin-off",
   "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check"];
+// Lucide 1.x renamed fingerprint; the old name is what the pages use
+const RENAMED = { fingerprint: "fingerprint-pattern" };
+// Lucide 1.x has no brand icons: GitHub's mark as lucide-react 0.460.0 drew it (ISC), the same as src/components/Icon.tsx
+const CUSTOM = {
+  github: `<path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/>`,
+};
 function symbol(name) {
-  const src = fs.readFileSync(`${LUCIDE}/${name}.js`, "utf8");
-  const start = src.indexOf("[", src.indexOf("createLucideIcon("));
-  const body = src.slice(start, src.indexOf("]);", start) + 1);
+  if (CUSTOM[name]) return `  <symbol id="i-${name}" viewBox="0 0 24 24">${CUSTOM[name]}</symbol>`;
+  let src = fs.readFileSync(`${LUCIDE}/${RENAMED[name] ?? name}.mjs`, "utf8");
+  // an old name kept as an alias re-exports the renamed icon's file (history → rotate-ccw-clock)
+  for (let m; (m = src.match(/export \{ default \} from '\.\/([\w-]+)\.mjs'/)); ) src = fs.readFileSync(`${LUCIDE}/${m[1]}.mjs`, "utf8");
+  // lucide-react 1.x: const __iconData = { name, size, node: [[tag, attrs], …], aliases }
+  const start = src.indexOf("node: [");
+  const body = src.slice(start, src.indexOf("aliases:", start) > 0 ? src.indexOf("aliases:", start) : src.indexOf("};", start));
   const els = [...body.matchAll(/\[\s*"(\w+)",\s*\{([^}]*)\}\s*\]/g)].map(([, tag, attrs]) =>
     `<${tag} ${[...attrs.matchAll(/(\w+):\s*"([^"]*)"/g)].filter(([, k]) => k !== "key").map(([, k, v]) => `${k}="${v}"`).join(" ")}/>`).join("");
-  if (!els) throw new Error(`no nodes for ${name}`);
+  if (start < 0 || !els) throw new Error(`no nodes for ${name}`);
   return `  <symbol id="i-${name}" viewBox="0 0 24 24">${els}</symbol>`;
 }
-const SPRITE = `<!-- icons: Lucide v0.460.0 (ISC), inlined from lucide-react's icon nodes -->
+const SPRITE = `<!-- icons: Lucide v${LUCIDE_VERSION} (ISC), inlined from lucide-react's icon nodes -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
 ${ICONS.map(symbol).join("\n")}
 </svg>`;
@@ -418,7 +429,7 @@ const ENGINE_GLYPH = {
 const engIco = (engine, size = 14) => `<svg class="engine-ico" width="${size}" height="${size}" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">${ENGINE_GLYPH[engine]}</svg>`;
 
 // Home
-// A connection card. Its actions (Move to group, Edit, Remove) show on hover; Move to group opens a menu of the groups.
+// A connection card. Its "…" shows on hover and holds every action: Edit, Duplicate, Move to group, Remove.
 const GROUPS = ["Production", "Staging"];
 const card = ([name, icon, n, engine], [head, tail], when, o = {}) => `
           <div class="project-card conn-card"${o.id ? ` data-card="${o.id}"` : ""} data-q="${esc(`${name} ${head}${tail} ${{ postgres: "postgresql pg", mysql: "mysql", sqlite: "sqlite", mongo: "mongodb mongo" }[engine]} ${o.group || ""}`.toLowerCase())}">
@@ -428,17 +439,19 @@ const card = ([name, icon, n, engine], [head, tail], when, o = {}) => `
             <span class="proj-when">${when}</span>${o.id ? `
             <span class="card-actions">
               <span class="menu-anchor">
-                <button type="button" class="icon-btn" title="Move to group" aria-label="Move ${name} to a group" aria-haspopup="menu" aria-expanded="false" data-menu="move-${o.id}">${ic("folder-input")}</button>
-                <div class="menu move-menu" id="move-${o.id}" role="menu" aria-label="Move ${name} to" hidden>
-                  <p class="menu-note">Move ${name} to</p>
-${(o.groups || GROUPS).map((g) => `                  <button type="button" role="menuitemradio" aria-checked="${g === o.group}">${ic("folder")}<span class="menu-name">${g}</span>${ic("check", "tick")}</button>`).join("\n")}
+                <button type="button" class="icon-btn" title="More actions" aria-label="More actions for ${name}" aria-haspopup="menu" aria-expanded="false" data-menu="cm-${o.id}">${ic("ellipsis-vertical")}</button>
+                <div class="menu card-menu" id="cm-${o.id}" role="menu" aria-label="Actions for ${name}" hidden>
+                  <button type="button" role="menuitem" data-href="./connect.html">${ic("settings-2")}<span class="menu-name">Edit connection</span></button>
+                  <button type="button" role="menuitem" data-duplicate>${ic("copy")}<span class="menu-name">Duplicate</span></button>
                   <hr>
-                  <button type="button" role="menuitem" data-new-group>${ic("folder-plus")}New group…</button>${o.group ? `
-                  <button type="button" role="menuitem">${ic("folder-minus")}Remove from group</button>` : ""}
+                  <p class="menu-note">Move to group</p>
+${(o.groups || GROUPS).map((g) => `                  <button type="button" role="menuitemradio" aria-checked="${g === o.group}">${ic("folder")}<span class="menu-name">${g}</span>${ic("check", "tick")}</button>`).join("\n")}
+                  <button type="button" role="menuitem" data-new-group>${ic("folder-plus")}<span class="menu-name">New group…</span></button>${o.group ? `
+                  <button type="button" role="menuitem">${ic("folder-minus")}<span class="menu-name">Remove from group</span></button>` : ""}
+                  <hr>
+                  <button type="button" role="menuitem" class="danger" data-remove="${name}">${ic("shredder")}<span class="menu-name">Remove connection</span></button>
                 </div>
               </span>
-              <button type="button" class="icon-btn" title="Edit connection" aria-label="Edit ${name}" data-href="./connect.html">${ic("settings-2")}</button>
-              <button type="button" class="icon-btn" title="Remove connection" aria-label="Remove ${name}">${ic("x")}</button>
             </span>` : ""}
           </div>`;
 const newCard = (group) => `
@@ -471,6 +484,8 @@ const groupSection = (id, name, cards, { open = 0 } = {}) => `
       </section>`;
 const C = {
   shop: card(CONNS[0], ["localhost", ":5432 / shop"], "Opened today at 09:41", { id: "shop", group: "Production" }),
+  // what Duplicate makes: same address, group and colour, "copy" on the name, never opened
+  shopCopy: card(["shop_prod copy", "server", 6, "postgres"], ["localhost", ":5432 / shop"], "Not opened yet", { id: "shopcopy", group: "Production" }),
   cms: card(CONNS[2], ["10.0.4.12", ":3306 / cms"], "Opened yesterday at 16:40", { id: "cms", group: "Production" }),
   events: card(["events_prod", "server", 2, "mongo"], ["events-prod.x1y2z.mongodb.net", " / events"], "Opened today at 09:58", { id: "events", group: "Production" }),
   staging: card(["loophealth-staging", "server", 4, "postgres"], ["loophealth-staging-3may.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com", ":5432 / postgres"], "Opened today at 09:12", { id: "staging", group: "Staging" }),
@@ -553,7 +568,7 @@ const manyHtml = `
 pages["home.html"] = page({
   title: "ypacapy preview, home",
   desc: "Design preview of ypacapy's Home: every connection on this Mac, gathered into groups you can open, fold, rename and ungroup.",
-  barHtml: bar("home", [["grouped", "Groups"], ["folded", "Group folded"], ["group-menu", "Group menu"], ["move-menu", "Move to group"], ["rename", "Renaming a group"], ["new-group", "New group"], ["no-groups", "No groups yet"], ["many", "40 connections"], ["search", "Search"], ["search-empty", "Search, no match"], ["dragging", "Dragging a card"], ["remove", "Remove connection"]]),
+  barHtml: bar("home", [["grouped", "Groups"], ["folded", "Group folded"], ["group-menu", "Group menu"], ["card-menu", "Card menu"], ["duplicated", "Duplicated"], ["rename", "Renaming a group"], ["new-group", "New group"], ["no-groups", "No groups yet"], ["many", "40 connections"], ["search", "Search"], ["search-empty", "Search, no match"], ["dragging", "Dragging a card"], ["remove", "Remove connection"]]),
   body: `
 <div class="app">${strip("home")}
   <div class="home">
@@ -567,7 +582,7 @@ pages["home.html"] = page({
       </div>
       <p class="sr-only" id="home-q-h">Enter opens the first match. Escape clears the search.</p>
       <div class="empty home-empty" id="home-empty" hidden><strong>No connection matches <span id="home-empty-q"></span></strong><span>Searches names, hosts, users, databases, files, engines and groups.</span><button type="button" class="link" id="home-clear">Clear the search</button></div>
-      <div class="conn-groups" data-when="grouped">${groupSection("prod", "Production", [C.shop, C.events, C.cms], { open: 2 })}${groupSection("staging", "Staging", [C.staging])}
+      <div class="conn-groups" data-when="grouped">${groupSection("prod", "Production", [C.shop, C.shopCopy, C.events, C.cms], { open: 2 })}${groupSection("staging", "Staging", [C.staging])}
       <section class="conn-group" data-group-id="none">
         <div class="group-head"><h2>Ungrouped</h2><span class="group-count">2</span><span class="drop-note">Drop to remove from its group</span></div>
         <div class="projects">${C.analytics}${C.backup}${newCard("")}
@@ -585,6 +600,7 @@ ${manyHtml}
     </div>
   </div>
 </div>
+<div class="toast" role="status" id="home-toast" hidden>Duplicated as shop_prod copy</div>
 <div class="backdrop" id="remove-dlg" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="rm-title">
     <h2 id="rm-title">Remove shop_prod?</h2>

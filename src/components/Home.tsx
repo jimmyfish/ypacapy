@@ -5,7 +5,7 @@ import { when } from "../lib/time";
 import type { Conn } from "../types";
 import { ConnTile } from "./ConnTile";
 import { useDismiss } from "./useDismiss";
-import { Check, ChevronDown, ChevronRight, Ellipsis, Folder, FolderInput, FolderMinus, FolderPlus, Pencil, PlugZap, Plus, Search, Settings2, X, ico, icoC } from "./Icon";
+import { Check, ChevronDown, ChevronRight, Copy, Ellipsis, EllipsisVertical, Folder, FolderInput, FolderMinus, FolderPlus, Pencil, PlugZap, Plus, Search, Settings2, Shredder, X, ico, icoC } from "./Icon";
 
 /** host or folder (gives way with an ellipsis) and the tail that always shows: port and database, or the file name */
 function address(c: Conn): [string, string] {
@@ -40,6 +40,10 @@ interface MenuItem {
   run: () => void;
   checked?: boolean;
   sep?: boolean;
+  /** a muted line naming the items below it, as "Move to group" */
+  heading?: boolean;
+  /** red: it deletes for good */
+  danger?: boolean;
 }
 
 /** An icon button with its menu below it (the tabs bar's level menu, the tree's "…" menu). */
@@ -61,13 +65,18 @@ function MenuButton({ label, title, icon, note, items, menuClass, onOpenChange }
       {open && (
         <div className={`menu${menuClass ? ` ${menuClass}` : ""}`} role="menu" aria-label={label}>
           {note && <p className="menu-note">{note}</p>}
-          {items.map((it) =>
+          {items.map((it, i) =>
             it.sep ? (
-              <hr key={`sep-${it.label}`} />
+              <hr key={`sep-${i}`} />
+            ) : it.heading ? (
+              <p key={`heading-${i}`} className="menu-note">
+                {it.label}
+              </p>
             ) : (
               <button
                 key={it.label}
                 type="button"
+                className={it.danger ? "danger" : undefined}
                 role={it.checked === undefined ? "menuitem" : "menuitemradio"}
                 aria-checked={it.checked}
                 onClick={() => {
@@ -290,26 +299,26 @@ export function Home() {
         </span>
         <span className="proj-when">{c.lastOpened ? `Opened ${when(c.lastOpened)}` : "Not opened yet"}</span>
         <span className="card-actions">
+          {/* every action in one "…": Edit, Duplicate, Move to group, Remove */}
           <MenuButton
-            label={`Move ${c.name} to a group`}
-            title="Move to group"
-            icon={<FolderInput {...ico} />}
-            note={`Move ${c.name} to`}
-            menuClass="move-menu"
+            label={`More actions for ${c.name}`}
+            title="More actions"
+            icon={<EllipsisVertical {...ico} />}
+            menuClass="card-menu"
             onOpenChange={(o) => setMenuCard(o ? c.id : null)}
             items={[
+              { label: "Edit connection", icon: <Settings2 {...ico} />, run: () => st.openModal({ kind: "connect", conn: c }) },
+              { label: "Duplicate", icon: <Copy {...ico} />, run: () => void st.duplicateConn(c.id) },
+              { label: "sep", icon: null, sep: true, run: () => {} },
+              { label: "Move to group", icon: null, heading: true, run: () => {} },
               ...groupNames.map((g) => ({ label: g, icon: <Folder {...ico} />, checked: g === c.group, run: () => void (g !== c.group && st.setGroup([c.id], g)) })),
-              ...(groupNames.length ? [{ label: "sep", icon: null, sep: true, run: () => {} }] : []),
               { label: "New group…", icon: <FolderPlus {...ico} />, run: () => newGroupFor(c) },
               ...(c.group ? [{ label: "Remove from group", icon: <FolderMinus {...ico} />, run: () => void st.setGroup([c.id], null) }] : []),
+              { label: "sep", icon: null, sep: true, run: () => {} },
+              // a shredder, not an X: the connection, its keychain password and history go for good
+              { label: "Remove connection", icon: <Shredder {...ico} />, danger: true, run: () => remove(c) },
             ]}
           />
-          <button type="button" className="icon-btn" title="Edit connection" aria-label={`Edit ${c.name}`} onClick={() => st.openModal({ kind: "connect", conn: c })}>
-            <Settings2 {...ico} />
-          </button>
-          <button type="button" className="icon-btn" title="Remove connection" aria-label={`Remove ${c.name}`} onClick={() => remove(c)}>
-            <X {...ico} />
-          </button>
         </span>
       </div>
     );

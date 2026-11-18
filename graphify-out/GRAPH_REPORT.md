@@ -1,25 +1,25 @@
 # Graph Report - ypacapy  (2026-11-18)
 
 ## Corpus Check
-- 65 files · ~196,744 words
+- 65 files · ~198,767 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 10 file(s) not represented in the graph (top: .css 5, (none) 4, .lock 1)
 
 ## Summary
-- 1339 nodes · 3033 edges · 74 communities (53 shown, 21 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 94 edges (avg confidence: 0.81)
+- 1333 nodes · 3100 edges · 66 communities (62 shown, 4 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 95 edges (avg confidence: 0.81)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e61cd66a`
+- Built from commit: `068fa7ed`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- mongosh.ts
+- QueryPane.tsx
 - types.ts
 - index.html (Query console preview)
-- conns.rs
+- store.rs
 - Query Executor Types
 - package.json
 - ResultGrid.tsx
@@ -28,7 +28,7 @@
 - with
 - keychain.rs
 - mongo.rs
-- Picker.tsx
+- types.ts
 - New Connection Preview
 - Tauri App Config
 - bson.ts
@@ -39,7 +39,7 @@
 - cache.yml
 - Modals.tsx
 - RunOutcome
-- fonts.rs
+- devDependencies
 - CollectionPane.tsx
 - themes.ts
 - edit.ts
@@ -51,50 +51,59 @@
 - classify
 - Cargo Crate
 - GuardState
-- updater.ts
-- complete.ts
+- AboutModal.tsx
+- SqlEditor.tsx
 - window.YpaThemes (themes.js scheme API)
 - mongo_shell.rs
 - Modals
 - apply() (settings preview)
-- apply_edits
+- UpdateChip.tsx
 - check
 - runQuery
 - store.ts
 - RawExec
-- Sidebar.tsx
-- ConnectModal
-- lib.rs
+- App.tsx
+- fonts.rs
+- updater.ts
 - Schema tree sidebar
-- AboutModal.tsx
+- UpdateChip
+- Settings Security pane
 - reload() (table preview)
 - Write guard (Run it / Ask to confirm / Ask for passphrase)
-- SecurityPane
-- EngineIcon.tsx
+- Engine
+- SslMode
+- duplicate_connection
+- scripts
+- LegacyGuard
+- MongoTls
+- SecurityLevel
+- Sidebar.tsx
+- Pool
+- conns.rs
 
 ## God Nodes (most connected - your core abstractions)
-1. `State` - 42 edges
+1. `State` - 43 edges
 2. `useStore` - 34 edges
-3. `ResultGrid()` - 24 edges
-4. `icoC()` - 23 edges
-5. `exec()` - 23 edges
-6. `R` - 21 edges
-7. `run()` - 21 edges
+3. `run()` - 26 edges
+4. `ResultGrid()` - 24 edges
+5. `exec()` - 24 edges
+6. `icoC()` - 23 edges
+7. `R` - 21 edges
 8. `react` - 21 edges
 9. `ConnectModal()` - 20 edges
 10. `useCurrent()` - 20 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `TablePane()` --implements--> `table.html (Table design preview)`  [INFERRED]
+  src/components/TablePane.tsx → .hallmark/preview/table.html
+- `ResultGrid()` --implements--> `Result grid with cell inspector and on-screen sort`  [INFERRED]
+  src/components/ResultGrid.tsx → .hallmark/preview/settings.html
 - `settings.html (Settings design preview)` --conceptually_related_to--> `SettingsModal()`  [INFERRED]
   .hallmark/preview/settings.html → src/components/Modals.tsx
 - `AppearancePane()` --implements--> `Settings Appearance pane`  [INFERRED]
   src/components/Modals.tsx → .hallmark/preview/settings.html
-- `SecurityPane()` --implements--> `Settings Security pane`  [INFERRED]
-  src/components/Modals.tsx → .hallmark/preview/settings.html
 - `PassDialog()` --implements--> `Passphrase sub-dialogs (set, change, disable, unlock)`  [INFERRED]
   src/components/Modals.tsx → .hallmark/preview/settings.html
-- `TablePane()` --implements--> `table.html (Table design preview)`  [INFERRED]
-  src/components/TablePane.tsx → .hallmark/preview/table.html
 
 ## Import Cycles
 - 1-file cycle: `src-tauri/src/keychain.rs -> src-tauri/src/keychain.rs`
@@ -107,59 +116,59 @@
 - **Write guard and passphrase protection flow** — hallmark_preview_settings_write_guard_picker, hallmark_preview_settings_what_to_protect, hallmark_preview_settings_passphrase_dialogs, hallmark_preview_settings_security_pane [INFERRED 0.85]
 - **Duplicated preview harness script (theme, fonts, URL carry) across screens** — hallmark_preview_connect_apply, hallmark_preview_home_apply, hallmark_preview_index_apply, hallmark_preview_connect_writeurl, hallmark_preview_home_writeurl, hallmark_preview_index_writeurl, hallmark_preview_index_ypathemes [INFERRED 0.95]
 
-## Communities (74 total, 21 thin omitted)
+## Communities (66 total, 4 thin omitted)
 
-### Community 0 - "mongosh.ts"
-Cohesion: 0.83
-Nodes (3): esc(), highlightMongo(), runs()
+### Community 0 - "QueryPane.tsx"
+Cohesion: 0.16
+Nodes (19): ConnWork(), CtxSelect(), Elapsed(), QueryContext(), QueryPane(), QueryResults(), RunMeta(), ItemIcon() (+11 more)
 
 ### Community 1 - "types.ts"
 Cohesion: 0.06
-Nodes (4): Edits, State, Approval, Settings
+Nodes (5): Edits, State, Approval, Saved, Settings
 
 ### Community 2 - "index.html (Query console preview)"
 Cohesion: 0.21
 Nodes (15): connect.html (New connection preview), home.html (Home / Connections preview), Connection tabs strip (app-strip / ptabs), Connections list (On this Mac), index.html (Query console preview), Query history sidebar, Lucide v0.460.0 inline SVG icon sprite, Saved queries sidebar (+7 more)
 
-### Community 3 - "conns.rs"
-Cohesion: 0.06
-Nodes (61): clean_group(), Conn, conn(), ConnFile, ConnLock, delete_connection(), Engine, Mongo (+53 more)
+### Community 3 - "store.rs"
+Cohesion: 0.22
+Nodes (13): now_ms(), clear_history(), delete_saved(), HISTORY_MAX, HistoryEntry, list_history(), list_saved(), load_workspace() (+5 more)
 
 ### Community 4 - "Query Executor Types"
-Cohesion: 0.05
-Nodes (15): Affected, ColumnBrief, EditRequest, HARD_CAP, impl_affected!, impl_cells!, impl_raw!, RunRequest (+7 more)
+Cohesion: 0.06
+Nodes (11): Affected, EditRequest, HARD_CAP, impl_affected!, impl_cells!, impl_raw!, RunRequest, TableColumn (+3 more)
 
 ### Community 5 - "package.json"
-Cohesion: 0.06
-Nodes (44): dependencies, lucide-react@0.460.0, react@^18.3.1, react-dom@^18.3.1, sql-formatter@15.9.0, @tauri-apps/api@^2.0.0, @tauri-apps/plugin-dialog@^2.0.0, @tauri-apps/plugin-opener@^2 (+36 more)
+Cohesion: 0.11
+Nodes (24): dependencies, lucide-react@1.75.0, react@^18.3.1, react-dom@^18.3.1, sql-formatter@15.9.0, @tauri-apps/api@^2.0.0, @tauri-apps/plugin-dialog@^2.0.0, @tauri-apps/plugin-opener@^2 (+16 more)
 
 ### Community 6 - "ResultGrid.tsx"
-Cohesion: 0.09
-Nodes (26): AnyFormat, Cell(), CellEditor(), CellMenu(), GridRow, jsonHtml(), MenuButton(), MenuItem (+18 more)
+Cohesion: 0.08
+Nodes (31): AnyFormat, Cell(), CellEditor(), ColKey, GridRow, jsonHtml(), MenuItem, ResultGrid() (+23 more)
 
 ### Community 7 - "guard.rs"
 Cohesion: 0.07
 Nodes (16): ALTER, available(), classify_stmt(), CREATE, DELETE, DROP, GRANT, INSERT (+8 more)
 
 ### Community 8 - "Home.tsx"
-Cohesion: 0.10
-Nodes (22): react, GroupSelect(), address(), dropAttr(), DropKey, ENGINE_WORDS, GroupRename(), haystack() (+14 more)
+Cohesion: 0.07
+Nodes (25): index.html (Vite app entry), react, GroupSelect(), address(), dropAttr(), DropKey, ENGINE_WORDS, GroupRename() (+17 more)
 
 ### Community 9 - "with"
 Cohesion: 0.05
 Nodes (40): outputs, runs-on, steps, GITHUB_TOKEN, TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD, jobs, create-release (+32 more)
 
 ### Community 10 - "keychain.rs"
-Cohesion: 0.13
-Nodes (16): check_passphrase(), clear_passphrase(), delete(), derive(), get(), get_string(), has_passphrase(), hex() (+8 more)
+Cohesion: 0.14
+Nodes (14): check_passphrase(), derive(), get(), get_string(), has_passphrase(), hex(), ITERATIONS, NOT_FOUND (+6 more)
 
 ### Community 11 - "mongo.rs"
-Cohesion: 0.06
-Nodes (45): Args, client_options(), code_name(), collect(), collections(), CollInfo, conn(), connect() (+37 more)
+Cohesion: 0.05
+Nodes (49): capitalise(), Args, canonical(), client_options(), code_name(), collect(), collections(), CollInfo (+41 more)
 
-### Community 12 - "Picker.tsx"
-Cohesion: 0.18
-Nodes (15): AppStrip(), ConnTile(), EngineIcon(), ColorPicker(), ENGINE_LABELS, EnginePicker(), ENGINES, Picker() (+7 more)
+### Community 12 - "types.ts"
+Cohesion: 0.12
+Nodes (22): UrlParts, GridEdit, EditTarget, CollInfo, ColumnBrief, Conn, DEFAULT_LEVEL, Engine (+14 more)
 
 ### Community 13 - "New Connection Preview"
 Cohesion: 0.22
@@ -170,20 +179,20 @@ Cohesion: 0.08
 Nodes (24): app, security, windows, build, beforeBuildCommand, beforeDevCommand, devUrl, frontendDist (+16 more)
 
 ### Community 15 - "bson.ts"
-Cohesion: 0.17
-Nodes (25): BsonType, cellText(), cellValue(), docsToSet(), fieldsOf(), iso(), isObj(), key() (+17 more)
+Cohesion: 0.23
+Nodes (21): BsonType, cellText(), cellValue(), docsToSet(), fieldsOf(), iso(), isObj(), key() (+13 more)
 
 ### Community 16 - "DB Catalog and Execute"
-Cohesion: 0.17
-Nodes (23): apply(), catalog(), conn(), connect(), done(), execute(), first(), on_pool! (+15 more)
+Cohesion: 0.24
+Nodes (16): catalog(), conn(), execute(), first(), on_pool!, Open, open(), open_connection() (+8 more)
 
 ### Community 17 - ".get"
-Cohesion: 0.23
-Nodes (16): cancel_query(), check_schema(), close_connection(), col(), DbState, err_text(), load_schema(), MOpen (+8 more)
+Cohesion: 0.18
+Nodes (19): apply_edits(), cancel_query(), check_schema(), close_connection(), col(), ColumnBrief, DbState, err_text() (+11 more)
 
 ### Community 18 - "settings.rs"
-Cohesion: 0.18
-Nodes (9): canonical(), config_dir(), config_path(), write_atomic(), load_settings(), read_file(), save_settings(), SettingsState (+1 more)
+Cohesion: 0.09
+Nodes (17): ABOUT, build(), CHECK_UPDATES, CLOSE_TAB, CLOSE_WINDOW, on_event(), run(), SETTINGS (+9 more)
 
 ### Community 19 - "TypeScript Config"
 Cohesion: 0.12
@@ -195,27 +204,27 @@ Nodes (24): jobs, macos, runs-on, steps, strategy, target, name, on (+16 more)
 
 ### Community 21 - "Modals.tsx"
 Cohesion: 0.07
-Nodes (24): ALL_KINDS, CONN_TABS, ConnTab, MONGO_ALL, MONGO_TLS, MONO_FONTS, MY_SSL, PORTS (+16 more)
+Nodes (32): ALL_KINDS, AppearancePane(), CONN_TABS, ConnectModal(), ConnTab, connUrl(), FontRow(), kindsOf() (+24 more)
 
 ### Community 22 - "RunOutcome"
-Cohesion: 0.20
-Nodes (7): Cells, Collected, ColMeta, Exec, Cancelled, Done, ResultSet
+Cohesion: 0.12
+Nodes (13): Cells, Collected, ColMeta, done(), Exec, Cancelled, Done, ResultSet (+5 more)
 
-### Community 23 - "fonts.rs"
-Cohesion: 0.33
-Nodes (5): FontList, list_fonts(), mono_names(), named_mono(), scan()
+### Community 23 - "devDependencies"
+Cohesion: 0.13
+Nodes (15): devDependencies, @tauri-apps/cli@^2.0.0, @types/react@^18.3.11, @types/react-dom@^18.3.1, typescript@^5.6.3, vite@^5.4.10, @vitejs/plugin-react@^4.3.2, @tauri-apps/cli (+7 more)
 
 ### Community 24 - "CollectionPane.tsx"
-Cohesion: 0.23
-Nodes (13): Box(), CollectionPane(), ErrorState(), QueryResults(), RunGroup(), RunMeta(), ColKey, ShellText() (+5 more)
+Cohesion: 0.30
+Nodes (9): Box(), CollectionPane(), ErrorState(), RunGroup(), TablePane(), estimate(), tableSelect(), duration() (+1 more)
 
 ### Community 25 - "themes.ts"
-Cohesion: 0.18
-Nodes (18): alpha(), BUILTIN, BuiltinId, contrast(), DEFAULT_SCHEME, FAMILIES, fit(), Ghostty (+10 more)
+Cohesion: 0.08
+Nodes (40): ConnTile(), EngineIcon(), fill(), GLYPHS, ld(), Mongo(), Mysql(), Postgres() (+32 more)
 
 ### Community 26 - "edit.ts"
-Cohesion: 0.10
-Nodes (33): CtxSelect(), Elapsed(), QueryContext(), QueryPane(), useEditTarget(), GridEdit, AFTER_FROM, column() (+25 more)
+Cohesion: 0.16
+Nodes (20): useEditTarget(), AFTER_FROM, column(), editStatements(), ident(), isName(), kw(), literal() (+12 more)
 
 ### Community 27 - "Tauri Capabilities"
 Cohesion: 0.33
@@ -226,8 +235,8 @@ Cohesion: 0.08
 Nodes (23): Graph freshness hooks (PostToolUse + git post-commit), graphify knowledge graph (graphify-out/), [0.0.1] - 2026-11-18, Added, Added, Changelog, [Unreleased], CLAUDE.md (symlink to AGENTS.md) (+15 more)
 
 ### Community 29 - "Applied"
-Cohesion: 0.40
-Nodes (5): Applied, Done, Failed, Miss, TimedOut
+Cohesion: 0.33
+Nodes (6): Applied, Done, Failed, Miss, TimedOut, apply()
 
 ### Community 30 - "build-window.mjs"
 Cohesion: 0.20
@@ -245,20 +254,20 @@ Nodes (10): classify(), classify_tokens(), dialect(), fallback_tokenizer(), kind
 Cohesion: 0.24
 Nodes (9): Passphrase sub-dialogs (set, change, disable, unlock), disable_passphrase(), GuardState, Inner, lock_protect(), reset_passphrase(), set_passphrase(), unlock_protect() (+1 more)
 
-### Community 37 - "updater.ts"
-Cohesion: 0.11
-Nodes (17): Notes(), Notes(), UpdateChip(), checkForUpdate(), hasPendingUpdate(), installUpdate(), mb(), message() (+9 more)
+### Community 37 - "AboutModal.tsx"
+Cohesion: 0.19
+Nodes (19): DEV_BUILD, DevBuild, AboutModal(), BuildCard(), CheckSql(), InstallSql(), K(), Line() (+11 more)
 
-### Community 38 - "complete.ts"
+### Community 38 - "SqlEditor.tsx"
 Cohesion: 0.06
-Nodes (43): Completer, ItemIcon(), Marked(), Props, SqlEditor, TYPE_ICON, kindOf(), Base (+35 more)
+Nodes (40): Completer, Marked(), Props, TYPE_ICON, Base, CLAUSE, completeContext(), Ctx (+32 more)
 
 ### Community 39 - "window.YpaThemes (themes.js scheme API)"
 Cohesion: 0.18
 Nodes (9): apply() (theme/density), writeUrl(), apply() (theme/density), writeUrl(), apply() (theme/density), setFont(), voidHTTP design source (fonts/components), writeUrl() (+1 more)
 
 ### Community 40 - "mongo_shell.rs"
-Cohesion: 0.08
+Cohesion: 0.09
 Nodes (37): Call, Command, command_kind(), date(), describe(), err(), errors_point_at_the_place(), guard_kinds() (+29 more)
 
 ### Community 41 - "Modals"
@@ -269,9 +278,9 @@ Nodes (12): Settings Data on this Mac pane, Settings Queries pane, CollInfoModal
 Cohesion: 0.29
 Nodes (8): Settings Appearance pane, apply() (settings preview), setFont() (settings preview), writeUrl() (settings preview), apply() (table preview), writeUrl() (table preview), schemeSwatch(), schemeTokens()
 
-### Community 43 - "apply_edits"
+### Community 43 - "UpdateChip.tsx"
 Cohesion: 0.18
-Nodes (12): apply_edits(), capitalise(), host_of(), pg_position(), plural(), port_of(), run_error(), RunOutcome (+4 more)
+Nodes (5): Notes(), Notes(), noteLines(), plain(), RELEASES_URL
 
 ### Community 44 - "check"
 Cohesion: 0.15
@@ -282,44 +291,80 @@ Cohesion: 0.22
 Nodes (8): test_connection Tauri command, Connection lost state, window.pvShow (query states), q2-fix handler (apply HINT column and rerun), render() (query tab/result state), runQuery(), show(), SQL error state with database HINT fix
 
 ### Community 46 - "store.ts"
-Cohesion: 0.10
-Nodes (30): api, flushWorkspace(), KeptQuery, KeptTable, lastWritten, restored, saveTimers, SideView (+22 more)
+Cohesion: 0.11
+Nodes (18): flushWorkspace(), KeptQuery, KeptTable, lastWritten, Modal, newQuery(), readWorkspace(), restored (+10 more)
 
 ### Community 47 - "RawExec"
-Cohesion: 0.18
-Nodes (5): heartbeat(), RawExec, RawItem, start_heartbeat(), run()
+Cohesion: 0.21
+Nodes (3): RawExec, RawItem, start_heartbeat()
 
-### Community 48 - "Sidebar.tsx"
-Cohesion: 0.09
-Nodes (28): index.html (Vite app entry), App(), ConnWork(), SIDEBAR_DEFAULT, stack(), useTheme(), useTypeTokens(), PassDialog() (+20 more)
-
-### Community 49 - "ConnectModal"
+### Community 48 - "App.tsx"
 Cohesion: 0.15
-Nodes (18): AppearancePane(), ConnectModal(), connUrl(), FontRow(), kindsOf(), optNum(), optStr(), OptUnit() (+10 more)
+Nodes (14): App(), AppStrip(), SIDEBAR_DEFAULT, stack(), useTheme(), useTypeTokens(), PassDialog(), PassphraseManager() (+6 more)
 
-### Community 50 - "lib.rs"
-Cohesion: 0.15
-Nodes (7): ABOUT, build(), CHECK_UPDATES, CLOSE_TAB, CLOSE_WINDOW, on_event(), SETTINGS
+### Community 49 - "fonts.rs"
+Cohesion: 0.33
+Nodes (5): FontList, list_fonts(), mono_names(), named_mono(), scan()
+
+### Community 50 - "updater.ts"
+Cohesion: 0.39
+Nodes (6): checkForUpdate(), hasPendingUpdate(), installUpdate(), message(), NOTE_PREFIX, restartToUpdate()
 
 ### Community 51 - "Schema tree sidebar"
 Cohesion: 0.29
 Nodes (6): fillCols() (Go to column menu), pick() (grid cell select + inspector), Menu controller (closeAll, row menu, data-menu), Result grid with cell inspector, Schema tree sidebar, layout() (schema tree filter)
 
-### Community 53 - "AboutModal.tsx"
-Cohesion: 0.20
-Nodes (16): DEV_BUILD, DevBuild, AboutModal(), BuildCard(), CheckSql(), InstallSql(), K(), Line() (+8 more)
+### Community 52 - "UpdateChip"
+Cohesion: 0.36
+Nodes (4): UpdateChip(), mb(), UpdateState, Updates
+
+### Community 53 - "Settings Security pane"
+Cohesion: 0.29
+Nodes (7): openSub() (settings preview), window.pvShow (settings state switcher), renderLock() (settings preview), renderPass() (settings preview), Settings Security pane, What to protect (protected statement kinds), STATEMENTS
 
 ### Community 54 - "reload() (table preview)"
 Cohesion: 0.67
 Nodes (3): reload() (table preview), render() (table preview), Table where-clause filter
 
-### Community 56 - "SecurityPane"
-Cohesion: 0.29
-Nodes (7): openSub() (settings preview), window.pvShow (settings state switcher), renderLock() (settings preview), renderPass() (settings preview), Settings Security pane, What to protect (protected statement kinds), STATEMENTS
+### Community 56 - "Engine"
+Cohesion: 0.33
+Nodes (5): Engine, Mongo, Mysql, Postgres, Sqlite
 
-### Community 58 - "EngineIcon.tsx"
+### Community 57 - "SslMode"
+Cohesion: 0.33
+Nodes (6): SslMode, Disable, Prefer, Require, VerifyCa, VerifyFull
+
+### Community 58 - "duplicate_connection"
+Cohesion: 0.40
+Nodes (6): delete_connection(), duplicate_connection(), new_id(), clear_passphrase(), conn_account(), delete()
+
+### Community 59 - "scripts"
+Cohesion: 0.40
+Nodes (5): scripts, build, dev, tauri, typecheck
+
+### Community 60 - "LegacyGuard"
 Cohesion: 0.50
-Nodes (8): fill(), GLYPHS, ld(), Mongo(), Mysql(), Postgres(), Sqlite(), stroke()
+Nodes (4): LegacyGuard, Confirm, Run, Verify
+
+### Community 61 - "MongoTls"
+Cohesion: 0.50
+Nodes (4): MongoTls, Insecure, Off, On
+
+### Community 62 - "SecurityLevel"
+Cohesion: 0.50
+Nodes (4): SecurityLevel, Low, None, Strict
+
+### Community 74 - "Sidebar.tsx"
+Cohesion: 0.20
+Nodes (14): HistorySide(), MenuItem, MONGO_SYSTEM, mongoColl(), Row(), RowMore(), SavedSide(), SchemaSide() (+6 more)
+
+### Community 75 - "Pool"
+Cohesion: 0.22
+Nodes (11): connect(), host_of(), password_for(), pg_position(), Pool, Lite, My, Pg (+3 more)
+
+### Community 77 - "conns.rs"
+Cohesion: 0.17
+Nodes (25): clean_group(), Conn, conn(), ConnFile, ConnLock, copy_name(), copy_names_skip_taken_ones(), find() (+17 more)
 
 ## Ambiguous Edges - Review These
 - `Password kept in macOS login keychain` → `Write guard (Run it / Ask to confirm / Ask for passphrase)`  [AMBIGUOUS]
@@ -327,24 +372,24 @@ Nodes (8): fill(), GLYPHS, ld(), Mongo(), Mysql(), Postgres(), Sqlite(), stroke(
 
 ## Knowledge Gaps
 - **53 isolated node(s):** `Cancelled`, `Done`, `Failed`, `Refused`, `Cancelled` (+48 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 445 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **21 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 431 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **4 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Passphrase sub-dialogs (set, change, disable, unlock)` connect `GuardState` to `SecurityPane`, `Sidebar.tsx`?**
-  _High betweenness centrality (0.201) - this node is a cross-community bridge._
+- **Why does `Passphrase sub-dialogs (set, change, disable, unlock)` connect `GuardState` to `App.tsx`, `Settings Security pane`?**
+  _High betweenness centrality (0.230) - this node is a cross-community bridge._
+- **Are the 5 inferred relationships involving `run()` (e.g. with `docs_set()` and `RunRequest`) actually correct?**
+  _`run()` has 5 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `Cancelled`, `Done`, `Failed` to the rest of the system?**
   _53 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `types.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.06006006006006006 - nodes in this community are weakly interconnected._
-- **Why does `PassDialog()` connect `Sidebar.tsx` to `ConnectModal`, `GuardState`, `Modals.tsx`?**
-  _High betweenness centrality (0.193) - this node is a cross-community bridge._
-- **Should `conns.rs` be split into smaller, more focused modules?**
-  _Cohesion score 0.057942057942057944 - nodes in this community are weakly interconnected._
-- **Why does `Settings Data on this Mac pane` connect `Modals` to `index.html (Query console preview)`, `settings.rs`?**
-  _High betweenness centrality (0.156) - this node is a cross-community bridge._
+  _Cohesion score 0.059743954480796585 - nodes in this community are weakly interconnected._
+- **Why does `PassDialog()` connect `App.tsx` to `GuardState`, `Modals.tsx`?**
+  _High betweenness centrality (0.219) - this node is a cross-community bridge._
+- **Should `Query Executor Types` be split into smaller, more focused modules?**
+  _Cohesion score 0.058029689608636977 - nodes in this community are weakly interconnected._
 
 ### Low-confidence Hints
 _AMBIGUOUS edges — the extractor was unsure. Verify before acting on these._

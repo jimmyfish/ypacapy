@@ -135,6 +135,7 @@ pub fn run() {
             conns::list_connections,
             conns::save_connection,
             conns::delete_connection,
+            conns::duplicate_connection,
             conns::touch_connection,
             conns::set_level,
             conns::set_group,

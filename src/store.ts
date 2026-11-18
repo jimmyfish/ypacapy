@@ -51,6 +51,8 @@ interface State {
 
   refreshConns(): Promise<void>;
   deleteConn(id: string): Promise<void>;
+  /** copies a connection (and its keychain password) next to it */
+  duplicateConn(id: string): Promise<void>;
   /** moves connections into a group; null takes them out of every group */
   setGroup(ids: string[], group: string | null): Promise<void>;
   /** opens every connection given, leaving the first one in front */
@@ -326,6 +328,16 @@ export const useStore = create<State>()((set, get) => {
       try {
         await api.saveWorkspace(id, null);
         await api.deleteConnection(id);
+      } catch (e) {
+        get().showToast(errText(e));
+      }
+      await get().refreshConns();
+    },
+
+    async duplicateConn(id) {
+      try {
+        const copy = await api.duplicateConnection(id);
+        get().showToast(`Duplicated as ${copy.name}`);
       } catch (e) {
         get().showToast(errText(e));
       }

@@ -13,6 +13,12 @@ All notable changes to ypacapy are listed here. The format follows [Keep a Chang
 - **Collection Info.** From a collection's menu: the document count kept by the server, data and on-disk sizes, compression, each index's size, the collection type and its validator. Read once with `$collStats` when it opens, and again on Refresh.
 - **mongosh console.** `db.orders.find({ … }).sort({ … }).limit(50)`, `aggregate`, `countDocuments`, `distinct`, the write methods, `createIndex`, `runCommand` and `.explain()`. The text is parsed, never run as JavaScript. A find or aggregate without a limit gets the row limit, and `maxTimeMS` stops a slow query on the server.
 - **Write guard for MongoDB.** Low and Strict ask about kinds of write method (insert, update, delete, findAndModify, `$out`/`$merge` in an aggregate, drop, create, rename, users) and show the method that will run. A `runCommand` ypacapy does not know asks too.
+- **Duplicate a connection.** From a connection's menu on Home. The copy is named `<name> copy`, sits in the same group and gets its own keychain item holding the same password, so it connects as it is.
+
+### Changed
+
+- **One menu per connection on Home.** Edit, Duplicate, Move to group and Remove now live behind a single ⋮ button on each card. Remove shows a shredder, since it deletes the connection, its keychain password and its history for good.
+- **Lucide icons 1.75.0** (from 0.460.0), in the app and in the design preview. GitHub's mark, which Lucide no longer ships, is kept locally.
 
 ## [0.0.1] - 2026-11-18
 

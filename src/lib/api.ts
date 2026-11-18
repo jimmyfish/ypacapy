@@ -8,6 +8,8 @@ export const api = {
   listConnections: () => invoke<Conn[]>("list_connections"),
   saveConnection: (conn: Conn, password: string | null) => invoke<Conn>("save_connection", { conn, password }),
   deleteConnection: (id: string) => invoke<void>("delete_connection", { id }),
+  /** a copy with a new id and the same keychain password; returns the copy */
+  duplicateConnection: (id: string) => invoke<Conn>("duplicate_connection", { id }),
   /** group null takes them out of every group */
   setGroup: (ids: string[], group: string | null) => invoke<void>("set_group", { ids, group }),
   touchConnection: (id: string) => invoke<void>("touch_connection", { id }),

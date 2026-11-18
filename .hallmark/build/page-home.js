@@ -146,15 +146,30 @@
   const openMenu = (id) => $(`[data-menu="${id}"]`).click();
   // Remove: asks first; the connection's query history goes with it
   const rmDlg = $("#remove-dlg");
-  $$('.card-actions [aria-label^="Remove "]').forEach((b) => b.addEventListener("click", (e) => {
+  $$(".card-actions [data-remove]").forEach((b) => b.addEventListener("click", (e) => {
     e.stopPropagation();
-    $("#rm-title").textContent = `${b.getAttribute("aria-label")}?`;
+    $("#rm-title").textContent = `Remove ${b.dataset.remove}?`;
     rmDlg.hidden = false;
   }));
   $$("[data-rm-close]").forEach((b) => b.addEventListener("click", () => { rmDlg.hidden = true; }));
   $("#remove-dlg form").addEventListener("submit", (e) => { e.preventDefault(); rmDlg.hidden = true; });
+  // Duplicate: the copy lands after the original, and a toast names it
+  // out of the DOM until duplicated, so search and the group's count never see it
+  const copyCard = $('[data-card="shopcopy"]');
+  const dup = (on) => {
+    if (on) $('[data-card="shop"]').after(copyCard);
+    else copyCard.remove();
+    $("#home-toast").hidden = !on;
+    recount();
+  };
+  $$(".card-actions [data-duplicate]").forEach((b) => b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    b.closest(".menu").hidden = true;
+    dup(true);
+  }));
   window.pvShow = (k) => {
     endDrag();
+    dup(k === "duplicated");
     if (k === "remove") $("#rm-title").textContent = "Remove shop_prod?";
     rmDlg.hidden = k !== "remove";
     $$(".menu").forEach((m) => { m.hidden = true; });
@@ -171,7 +186,7 @@
     search();
     if (k === "folded") toggle($('[data-group-id="staging"]'), false);
     if (k === "group-menu") openMenu("gm-prod");
-    if (k === "move-menu") openMenu("move-shop");
+    if (k === "card-menu") openMenu("cm-shop");
     if (k === "rename") rename($('[data-group-id="staging"]'), true);
     if (k === "new-group") { $("#ng-who").textContent = "shop_prod"; newGroup(true); }
     // mid-drag: shop_prod held over Staging

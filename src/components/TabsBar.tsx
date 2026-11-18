@@ -4,7 +4,7 @@ import { isDirty, useCurrent, useStore } from "../store";
 import { LEVELS } from "../types";
 import { useDismiss } from "./useDismiss";
 import { LEVEL_ICON, LevelItems } from "./LevelPicker";
-import { ChevronDown, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Plus, ShieldOff, SquareCode, Table2, X, icoC, ico } from "./Icon";
+import { Braces, ChevronDown, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Plus, ShieldOff, SquareCode, Table2, X, icoC, ico } from "./Icon";
 
 /** The security level of the open connection: voidHTTP's environment picker and menu. Lowering from Strict asks for the passphrase (store.setLevel). */
 function GuardPicker() {
@@ -79,7 +79,7 @@ function TabMenu({ x, y, pinned, onPin, onClose, onDismiss }: { x: number; y: nu
 }
 
 export function TabsBar() {
-  const { session } = useCurrent();
+  const { session, conn } = useCurrent();
   const sidebarHidden = useStore((s) => !!s.settings.sidebarHidden);
   const st = useStore.getState();
   const activeTabId = session?.activeTabId;
@@ -143,7 +143,7 @@ export function TabsBar() {
               }}
             >
               <button type="button" className="tab-main" title={t.kind === "table" ? `${t.schema}.${t.table}` : name} onClick={() => st.setActiveTab(t.id)}>
-                {t.kind === "query" ? <SquareCode {...ico} /> : <Table2 {...ico} />}
+                {t.kind === "query" ? <SquareCode {...ico} /> : conn?.engine === "mongo" ? <Braces {...ico} /> : <Table2 {...ico} />}
                 <span className="name">{name}</span>
                 {t.kind === "query" && isDirty(t) && <span className="dirty" role="img" aria-label="Unsaved changes" />}
               </button>

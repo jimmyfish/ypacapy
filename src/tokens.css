@@ -125,5 +125,5 @@
   --text-table: var(--font-size-table);
   --sql-keyword: var(--j-bool); --sql-string: var(--m-get); --sql-number: var(--j-num); --sql-fn: var(--m-put); --sql-type: var(--color-redir); --sql-comment: var(--color-muted); --sql-table: var(--m-head);
   /* engine labels, coloured text like voidHTTP's method labels, never a chip */
-  --e-postgres: var(--m-put); --e-mysql: var(--m-post); --e-sqlite: var(--m-get);
+  --e-postgres: var(--m-put); --e-mysql: var(--m-post); --e-sqlite: var(--m-get); --e-mongo: var(--m-get);
 }

@@ -14,12 +14,15 @@ function address(c: Conn): [string, string] {
     const i = f.lastIndexOf("/");
     return i < 0 ? ["", f] : [f.slice(0, i + 1), f.slice(i + 1)];
   }
-  const port = c.port ?? (c.engine === "mysql" ? 3306 : 5432);
-  return [c.host || "localhost", `:${port}${c.database ? ` / ${c.database}` : ""}`];
+  const db = c.database ? ` / ${c.database}` : "";
+  // MongoDB: an SRV name or a seed list has no single port to show
+  if (c.engine === "mongo" && (c.srv || c.host?.includes(","))) return [c.host || "localhost", db];
+  const port = c.port ?? (c.engine === "mysql" ? 3306 : c.engine === "mongo" ? 27017 : 5432);
+  return [c.host || "localhost", `:${port}${db}`];
 }
 
 /** what the search looks through: name, address, engine (its label and the short names people type) and group */
-const ENGINE_WORDS = { postgres: "postgresql postgres pg", mysql: "mysql mariadb", sqlite: "sqlite" } as const;
+const ENGINE_WORDS = { postgres: "postgresql postgres pg", mysql: "mysql mariadb", sqlite: "sqlite", mongo: "mongodb mongo" } as const;
 const haystack = (c: Conn) => {
   const [head, tail] = address(c);
   return `${c.name} ${head}${tail} ${c.user ?? ""} ${ENGINE_WORDS[c.engine]} ${c.group ?? ""}`.toLowerCase();

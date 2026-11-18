@@ -21,13 +21,20 @@
   let urlOnly = false;
   const showFor = (sel, on) => document.querySelectorAll(`[data-for="${sel}"]`).forEach((el) => (el.hidden = !on));
   function layout() {
-    const lite = f("c-engine").value === "sqlite";
+    const e = f("c-engine").value, lite = e === "sqlite", mongo = e === "mongo";
     showFor("sqlite", lite); showFor("server", !lite); showFor("fields", !lite && !urlOnly);
+    showFor("sql-server", !lite && !mongo); showFor("sql", !mongo); showFor("mongo", mongo); showFor("mongo-fields", mongo && !urlOnly);
+    // MongoDB: an SRV name has no port; the SSL tab is TLS
+    const srv = mongo && f("c-srv").checked;
+    [f("c-port"), $('label[for="c-port"]')].forEach((el) => { el.hidden = srv; });
+    // no port: Host takes the whole row, so User stays on its own line
+    f("c-host").classList.toggle("cx-full", srv);
+    f("t-ssl").textContent = mongo ? "TLS" : "SSL";
     f("c-url-h").textContent = urlOnly ? "Paste the whole URL. The password goes in the field above it." : "Editing the URL fills in the settings above.";
   }
   function setEngine(v) {
     f("c-engine").value = v;
-    if (v !== "sqlite") f("c-port").value = v === "mysql" ? "3306" : "5432";
+    if (v !== "sqlite") f("c-port").value = { mysql: "3306", mongo: "27017" }[v] || "5432";
     f("c-engine").closest(".cx-driver").querySelector("use").setAttribute("href", v === "sqlite" ? "#i-hard-drive" : "#i-server");
     layout(); toUrl();
   }
@@ -42,15 +49,36 @@
 
   // fields to URL, and URL back to fields; a password typed into the URL moves to the keychain field
   const SCHEME = { postgres: "postgresql", mysql: "mysql" };
+  // MongoDB: mongodb:// or mongodb+srv://; auth database, replica set and read preference ride in the query string
+  function mongoUrl() {
+    const srv = f("c-srv").checked, u = f("c-user").value, h = f("c-host").value, p = f("c-port").value, d = f("c-db").value;
+    const qs = [["authSource", f("c-authdb").value], ["replicaSet", f("c-rs").value], ["readPreference", f("c-readpref").value === "primary" ? "" : f("c-readpref").value]].filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join("&");
+    return `mongodb${srv ? "+srv" : ""}://${u ? u + "@" : ""}${h}${p && !srv && !h.includes(",") ? ":" + p : ""}/${d}${qs ? "?" + qs : ""}`;
+  }
   function toUrl() {
     const e = f("c-engine").value;
     if (e === "sqlite") { f("c-url").value = "sqlite:" + (f("c-file").value || ""); return; }
+    if (e === "mongo") { f("c-url").value = mongoUrl(); return; }
     const u = f("c-user").value, h = f("c-host").value, p = f("c-port").value, d = f("c-db").value;
     f("c-url").value = `${SCHEME[e]}://${u ? u + "@" : ""}${h}${p ? ":" + p : ""}${d ? "/" + d : ""}`;
   }
   function fromUrl() {
     const v = f("c-url").value.trim();
     if (/^sqlite:/.test(v)) { if (f("c-engine").value !== "sqlite") setEngine("sqlite"); f("c-file").value = v.slice(7); return; }
+    // a seed list (h1:27017,h2:27017) stays whole in Host
+    const mg = v.match(/^mongodb(\+srv)?:\/\/(?:([^@/:]*)(?::([^@]*))?@)?([^/?]*)(?:\/([^?]*))?(?:\?(.*))?$/);
+    if (mg) {
+      if (f("c-engine").value !== "mongo") { f("c-engine").value = "mongo"; }
+      f("c-srv").checked = !!mg[1];
+      const hosts = mg[4] || "", one = !hosts.includes(",") && hosts.match(/^(.*?)(?::(\d+))?$/);
+      f("c-host").value = one ? one[1] : hosts; f("c-port").value = one && one[2] ? one[2] : mg[1] ? "" : "27017";
+      f("c-user").value = mg[2] || ""; f("c-db").value = mg[5] || "";
+      const qs = new URLSearchParams(mg[6] || "");
+      f("c-authdb").value = qs.get("authSource") || ""; f("c-rs").value = qs.get("replicaSet") || ""; f("c-readpref").value = qs.get("readPreference") || "primary";
+      layout();
+      if (mg[3]) { f("c-pass").value = decodeURIComponent(mg[3]); toUrl(); }
+      return;
+    }
     const m = v.match(/^(postgres(?:ql)?|mysql):\/\/(?:([^@/:]*)(?::([^@]*))?@)?([^:/?]*)(?::(\d+))?(?:\/([^?]*))?/);
     if (!m) return;
     const eng = m[1] === "mysql" ? "mysql" : "postgres";
@@ -58,7 +86,8 @@
     f("c-user").value = m[2] || ""; f("c-host").value = m[4] || ""; f("c-port").value = m[5] || ""; f("c-db").value = m[6] || "";
     if (m[3]) { f("c-pass").value = decodeURIComponent(m[3]); toUrl(); }
   }
-  ["c-host", "c-port", "c-user", "c-db", "c-file"].forEach((id) => f(id).addEventListener("input", toUrl));
+  ["c-host", "c-port", "c-user", "c-db", "c-file", "c-authdb", "c-rs"].forEach((id) => f(id).addEventListener("input", toUrl));
+  ["c-srv", "c-readpref"].forEach((id) => f(id).addEventListener("change", () => { layout(); toUrl(); }));
   f("c-url").addEventListener("input", fromUrl);
   f("c-url").addEventListener("change", fromUrl);
 
@@ -72,17 +101,26 @@
   name.addEventListener("blur", () => { if (name.dataset.touched) validate(); });
   name.addEventListener("input", () => { name.dataset.touched = "1"; if (name.getAttribute("aria-invalid") === "true") validate(); });
   function setLine(kind, text) {
+    // while a test runs, its button is Stop test: a host that never answers can be given up on before the timeout
     test.removeAttribute("aria-busy"); test.disabled = false; line.className = "test-line"; line.hidden = !kind && !text; line.title = "";
-    if (kind === "testing") { test.setAttribute("aria-busy", "true"); test.disabled = true; line.innerHTML = '<span class="spinner"></span>Connecting to localhost:5432'; }
-    else if (kind === "ok") { line.classList.add("ok"); line.innerHTML = '<svg aria-hidden="true" class="ico"><use href="#i-circle-check"/></svg>Connected to PostgreSQL 16.4 in 14&nbsp;ms'; }
-    else if (kind === "fail") { line.classList.add("fail"); line.innerHTML = '<svg aria-hidden="true" class="ico"><use href="#i-circle-alert"/></svg>password authentication failed for user "ops"'; line.title = line.textContent; }
+    test.textContent = kind === "testing" ? "Stop test" : "Test connection";
+    test.toggleAttribute("data-stop", kind === "testing");
+    const mongo = f("c-engine").value === "mongo";
+    if (kind === "stopped") { line.textContent = "Stopped the test. Nothing was saved."; return; }
+    if (kind === "testing") { test.setAttribute("aria-busy", "true"); line.innerHTML = `<span class="spinner"></span>Connecting to ${mongo ? f("c-host").value : "localhost:5432"}`; }
+    else if (kind === "ok") { line.classList.add("ok"); line.innerHTML = '<svg aria-hidden="true" class="ico"><use href="#i-circle-check"/></svg>' + (mongo ? "Connected to MongoDB 7.0.14, replica set atlas-x1y2z-shard-0 (3 hosts), in 112&nbsp;ms" : "Connected to PostgreSQL 16.4 in 14&nbsp;ms"); }
+    else if (kind === "fail") { line.classList.add("fail"); line.innerHTML = '<svg aria-hidden="true" class="ico"><use href="#i-circle-alert"/></svg>' + (mongo ? "AuthenticationFailed: user ops was not found in auth database admin, or the password is wrong" : 'password authentication failed for user "ops"'); line.title = line.textContent; }
     else { line.textContent = text || ""; line.title = line.textContent; }
   }
+  let testTimer;
   form.addEventListener("submit", (e) => {
     e.preventDefault();
+    // Stop test: the app drops the attempt (cancel_query on the test's id); nothing was saved
+    if (e.submitter === test && test.hasAttribute("data-stop")) { clearTimeout(testTimer); setLine("stopped"); test.focus(); return; }
     if (!validate()) { selectTab("general"); name.focus(); return; }
     setLine("testing");
-    setTimeout(() => setLine("", `Not sent: the preview has no backend; the app calls ${e.submitter.value === "save" ? "save_connection" : "test_connection"} here`), 600);
+    // a slow host here, so Stop test can be tried
+    testTimer = setTimeout(() => setLine("", `Not sent: the preview has no backend; the app calls ${e.submitter.value === "save" ? "save_connection" : "test_connection"} here`), e.submitter === test ? 6000 : 600);
   });
 
   // Security level: None, Low (confirm) or Strict (passphrase). Strict needs a passphrase, set in Settings › Security;
@@ -181,19 +219,27 @@
   drawGroup();
 
   window.pvShow = (k) => {
-    setType(k === "url-only" ? "url" : "default");
-    setEngine(["mysql", "sqlite"].includes(k) ? k : "postgres");
-    selectTab({ options: "options", "level-menu": "options", "options-low": "options", "options-strict": "options", "options-nopass": "options", ssl: "ssl", advanced: "advanced" }[k] || "general");
-    f("c-level").value = k === "options-low" ? "low" : k === "options-strict" ? "strict" : "none";
+    const mongo = k.startsWith("mongo");
+    setType(k === "url-only" || k === "mongo-url" ? "url" : "default");
+    // MongoDB states: an Atlas SRV host, or a plain host and port
+    f("c-srv").checked = mongo && k !== "mongo-host";
+    f("c-host").value = !mongo ? "localhost" : k === "mongo-host" ? "localhost" : "events-prod.x1y2z.mongodb.net";
+    f("c-db").value = mongo ? "events" : "shop"; f("c-user").value = "ops";
+    f("c-authdb").value = mongo ? "admin" : ""; f("c-rs").value = ""; f("c-readpref").value = k === "mongo-advanced" ? "secondaryPreferred" : "primary";
+    setEngine(["mysql", "sqlite"].includes(k) ? k : mongo ? "mongo" : "postgres");
+    selectTab({ options: "options", "level-menu": "options", "options-low": "options", "options-strict": "options", "options-nopass": "options", ssl: "ssl", advanced: "advanced", "mongo-options": "options", "mongo-tls": "ssl", "mongo-advanced": "advanced" }[k] || "general");
+    f("c-level").value = k === "options-low" || k === "mongo-options" ? "low" : k === "options-strict" ? "strict" : "none";
     closeSub();
     passSet = k !== "options-nopass"; unlocked = false; renderPass(); renderLock();
-    name.value = k === "name-missing" ? "" : k === "sqlite" ? "analytics" : "shop_prod";
+    name.value = k === "name-missing" ? "" : k === "sqlite" ? "analytics" : mongo ? (k === "mongo-host" ? "events_dev" : "events_prod") : "shop_prod";
     if (k === "name-missing") validate(); else { name.removeAttribute("aria-invalid"); help.classList.remove("err"); help.textContent = ""; }
     f("c-file").value = k === "sqlite" ? "~/data/analytics.sqlite" : "";
-    f("c-pass").value = ["testing", "test-ok", "test-failed", "url-only"].includes(k) ? "correct-horse" : "";
+    f("c-pass").value = ["testing", "test-ok", "test-failed", "url-only", "mongo-url", "mongo-test-ok", "mongo-test-failed"].includes(k) ? "correct-horse" : "";
     toUrl();
     if (k === "url-only") f("c-url").value = "postgresql://ops@loophealth-staging.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com:5432/postgres?sslmode=require";
-    setLine({ testing: "testing", "test-ok": "ok", "test-failed": "fail" }[k] || "");
+    if (k === "mongo-url") { f("c-url").value = "mongodb+srv://ops@events-prod.x1y2z.mongodb.net/events?authSource=admin&readPreference=secondaryPreferred"; fromUrl(); }
+    clearTimeout(testTimer);
+    setLine({ testing: "testing", "test-stopped": "stopped", "test-ok": "ok", "test-failed": "fail", "mongo-test-ok": "ok", "mongo-test-failed": "fail" }[k] || "");
     // New connection here (a group's menu or its New connection card): Group starts with that group
     f("c-group").value = k === "group-menu" ? "Production" : q.get("group") || "";
     naming(false); drawGroup();

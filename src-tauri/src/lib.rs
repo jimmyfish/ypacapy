@@ -3,6 +3,7 @@ mod db;
 mod fonts;
 mod guard;
 mod keychain;
+mod mongo_shell;
 mod paths;
 mod settings;
 mod store;
@@ -146,6 +147,8 @@ pub fn run() {
             db::run_query,
             db::cancel_query,
             db::apply_edits,
+            db::mongo::mongo_find,
+            db::mongo::mongo_stats,
             guard::passphrase_status,
             guard::set_passphrase,
             guard::disable_passphrase,

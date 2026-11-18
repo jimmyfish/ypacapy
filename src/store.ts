@@ -15,7 +15,9 @@ export type Modal =
   | { kind: "prompt"; title: string; label: string; initial: string; onSubmit: (v: string) => void }
   | { kind: "saveQuery"; tabId: string }
   /** the passphrase or confirm ask before a run; with title and message, the passphrase before lowering Strict */
-  | { kind: "guard"; ask: Ask; connName: string; title?: string; message?: string; onApprove: (a: Approval) => void };
+  | { kind: "guard"; ask: Ask; connName: string; title?: string; message?: string; onApprove: (a: Approval) => void }
+  /** MongoDB: a collection's sizes and shape, read with $collStats when it opens */
+  | { kind: "collInfo"; connId: string; database: string; collection: string };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -90,7 +92,7 @@ interface State {
  * A table entry has `kind: "table"` and no `sql`, so a build that knows only query tabs skips it.
  */
 type KeptQuery = { kind?: "query"; id: string; title: string; sql: string; savedId?: string; savedFolder?: string; savedSql?: string; pinned?: boolean };
-type KeptTable = { kind: "table"; id: string; schema: string; table: string; where: string; view: TableTab["view"]; pinned?: boolean };
+type KeptTable = { kind: "table"; id: string; schema: string; table: string; where: string; view: TableTab["view"]; pinned?: boolean; project?: string; sort?: string; limit?: string; as?: TableTab["as"] };
 interface Workspace {
   v: 1;
   active: string | null;
@@ -112,7 +114,7 @@ function workspaceOf(s: Session): string {
     tabs: kept.map((t) =>
       t.kind === "query"
         ? { id: t.id, title: t.title, sql: t.sql, savedId: t.savedId, savedFolder: t.savedFolder, savedSql: t.savedSql, pinned: t.pinned || undefined }
-        : { kind: "table", id: t.id, schema: t.schema, table: t.table, where: t.where, view: t.view, pinned: true },
+        : { kind: "table", id: t.id, schema: t.schema, table: t.table, where: t.where, view: t.view, pinned: true, project: t.project || undefined, sort: t.sort || undefined, limit: t.limit || undefined, as: t.as === "json" ? "json" : undefined },
     ),
   };
   return JSON.stringify(w);
@@ -146,7 +148,23 @@ async function readWorkspace(id: string): Promise<{ tabs: Tab[]; active: string 
       if (t.kind === "table") {
         if (typeof t.schema !== "string" || typeof t.table !== "string" || !t.table) continue;
         const view = t.view === "columns" || t.view === "indexes" ? t.view : "rows";
-        tabs.push({ id: t.id || uid(), kind: "table", schema: t.schema, table: t.table, where: typeof t.where === "string" ? t.where : "", offset: 0, view, ...pinned, run: { status: "idle" } });
+        const str = (v: unknown) => (typeof v === "string" && v ? { v } : null);
+        tabs.push({
+          id: t.id || uid(),
+          kind: "table",
+          schema: t.schema,
+          table: t.table,
+          where: typeof t.where === "string" ? t.where : "",
+          offset: 0,
+          view,
+          // MongoDB's query bar
+          ...(str(t.project) ? { project: t.project } : {}),
+          ...(str(t.sort) ? { sort: t.sort } : {}),
+          ...(str(t.limit) ? { limit: t.limit } : {}),
+          ...(t.as === "json" ? { as: "json" as const } : {}),
+          ...pinned,
+          run: { status: "idle" },
+        });
       } else if (typeof t.sql === "string") {
         tabs.push({
           id: t.id || uid(),
@@ -340,6 +358,7 @@ export const useStore = create<State>()((set, get) => {
         restored.add(id);
       }
       void api.touchConnection(id).then(() => get().refreshConns());
+      const mongo = get().conns.find((c) => c.id === id)?.engine === "mongo";
       try {
         const info = await api.openConnection(id);
         const schema = info.defaultSchema;
@@ -352,12 +371,22 @@ export const useStore = create<State>()((set, get) => {
           tree: {},
           columns: {},
           expanded: schema ? { [schema]: true, [`${schema}/tables`]: true, [`${schema}/views`]: true } : {},
-          ...(s.tabs.length ? {} : (() => {
+          // MongoDB opens on its first collection (below), not on an empty console
+          ...(s.tabs.length || mongo ? {} : (() => {
             const t = newQuery(1);
             return { tabs: [t], activeTabId: t.id };
           })()),
         }));
-        if (schema) void get().loadSchema(schema);
+        if (schema)
+          void get()
+            .loadSchema(schema)
+            .then(() => {
+              const now = get().sessions[id];
+              if (!mongo || !now || now.tabs.length) return;
+              const first = now.tree[schema]?.data?.tables.find((t) => t.kind !== "view");
+              if (first) get().openTable(schema, first.name);
+              else get().newQueryTab();
+            });
         // pinned table tabs kept from last time read their rows and columns now that the pool is open
         for (const t of get().sessions[id]?.tabs ?? []) {
           if (t.kind !== "table" || t.run.status !== "idle" || t.info) continue;
@@ -488,6 +517,12 @@ export const useStore = create<State>()((set, get) => {
       if (!s) return;
       const open = Object.keys(s.tree);
       patchSession(id, () => ({ tree: {}, columns: {} }));
+      // the databases and schemas too (one catalog read), so one made or dropped elsewhere shows up
+      if (s.status === "open")
+        void api.openConnection(id, s.database || undefined).then(
+          (info) => patchSession(id, () => ({ info })),
+          () => {},
+        );
       if (id === get().currentId) for (const schema of open) void get().loadSchema(schema);
     },
 
@@ -623,12 +658,19 @@ export const useStore = create<State>()((set, get) => {
       if (!conn) return;
       const offset = opts.offset ?? 0;
       if (!opts.discard && askDiscard(tabId, () => void get().readTable(tabId, { ...opts, discard: true }))) return;
-      const limit = conn.rowLimit || get().settings.rowLimit || DEFAULT_ROW_LIMIT;
-      const sql = tableSelect(conn.engine, tab.schema, tab.table, tab.where, limit, offset);
+      const rowLimit = conn.rowLimit || get().settings.rowLimit || DEFAULT_ROW_LIMIT;
+      // MongoDB: the query bar's Limit, when set, is the page size
+      const limit = conn.engine === "mongo" && Number(tab.limit) > 0 ? Number(tab.limit) : rowLimit;
+      const mongo = conn.engine === "mongo";
+      const sql = mongo ? `find(${tab.where.trim() || "{}"})` : tableSelect(conn.engine, tab.schema, tab.table, tab.where, limit, offset);
       const runId = uid();
       const prev = tab.run;
       patchTab(tabId, { offset, view: "rows", run: { status: "running", runId, startedAt: Date.now(), outcome: prev.outcome } });
-      const out = await api.runQuery({ runId, connId, database: s.database, schema: s.schema, sql, addLimit: false, approval: opts.approval, history: false }).catch(failed);
+      // MongoDB: find on the collection (its "schema" is its database); the boxes are read in Rust before anything is sent
+      const out = await (mongo
+        ? api.mongoFind({ runId, connId, database: tab.schema, collection: tab.table, filter: tab.where, projection: tab.project ?? "", sort: tab.sort ?? "", skip: offset, limit })
+        : api.runQuery({ runId, connId, database: s.database, schema: s.schema, sql, addLimit: false, approval: opts.approval, history: false })
+      ).catch(failed);
       const now = sessionOfTab(tabId)?.[2];
       if (!now || now.run.runId !== runId) return;
       if (out.kind === "ask") {

@@ -23,6 +23,10 @@ use crate::guard::{self, Approval, Ask, GuardState};
 use crate::settings::SettingsState;
 use crate::store::{HistoryEntry, LocalStore};
 
+/// MongoDB: the driver, the console's runs, the collection tab and Info (a child module, so it shares
+/// this module's result types)
+pub mod mongo;
+
 /// Rows kept from one result set when no row limit could be added to the query itself.
 const HARD_CAP: usize = 10_000;
 
@@ -56,6 +60,8 @@ pub struct Open {
 pub struct DbState {
     /// (connection id, database; "" for the connection's own)
     open: tokio::sync::Mutex<HashMap<(String, String), Arc<Open>>>,
+    /// MongoDB: one client per connection, for every database on it
+    mongo: tokio::sync::Mutex<HashMap<String, Arc<mongo::MOpen>>>,
     runs: std::sync::Mutex<HashMap<String, CancellationToken>>,
 }
 
@@ -193,6 +199,9 @@ pub struct ResultSet {
     columns: Vec<ColMeta>,
     rows: Vec<Vec<Option<String>>>,
     truncated: bool,
+    /// MongoDB: the documents as canonical Extended JSON; columns and rows stay empty and the app draws them
+    #[serde(skip_serializing_if = "Option::is_none")]
+    docs: Option<Vec<serde_json::Value>>,
 }
 
 impl ResultSet {
@@ -229,6 +238,7 @@ fn host_of(conn: &Conn) -> String {
 fn port_of(conn: &Conn) -> u16 {
     conn.port.unwrap_or(match conn.engine {
         Engine::Mysql => 3306,
+        Engine::Mongo => 27017,
         _ => 5432,
     })
 }
@@ -306,6 +316,8 @@ async fn connect(conn: &Conn, database: &str, password: Option<String>, read_onl
             let o = SqliteConnectOptions::new().filename(crate::paths::expand_tilde(file.trim())).create_if_missing(false).read_only(read_only);
             Pool::Lite(SqlitePoolOptions::new().max_connections(max).test_before_acquire(true).acquire_timeout(acquire).connect_with(o).await?)
         }
+        // MongoDB goes through mongo.rs, never a SQL pool
+        Engine::Mongo => return Err(sqlx::Error::Configuration("MongoDB has no SQL pool".into())),
     })
 }
 
@@ -349,13 +361,15 @@ async fn server_version(pool: &Pool, engine: Engine) -> Result<String, sqlx::Err
             }
         }
         Engine::Sqlite => format!("SQLite {}", first(&raw_rows(pool, "select sqlite_version()").await?)),
+        Engine::Mongo => "MongoDB".into(),
     })
 }
 
 /// The database a connection is limited to: its Database field, when filled (PostgreSQL and MySQL).
 fn pinned(conn: &Conn) -> Option<&str> {
     match conn.engine {
-        Engine::Sqlite => None,
+        // SQLite has no databases; a MongoDB connection's Database is where it starts, not a limit
+        Engine::Sqlite | Engine::Mongo => None,
         _ => conn.database.as_deref().map(str::trim).filter(|d| !d.is_empty()),
     }
 }
@@ -402,6 +416,7 @@ impl DbState {
         for o in gone {
             on_pool!(&o.pool, p => p.close().await);
         }
+        self.drop_mongo(id).await;
     }
 }
 
@@ -422,19 +437,38 @@ pub struct TestResult {
     ms: u64,
 }
 
-/// New connection > Test: one connection, the server's version, closed again.
+/// New connection > Test: one connection, the server's version, closed again. With `test_id`, Stop test
+/// (cancel_query on that id) drops the attempt: a host that never answers is given up on before the timeout.
 #[tauri::command]
-pub async fn test_connection(conn: Conn, password: Option<String>) -> Result<TestResult, String> {
+pub async fn test_connection(conn: Conn, password: Option<String>, test_id: Option<String>, state: State<'_, DbState>) -> Result<TestResult, String> {
     let password = match password.filter(|p| !p.is_empty()) {
         Some(p) => Some(p),
         None => password_for(&conn).await?,
     };
-    let t = Instant::now();
-    let pool = connect(&conn, "", password, true, 1).await.map_err(|e| err_text(&e))?;
-    let server = server_version(&pool, conn.engine).await.map_err(|e| err_text(&e));
-    let ms = t.elapsed().as_millis() as u64;
-    on_pool!(&pool, p => p.close().await);
-    Ok(TestResult { server: server?, ms })
+    let token = CancellationToken::new();
+    if let (Some(id), Ok(mut runs)) = (&test_id, state.runs.lock()) {
+        runs.insert(id.clone(), token.clone());
+    }
+    let work = async {
+        if conn.engine == Engine::Mongo {
+            return mongo::test(&conn, password).await;
+        }
+        let t = Instant::now();
+        let pool = connect(&conn, "", password, true, 1).await.map_err(|e| err_text(&e))?;
+        let server = server_version(&pool, conn.engine).await.map_err(|e| err_text(&e));
+        let ms = t.elapsed().as_millis() as u64;
+        on_pool!(&pool, p => p.close().await);
+        Ok(TestResult { server: server?, ms })
+    };
+    // dropping the attempt closes whatever it had opened
+    let out = tokio::select! {
+        r = work => r,
+        _ = token.cancelled() => Err("Stopped the test. Nothing was saved.".into()),
+    };
+    if let (Some(id), Ok(mut runs)) = (&test_id, state.runs.lock()) {
+        runs.remove(id);
+    }
+    out
 }
 
 #[derive(Serialize)]
@@ -454,6 +488,9 @@ pub struct OpenInfo {
 pub async fn open_connection(id: String, database: Option<String>, state: State<'_, DbState>) -> Result<OpenInfo, String> {
     let conn = conns::find(&id)?;
     let database = database.unwrap_or_default();
+    if conn.engine == Engine::Mongo {
+        return mongo::open_info(&state, &conn, &database).await;
+    }
     let open = state.get(&conn, &database).await.map_err(|e| err_text(&e))?;
     let pool = &open.pool;
     let r = async {
@@ -494,6 +531,7 @@ pub async fn open_connection(id: String, database: Option<String>, state: State<
                 OpenInfo { server: open.server.clone(), databases: dbs.clone(), database: cur.clone(), schemas: dbs, default_schema: cur }
             }
             Engine::Sqlite => OpenInfo { server: open.server.clone(), databases: vec![], database: String::new(), schemas: vec!["main".into()], default_schema: "main".into() },
+            Engine::Mongo => unreachable!("MongoDB returned above"),
         })
     }
     .await;
@@ -536,6 +574,10 @@ fn quote_ident(engine: Engine, s: &str) -> String {
 #[tauri::command]
 pub async fn load_schema(id: String, database: Option<String>, schema: String, state: State<'_, DbState>) -> Result<SchemaObjects, String> {
     let conn = conns::find(&id)?;
+    // MongoDB: the tree's "schema" is a database
+    if conn.engine == Engine::Mongo {
+        return mongo::collections(&state, &conn, &schema).await;
+    }
     check_schema(&conn, &schema)?;
     let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
     schema_objects(&open.pool, conn.engine, &schema).await
@@ -563,6 +605,7 @@ async fn schema_objects(pool: &Pool, engine: Engine, s: &str) -> Result<SchemaOb
             .await,
             catalog(pool, "select cast(ROUTINE_NAME as char) from information_schema.ROUTINES where ROUTINE_SCHEMA = ? order by ROUTINE_NAME", &[s]).await,
         ),
+        Engine::Mongo => return Err("MongoDB lists collections in mongo.rs".into()),
         Engine::Sqlite => (
             catalog(
                 pool,
@@ -661,6 +704,10 @@ pub async fn table_columns(
     state: State<'_, DbState>,
 ) -> Result<Vec<ColumnBrief>, String> {
     let conn = conns::find(&id)?;
+    // MongoDB: no autocomplete of fields (documents have no declared columns)
+    if conn.engine == Engine::Mongo {
+        return Ok(vec![]);
+    }
     check_schema(&conn, &schema)?;
     let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
     let (s, t) = (schema.as_str(), table.as_str());
@@ -686,6 +733,7 @@ pub async fn table_columns(
             .await
         }
         Engine::Sqlite => catalog(&open.pool, "select name, lower(type), cast(pk > 0 as text) from pragma_table_info(?, ?) order by cid", &[t, s]).await,
+        Engine::Mongo => Ok(vec![]),
     }
     .map_err(|e| err_text(&e))?;
     Ok(rows.iter().map(|r| ColumnBrief { name: col(r, 0), ty: col(r, 1), primary: truthy(&col(r, 2)) }).collect())
@@ -701,6 +749,10 @@ pub async fn table_info(
     state: State<'_, DbState>,
 ) -> Result<TableInfo, String> {
     let conn = conns::find(&id)?;
+    // MongoDB: a collection's indexes (schema is its database)
+    if conn.engine == Engine::Mongo {
+        return mongo::indexes(&state, &conn, &schema, &table).await;
+    }
     check_schema(&conn, &schema)?;
     let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
     table_catalog(&open.pool, conn.engine, &schema, &table).await
@@ -813,6 +865,7 @@ async fn table_catalog(pool: &Pool, engine: Engine, s: &str, t: &str) -> Result<
                 }
                 (cols.iter().map(|r| (col(r, 0), col(r, 1).to_lowercase(), col(r, 2) == "0", r.get(3).cloned().flatten())).collect(), idx, fks)
             }
+            Engine::Mongo => return Err(sqlx::Error::Configuration("MongoDB indexes are read in mongo.rs".into())),
         })
     }
     .await;
@@ -913,7 +966,7 @@ async fn execute(open: &Open, schema: Option<&str>, sql: &str, cap: usize, token
         Engine::Mysql => Some("select cast(connection_id() as char)".to_string()),
         // TODO: SQLite has no server to ask; a cancelled run stops at the worker's next row step
         // (sqlite3_interrupt through the raw handle would stop a long single step too).
-        Engine::Sqlite => None,
+        Engine::Sqlite | Engine::Mongo => None,
     };
     let (res, pid) = on_pool!(&open.pool, p => {
         let mut pc = p.acquire().await?;
@@ -1054,6 +1107,7 @@ fn run_error(e: &sqlx::Error, engine: Engine, sql: &str, conn: &Conn, ms: u64) -
         }),
         Engine::Mysql => db.try_downcast_ref::<MySqlDatabaseError>().map(|my| format!("ERROR {} ({}): {}", my.number(), my.code().unwrap_or("HY000"), my.message())),
         Engine::Sqlite => Some(format!("Error: {}", db.message())),
+        Engine::Mongo => None,
     };
     RunOutcome::Error { title: capitalise(db.message().lines().next().unwrap_or("")), says, message: db.message().to_string(), hint, lost: false, ms }
 }
@@ -1067,6 +1121,10 @@ pub async fn run_query(
     store: State<'_, LocalStore>,
 ) -> Result<RunOutcome, String> {
     let conn = conns::find(&req.conn_id)?;
+    // MongoDB: mongosh text, its own guard kinds and runner
+    if conn.engine == Engine::Mongo {
+        return mongo::run(req, conn, &state, &settings, &guard_state, &store).await;
+    }
     let c = guard::classify(&req.sql, conn.engine);
     if let Some(ask) = guard::check(&c, &conn, req.approval, &guard_state).await? {
         return Ok(RunOutcome::Ask(ask));
@@ -1192,6 +1250,9 @@ pub async fn apply_edits(
     if req.statements.is_empty() {
         return Err("Nothing to save.".into());
     }
+    if conn.engine == Engine::Mongo {
+        return Err("Editing documents in the grid is not available for MongoDB yet.".into());
+    }
     let sql = req.statements.iter().map(|s| format!("{s};")).collect::<Vec<_>>().join("\n");
     let c = guard::classify(&sql, conn.engine);
     if let Some(ask) = guard::check(&c, &conn, req.approval, &guard_state).await? {
@@ -1301,6 +1362,7 @@ pub fn start_heartbeat(app: AppHandle) {
                     Pool::Lite(_) => {}
                 }
             }
+            mongo::heartbeat(&app, global).await;
         }
     });
 }
@@ -1334,6 +1396,14 @@ mod tests {
             app_name: None,
             connect_timeout: None,
             heartbeat: None,
+            auth_source: None,
+            srv: false,
+            tls: None,
+            tls_cert: None,
+            replica_set: None,
+            read_pref: None,
+            direct: false,
+            server_check: None,
             last_opened: None,
             created_at: None,
         }

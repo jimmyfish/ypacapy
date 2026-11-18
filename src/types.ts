@@ -1,4 +1,4 @@
-export type Engine = "postgres" | "mysql" | "sqlite";
+export type Engine = "postgres" | "mysql" | "sqlite" | "mongo";
 /**
  * A connection's security level, for the statements it asks about (Conn.protect): None runs them, Low asks to
  * confirm, Strict asks for the passphrase (needs one set, in Settings › Security). Other statements run.
@@ -13,6 +13,9 @@ export const LEVELS: [SecurityLevel, string, string][] = [
   ["strict", "Strict", "Passphrase for the picked statements"],
 ];
 export type SslMode = "disable" | "prefer" | "require" | "verify-ca" | "verify-full";
+/** MongoDB TLS; missing = on for an SRV record, off for a host and port */
+export type MongoTls = "off" | "on" | "insecure";
+export type ReadPref = "primary" | "primaryPreferred" | "secondary" | "secondaryPreferred" | "nearest";
 
 /** connections.toml: one connection, never its password (that is in the keychain). */
 export interface Conn {
@@ -50,6 +53,21 @@ export interface Conn {
   connectTimeout?: number;
   /** missing = Settings > Queries > Connection heartbeat */
   heartbeat?: boolean;
+  /** MongoDB: the database the user is defined in; missing = admin */
+  authSource?: string;
+  /** MongoDB: host is a DNS seed list name (mongodb+srv), no port */
+  srv?: boolean;
+  /** MongoDB TLS; its CA file is sslCa */
+  tls?: MongoTls;
+  /** MongoDB: PEM with the client certificate and key, for X.509 sign-in */
+  tlsCert?: string;
+  replicaSet?: string;
+  /** missing = primary */
+  readPref?: ReadPref;
+  /** MongoDB: this host only, not the rest of its replica set */
+  direct?: boolean;
+  /** MongoDB: seconds between the driver's hello to each host; missing = 60 */
+  serverCheck?: number;
   lastOpened?: number;
   /** ms since the epoch; missing on connections saved before it was recorded */
   createdAt?: number;
@@ -87,6 +105,22 @@ export interface Settings {
 }
 
 export const STATEMENTS: [string, string?][] = [["INSERT"], ["UPDATE"], ["DELETE"], ["REPLACE", "MySQL"], ["ALTER"], ["DROP"], ["TRUNCATE"], ["CREATE"], ["GRANT"], ["REVOKE"]];
+/**
+ * MongoDB's guard kinds (guard::MONGO_KINDS in Rust), each with the methods it covers and a tag. An aggregate
+ * that ends in $out or $merge writes, so it is one; a plain aggregate is a read.
+ */
+export const MONGO_KINDS: [string, string[], string?][] = [
+  ["insert", ["insertOne", "insertMany"]],
+  ["update", ["updateOne", "updateMany", "replaceOne"]],
+  ["delete", ["deleteOne", "deleteMany"]],
+  ["findAndModify", ["findOneAndUpdate", "findOneAndReplace", "findOneAndDelete"]],
+  ["bulkWrite", ["bulkWrite"]],
+  ["$out/$merge", ["$out", "$merge"], "In aggregate"],
+  ["drop", ["drop", "dropDatabase", "dropIndex"]],
+  ["create", ["createCollection", "createIndex"]],
+  ["rename", ["renameCollection", "collMod"]],
+  ["users", ["createUser", "grantRolesToUser", "revokeRolesFromUser"]],
+];
 
 export interface OpenInfo {
   server: string;
@@ -98,7 +132,8 @@ export interface OpenInfo {
 
 export interface TreeTable {
   name: string;
-  kind: "table" | "view" | "matview" | "foreign";
+  /** collection and timeseries: MongoDB */
+  kind: "table" | "view" | "matview" | "foreign" | "collection" | "timeseries";
   estimate: number | null;
 }
 
@@ -141,6 +176,27 @@ export interface ResultSet {
   columns: ColMeta[];
   rows: (string | null)[][];
   truncated: boolean;
+  /** MongoDB: the documents (canonical Extended JSON); lib/bson.ts turns them into columns and rows */
+  docs?: unknown[];
+  /** MongoDB: a cell whose document has no such field, by row then column (not null: absent) */
+  missing?: boolean[][];
+}
+
+/** MongoDB Info: one $collStats, read when the dialog opens */
+export interface CollInfo {
+  kind: string;
+  count: number | null;
+  avgSize: number | null;
+  dataSize: number | null;
+  storageSize: number | null;
+  compression: string | null;
+  indexSize: number | null;
+  indexes: [string, number][];
+  capped: boolean;
+  validator: string | null;
+  validationLevel: string | null;
+  validationAction: string | null;
+  readAt: number;
 }
 
 export interface Ask {
@@ -151,6 +207,8 @@ export interface Ask {
   touchId: boolean;
   unreadable: boolean;
   error: string | null;
+  /** MongoDB: the methods asked about (deleteMany, $merge), shown in place of kinds */
+  ops?: string[];
 }
 
 export type RunOutcome =
@@ -225,6 +283,13 @@ export interface TableTab {
   table: string;
   where: string;
   offset: number;
+  /** MongoDB's query bar: Filter is `where`; these are the other boxes. Limit empty = the row limit */
+  project?: string;
+  sort?: string;
+  limit?: string;
+  /** MongoDB: the documents as a table or as mongosh prints them */
+  as?: "table" | "json";
+  /** columns is MongoDB's Fields (from the documents on screen) */
   view: "rows" | "columns" | "indexes";
   /** kept with the connection (a restart, a reconnect), first in the row, and not closed until unpinned */
   pinned?: boolean;

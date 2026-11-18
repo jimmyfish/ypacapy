@@ -1,10 +1,16 @@
 /** How a value reads, from its column type (the result set's own metadata). */
 import type { ColMeta } from "../types";
 
-export type Kind = "num" | "bool" | "ts" | "json" | "bytes" | "text";
+/** oid, doc and arr: MongoDB objectId, object and array (lib/bson.ts draws them) */
+export type Kind = "num" | "bool" | "ts" | "json" | "bytes" | "text" | "oid" | "doc" | "arr";
 
 export function kindOf(type: string): Kind {
   const t = type.toLowerCase();
+  // MongoDB's BSON names, before the SQL ones: objectId is not an object, int32 is a number
+  if (/^objectid/.test(t)) return "oid";
+  if (/^object/.test(t)) return "doc";
+  if (/^array/.test(t)) return "arr";
+  if (/^(int32|int64|decimal128)/.test(t)) return "num";
   if (/^bool/.test(t)) return "bool";
   if (/^(int|integer|smallint|bigint|tinyint|mediumint|serial|bigserial|smallserial|numeric|decimal|real|float|double|money|oid|year)/.test(t)) return "num";
   if (/^(timestamp|datetime|date|time)/.test(t)) return "ts";

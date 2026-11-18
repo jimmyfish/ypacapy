@@ -252,9 +252,10 @@
         $(".ins-col", ins).textContent = $(".col-name", th).textContent;
         $(".ins-type", ins).textContent = $(".col-type", th).textContent;
         $(".ins-row", ins).textContent = `row ${$(".rownum", td.parentElement).textContent}`;
-        const v = $(".ins-value", ins), isNull = td.classList.contains("null");
-        v.textContent = isNull ? "null, no value" : td.dataset.full ?? td.textContent;
-        v.classList.toggle("is-null", isNull);
+        // MongoDB: a missing field is not null; the document has no such field
+        const v = $(".ins-value", ins), isNull = td.classList.contains("null"), isMissing = td.classList.contains("missing");
+        v.textContent = isMissing ? "missing, this document has no such field" : isNull ? "null, no value" : td.dataset.full ?? td.textContent;
+        v.classList.toggle("is-null", isNull || isMissing);
       }
       if (scroll) td.scrollIntoView({ block: "nearest", inline: "nearest" });
     };
@@ -267,7 +268,7 @@
       e.preventDefault();
       if (td.classList.contains("rownum")) td = td.nextElementSibling;
       pick(td, false);
-      openCellMenu(e.clientX, e.clientY, td.classList.contains("null"));
+      openCellMenu(e.clientX, e.clientY, td.classList.contains("null") || td.classList.contains("missing"));
     });
     wrap.addEventListener("keydown", (e) => {
       const d = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
@@ -282,7 +283,7 @@
       heads().forEach((h) => { if (h.hasAttribute("aria-sort")) { h.setAttribute("aria-sort", "none"); const u = $(".sort-ico use", h); if (u) u.setAttribute("href", "#i-arrow-up-down"); } });
       th.setAttribute("aria-sort", dir); $(".sort-ico use", th).setAttribute("href", dir === "ascending" ? "#i-arrow-up" : "#i-arrow-down");
       const key = (tr) => {
-        const td = tr.cells[i]; if (td.classList.contains("null")) return null;
+        const td = tr.cells[i]; if (td.classList.contains("null") || td.classList.contains("missing")) return null;
         const v = td.dataset.full ?? td.textContent, n = Number(v.replace(/,/g, ""));
         return th.classList.contains("num") && !Number.isNaN(n) ? n : v;
       };

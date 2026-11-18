@@ -28,6 +28,9 @@ fontdb = { version = "0.23", default-features = false, features = ["fs", "memmap
 # PostgreSQL, MySQL/MariaDB and SQLite, one async driver family; also ypacapy.db (history, saved queries).
 # No macros, no migrations, no `any` driver: column types are read from each driver's own result metadata.
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-webpki", "postgres", "mysql", "sqlite"] }
+# MongoDB: the official driver (tokio, rustls, SRV through its own DNS resolver). Its bson 2 is re-exported as
+# mongodb::bson. Queries are mongosh text parsed in mongo_shell.rs, never evaluated as JavaScript.
+mongodb = "3.10"
 # Write guard: statements are classified from the parsed AST (tokenizer fallback), never by regex.
 sqlparser = { version = "0.64", features = ["visitor"] }
 # settings.toml and connections.toml

@@ -14,7 +14,7 @@ const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "hous
   "ellipsis", "chevron-down", "chevron-right", "chevron-left", "folder", "eye", "square-function", "table-2", "square-code", "panel-left-close",
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus", "pin", "pin-off",
-  "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy"];
+  "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check"];
 function symbol(name) {
   const src = fs.readFileSync(`${LUCIDE}/${name}.js`, "utf8");
   const start = src.indexOf("[", src.indexOf("createLucideIcon("));
@@ -49,7 +49,8 @@ const c = {
   bool: (v) => (v === null ? NULLC() : `<td class="bool" data-full="${v}">${ic(v ? "check" : "minus", v ? "yes" : "no")}<span class="visually-hidden">${v}</span></td>`),
   json: (o) => (o === null ? NULLC() : `<td class="json" data-full="${esc(JSON.stringify(o))}">${jsonHtml(o)}</td>`),
 };
-const TYPE_ICON = (t) => (/^(int|numeric|float|real|double|decimal|serial|bigint|smallint)/.test(t) ? "hash" : /timestamp|^date|^time/.test(t) ? "calendar-clock" : /^bool/.test(t) ? "toggle-left" : /^json/.test(t) ? "braces" : "type");
+// BSON types (MongoDB) read the same way: numbers, dates, booleans; objectId gets an id card (the key glyph is the primary-key mark), object braces, array brackets
+const TYPE_ICON = (t) => (/^objectId/.test(t) ? "id-card" : /^object/.test(t) ? "braces" : /^array/.test(t) ? "brackets" : /^(int|numeric|float|real|double|decimal|serial|bigint|smallint)/.test(t) ? "hash" : /timestamp|^date|^time/.test(t) ? "calendar-clock" : /^bool/.test(t) ? "toggle-left" : /^json/.test(t) ? "braces" : "type");
 // a column head: type glyph, name, a key mark when the catalog says so (table views only), the sort control; the type under it
 const th = (name, type, o = {}) => `<th scope="col"${o.num ? ' class="num"' : ""} aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen">${ic(TYPE_ICON(type), "t-ico")}<span class="col-name">${name}</span>${o.key ? `<span class="col-key" title="${o.key}">${ic(o.key === "Primary key" ? "key-round" : "link", "k-ico")}</span>` : ""}${ic("arrow-up-down", "sort-ico")}</button><span class="col-type">${type}</span></th>`;
 const ROWHEAD = `<th class="rownum" scope="col"><span class="visually-hidden">Row</span></th>`;
@@ -101,7 +102,7 @@ const inspector = (col, type, row, value) => `
 // ---------- shell: title strip, rail, panel ----------
 const CONNS = [["shop_prod", "server", 6, "postgres"], ["analytics.sqlite", "hard-drive", 2, "sqlite"], ["legacy_cms", "server", 3, "mysql"]];
 const tile = (icon, n, sm = true) => `<span class="proj-tile${sm ? " proj-tile--sm" : ""}" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)">${ic(icon)}</span>`;
-const strip = (current, chip = "") => `
+const strip = (current, chip = "", conns = CONNS.slice(0, 2)) => `
   <!-- title strip: the native macOS traffic lights sit in the empty 84px on the left (not drawn here) -->
   <!-- a connection tab carries its colour (--fg/--bg) on the tab itself; the tile inside inherits it, so tab, ring and
        tile are always one colour. The tile shows the engine glyph, as on the Home cards. -->
@@ -109,8 +110,8 @@ const strip = (current, chip = "") => `
     <nav class="ptabs" aria-label="Connections">
       <button type="button" class="ptab" data-href="./home.html"${current === "home" ? ' aria-current="page"' : ""}>${ic("house")}Home</button>
       <span class="ptab-sep" aria-hidden="true"></span>
-${CONNS.slice(0, 2).map(([name, , n, engine]) => `      <div class="ptab ptab--project" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)"${current === name ? ' aria-current="page"' : ""}>
-        <button type="button" class="ptab-main" data-href="./index.html"><span class="proj-tile proj-tile--sm">${engIco(engine, 13)}</span>${name}</button>
+${conns.map(([name, , n, engine]) => `      <div class="ptab ptab--project" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)"${current === name ? ' aria-current="page"' : ""}>
+        <button type="button" class="ptab-main" data-href="./${engine === "mongo" ? "collection" : "index"}.html"><span class="proj-tile proj-tile--sm">${engIco(engine, 13)}</span>${name}</button>
         <button type="button" class="icon-btn ptab-close" aria-label="Close ${name}">${ic("x")}</button>
       </div>`).join("\n")}
     </nav>
@@ -212,17 +213,17 @@ const savedSide = `
 const TABS = [["orders", "table-2", "orders", "./table.html"], ["q1", "square-code", "Query 1", "./index.html"], ["q2", "square-code", "Query 2", "./index.html?show=sql-error"], ["q3", "square-code", "Query 3", "./index.html?show=wide"], ["q4", "square-code", "Query 4", "./index.html?show=long"], ["q5", "square-code", "Query 5", "./index.html?show=ac-columns"]];
 // pinned tabs sit first and are kept with the connection (across a restart and a reconnect); orders starts pinned
 const PINNED = ["orders"];
-const tabsbar = (active, local) => `
+const tabsbar = (active, local, { tabs = TABS, pinned = PINNED, conn = "shop_prod" } = {}) => `
       <div class="tabsbar">
         <button type="button" class="icon-btn side-toggle" aria-label="Hide sidebar" title="Hide sidebar  ⌘\\">${ic("panel-left-close")}</button>
         <div class="tabs">
-${TABS.map(([id, icon, label, href]) => `          <div class="tab" data-tab="${id}"${id === active ? ' aria-current="page"' : ""}${PINNED.includes(id) ? " data-pinned" : ""}><button type="button" class="tab-main"${local.includes(id) ? "" : ` data-href="${href}"`}>${ic(icon)}<span class="name">${label}</span>${id === "q2" ? '<span class="dirty" role="img" aria-label="Unsaved changes"></span>' : ""}</button><button type="button" class="icon-btn close" aria-label="Close ${label}">${ic("x")}</button><button type="button" class="icon-btn pin" aria-label="Unpin ${label}" title="Pinned: kept with shop_prod. Click to unpin">${ic("pin")}</button></div>`).join("\n")}
+${tabs.map(([id, icon, label, href]) => `          <div class="tab" data-tab="${id}"${id === active ? ' aria-current="page"' : ""}${pinned.includes(id) ? " data-pinned" : ""}><button type="button" class="tab-main"${local.includes(id) ? "" : ` data-href="${href}"`}>${ic(icon)}<span class="name">${label}</span>${id === "q2" ? '<span class="dirty" role="img" aria-label="Unsaved changes"></span>' : ""}</button><button type="button" class="icon-btn close" aria-label="Close ${label}">${ic("x")}</button><button type="button" class="icon-btn pin" aria-label="Unpin ${label}" title="Pinned: kept with ${conn}. Click to unpin">${ic("pin")}</button></div>`).join("\n")}
           <button type="button" class="icon-btn tab-add" aria-label="New query tab">${ic("plus")}</button>
         </div>
         <div class="menu-anchor env-group guard">
-          <button type="button" class="env-picker" id="guard-btn" data-menu="guard-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Security level for shop_prod: Low" title="Security level for shop_prod">${ic("shield", "guard-ico")}<span class="env-name" id="guard-name">Low</span>${ic("chevron-down")}</button>
-          <div class="menu guard-menu" id="guard-menu" role="menu" aria-label="Security level for shop_prod" hidden>
-            <p class="menu-note">Security level for shop_prod</p>
+          <button type="button" class="env-picker" id="guard-btn" data-menu="guard-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Security level for ${conn}: Low" title="Security level for ${conn}">${ic("shield", "guard-ico")}<span class="env-name" id="guard-name">Low</span>${ic("chevron-down")}</button>
+          <div class="menu guard-menu" id="guard-menu" role="menu" aria-label="Security level for ${conn}" hidden>
+            <p class="menu-note">Security level for ${conn}</p>
             <button type="button" role="menuitemradio" aria-checked="false" data-guard="none" data-icon="shield-off">${ic("shield-off")}<span class="gm-text"><span>None</span><small>Every statement runs</small></span>${ic("check", "tick")}</button>
             <button type="button" role="menuitemradio" aria-checked="true" data-guard="low" data-icon="shield">${ic("shield")}<span class="gm-text"><span>Low</span><small>Confirm the picked statements</small></span>${ic("check", "tick")}</button>
             <button type="button" role="menuitemradio" aria-checked="false" data-guard="strict" data-icon="lock">${ic("lock")}<span class="gm-text"><span>Strict</span><small>Passphrase for the picked statements</small></span>${ic("check", "tick")}</button>
@@ -235,8 +236,8 @@ const resActions = (id) => `<div class="res-actions"><div class="menu-anchor"><b
 const runGroup = `
           <button type="button" class="btn btn--primary btn--run" id="run" title="Run  ⌘↵">${ic("play", "run-ico")}${ic("loader-circle", "run-spin")}<span>Run</span><span class="run-kbd" aria-hidden="true">⌘↵</span></button>`;
 
-const app = ({ current, side = "", work, overlay = "", chip = "" }) => `
-<div class="app">${strip(current, chip)}${rail}
+const app = ({ current, side = "", work, overlay = "", chip = "", conns }) => `
+<div class="app">${strip(current, chip, conns)}${rail}
   <div class="panel">${side}
     <main class="work">${work}
     </main>
@@ -344,7 +345,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
       </div>`;
 
 // ---------- preview bar ----------
-const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["about", "About"]];
+const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["mongo", "MongoDB"], ["collection", "Collection"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["about", "About"]];
 const UI_FONTS = `<option value="">System</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option><option value="Avenir Next, Avenir, sans-serif">Avenir</option><option value="Georgia, serif">Georgia</option>`;
 const MONO_FONTS = `<option value="">System mono</option><option value="Menlo, monospace">Menlo</option><option value="'Courier New', monospace">Courier</option><option value="Monaco, monospace">Monaco</option>`;
 // preview-only: recolour the first connection tab (shop_prod) to try each connection colour on the title strip
@@ -406,12 +407,13 @@ const pages = {};
 
 // Engine glyphs, the same as src/components/EngineIcon.tsx (adopted from opengrip): a PostgreSQL elephant, a MySQL
 // dolphin, an SQLite feather, 16x16 in their brand colours. Each fill is a light-dark() pair, so it follows color-scheme.
-const ENGINE_NAME = { postgres: "PostgreSQL", mysql: "MySQL", sqlite: "SQLite" };
+const ENGINE_NAME = { postgres: "PostgreSQL", mysql: "MySQL", sqlite: "SQLite", mongo: "MongoDB" };
 const ld = (l, d) => `light-dark(${l}, ${d})`;
 const ENGINE_GLYPH = {
   postgres: `<path d="M4.2 3C5.4 1.9 7.6 1.5 9.6 1.9C12.4 2.5 14 4.5 13.7 7.4C13.5 9.2 12.6 10.4 11.3 10.7L11.5 13.2C11.5 14 10.7 14.5 10 14L9.1 13.3V11C7.8 11.1 6.6 10.8 5.7 10.1C5.4 11.2 4.8 12.2 3.8 12.5C3 12.7 2.4 11.9 2.8 11.2C3.4 10.1 3.3 8.8 2.9 7.6C2.4 5.9 2.8 4.2 4.2 3Z" style="fill:${ld("#336791", "#4c82b5")};stroke:${ld("#ffffff", "#e6eef5")}" stroke-width="0.8" stroke-linejoin="round"/><path d="M9.6 4.5C10.8 5.3 11.3 6.8 10.8 8.4" style="stroke:${ld("#ffffff", "#e6eef5")}" stroke-width="0.8" stroke-linecap="round"/><circle cx="7.6" cy="5.4" r="0.8" style="fill:${ld("#ffffff", "#e6eef5")}"/>`,
   mysql: `<path d="M1.5 12C3.1 8.3 6.3 5.7 10.2 5.2C11 4.1 12.1 3.3 13.6 3.1C13.2 4 13.1 4.9 13.4 5.7C14.2 6.6 14.6 7.9 14.4 9.3C13.8 8.5 12.8 8 11.7 8C8.7 8 5.4 9.6 1.5 12Z" style="fill:${ld("#00758f", "#2a9bb5")}"/><path d="M11.8 9.7C12.4 10.9 12.3 12.4 11.5 13.7C11.3 12.5 10.6 11.6 9.7 11.1" style="stroke:${ld("#f29111", "#f5a742")}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`,
   sqlite: `<path d="M2 3.5C2 2.67 2.67 2 3.5 2H10.2L7.6 14H3.5C2.67 14 2 13.33 2 12.5V3.5Z" style="fill:${ld("#0f80cc", "#3d8fd1")}"/><path d="M14.2 1.4C11.3 2.4 9.3 5.4 8.6 9.3L8 14H8.9L9.5 9.7C12.6 8.6 14.5 5.4 14.2 1.4Z" style="fill:${ld("#0b4f82", "#9ccbf0")}"/><path d="M13.4 2.9C11.7 4.6 10.4 6.9 9.5 9.6" style="stroke:${ld("#bfe0f7", "#1e3a52")}" stroke-width="0.7" stroke-linecap="round"/>`,
+  mongo: `<path d="M8 1.2C8 1.2 3.9 4.7 3.9 9C3.9 11.5 5.6 13.3 7.5 13.8L7.7 15.2H8.3L8.5 13.8C10.4 13.3 12.1 11.5 12.1 9C12.1 4.7 8 1.2 8 1.2Z" style="fill:${ld("#00684a", "#00a35c")}"/><path d="M8 3.4V13.6" style="stroke:${ld("#c1f2d6", "#0b3b2a")}" stroke-width="0.8" stroke-linecap="round"/>`,
 };
 const engIco = (engine, size = 14) => `<svg class="engine-ico" width="${size}" height="${size}" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">${ENGINE_GLYPH[engine]}</svg>`;
 
@@ -419,8 +421,8 @@ const engIco = (engine, size = 14) => `<svg class="engine-ico" width="${size}" h
 // A connection card. Its actions (Move to group, Edit, Remove) show on hover; Move to group opens a menu of the groups.
 const GROUPS = ["Production", "Staging"];
 const card = ([name, icon, n, engine], [head, tail], when, o = {}) => `
-          <div class="project-card conn-card"${o.id ? ` data-card="${o.id}"` : ""} data-q="${esc(`${name} ${head}${tail} ${{ postgres: "postgresql pg", mysql: "mysql", sqlite: "sqlite" }[engine]} ${o.group || ""}`.toLowerCase())}">
-            <button type="button" class="project-open" aria-label="Open ${name}, ${head}${tail}" data-href="./index.html"></button>
+          <div class="project-card conn-card"${o.id ? ` data-card="${o.id}"` : ""} data-q="${esc(`${name} ${head}${tail} ${{ postgres: "postgresql pg", mysql: "mysql", sqlite: "sqlite", mongo: "mongodb mongo" }[engine]} ${o.group || ""}`.toLowerCase())}">
+            <button type="button" class="project-open" aria-label="Open ${name}, ${head}${tail}" data-href="./${engine === "mongo" ? "collection" : "index"}.html"></button>
             <span class="proj-tile" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)">${engIco(engine, 22)}</span>
             <span class="conn-id"><span class="proj-name">${name}</span><span class="proj-cols"><span class="sr-only">${ENGINE_NAME[engine]}</span><span class="addr"><span class="addr-head">${head}</span><span class="addr-tail">${tail}</span></span></span></span>
             <span class="proj-when">${when}</span>${o.id ? `
@@ -470,6 +472,7 @@ const groupSection = (id, name, cards, { open = 0 } = {}) => `
 const C = {
   shop: card(CONNS[0], ["localhost", ":5432 / shop"], "Opened today at 09:41", { id: "shop", group: "Production" }),
   cms: card(CONNS[2], ["10.0.4.12", ":3306 / cms"], "Opened yesterday at 16:40", { id: "cms", group: "Production" }),
+  events: card(["events_prod", "server", 2, "mongo"], ["events-prod.x1y2z.mongodb.net", " / events"], "Opened today at 09:58", { id: "events", group: "Production" }),
   staging: card(["loophealth-staging", "server", 4, "postgres"], ["loophealth-staging-3may.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com", ":5432 / postgres"], "Opened today at 09:12", { id: "staging", group: "Staging" }),
   analytics: card(CONNS[1], ["~/data/", "analytics.sqlite"], "Opened today at 08:30", { id: "analytics" }),
   backup: card(["production.sqlite", "hard-drive", 2, "sqlite"], ["~/Shelter/data/rabbit/backup/", "production.sqlite"], "Opened today at 08:55", { id: "backup" }),
@@ -482,6 +485,7 @@ const MANY = [
     ["orders_prod", "postgres", 1, RDS("orders-prod"), ":5432 / orders", "Opened today at 09:20"],
     ["inventory_prod", "postgres", 5, RDS("inventory-prod"), ":5432 / inventory", "Opened yesterday at 17:02"],
     ["legacy_cms", "mysql", 3, "10.0.4.12", ":3306 / cms", "Opened yesterday at 16:40"],
+    ["events_prod", "mongo", 2, "events-prod.x1y2z.mongodb.net", " / events", "Opened today at 09:58"],
     ["auth_prod", "postgres", 7, RDS("auth-prod"), ":5432 / auth", "Opened 3 days ago"],
     ["search_prod", "mysql", 6, "10.0.4.31", ":3306 / search", "Opened 4 days ago"],
     ["notifications_prod", "postgres", 8, RDS("notifications-prod"), ":5432 / notify", "Opened last week"],
@@ -512,6 +516,7 @@ const MANY = [
     ["shop_dev", "postgres", 1, "localhost", ":5432 / shop_dev", "Opened today at 10:02"],
     ["orders_dev", "postgres", 1, "localhost", ":5432 / orders_dev", "Opened yesterday at 18:44"],
     ["cms_dev", "mysql", 3, "localhost", ":3306 / cms", "Opened 2 days ago"],
+    ["events_dev", "mongo", 2, "localhost", ":27017 / events", "Opened 3 days ago"],
     ["fixtures.sqlite", "sqlite", 2, "~/code/shop/test/", "fixtures.sqlite", "Opened 4 days ago"],
     ["docker_pg16", "postgres", 4, "127.0.0.1", ":55432 / postgres", "Opened last week"],
   ]],
@@ -562,7 +567,7 @@ pages["home.html"] = page({
       </div>
       <p class="sr-only" id="home-q-h">Enter opens the first match. Escape clears the search.</p>
       <div class="empty home-empty" id="home-empty" hidden><strong>No connection matches <span id="home-empty-q"></span></strong><span>Searches names, hosts, users, databases, files, engines and groups.</span><button type="button" class="link" id="home-clear">Clear the search</button></div>
-      <div class="conn-groups" data-when="grouped">${groupSection("prod", "Production", [C.shop, C.cms], { open: 1 })}${groupSection("staging", "Staging", [C.staging])}
+      <div class="conn-groups" data-when="grouped">${groupSection("prod", "Production", [C.shop, C.events, C.cms], { open: 2 })}${groupSection("staging", "Staging", [C.staging])}
       <section class="conn-group" data-group-id="none">
         <div class="group-head"><h2>Ungrouped</h2><span class="group-count">2</span><span class="drop-note">Drop to remove from its group</span></div>
         <div class="projects">${C.analytics}${C.backup}${newCard("")}
@@ -739,6 +744,10 @@ const levelPick = (id, value) => `<div class="menu-anchor level-pick" data-level
                 </div>`;
 // What each security level does with the statements ticked under it
 const LEVEL_DESC = { none: "Every statement runs", low: "Confirm the statements below", strict: "Passphrase for the statements below" };
+// MongoDB has no statements: the guard asks about write methods, grouped by what they do. An aggregate that ends in
+// $out or $merge writes too, so it is on the list; a plain aggregate is a read.
+const MONGO_OPS = [[["insertOne", "insertMany"]], [["updateOne", "updateMany", "replaceOne"]], [["deleteOne", "deleteMany"]], [["findOneAndUpdate", "findOneAndReplace", "findOneAndDelete"]], [["bulkWrite"]],
+  [["$out", "$merge"], "In aggregate"], [["drop", "dropDatabase", "dropIndex"]], [["createCollection", "createIndex"]], [["renameCollection", "collMod"]], [["createUser", "grantRolesToUser", "revokeRolesFromUser"]]];
 const STMTS = [["INSERT"], ["UPDATE"], ["DELETE"], ["REPLACE", "MySQL"], ["ALTER"], ["DROP"], ["TRUNCATE"], ["CREATE"], ["GRANT"], ["REVOKE"]];
 const passField = (id, label, auto) => `<label>${label}<input class="field" id="${id}" type="password" autocomplete="${auto}" required aria-required="true"></label>`;
 const subDialog = (key, title, body, primary, danger) => `
@@ -848,8 +857,8 @@ const lab = (id, t) => `<label for="${id}">${t}</label>`;
 const COLORS = [["5", "Turquoise"], ["2", "Emerald"], ["7", "Sunflower"], ["3", "Carrot"], ["6", "Alizarin"], ["1", "River"], ["8", "Asphalt"], ["4", "Amethyst"]];
 pages["connect.html"] = page({
   title: "ypacapy preview, new connection",
-  desc: "Design preview of adding a PostgreSQL, MySQL or SQLite connection in ypacapy, with its password kept in the macOS keychain.",
-  barHtml: bar("connect", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["url-only", "URL only"], ["options", "Options tab"], ["options-low", "Low"], ["options-strict", "Strict"], ["options-nopass", "No passphrase set"], ["level-menu", "Security level menu"], ["group-menu", "Group menu"], ["group-new", "New group"], ["ssl", "SSL tab"], ["advanced", "Advanced tab"], ["name-missing", "Name missing"], ["testing", "Testing"], ["test-ok", "Test passed"], ["test-failed", "Test failed"]]),
+  desc: "Design preview of adding a PostgreSQL, MySQL, SQLite or MongoDB connection in ypacapy, with its password kept in the macOS keychain.",
+  barHtml: bar("connect", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["mongo", "MongoDB (SRV)"], ["mongo-host", "MongoDB host and port"], ["mongo-url", "MongoDB URL only"], ["mongo-options", "MongoDB Options"], ["mongo-tls", "MongoDB TLS"], ["mongo-advanced", "MongoDB Advanced"], ["mongo-test-ok", "MongoDB test passed"], ["mongo-test-failed", "MongoDB test failed"], ["url-only", "URL only"], ["options", "Options tab"], ["options-low", "Low"], ["options-strict", "Strict"], ["options-nopass", "No passphrase set"], ["level-menu", "Security level menu"], ["group-menu", "Group menu"], ["group-new", "New group"], ["ssl", "SSL tab"], ["advanced", "Advanced tab"], ["name-missing", "Name missing"], ["testing", "Testing"], ["test-stopped", "Test stopped"], ["test-ok", "Test passed"], ["test-failed", "Test failed"]]),
   body: `
 <div class="app">${strip("home")}
   <div class="home"><div class="home-inner"><div class="home-head"><div><h1>Connections</h1><p class="muted">Everything stays on this Mac, in ~/.config/ypacapy.</p></div></div></div></div>
@@ -876,12 +885,15 @@ pages["connect.html"] = page({
 
       <div class="cx-panel" role="tabpanel" id="p-general" aria-labelledby="t-general">
         <div class="cx-grid">
-          ${lab("c-engine", "Driver")}<span class="cx-full cx-driver">${ic("server", "drv-ico")}${csel("c-engine", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"]], "postgres")}</span>
+          ${lab("c-engine", "Driver")}<span class="cx-full cx-driver">${ic("server", "drv-ico")}${csel("c-engine", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["mongo", "MongoDB"]], "postgres")}</span>
           <span class="cx-label" id="c-type-l" data-for="server">Connection type</span><span class="cx-full" data-for="server"><span class="seg seg--lg" role="group" aria-labelledby="c-type-l"><button type="button" aria-pressed="true" data-type="default">Default</button><button type="button" aria-pressed="false" data-type="url">URL only</button></span></span>
           <span data-for="fields" class="cx-sub">${lab("c-host", "Host")}<input class="field mono" id="c-host" name="host" value="localhost" autocomplete="off" spellcheck="false">${lab("c-port", "Port")}<input class="field mono cx-port" id="c-port" name="port" value="5432" inputmode="numeric" autocomplete="off">
           ${lab("c-user", "User")}<input class="field mono cx-full" id="c-user" name="user" value="ops" autocomplete="username" spellcheck="false"></span>
           <span data-for="server" class="cx-sub">${lab("c-pass", "Password")}<input class="field cx-full" id="c-pass" name="password" type="password" autocomplete="current-password" aria-describedby="c-pass-h"></span>
           <span data-for="fields" class="cx-sub">${lab("c-db", "Database")}<input class="field mono cx-full" id="c-db" name="database" value="shop" autocomplete="off" spellcheck="false"></span>
+          <span data-for="mongo-fields" class="cx-sub" hidden>${lab("c-authdb", "Auth database")}<input class="field mono cx-full" id="c-authdb" name="authSource" placeholder="admin" autocomplete="off" spellcheck="false" aria-describedby="c-authdb-h">
+          <span class="help cx-full cx-under" id="c-authdb-h">The database the user is defined in. Empty uses admin.</span>
+          <span class="cx-label">SRV record</span><label class="check cx-full"><input id="c-srv" type="checkbox">Host is a DNS seed list name (mongodb+srv), so there is no port</label></span>
           <span data-for="sqlite" class="cx-sub" hidden>${lab("c-file", "File")}<span class="with-btn cx-full"><input class="field mono" id="c-file" name="file" placeholder="~/data/analytics.sqlite" autocomplete="off" spellcheck="false"><button type="button" class="btn">${ic("folder-open")}Choose</button></span></span>
           ${lab("c-url", "URL")}<input class="field mono cx-full" id="c-url" name="url" autocomplete="off" spellcheck="false" aria-describedby="c-url-h">
           <span class="help cx-full cx-under" id="c-url-h">Editing the URL fills in the settings above.</span>
@@ -895,22 +907,29 @@ pages["connect.html"] = page({
         </div>
         <div data-when-guarded hidden>
         <div class="protect-head cx-protect-head">
-          <h3 class="cx-h">Statements to ask about <span class="cx-h-note">For this connection</span></h3>
+          <h3 class="cx-h"><span data-for="sql">Statements to ask about</span><span data-for="mongo" hidden>Writes to ask about</span> <span class="cx-h-note">For this connection</span></h3>
           <button type="button" class="btn btn--quiet" id="protect-toggle" data-when-strict hidden>${ic("lock")}<span>Change</span></button>
         </div>
-        <div class="set-list stmts" id="protect">${STMTS.map(([k, tag], i) => setItem(`<code class="stmt">${k}</code>${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-${i}" class="switch" type="checkbox" role="switch" checked>`, `prot-${i}`)).join("")}
+        <div class="set-list stmts" id="protect">${STMTS.map(([k, tag], i) => setItem(`<code class="stmt">${k}</code>${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-${i}" class="switch" type="checkbox" role="switch" checked>`, `prot-${i}`).replace('class="set-item"', 'class="set-item" data-for="sql"')).join("")}${MONGO_OPS.map(([ks, tag], i) => setItem(`${ks.map((k) => `<code class="stmt">${k}</code>`).join(" ")}${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-m${i}" class="switch" type="checkbox" role="switch" checked>`, `prot-m${i}`).replace('class="set-item"', 'class="set-item" data-for="mongo" hidden')).join("")}
         </div>
         </div>
         <h3 class="cx-h">Queries <span class="cx-h-note">Empty uses the value in Settings</span></h3>
-        <div class="set-list">${setItem("Row limit", "Added to a select that has no limit of its own", '<span class="unit-field"><input id="c-limit" class="field" inputmode="numeric" placeholder="100"><span class="unit">rows</span></span>', "c-limit")}${setItem("Statement timeout", "0 lets a statement run as long as it takes", '<span class="unit-field"><input id="c-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "c-timeout")}${setItem("Connection heartbeat", "Keeps idle sessions open with select 1", choice("c-beat", [["app", "Use Settings (off)"], ["on", "On"], ["off", "Off"]], "app"), "c-beat")}
+        <div class="set-list">${setItem("Row limit", '<span data-for="sql">Added to a select that has no limit of its own</span><span data-for="mongo" hidden>Added to a find or aggregate that has no limit of its own</span>', '<span class="unit-field"><input id="c-limit" class="field" inputmode="numeric" placeholder="100"><span class="unit">rows</span></span>', "c-limit")}${setItem("Statement timeout", "0 lets a statement run as long as it takes", '<span class="unit-field"><input id="c-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "c-timeout")}${setItem("Connection heartbeat", '<span data-for="sql">Keeps idle sessions open with select 1</span><span data-for="mongo" hidden>Keeps idle sessions open with a ping command</span>', choice("c-beat", [["app", "Use Settings (off)"], ["on", "On"], ["off", "Off"]], "app"), "c-beat")}
         </div>
       </div>
 
       <div class="cx-panel" role="tabpanel" id="p-ssl" aria-labelledby="t-ssl" hidden>
-        <div class="cx-grid" data-for="server">
+        <div class="cx-grid" data-for="sql-server">
           ${lab("c-sslmode", "Mode")}<span class="cx-full">${csel("c-sslmode", [["disable", "Disable"], ["prefer", "Prefer"], ["require", "Require"], ["verify-ca", "Verify CA"], ["verify-full", "Verify full"]], "prefer")}</span>
           <span class="help cx-full cx-under">Verify CA and Verify full check the server's certificate.</span>
           ${lab("c-ca", "CA file")}<span class="with-btn cx-full"><input class="field mono" id="c-ca" placeholder="~/certs/ca.pem" autocomplete="off" spellcheck="false"><button type="button" class="btn">${ic("folder-open")}Choose</button></span>
+        </div>
+        <div class="cx-grid" data-for="mongo" hidden>
+          ${lab("c-tls", "TLS")}<span class="cx-full">${csel("c-tls", [["off", "Off"], ["on", "On"], ["insecure", "On, without checking the certificate"]], "on")}</span>
+          <span class="help cx-full cx-under">An SRV record turns TLS on. Atlas requires it.</span>
+          ${lab("c-tlsca", "CA file")}<span class="with-btn cx-full"><input class="field mono" id="c-tlsca" placeholder="~/certs/ca.pem" autocomplete="off" spellcheck="false"><button type="button" class="btn">${ic("folder-open")}Choose</button></span>
+          ${lab("c-tlscert", "Client certificate")}<span class="with-btn cx-full"><input class="field mono" id="c-tlscert" placeholder="~/certs/client.pem" autocomplete="off" spellcheck="false" aria-describedby="c-tlscert-h"><button type="button" class="btn">${ic("folder-open")}Choose</button></span>
+          <span class="help cx-full cx-under" id="c-tlscert-h">For X.509 sign-in: one file with the certificate and its key. Leave the password empty.</span>
         </div>
         <p class="cx-none" data-for="sqlite" hidden>SQLite opens a file on this Mac. There is no network to secure.</p>
       </div>
@@ -919,6 +938,12 @@ pages["connect.html"] = page({
         <div class="cx-grid">
           <span data-for="server" class="cx-sub">${lab("c-app", "Application name")}<input class="field mono cx-full" id="c-app" value="ypacapy" autocomplete="off" spellcheck="false">
           ${lab("c-ctimeout", "Connect timeout")}<span class="unit-field cx-full"><input class="field" id="c-ctimeout" inputmode="numeric" placeholder="15"><span class="unit">s</span></span></span>
+          <span data-for="mongo" class="cx-sub" hidden>${lab("c-rs", "Replica set")}<input class="field mono cx-full" id="c-rs" placeholder="Read from the server" autocomplete="off" spellcheck="false">
+          ${lab("c-readpref", "Read from")}<span class="cx-full">${csel("c-readpref", [["primary", "Primary"], ["primaryPreferred", "Primary, or a secondary if it is down"], ["secondary", "Secondary"], ["secondaryPreferred", "Secondary, or the primary if none is up"], ["nearest", "Nearest"]], "primary")}</span>
+          <span class="help cx-full cx-under">A secondary keeps your reads off the primary. Writes always go to the primary.</span>
+          <span class="cx-label">Direct connection</span><label class="check cx-full"><input id="c-direct" type="checkbox">Talk to this host only, not the rest of its replica set</label>
+          ${lab("c-hb", "Server check")}<span class="unit-field cx-full"><input class="field" id="c-hb" inputmode="numeric" placeholder="60" aria-describedby="c-hb-h"><span class="unit">s</span></span>
+          <span class="help cx-full cx-under" id="c-hb-h">While connected, the driver sends hello to each host at this interval to find the primary. It cannot be turned off.</span></span>
         </div>
         <p class="cx-none" data-for="sqlite" hidden>Nothing to set for an SQLite file.</p>
       </div>
@@ -1038,6 +1063,375 @@ pages["about.html"] = page({
   </div>
 </div>` }),
   script: js("page-about.js"),
+});
+
+// ---------- MongoDB: the query console and a collection tab ----------
+// A MongoDB connection uses the same shell: title strip, rail, schema tree, tabs, editor over results. What changes:
+// the tree is databases > collections and views; the editor takes mongosh syntax (db.<collection>.<method>(...));
+// results are documents, shown as a table of their top-level fields or as the documents themselves (JSON).
+// Nothing heavy runs on its own: counts are estimatedDocumentCount (collection metadata, no scan), a collection opens
+// with find(filter).limit(20) and no sort, Fields come from the documents on screen (no $sample), Indexes and
+// Validation are catalog reads (listIndexes, listCollections).
+const MCONN = "events_prod";
+const MCONNS = [CONNS[0], [MCONN, "server", 2, "mongo"]];
+// BSON values in the sample: { $oid }, { $date }, { $dec } wrap their types; undefined is a missing field
+const OID = (i) => ({ $oid: (0x6553a1f2 + i * 977).toString(16) + "c9e77b0012ab" + (0x0f1e + i * 37).toString(16).padStart(4, "0") });
+const DATE = (s) => ({ $date: s });
+const DEC = (n) => ({ $dec: n });
+const bsonType = (v) => (v === null ? "null" : v?.$oid ? "objectId" : v?.$date ? "date" : v?.$dec !== undefined ? "decimal128" : Array.isArray(v) ? "array" : typeof v === "object" ? "object"
+  : typeof v === "number" ? (Number.isInteger(v) ? "int32" : "double") : typeof v === "boolean" ? "bool" : "string");
+const isoOf = (d) => d.replace(" ", "T").replace(/Z$/, ".000Z");
+// mongosh's way of printing a value, coloured with the JSON tokens; inline (one line) for cells, pretty for the JSON view
+const shellVal = (v, pad = "", pretty = false) => {
+  if (v === null) return '<span class="j-null">null</span>';
+  if (v.$oid) return `<span class="q-f">ObjectId</span><span class="j-p">(</span><span class="j-str">'${v.$oid}'</span><span class="j-p">)</span>`;
+  if (v.$date) return `<span class="q-f">ISODate</span><span class="j-p">(</span><span class="j-str">'${isoOf(v.$date)}'</span><span class="j-p">)</span>`;
+  if (v.$dec !== undefined) return `<span class="q-f">Decimal128</span><span class="j-p">(</span><span class="j-str">'${v.$dec}'</span><span class="j-p">)</span>`;
+  if (typeof v === "string") return `<span class="j-str">'${esc(v)}'</span>`;
+  if (typeof v === "number") return `<span class="j-num">${v}</span>`;
+  if (typeof v === "boolean") return `<span class="j-bool">${v}</span>`;
+  const inner = pad + "  ";
+  if (Array.isArray(v)) {
+    if (!v.length) return '<span class="j-p">[]</span>';
+    return pretty && v.some((x) => x && typeof x === "object" && !x.$oid && !x.$date && x.$dec === undefined)
+      ? `<span class="j-p">[</span>\n${v.map((x) => inner + shellVal(x, inner, true)).join('<span class="j-p">,</span>\n')}\n${pad}<span class="j-p">]</span>`
+      : `<span class="j-p">[ </span>${v.map((x) => shellVal(x, pad)).join('<span class="j-p">, </span>')}<span class="j-p"> ]</span>`;
+  }
+  const ents = Object.entries(v).filter(([, x]) => x !== undefined);
+  return pretty
+    ? `<span class="j-p">{</span>\n${ents.map(([k, x]) => `${inner}<span class="j-key">${k}</span><span class="j-p">: </span>${shellVal(x, inner, true)}`).join('<span class="j-p">,</span>\n')}\n${pad}<span class="j-p">}</span>`
+    : `<span class="j-p">{ </span>${ents.map(([k, x]) => `<span class="j-key">${k}</span><span class="j-p">: </span>${shellVal(x, pad)}`).join('<span class="j-p">, </span>')}<span class="j-p"> }</span>`;
+};
+const plain = (h) => h.replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+// a cell by BSON type. A missing field is not null: the cell is hatched and the inspector says the field is absent.
+const mcell = (v) => {
+  if (v === undefined) return '<td class="missing"><span class="visually-hidden">missing</span></td>';
+  const t = bsonType(v);
+  if (t === "null") return NULLC();
+  if (t === "objectId") return `<td class="oid" data-full="ObjectId('${v.$oid}')">${v.$oid}</td>`;
+  if (t === "date") return c.ts(v.$date);
+  if (t === "decimal128") return c.num(v.$dec, true);
+  if (t === "int32" || t === "double") return c.num(v);
+  if (t === "bool") return c.bool(v);
+  if (t === "string") return c.text(v);
+  const n = t === "array" ? `<span class="arr-n">${v.length}</span>` : "";
+  return `<td class="json${t === "array" ? " arr" : ""}" data-full="${esc(plain(shellVal(v, "", true)))}">${n}${shellVal(v)}</td>`;
+};
+// columns: the top-level fields of the documents returned, in first-seen order. The type line says what was seen,
+// and how many documents have the field when not all do. Nothing is read to find them.
+const mcols = (docs) => {
+  const keys = []; docs.forEach((d) => Object.keys(d).forEach((k) => { if (d[k] !== undefined && !keys.includes(k)) keys.push(k); }));
+  return keys.map((k) => {
+    const seen = docs.filter((d) => d[k] !== undefined), types = [...new Set(seen.map((d) => bsonType(d[k])).filter((t) => t !== "null"))];
+    const nulls = seen.some((d) => d[k] === null);
+    return { k, type: `${types.join(" · ") || "null"}${nulls && types.length ? " · null" : ""}${seen.length < docs.length ? ` · ${seen.length} of ${docs.length}` : ""}`, num: types.every((t) => /^(int32|double|decimal128)$/.test(t)) };
+  });
+};
+const mgrid = (id, label, docs, sel = 0) => {
+  const cols = mcols(docs);
+  return `
+            <div class="grid-wrap" tabindex="0" aria-label="${label}">
+              <table class="grid"><thead><tr>${ROWHEAD}${cols.map((x) => th(x.k, x.type, { num: x.num, key: x.k === "_id" ? "Primary key" : "" })).join("")}</tr></thead><tbody>
+${docs.map((d, i) => tr(i + 1, cols.map((x) => mcell(d[x.k])), i === sel)).join("\n")}
+              </tbody></table>
+            </div>${inspector(cols[0].k, cols[0].type, sel + 1, plain(shellVal(docs[sel][cols[0].k])))}`;
+};
+// the JSON view: each document as mongosh prints it, one after another
+const mdocs = (label, docs) => `
+            <pre class="code docs" tabindex="0" aria-label="${label}">${docs.map((d, i) => shellVal(d, "", true).split("\n").map((l, j) => `<span class="l${j === 0 && i ? " doc-start" : ""}">${l}</span>`).join("")).join("")}</pre>`;
+
+// sample: orders, as a collection holds them. Old orders carry a legacy_id from the SQL days (an int, a few a string);
+// shipped_at is missing until an order ships and null on a refund that was shipped first; meta is null or missing too.
+const MDOCS = Array.from({ length: 20 }, (_, i) => {
+  const st = ST[i % 10], [email, name] = PEOPLE[i % 12], day = 1 + Math.floor(i * 0.7), h = (2 + i * 7) % 24, m = (11 + i * 13) % 60;
+  const total = [4820, 129.9, 642.75, 88, 1499, 35.5, 210, 979, 64.2, 312.4][i % 10];
+  return {
+    _id: OID(i),
+    legacy_id: i >= 16 ? undefined : i % 7 === 3 ? `L-${10463 + i}` : 10463 + i,
+    customer: { email, name },
+    status: st,
+    total: DEC(total),
+    currency: i % 4 === 3 ? "SGD" : "USD",
+    items: [{ sku: ["TEE-M-BLK", "MUG-12", "CAP-OS", "SOCK-3P"][i % 4], qty: 1 + (i % 3) }, ...(i % 3 === 0 ? [{ sku: "GIFT-WRAP", qty: 1 }] : [])],
+    tags: i % 3 === 0 ? ["gift"] : i % 3 === 1 ? [] : ["fall10", "app"],
+    created_at: DATE(`2026-11-${p2(day)} ${p2(h)}:${p2(m)}:${p2((7 + i * 29) % 60)}Z`),
+    shipped_at: st === "shipped" ? DATE(`2026-11-${p2(Math.min(day + 1, 16))} ${p2((h + 5) % 24)}:${p2((m + 17) % 60)}:00Z`) : i === 7 ? null : undefined,
+    meta: i % 5 === 2 ? null : i % 5 === 4 ? undefined : META[i % 5],
+  };
+});
+// Query 2's find: paid or shipped, 100 or more, items left out by the projection
+const Q2DOCS = MDOCS.filter((d) => /paid|shipped/.test(d.status) && d.total.$dec >= 100).map(({ items, ...d }) => d);
+// Query 1's aggregate: one document per customer
+const QADOCS = Q1_DATA.slice(0, 9).map(([email, , n, sum, ts]) => ({ _id: email, refunds: n, refunded: DEC(sum), last_refund: DATE(ts.replace(/\+07$/, "Z")) }));
+
+// mongosh in the editor, coloured: comments, strings, $operators, db.<collection>.<method>(, numbers
+const hlMongo = (line) => {
+  const ind = line.match(/^ */)[0], body = line.slice(ind.length);
+  const re = /(\/\/.*$)|("(?:[^"\\]|\\.)*")|(\$[A-Za-z]+)|\b(db)\.(\w+)\.(\w+)(?=\()|\.(\w+)(?=\()|\b(ISODate|ObjectId|NumberDecimal|Decimal128)\b|\b(true|false|null)\b|(-?\b\d+(?:\.\d+)?\b)/g;
+  let out = "", at = 0;
+  for (const m of body.matchAll(re)) {
+    out += esc(body.slice(at, m.index)); at = m.index + m[0].length;
+    out += m[1] ? `<span class="q-c">${esc(m[1])}</span>` : m[2] ? `<span class="q-s">${esc(m[2])}</span>` : m[3] ? `<span class="q-k">${m[3]}</span>`
+      : m[4] ? `<span class="q-t">db</span>.<span class="q-tb">${m[5]}</span>.<span class="q-f">${m[6]}</span>` : m[7] ? `.<span class="q-f">${m[7]}</span>`
+      : m[8] ? `<span class="q-f">${m[8]}</span>` : m[9] ? `<span class="q-k">${m[9]}</span>` : `<span class="q-n">${m[10]}</span>`;
+  }
+  return (ind ? `<span class="ind">${ind}</span>` : "") + out + esc(body.slice(at));
+};
+const mq = (id, n, src, cur = -1, hidden = true) => {
+  const lines = src.split("\n");
+  return `<pre class="code" id="code-${id}" tabindex="0" aria-label="Query editor, Query ${n}"${hidden ? " hidden" : ""}>${lines.map((l, i) => `<span class="l${i === (cur < 0 ? lines.length - 1 : cur) ? " cur" : ""}">${hlMongo(l)}</span>`).join("")}</pre>`;
+};
+const MQ1 = `// Refunds in the last 30 days, by customer
+db.orders.aggregate([
+  { $match: { status: "refunded", created_at: { $gt: ISODate("2026-10-19") } } },
+  { $group: {
+      _id: "$customer.email",
+      refunds: { $sum: 1 },
+      refunded: { $sum: "$total" },
+      last_refund: { $max: "$created_at" } } },
+  { $sort: { refunded: -1 } }
+])`;
+const MQ2 = `db.orders.find(
+  { status: { $in: ["paid", "shipped"] }, total: { $gte: 100 } },
+  { items: 0 }
+).limit(50)`;
+const MQ3 = `db.orders.find({ status: { $inn: ["paid", "shipped"] } })`;
+const MQ4 = `// Abandoned carts older than August
+db.carts.deleteMany({ updated_at: { $lt: ISODate("2026-08-01") } })`;
+const MQ5 = `// Rebuild daily revenue into its own collection
+db.orders.aggregate([
+  { $match: { status: { $in: ["paid", "shipped"] } } },
+  { $group: { _id: { $dateTrunc: { date: "$created_at", unit: "day" } }, revenue: { $sum: "$total" } } },
+  { $merge: { into: "daily_revenue", whenMatched: "replace" } }
+])`;
+
+// the tree: databases load on expand; events is open, analytics not loaded yet, the system databases folded away
+const MCOLLS = [["orders", "48k"], ["customers", "3.2k"], ["carts", "910"], ["sessions", "1.2M"], ["audit_log", "6.4M"], ["products", "640"]];
+const mongoSide = (current) => `
+    <aside class="sidebar" data-side="schema">
+      <div class="side-resize" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" title="Drag to resize, drag past the edge to hide"></div>
+      <div class="side-head"><h2>Databases</h2></div>
+      <div class="side-tools">
+        <div class="search">${ic("search")}<input class="field" id="tree-filter" placeholder="Filter collections" aria-label="Filter collections and views" autocomplete="off" spellcheck="false"></div>
+        <button type="button" class="icon-btn icon-btn--outline" title="Refresh databases" aria-label="Refresh databases">${ic("refresh-cw")}</button>
+      </div>
+      <div class="tree" id="tree">
+${group("events", "events", 7, 0, true, false)}
+${group("events/collections", "Collections", MCOLLS.length, 16, true)}
+${MCOLLS.map(([n, e]) => item(`events/collections/${n}`, "braces", n, e, current === n, n === "orders" ? "./collection.html" : "")).join("\n")}
+${group("events/views", "Views", 1, 16, true)}
+${item("events/views/paid_orders", "eye", "paid_orders")}
+${group("analytics", "analytics", "…", 0, false, false)}
+${group("system", "System databases", 3, 0, false)}
+${["admin", "config", "local"].map((n) => item(`system/${n}`, "database", n).replace('class="row"', 'class="row" hidden').replace("--indent:40px", "--indent:24px")).join("\n")}
+        <div class="empty" id="tree-empty" hidden><strong>Nothing matches <span id="tree-empty-q"></span></strong><span>Searches collection and view names in the databases loaded so far.</span><button type="button" class="link" id="tree-clear">Clear the filter</button></div>
+        <div class="menu row-menu" id="row-menu" role="menu" aria-label="Collection actions" hidden>
+          <button type="button" role="menuitem">${ic("braces")}Open documents</button>
+          <button type="button" role="menuitem">${ic("square-code")}New query on this collection</button>
+          <button type="button" role="menuitem">${ic("copy")}Copy name</button>
+          <button type="button" role="menuitem" data-info>${ic("info")}Info</button>
+          <hr>
+          <button type="button" role="menuitem" class="danger">Drop collection</button>
+        </div>
+      </div>
+    </aside>`.replace(/Estimate from table statistics/g, "Estimate from collection metadata, not a count");
+const mhrow = (src, time, status, cls) => `        <div class="row"><button type="button" class="row-main" title="${MCONN} / events&#10;${esc(src)}"><span class="name hq">${esc(src)}</span><span class="htime">${time}</span><span class="hstatus ${cls}">${status}</span></button></div>`;
+const mongoHistory = `
+    <aside class="sidebar" data-side="history" hidden>
+      <div class="side-head"><h2>History</h2><button type="button" class="btn btn--quiet" id="hist-clear">Clear</button></div>
+      <div class="side-tools"><div class="search">${ic("search")}<input class="field" placeholder="Search ${MCONN} history" aria-label="Search ${MCONN} history" autocomplete="off" spellcheck="false"></div></div>
+      <div class="tree" id="hist-list">
+        <div class="day">Today</div>
+${mhrow('db.orders.aggregate([{ $match: { status: "refunded" } }, { $group: { _id: "$customer.email" } }])', "09:58", "9", "rows")}
+${mhrow('db.orders.find({ status: { $inn: ["paid", "shipped"] } })', "09:51", "error", "fail")}
+${mhrow('db.orders.find({ "customer.email": "mei.tanaka@example.org" })', "09:40", "4", "rows")}
+        <div class="day">Yesterday</div>
+${mhrow('db.sessions.deleteMany({ expires_at: { $lt: ISODate("2026-11-01") } })', "17:20", "1,204", "rows")}
+${mhrow("db.currentOp({ active: true })", "16:02", "1", "rows")}
+      </div>
+    </aside>`;
+
+// Info, from a collection's "…" menu: one $collStats read (storage stats are metadata, nothing is scanned) when the
+// dialog opens, and again on Refresh. Never read before that, never on a timer.
+const INFO_IDX = [["_id_", "1.6 MB"], ["customer.email_1", "1.4 MB"], ["status_1_created_at_-1", "1.2 MB"], ["shipped_at_1", "412 KB"], ["legacy_id_1", "296 KB"]];
+const infoRow = (k, v, note = "") => `<dt>${k}</dt><dd>${v}${note ? `<span class="info-note">${note}</span>` : ""}</dd>`;
+const mInfoDlg = `
+<div class="backdrop" id="info-dlg" hidden>
+  <div class="dialog info-dlg" role="dialog" aria-modal="true" aria-labelledby="info-title">
+    <h2 id="info-title"><span class="info-db">events.</span><span id="info-name">orders</span></h2>
+    <div class="info-body" data-info-state="ready">
+      <h3 class="cx-h">Documents</h3>
+      <dl class="info-grid">${infoRow("Count", "~48,213", "Kept by the server, not counted")}${infoRow("Average size", "712 B")}${infoRow("Data size", "33.1 MB", "Uncompressed")}${infoRow("On disk", "12.4 MB", "Compressed, zstd")}</dl>
+      <h3 class="cx-h">Indexes <span class="cx-h-note">${INFO_IDX.length}, 4.9 MB in all</span></h3>
+      <dl class="info-grid info-idx">${INFO_IDX.map(([n, v]) => `<dt class="mono">${n}</dt><dd>${v}</dd>`).join("")}</dl>
+      <h3 class="cx-h">Collection</h3>
+      <dl class="info-grid">${infoRow("Type", "Standard")}${infoRow("Validator", "$jsonSchema", "moderate, warn")}</dl>
+    </div>
+    <div class="info-body" data-info-state="loading" hidden><div class="empty"><span class="spinner"></span><span>Reading stats for <span data-info-name>orders</span></span></div></div>
+    <footer>
+      <span class="help info-when">Read with $collStats at 10:02</span>
+      <button type="button" class="btn" id="info-refresh">${ic("refresh-cw")}Refresh</button>
+      <button type="button" class="btn btn--primary" data-info-close>Close</button>
+    </footer>
+  </div>
+</div>`;
+const MTABS = [["orders", "braces", "orders", "./collection.html"], ["q1", "square-code", "Query 1", "./mongo.html"], ["q2", "square-code", "Query 2", "./mongo.html?show=find"], ["q3", "square-code", "Query 3", "./mongo.html?show=error"], ["q4", "square-code", "Query 4", "./mongo.html?show=guard-confirm"], ["q5", "square-code", "Query 5", "./mongo.html?show=guard-merge"]];
+const mtabs = (active, local) => tabsbar(active, local, { tabs: MTABS, pinned: ["orders"], conn: MCONN });
+const MFORMATS = ["mongosh", "Extended JSON", "CSV", "Markdown table"];
+// Table or JSON: the same documents, as a grid of top-level fields or as mongosh prints them
+const asSeg = `<span class="seg" role="group" aria-label="Show documents as"><button type="button" aria-pressed="true" data-as="table">Table</button><button type="button" aria-pressed="false" data-as="json">JSON</button></span>`;
+const mresActions = (id) => resActions(id).replace(/<p class="menu-note">(Copy|Export) as<\/p>.*?<\/div>/g, (m, k) => `<p class="menu-note">${k} as</p>${MFORMATS.map((x) => `<button type="button" role="menuitem">${x}</button>`).join("")}</div>`);
+const mguardDialogs = guardDialogs.replace(/shop_prod/g, MCONN).replace(/<div class="guard-kinds"><code class="stmt">DELETE<\/code><\/div>/g, '<div class="guard-kinds" data-kinds><code class="stmt">deleteMany</code></div>');
+const mongoWork = `${mtabs("q1", ["q1", "q2", "q3", "q4", "q5"])}
+      <div class="work-body">
+        <div class="req-pane" id="req-pane">
+          <div class="request-line">
+            <div class="url-field"><div class="ctx"><span class="e e-mongo">MDB</span><strong>${MCONN}</strong><span class="sep">/</span>${sel("Database", ["events", "analytics"])}</div></div>
+            <button type="button" class="btn btn--save" id="save" title="Save  ⌘S">${ic("circle-check", "save-ico")}<span class="save-label">Save</span></button>${runGroup}
+          </div>
+          <div class="req-title"><button type="button" class="name" id="q-name">Refunds by customer</button><span class="path" id="q-path">Saved queries / Reports</span></div>
+          <div class="section">
+            <div class="editor">
+              <div class="editor-bar"><button type="button" class="btn btn--quiet">${ic("wand-sparkles")}Format</button></div>
+${mq("q1", 1, MQ1, -1, false)}
+${mq("q2", 2, MQ2)}
+${mq("q3", 3, MQ3, 0)}
+${mq("q4", 4, MQ4)}
+${mq("q5", 5, MQ5)}
+            </div>
+          </div>
+        </div>
+        <div class="divider" role="separator" aria-orientation="horizontal" aria-label="Resize panes" tabindex="0"></div>
+        <section class="response" aria-label="Results">
+          <nav class="subtabs" aria-label="Results">
+            <button type="button" class="subtab" data-sub="results" aria-pressed="true">Results<span class="n" id="r-n">9</span></button>
+            <button type="button" class="subtab" data-sub="messages" aria-pressed="false">Messages</button>
+            <span class="push meta" id="r-meta"></span>
+          </nav>
+          <div class="res-tools">${asSeg}${mresActions("q")}</div>
+          <div class="state" data-when="full" data-for="q1" data-as="table">${mgrid("q1", "Results of Query 1", QADOCS, 2)}
+          </div>
+          <div class="state" data-when="full" data-for="q1" data-as="json" hidden>${mdocs("Documents of Query 1", QADOCS)}
+          </div>
+          <div class="state" data-when="full" data-for="q2" data-as="table" hidden>${mgrid("q2", "Results of Query 2", Q2DOCS, 0)}
+          </div>
+          <div class="state" data-when="full" data-for="q2" data-as="json" hidden>${mdocs("Documents of Query 2", Q2DOCS)}
+          </div>
+          <div class="state" data-when="full" data-for="q3" data-as="table" hidden>${mgrid("q3", "Results of Query 3", MDOCS.filter((d) => /paid|shipped/.test(d.status)), 0)}
+          </div>
+          <div class="state" data-when="full" data-for="q3" data-as="json" hidden>${mdocs("Documents of Query 3", MDOCS.filter((d) => /paid|shipped/.test(d.status)))}
+          </div>
+          <div class="state" data-when="idle" data-for="q4" hidden><div class="empty"><strong>Not run yet</strong><span>deleteMany changes data on ${MCONN}, so Run asks first.</span></div></div>
+          <div class="state" data-when="idle" data-for="q5" hidden><div class="empty"><strong>Not run yet</strong><span>It ends in $merge, so it writes to daily_revenue. Run asks first.</span></div></div>
+          <div class="state" data-when="written" hidden><div class="empty write-res">${ic("circle-check", "ok-ico")}<strong id="w-title">Deleted 312 documents from carts</strong><pre class="db-says" id="w-raw">{ acknowledged: true, deletedCount: 312 }</pre></div></div>
+          <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Running on ${MCONN}</strong><span>Started 0.4&nbsp;s ago</span><button type="button" class="btn" id="cancel">Cancel</button></div></div>
+          <div class="state" data-when="empty" hidden><div class="empty"><strong>The query returned no documents</strong></div></div>
+          <div class="state" data-when="error" hidden><div class="error-box">
+            <strong>MongoDB does not know the operator $inn</strong>
+            <span class="hint-line">The server rejected the filter before reading anything. $in matches any value in a list.</span>
+<pre class="db-says"><span class="bad">MongoServerError[BadValue]: unknown operator: $inn</span>
+code: 2, codeName: 'BadValue'</pre>
+            <div class="actions"><button type="button" class="btn" id="q3-fix">Use $in and run</button></div>
+          </div></div>
+          <div class="state" data-when="lost" hidden><div class="error-box">
+            <strong>No primary answered for ${MCONN}</strong>
+            <span class="msg">Server selection timed out after 30000 ms</span>
+            <span class="hint-line">None of the 3 hosts in atlas-x1y2z-shard-0 answered as primary. The replica set may be electing one. Nothing was changed.</span>
+            <div class="actions"><button type="button" class="btn" id="reconnect">Reconnect</button></div>
+          </div></div>
+          <div class="state" data-when="messages" hidden><pre class="code messages" aria-label="Messages"><span class="l">9 documents in 41 ms, from ${MCONN} (MongoDB 7.0.14, primary atlas-x1y2z-shard-00-01)</span><span class="l">The pipeline had no $limit, so ypacapy added { $limit: 500 } at its end.</span></pre></div>
+        </section>
+      </div>`;
+pages["mongo.html"] = page({
+  title: "ypacapy preview, MongoDB",
+  desc: "Design preview of a MongoDB connection in ypacapy: mongosh queries, documents as a table or as JSON, and the write guard on MongoDB's write methods.",
+  barHtml: bar("mongo", [["results", "Aggregate"], ["find", "Find, nested fields"], ["json", "JSON view"], ["messages", "Messages"], ["running", "Running"], ["empty", "No documents"], ["error", "Server error"], ["lost", "No primary"], ["guard-confirm", "Low: deleteMany"], ["guard-merge", "Low: $merge"], ["guard-pass", "Strict: passphrase"], ["written", "Write result"], ["row-menu", "Sidebar menu"], ["info", "Info"], ["info-loading", "Info, reading"], ["history", "History"]]),
+  body: app({ current: MCONN, conns: MCONNS, side: mongoSide("") + mongoHistory + savedSide, work: mongoWork, overlay: mguardDialogs + mInfoDlg }),
+  script: js("page-mongo.js") + js("page-mongo-info.js"),
+});
+
+// Collection tab: documents under the query bar, the fields seen on this page, indexes. Sizes and the validator are in Info.
+const MFIELDS = (() => {
+  // dotted paths of the documents on this page, nested objects and arrays of objects opened up
+  const rows = new Map(), walk = (v, path, docI) => {
+    const t = bsonType(v), r = rows.get(path) || { types: new Set(), docs: new Set() };
+    r.types.add(t === "array" && v.length && typeof v[0] === "object" ? "array of object" : t); r.docs.add(docI); rows.set(path, r);
+    if (t === "object") Object.entries(v).forEach(([k, x]) => x !== undefined && walk(x, `${path}.${k}`, docI));
+    if (t === "array") v.forEach((x) => { if (x && typeof x === "object" && !x.$oid) Object.entries(x).forEach(([k, y]) => walk(y, `${path}.${k}`, docI)); });
+  };
+  MDOCS.forEach((d, i) => Object.entries(d).forEach(([k, v]) => v !== undefined && walk(v, k, i)));
+  return [...rows].map(([p, r]) => [p, [...r.types].join(", "), r.docs.size]);
+})();
+const IDX = { _id: "_id_", "customer.email": "customer.email_1", status: "status_1_created_at_-1", created_at: "status_1_created_at_-1", shipped_at: "shipped_at_1", legacy_id: "legacy_id_1" };
+const fieldPath = (p) => p.split(".").map((s, i, a) => (i < a.length - 1 ? `<span class="fp-parent">${s}.</span>` : s)).join("");
+const mstructure = `
+          <div class="structure" data-view-of="fields" hidden>
+            <h3>Fields</h3>
+            <p class="fields-note">From the 20 documents on this page. ypacapy does not sample the collection, so a field only on other documents is not here.</p>
+            <div class="grid-wrap"><table class="grid"><thead><tr><th scope="col">Field</th><th scope="col">Types seen</th><th scope="col">In documents</th><th scope="col">Index</th></tr></thead><tbody>
+${MFIELDS.map(([p, t, n]) => `              <tr><td class="fpath">${fieldPath(p)}</td><td>${t}</td><td class="num">${n === 20 ? "all 20" : `${n} of 20`}</td><td>${IDX[p] ? `<span class="key">${ic(p === "_id" ? "key" : "link")}${IDX[p]}</span>` : ""}</td></tr>`).join("\n")}
+            </tbody></table></div>
+          </div>
+          <div class="structure" data-view-of="indexes" hidden>
+            <h3>Indexes</h3>
+            <div class="grid-wrap"><table class="grid"><thead><tr><th scope="col">Name</th><th scope="col">Keys</th><th scope="col">Unique</th><th scope="col">Options</th></tr></thead><tbody>
+              <tr><td>_id_</td><td class="mono">{ _id: 1 }</td><td>yes</td><td></td></tr>
+              <tr><td>customer.email_1</td><td class="mono">{ "customer.email": 1 }</td><td>no</td><td></td></tr>
+              <tr><td>status_1_created_at_-1</td><td class="mono">{ status: 1, created_at: -1 }</td><td>no</td><td></td></tr>
+              <tr><td>shipped_at_1</td><td class="mono">{ shipped_at: 1 }</td><td>no</td><td class="mono">partial: { status: "shipped" }</td></tr>
+              <tr><td>legacy_id_1</td><td class="mono">{ legacy_id: 1 }</td><td>yes</td><td class="mono">sparse</td></tr>
+            </tbody></table></div>
+          </div>`;
+const DEFAULT_FILTER = '{ status: { $in: ["paid", "shipped", "refunded"] } }';
+// Compass-style query bar, in ypacapy's controls: a labelled text box per part of find(). Filter, Project and Sort are
+// textareas: Enter adds a line, ⌘↵ runs, and the box grows with its text up to 8 lines, then scrolls.
+const mqField = (id, label, ph, value, cls = "", extra = "") => `<label class="mq-field${cls ? " " + cls : ""}"><span class="mq-k">${label}</span><textarea class="mq-in" id="${id}" rows="1" placeholder="${esc(ph)}" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"${extra}>${esc(value)}</textarea></label>`;
+pages["collection.html"] = page({
+  title: "ypacapy preview, collection",
+  desc: "Design preview of a MongoDB collection in ypacapy: its documents under a query bar, the fields seen on the page, its indexes, and its Info.",
+  barHtml: bar("collection", [["docs", "Documents"], ["multiline", "Multi-line filter and sort"], ["json", "JSON view"], ["fields", "Fields"], ["indexes", "Indexes"], ["no-match", "Filter matches nothing"], ["bad-filter", "Filter not valid"], ["loading", "Loading"], ["info", "Info"], ["info-loading", "Info, reading"]]),
+  body: app({ current: MCONN, conns: MCONNS, side: mongoSide("orders") + mongoHistory + savedSide, overlay: mInfoDlg, work: `${mtabs("orders", ["orders"])}
+      <div class="work-body">
+        <div class="mq-bar" role="group" aria-label="Query for orders">
+          <div class="mq-row">
+            ${mqField("where", "filter", "{ field: value }", DEFAULT_FILTER, "mq-filter", ' aria-describedby="where-err"')}
+          </div>
+          <div class="mq-actions"><button type="button" class="btn btn--quiet" id="mq-reset" title="Back to the empty filter">Reset</button><button type="button" class="btn btn--quiet" data-href="./mongo.html?show=find" title="Open this query as db.orders.find(…) in a new query tab">${ic("square-code")}Open in console</button>${runGroup}</div>
+          <div class="mq-row mq-opts">
+            ${mqField("proj", "project", "{ field: 0 }", "")}
+            ${mqField("sort", "sort", "{ field: -1 }", "")}
+          </div>
+          <div class="mq-paging">
+            <label class="mq-field mq-num"><span class="mq-k">skip</span><input class="mq-in" id="skip" inputmode="numeric" placeholder="0" spellcheck="false" autocomplete="off"></label>
+            <label class="mq-field mq-num"><span class="mq-k">limit</span><input class="mq-in" id="limit" inputmode="numeric" value="20" spellcheck="false" autocomplete="off"></label>
+          </div>
+        </div>
+        <div class="req-title"><span class="name name--static">orders</span><span class="path">${MCONN} / events</span></div>
+        <section class="response" aria-label="orders">
+          <nav class="subtabs" aria-label="Collection">
+            <button type="button" class="subtab" data-view="docs" aria-pressed="true">Documents<span class="n" id="t-n" title="Estimate from collection metadata, not a count">~48k</span></button>
+            <button type="button" class="subtab" data-view="fields" aria-pressed="false">Fields<span class="n" title="Seen on this page">${MFIELDS.length}</span></button>
+            <button type="button" class="subtab" data-view="indexes" aria-pressed="false">Indexes<span class="n">5</span></button>
+            <span class="push meta"><span class="dim" id="t-ms">7&nbsp;ms</span></span>
+          </nav>
+          <div class="state" data-when="full" data-view-of="docs">
+            <div class="res-tools"><span class="muted">Documents 1 to 20, in stored order</span>${asSeg}${mresActions("t")}</div>
+            <div class="as-pane" data-as="table">${mgrid("t", "Documents of orders", MDOCS, 0)}</div>
+            <div class="as-pane" data-as="json" hidden>${mdocs("Documents of orders", MDOCS)}</div>
+            <div class="grid-foot"><span>1 to 20</span><button type="button" class="icon-btn" aria-label="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page">${ic("chevron-right")}</button></div>
+          </div>
+          <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Reading orders</strong><span>${MCONN}, events.orders</span></div></div>
+          <div class="state" data-when="empty" hidden><div class="empty"><strong>No document in orders matches this filter</strong><span>No order has the status lost. In the 20 documents read before, status holds paid, shipped or refunded.</span><button type="button" class="link" id="t-clear">Clear the filter</button></div></div>
+          <div class="state" data-when="bad" hidden><div class="error-box" id="where-err">
+            <strong>The filter is not valid</strong>
+            <span class="hint-line">ypacapy reads it before sending, so nothing went to ${MCONN}.</span>
+<pre class="db-says"><span class="bad">Expected , or ] after "paid" at line 1, column 30</span>
+{ status: { $in: ["paid" "shipped"] } }
+                             ^</pre>
+          </div></div>${mstructure}
+        </section>
+      </div>` }),
+  script: js("page-collection.js") + js("page-mongo-info.js"),
 });
 
 for (const old of ["table.css", "settings.css", "connect.css"]) fs.rmSync(`${OUT}/${old}`, { force: true });

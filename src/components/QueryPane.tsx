@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isDirty, useCurrent, useStore } from "../store";
 import { ENGINE_LABEL, ENGINE_NAME, formatSql, statementAt } from "../lib/sql";
+import { highlightMongo, mongoStatementAt } from "../lib/mongosh";
+import { docsToSet, shellPretty } from "../lib/bson";
 import { duration } from "../lib/time";
 import { returnsRows, sourceOf, statements, targetOf, type EditTarget } from "../lib/edit";
 import { api, errText } from "../lib/api";
 import type { QueryTab, ResultSet, RunOutcome, RunState } from "../types";
-import { ResultGrid, type GridEdit } from "./ResultGrid";
+import { ResultGrid, ShellText, type GridEdit } from "./ResultGrid";
 import { SqlEditor, type Completer } from "./SqlEditor";
 import { useDismiss } from "./useDismiss";
 import { ChevronDown, CircleCheck, LoaderCircle, Play, WandSparkles, ico, icoC } from "./Icon";
@@ -215,13 +217,28 @@ function QueryResults({ tab }: { tab: QueryTab }) {
   const st = useStore.getState();
   const run = tab.run;
   const o = run.outcome;
-  const sets = o?.kind === "done" ? o.sets : [];
+  const mongo = conn?.engine === "mongo";
+  // MongoDB: documents become columns and rows here (lib/bson.ts); shown as a table or as mongosh prints them
+  const [as, setAs] = useState<"table" | "json">("table");
+  const raw = o?.kind === "done" ? o.sets : [];
+  const sets = useMemo(() => raw.map((x) => (x.docs ? docsToSet(x.docs, x.truncated) : x)), [raw]);
   const shownIdx = Math.min(setIdx ?? sets.length - 1, sets.length - 1);
   const shown = sets.length ? sets[shownIdx] : undefined;
   // a save replaces a set in place (same run): the picked set stays
   useEffect(() => setSetIdx(null), [run.runId]);
-  const target = useEditTarget(tab, shown, shownIdx);
-  const edit: GridEdit | undefined = conn && session && shown ? { target, connId: conn.id, connName: conn.name, database: session.database, key: `${tab.id}:${shownIdx}`, onSaved: (rs) => st.replaceSet(tab.id, shownIdx, rs) } : undefined;
+  const target = useEditTarget(tab, mongo ? undefined : shown, shownIdx);
+  // no grid editing on MongoDB documents yet
+  const edit: GridEdit | undefined = conn && session && shown && !mongo ? { target, connId: conn.id, connName: conn.name, database: session.database, key: `${tab.id}:${shownIdx}`, onSaved: (rs) => st.replaceSet(tab.id, shownIdx, rs) } : undefined;
+  const asSeg = mongo && (
+    <span className="seg" role="group" aria-label="Show documents as">
+      <button type="button" aria-pressed={as === "table"} onClick={() => setAs("table")}>
+        Table
+      </button>
+      <button type="button" aria-pressed={as === "json"} onClick={() => setAs("json")}>
+        JSON
+      </button>
+    </span>
+  );
   const name = conn?.name ?? "";
 
   let body: ReactNode;
@@ -260,7 +277,7 @@ function QueryResults({ tab }: { tab: QueryTab }) {
       <div className="state">
         <div className="empty">
           <strong>Run a query to see its rows here</strong>
-          <span>⌘↵ runs the selection or the statement at the cursor, ⇧⌘↵ the whole editor.</span>
+          <span>{mongo ? "⌘↵ runs the selection or the statement at the cursor." : "⌘↵ runs the selection or the statement at the cursor, ⇧⌘↵ the whole editor."}</span>
         </div>
       </div>
     );
@@ -272,6 +289,37 @@ function QueryResults({ tab }: { tab: QueryTab }) {
           <strong>{o.timeout ? "Stopped by the statement timeout" : "Cancelled"}</strong>
           <span>{o.timeout ? "Settings › Queries sets how long a statement may run." : "ypacapy asked the database to stop the statement."}</span>
         </div>
+      </div>
+    );
+  // MongoDB: a write says what it changed, with the server's own reply under it
+  else if (o.kind === "done" && mongo && o.affected !== null)
+    body = (
+      <div className="state">
+        <div className="empty write-res">
+          <CircleCheck {...icoC("ok-ico")} />
+          <strong>{o.messages[0] ?? "Done"}</strong>
+          {shown?.docs?.[0] !== undefined && <pre className="db-says">{shellPretty(shown.docs[0])}</pre>}
+        </div>
+      </div>
+    );
+  else if (o.kind === "done" && shown && mongo && as === "json")
+    body = (
+      <div className="state">
+        <div className="res-tools">
+          {shown.truncated ? <span className="muted">First {shown.rows.length} documents; the rest were left unread</span> : <span className="muted">{shown.rows.length} documents</span>}
+          {asSeg}
+        </div>
+        <pre className="code docs" tabIndex={0} aria-label={`Documents of ${tab.title}`}>
+          {(shown.docs ?? []).map((d, i) =>
+            shellPretty(d)
+              .split("\n")
+              .map((line, j) => (
+                <span key={`${i}:${j}`} className={`l${j === 0 && i ? " doc-start" : ""}`}>
+                  <ShellText s={line} />
+                </span>
+              )),
+          )}
+        </pre>
       </div>
     );
   else if (o.kind === "done" && shown)
@@ -292,8 +340,13 @@ function QueryResults({ tab }: { tab: QueryTab }) {
                 ))}
               </div>
             ) : shown.truncated ? (
-              <span className="muted">First {shown.rows.length} rows; the rest were left unread</span>
-            ) : undefined
+              <>
+                <span className="muted">First {shown.rows.length} rows; the rest were left unread</span>
+                {asSeg}
+              </>
+            ) : (
+              asSeg || undefined
+            )
           }
         />
       </div>
@@ -304,7 +357,7 @@ function QueryResults({ tab }: { tab: QueryTab }) {
         <div className="empty">
           {o.lastIsQuery ? (
             <>
-              <strong>The query returned no rows</strong>
+              <strong>{mongo ? "The query returned no documents" : "The query returned no rows"}</strong>
             </>
           ) : (
             <>
@@ -340,7 +393,8 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
   const engine = conn?.engine;
   const { status, schema, info, tree, columns } = session ?? {};
   const complete = useMemo<Completer | undefined>(() => {
-    if (!engine || status !== "open" || !schema || !tree || !columns) return undefined;
+    // MongoDB: no autocomplete (documents declare no fields)
+    if (!engine || engine === "mongo" || status !== "open" || !schema || !tree || !columns) return undefined;
     return {
       engine,
       schema,
@@ -380,7 +434,8 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
   const runAll = () => void st.run(tab.id);
   // the selection when there is one, else the statement the cursor is in
   const runSel = () => {
-    const s = selection().trim() ? selection() : statementAt(tab.sql, editor.current?.selectionStart ?? tab.sql.length);
+    const at = editor.current?.selectionStart ?? tab.sql.length;
+    const s = selection().trim() ? selection() : conn?.engine === "mongo" ? mongoStatementAt(tab.sql, at) : statementAt(tab.sql, at);
     if (s.trim()) void st.run(tab.id, { sql: s });
   };
 
@@ -461,19 +516,29 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
             ref={editor}
             value={tab.sql}
             onChange={(sql) => st.updateTab(tab.id, { sql })}
-            label={`SQL editor, ${tab.title}`}
+            label={`${conn?.engine === "mongo" ? "Query" : "SQL"} editor, ${tab.title}`}
             complete={complete}
+            highlight={conn?.engine === "mongo" ? highlightMongo : undefined}
             empty={
-              <>
-                <strong>Write SQL for {conn ? ENGINE_NAME[conn.engine] : "the database"}</strong>
-                <span>A select without a limit of its own gets the row limit from Settings.</span>
-              </>
+              conn?.engine === "mongo" ? (
+                <>
+                  <strong>Write a query for MongoDB</strong>
+                  <span>As in mongosh: db.orders.find({"{ status: 'paid' }"}). A find or aggregate without a limit of its own gets the row limit from Settings.</span>
+                </>
+              ) : (
+                <>
+                  <strong>Write SQL for {conn ? ENGINE_NAME[conn.engine] : "the database"}</strong>
+                  <span>A select without a limit of its own gets the row limit from Settings.</span>
+                </>
+              )
             }
             tools={
-              <button type="button" className="btn btn--quiet" onClick={formatEditor}>
-                <WandSparkles {...ico} />
-                Format
-              </button>
+              conn?.engine === "mongo" ? undefined : (
+                <button type="button" className="btn btn--quiet" onClick={formatEditor}>
+                  <WandSparkles {...ico} />
+                  Format
+                </button>
+              )
             }
           />
         </div>

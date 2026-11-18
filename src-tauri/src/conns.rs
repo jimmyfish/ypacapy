@@ -14,6 +14,7 @@ pub enum Engine {
     Postgres,
     Mysql,
     Sqlite,
+    Mongo,
 }
 
 impl Engine {
@@ -22,8 +23,19 @@ impl Engine {
             Engine::Postgres => "PostgreSQL",
             Engine::Mysql => "MySQL",
             Engine::Sqlite => "SQLite",
+            Engine::Mongo => "MongoDB",
         }
     }
+}
+
+/// MongoDB TLS. Missing = on for an SRV record (Atlas requires it), off for a host and port.
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum MongoTls {
+    Off,
+    On,
+    /// on, without checking the server's certificate or host name
+    Insecure,
 }
 
 /// A connection's security level, picked in its Options or the tabs bar. None runs every statement;
@@ -121,6 +133,31 @@ pub struct Conn {
     /// missing = Settings > Queries > Connection heartbeat
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub heartbeat: Option<bool>,
+    /// MongoDB: the database the user is defined in; missing = admin
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth_source: Option<String>,
+    /// MongoDB: host is a DNS seed list name (mongodb+srv), so there is no port
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub srv: bool,
+    /// MongoDB TLS; the CA file is ssl_ca
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tls: Option<MongoTls>,
+    /// MongoDB: a PEM file with the client certificate and its key, for X.509 sign-in
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tls_cert: Option<String>,
+    /// MongoDB: the replica set name; missing = read from the server
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub replica_set: Option<String>,
+    /// MongoDB read preference: primary, primaryPreferred, secondary, secondaryPreferred, nearest; missing = primary
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub read_pref: Option<String>,
+    /// MongoDB: talk to this host only, not the rest of its replica set
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub direct: bool,
+    /// MongoDB: seconds between the driver's hello to each host while connected; missing = 60. The driver
+    /// cannot stop checking, so this only makes it rarer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_check: Option<u32>,
     /// ms since the epoch
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_opened: Option<i64>,
@@ -134,9 +171,10 @@ fn one() -> u8 {
 }
 
 impl Conn {
-    /// What to protect, in STATEMENTS order; every kind when the list was never changed.
+    /// What to protect, in STATEMENTS order (MONGO_KINDS for MongoDB); every kind when the list was never changed.
     pub fn protect_list(&self) -> Vec<&'static str> {
-        crate::guard::STATEMENTS.iter().copied().filter(|k| self.protect.as_ref().is_none_or(|l| l.iter().any(|x| x == k))).collect()
+        let all: &[&'static str] = if self.engine == Engine::Mongo { &crate::guard::MONGO_KINDS } else { &crate::guard::STATEMENTS };
+        all.iter().copied().filter(|k| self.protect.as_ref().is_none_or(|l| l.iter().any(|x| x == k))).collect()
     }
 }
 

@@ -21,6 +21,9 @@ use crate::conns::{Conn, Engine, SecurityLevel};
 /// Every statement kind that writes, in What to protect's order. Ask to confirm asks about all of them;
 /// passphrase protection about the ones in a connection's What to protect. SELECT never asks.
 pub const STATEMENTS: [&str; 10] = ["INSERT", "UPDATE", "DELETE", "REPLACE", "ALTER", "DROP", "TRUNCATE", "CREATE", "GRANT", "REVOKE"];
+/// MongoDB has no statements: what it asks about are kinds of write method, in Writes to ask about's order.
+/// mongo_shell::kinds maps each method (and each runCommand) to one of these; reads never ask.
+pub const MONGO_KINDS: [&str; 10] = ["insert", "update", "delete", "findAndModify", "bulkWrite", "$out/$merge", "drop", "create", "rename", "users"];
 const INSERT: usize = 0;
 const UPDATE: usize = 1;
 const DELETE: usize = 2;
@@ -63,6 +66,8 @@ fn dialect(engine: Engine) -> Box<dyn Dialect> {
         Engine::Postgres => Box::new(PostgreSqlDialect {}),
         Engine::Mysql => Box::new(MySqlDialect {}),
         Engine::Sqlite => Box::new(SQLiteDialect {}),
+        // MongoDB text never reaches sqlparser (mongo_shell parses it); a dialect only to keep the match whole
+        Engine::Mongo => Box::new(sqlparser::dialect::GenericDialect {}),
     }
 }
 
@@ -316,6 +321,9 @@ pub enum Approval {
 #[serde(rename_all = "camelCase")]
 pub struct Ask {
     pub kinds: Vec<&'static str>,
+    /// MongoDB: the methods the run calls that are asked about (deleteMany, $merge), shown in place of the kinds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ops: Option<Vec<String>>,
     /// low (confirm) or strict (passphrase)
     pub level: SecurityLevel,
     pub touch_id: bool,
@@ -330,26 +338,33 @@ pub struct Ask {
 /// None runs; Low asks to confirm; Strict asks for the passphrase, or Touch ID when the connection allows
 /// it, and the connection then stays unlocked for its own window. Other statements run.
 pub async fn check(c: &Classified, conn: &Conn, approval: Option<Approval>, guard: &GuardState) -> Result<Option<Ask>, String> {
-    let writes = c.names();
-    if conn.level == SecurityLevel::None || (writes.is_empty() && !c.unreadable) {
+    check_kinds(c.names(), c.unreadable, None, conn, approval, guard).await
+}
+
+/// check() for any engine: `writes` are kinds (STATEMENTS, or MONGO_KINDS for MongoDB); `ops` the MongoDB
+/// methods behind them, as (kind, method), shown in the ask for the kinds it asks about.
+pub async fn check_kinds(writes: Vec<&'static str>, unreadable: bool, ops: Option<Vec<(&'static str, String)>>, conn: &Conn, approval: Option<Approval>, guard: &GuardState) -> Result<Option<Ask>, String> {
+    if conn.level == SecurityLevel::None || (writes.is_empty() && !unreadable) {
         return Ok(None);
     }
     let list = conn.protect_list();
     let asked: Vec<&'static str> = writes.iter().copied().filter(|k| list.contains(k)).collect();
-    if asked.is_empty() && !c.unreadable {
+    if asked.is_empty() && !unreadable {
         return Ok(None);
     }
+    let ops = ops.map(|o| o.into_iter().filter(|(k, _)| asked.contains(k)).map(|(_, m)| m).collect::<Vec<_>>());
+    let c = Classified { unreadable, ..Default::default() };
     // Strict without a passphrase (it was disabled meanwhile) asks as Low does
     let strict = conn.level == SecurityLevel::Strict && tokio::task::spawn_blocking(crate::keychain::has_passphrase).await.map_err(|e| e.to_string())??;
     if !strict {
         return Ok(match approval {
             Some(_) => None,
-            None => Some(Ask { kinds: asked, level: SecurityLevel::Low, touch_id: false, unreadable: c.unreadable, error: None }),
+            None => Some(Ask { kinds: asked, ops, level: SecurityLevel::Low, touch_id: false, unreadable: c.unreadable, error: None }),
         });
     }
     let touch = conn.touch_id;
     let window = conn.unlock_window.unwrap_or(0);
-    let ask = |error: Option<String>| Ask { kinds: asked.clone(), level: SecurityLevel::Strict, touch_id: touch, unreadable: c.unreadable, error };
+    let ask = |error: Option<String>| Ask { kinds: asked.clone(), ops: ops.clone(), level: SecurityLevel::Strict, touch_id: touch, unreadable: c.unreadable, error };
     if guard.unlocked(&conn.id) {
         return Ok(None);
     }

@@ -2,12 +2,13 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { createPortal } from "react-dom";
 import { save } from "@tauri-apps/plugin-dialog";
 import { FORMATS, FORMAT_EXT, boolOf, kindOf, render, tsParts, type Format, type Kind } from "../lib/cells";
+import { MONGO_EXT, MONGO_FORMATS, cellValue, renderDocs, shellTokens, type MongoFormat } from "../lib/bson";
 import { api, errText } from "../lib/api";
 import { NO_EDITS, applied, editCount, editStatements, type EditTarget, type Edits } from "../lib/edit";
 import { useStore } from "../store";
 import type { Approval, ColMeta, ResultSet, RunOutcome } from "../types";
 import { useDismiss } from "./useDismiss";
-import { ArrowDown, ArrowUp, ArrowUpDown, Braces, CalendarClock, Check, Columns3, Copy, Download, Hash, KeyRound, Link, Minus, ToggleLeft, Type, X, icoC, ico } from "./Icon";
+import { ArrowDown, ArrowUp, ArrowUpDown, Braces, Brackets, CalendarClock, Check, Columns3, Copy, Download, Hash, IdCard, KeyRound, Link, Minus, ToggleLeft, Type, X, icoC, ico } from "./Icon";
 
 export interface ColKey {
   primary?: boolean;
@@ -19,7 +20,18 @@ const MAX_PINNED = 4;
 /** narrowest a frozen column gets in a small window; below it nothing is frozen */
 const MIN_PIN_W = 80;
 
-const TYPE_ICON: Record<Kind, typeof Hash> = { num: Hash, ts: CalendarClock, bool: ToggleLeft, json: Braces, bytes: Type, text: Type };
+const TYPE_ICON: Record<Kind, typeof Hash> = { num: Hash, ts: CalendarClock, bool: ToggleLeft, json: Braces, bytes: Type, text: Type, oid: IdCard, doc: Braces, arr: Brackets };
+
+/** MongoDB: a value in mongosh's words, coloured like the JSON cells */
+export function ShellText({ s }: { s: string }) {
+  return (
+    <>
+      {shellTokens(s).map((t, i) => (t.c ? <span key={i} className={{ k: "jk", s: "js", n: "jnum", b: "jn", f: "jf", p: "jp" }[t.c]}>{t.t}</span> : t.t))}
+    </>
+  );
+}
+
+type AnyFormat = Format | MongoFormat;
 
 /** JSON on one line, keys, strings and literals coloured (the cell); the inspector shows the text as is. */
 function jsonHtml(v: unknown): ReactNode {
@@ -54,8 +66,15 @@ function jsonHtml(v: unknown): ReactNode {
   );
 }
 
-function Cell({ v, kind, sel, ci, edited, editor, pin }: { v: string | null; kind: Kind; sel: boolean; ci: number; edited: boolean; editor?: ReactNode; pin?: string }) {
+function Cell({ v, kind, sel, ci, edited, editor, pin, missing }: { v: string | null; kind: Kind; sel: boolean; ci: number; edited: boolean; editor?: ReactNode; pin?: string; missing?: boolean }) {
   const s = (sel ? " cell-sel" : "") + (edited ? " cell-edit" : "") + (pin ? ` ${pin}` : "");
+  // MongoDB: the document has no such field. Not null: no pill, a faint hatch, and the inspector says so.
+  if (missing)
+    return (
+      <td className={`missing${s}`} data-c={ci}>
+        <span className="visually-hidden">missing</span>
+      </td>
+    );
   if (editor)
     return (
       <td className={`cell-editing${kind === "num" ? " num" : ""}${pin ? ` ${pin}` : ""}`} data-c={ci}>
@@ -72,6 +91,18 @@ function Cell({ v, kind, sel, ci, edited, editor, pin }: { v: string | null; kin
     return (
       <td className={`num${s}`} data-c={ci}>
         {v}
+      </td>
+    );
+  if (kind === "oid")
+    return (
+      <td className={`oid${s}`} data-c={ci}>
+        {v}
+      </td>
+    );
+  if (kind === "doc" || kind === "arr")
+    return (
+      <td className={`json${s}`} data-c={ci}>
+        <ShellText s={v} />
       </td>
     );
   if (kind === "bool") {
@@ -137,8 +168,11 @@ const GridRow = memo(function GridRow({
   editor,
   view,
   pins,
+  missing,
 }: {
   row: (string | null)[];
+  /** MongoDB: the cells whose document has no such field */
+  missing?: boolean[];
   n: number;
   kinds: Kind[];
   /** the columns in the order they are drawn: indexes into row */
@@ -157,7 +191,7 @@ const GridRow = memo(function GridRow({
       <td className="rownum">{n + 1}</td>
       {view.map((i) => {
         const ed = !!changed && i in changed;
-        return <Cell key={i} v={ed ? changed![i] : row[i]} kind={kinds[i]} sel={i === selCol} ci={i} edited={ed} editor={i === editCol ? editor : undefined} pin={pins[i]} />;
+        return <Cell key={i} v={ed ? changed![i] : row[i]} kind={kinds[i]} sel={i === selCol} ci={i} edited={ed} editor={i === editCol ? editor : undefined} pin={pins[i]} missing={missing?.[i]} />;
       })}
     </tr>
   );
@@ -226,7 +260,7 @@ function MenuButton({ label, title, icon, children }: { label: string; title: st
 }
 
 /** A result cell's right-click menu: copy its value, or its row in the Copy button's formats. Opens at the pointer. */
-function CellMenu({ x, y, isNull, items, onValue, onRow, onClose }: { x: number; y: number; isNull: boolean; items: MenuItem[]; onValue: () => void; onRow: (f: Format) => void; onClose: () => void }) {
+function CellMenu({ x, y, isNull, items, formats, onValue, onRow, onClose }: { x: number; y: number; isNull: boolean; items: MenuItem[]; formats: readonly AnyFormat[]; onValue: () => void; onRow: (f: AnyFormat) => void; onClose: () => void }) {
   const ref = useDismiss(true, onClose);
   const [pos, setPos] = useState({ left: x, top: y });
   // kept inside the window: flips up or left near an edge
@@ -261,7 +295,7 @@ function CellMenu({ x, y, isNull, items, onValue, onRow, onClose }: { x: number;
       </button>
       <hr />
       <p className="menu-note">Copy row as</p>
-      {FORMATS.map((f) => (
+      {formats.map((f) => (
         <button key={f} type="button" role="menuitem" onClick={() => onRow(f)}>
           {f}
         </button>
@@ -332,7 +366,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
     const num = kinds[col] === "num";
     const key = (i: number) => {
       const v = set.rows[i][col];
-      if (v === null) return null;
+      if (v === null || set.missing?.[i]?.[col]) return null;
       if (num) {
         const n = Number(v);
         return Number.isNaN(n) ? v : n;
@@ -369,9 +403,18 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
   /** a cell's value as shown: the edit if there is one */
   const cur = (r: number, c: number): string | null | undefined => {
     const e = edits.cells[r];
-    return e && c in e ? e[c] : set.rows[r]?.[c];
+    if (e && c in e) return e[c];
+    // MongoDB: the value itself, in mongosh across lines; a missing field has none
+    if (set.docs) return cellValue(set, r, c);
+    return set.rows[r]?.[c];
   };
   const value = sel ? cur(order[sel.r], sel.c) : undefined;
+  const missingAt = (r: number, c: number) => !!set.missing?.[r]?.[c];
+  const selMissing = sel ? missingAt(order[sel.r], sel.c) : false;
+  const formats: readonly AnyFormat[] = set.docs ? MONGO_FORMATS : FORMATS;
+  /** rows (indexes into set.rows) in a copy or export format; MongoDB's own two come from the documents */
+  const renderAny = (f: AnyFormat, idx: number[]) =>
+    (f === "mongosh" || f === "Extended JSON") && set.docs ? renderDocs(f, idx.map((i) => set.docs![i])) : render(f as Format, set.columns, idx.map((i) => set.rows[i]));
   const copyText = (text: string, what: string) =>
     navigator.clipboard?.writeText(text).then(
       () => showToast(`Copied ${what}`),
@@ -561,12 +604,12 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
       return s.dir === 1 ? { col: i, dir: -1 } : null;
     });
 
-  const ordered = () => order.map((i) => set.rows[i]);
-  const exportAs = async (f: Format) => {
-    const path = await save({ defaultPath: `${exportName}.${FORMAT_EXT[f]}`, title: `Export rows as ${f}` }).catch(() => null);
+  const exportAs = async (f: AnyFormat) => {
+    const ext = f in FORMAT_EXT ? FORMAT_EXT[f as Format] : MONGO_EXT[f as MongoFormat];
+    const path = await save({ defaultPath: `${exportName}.${ext}`, title: `Export rows as ${f}` }).catch(() => null);
     if (!path) return;
     try {
-      await api.writeTextFile(path, render(f, set.columns, ordered()));
+      await api.writeTextFile(path, renderAny(f, order));
       showToast(`Exported ${set.rows.length} rows`);
     } catch (e) {
       showToast(errText(e));
@@ -681,14 +724,14 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
               {(close) => (
                 <div className="menu" role="menu" aria-label={`${what} as`}>
                   <p className="menu-note">{what} as</p>
-                  {FORMATS.map((f) => (
+                  {formats.map((f) => (
                     <button
                       key={f}
                       type="button"
                       role="menuitem"
                       onClick={() => {
                         close();
-                        if (what === "Copy") void copyText(render(f, set.columns, ordered()), `${set.rows.length} rows as ${f}`);
+                        if (what === "Copy") void copyText(renderAny(f, order), `${set.rows.length} rows as ${f}`);
                         else void exportAs(f);
                       }}
                     >
@@ -755,6 +798,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
               <GridRow
                 key={ri}
                 row={set.rows[ri]}
+                missing={set.missing?.[ri]}
                 n={ri}
                 kinds={kinds}
                 selCol={sel?.r === di ? sel.c : -1}
@@ -778,7 +822,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
             {edits.cells[order[sel.r]] && sel.c in edits.cells[order[sel.r]] && <span className="ins-edited">edited</span>}
             {edits.deleted[order[sel.r]] && <span className="ins-deleted">to delete</span>}
           </div>
-          <div className={`ins-value${value === null ? " is-null" : ""}`}>{value === null ? "null, no value" : value}</div>
+          <div className={`ins-value${value === null || selMissing ? " is-null" : ""}`}>{selMissing ? "missing, this document has no such field" : value === null ? "null, no value" : value}</div>
           <button type="button" className="icon-btn ins-copy" title="Copy value" aria-label="Copy value" disabled={value === null} onClick={() => value !== null && value !== undefined && void copyText(value, "the value")}>
             <Copy {...ico} />
           </button>
@@ -788,7 +832,8 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
         <CellMenu
           x={ctx.x}
           y={ctx.y}
-          isNull={cur(order[ctx.r], ctx.c) === null}
+          isNull={cur(order[ctx.r], ctx.c) === null || missingAt(order[ctx.r], ctx.c)}
+          formats={formats}
           items={editItems(ctx.r, ctx.c)}
           onClose={closeCtx}
           onValue={() => {
@@ -798,10 +843,10 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
             if (v !== null && v !== undefined) void copyText(v, "the value");
           }}
           onRow={(f) => {
-            const row = set.rows[order[ctx.r]];
+            const ri = order[ctx.r];
             setCtx(null);
             wrap.current?.focus();
-            if (row) void copyText(render(f, set.columns, [row]), `the row as ${f}`);
+            if (set.rows[ri]) void copyText(renderAny(f, [ri]), `the row as ${f}`);
           }}
         />
       )}

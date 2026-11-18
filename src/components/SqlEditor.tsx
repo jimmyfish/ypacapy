@@ -19,9 +19,11 @@ interface Props {
   empty?: ReactNode;
   /** table and column names as you type; leave out for no autocomplete */
   complete?: Completer;
+  /** the colouring; SQL when left out (MongoDB passes highlightMongo) */
+  highlight?: (src: string, cur?: number) => string;
 }
 
-const TYPE_ICON: Record<Kind, typeof Hash> = { num: Hash, ts: CalendarClock, bool: ToggleLeft, json: Braces, bytes: Type, text: Type };
+const TYPE_ICON: Record<Kind, typeof Hash> = { num: Hash, ts: CalendarClock, bool: ToggleLeft, json: Braces, bytes: Type, text: Type, oid: Type, doc: Braces, arr: Braces };
 
 function ItemIcon({ it }: { it: Item }) {
   if (it.kind === "table") return <Table2 {...ico} />;
@@ -49,10 +51,10 @@ function Marked({ name, word }: { name: string; word: string }) {
  * voidHTTP's CodeArea for SQL: a coloured, line-numbered <pre> under a transparent <textarea> in one grid cell,
  * so caret, selection, typing and undo stay native. The caret's line is marked.
  */
-export const SqlEditor = forwardRef<HTMLTextAreaElement, Props>(function SqlEditor({ value, onChange, label, tools, empty, complete }, ref) {
+export const SqlEditor = forwardRef<HTMLTextAreaElement, Props>(function SqlEditor({ value, onChange, label, tools, empty, complete, highlight = highlightSql }, ref) {
   const [line, setLine] = useState(0);
   const plain = value.length > HIGHLIGHT_LIMIT;
-  const html = useMemo(() => (plain ? "" : highlightSql(value, line)), [value, line, plain]);
+  const html = useMemo(() => (plain ? "" : highlight(value, line)), [value, line, plain, highlight]);
   const input = useRef<HTMLTextAreaElement>(null);
   useImperativeHandle(ref, () => input.current!, []);
 

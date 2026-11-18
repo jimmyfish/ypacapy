@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Approval, ColumnBrief, Conn, HistoryEntry, OpenInfo, RunOutcome, Saved, SchemaObjects, SecurityLevel, Settings, TableInfo } from "../types";
+import type { Approval, CollInfo, ColumnBrief, Conn, HistoryEntry, OpenInfo, RunOutcome, Saved, SchemaObjects, SecurityLevel, Settings, TableInfo } from "../types";
 
 /** Every Tauri command, typed. Rust errors arrive as strings. */
 export const api = {
@@ -12,7 +12,8 @@ export const api = {
   setGroup: (ids: string[], group: string | null) => invoke<void>("set_group", { ids, group }),
   touchConnection: (id: string) => invoke<void>("touch_connection", { id }),
   setLevel: (id: string, level: SecurityLevel, approval?: Approval) => invoke<void>("set_level", { id, level, approval }),
-  testConnection: (conn: Conn, password: string | null) => invoke<{ server: string; ms: number }>("test_connection", { conn, password }),
+  /** with testId, cancelQuery(testId) stops the test */
+  testConnection: (conn: Conn, password: string | null, testId?: string) => invoke<{ server: string; ms: number }>("test_connection", { conn, password, testId }),
   openConnection: (id: string, database?: string) => invoke<OpenInfo>("open_connection", { id, database }),
   closeConnection: (id: string) => invoke<void>("close_connection", { id }),
   loadSchema: (id: string, database: string, schema: string) => invoke<SchemaObjects>("load_schema", { id, database, schema }),
@@ -22,6 +23,11 @@ export const api = {
   runQuery: (req: { runId: string; connId: string; database?: string; schema?: string; sql: string; addLimit: boolean; approval?: Approval; history: boolean }) =>
     invoke<RunOutcome>("run_query", { req }),
   cancelQuery: (runId: string) => invoke<void>("cancel_query", { runId }),
+  /** MongoDB's collection tab: find(filter, projection).sort().skip().limit(); boxes are read in Rust first */
+  mongoFind: (req: { runId: string; connId: string; database?: string; collection: string; filter: string; projection: string; sort: string; skip?: number; limit?: number }) =>
+    invoke<RunOutcome>("mongo_find", { req }),
+  /** MongoDB Info: listCollections and $collStats, once */
+  mongoStats: (id: string, database: string, collection: string) => invoke<CollInfo>("mongo_stats", { id, database, collection }),
   /** one transaction; every statement must change exactly one row */
   applyEdits: (req: { connId: string; database?: string; statements: string[]; approval?: Approval }) => invoke<RunOutcome>("apply_edits", { req }),
   passphraseStatus: () => invoke<{ set: boolean; touchIdAvailable: boolean }>("passphrase_status"),

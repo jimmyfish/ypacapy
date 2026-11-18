@@ -5,6 +5,7 @@ import { Sidebar } from "./components/Sidebar";
 import { TabsBar } from "./components/TabsBar";
 import { QueryPane } from "./components/QueryPane";
 import { TablePane } from "./components/TablePane";
+import { CollectionPane } from "./components/CollectionPane";
 import { Modals } from "./components/Modals";
 import { Home } from "./components/Home";
 import { ConnTile } from "./components/ConnTile";
@@ -130,7 +131,7 @@ function AppStrip() {
 }
 
 function ConnWork() {
-  const { session } = useCurrent();
+  const { session, conn } = useCurrent();
   const tab = session?.tabs.find((t) => t.id === session.activeTabId);
   const st = useStore.getState();
   if (!session) return null;
@@ -169,7 +170,9 @@ function ConnWork() {
         </div>
       </div>
     );
-  return tab.kind === "query" ? <QueryPane key={tab.id} tab={tab} /> : <TablePane key={tab.id} tab={tab} />;
+  if (tab.kind === "query") return <QueryPane key={tab.id} tab={tab} />;
+  // MongoDB: a collection gets the query bar, not a where clause
+  return conn?.engine === "mongo" ? <CollectionPane key={tab.id} tab={tab} /> : <TablePane key={tab.id} tab={tab} />;
 }
 
 export default function App() {

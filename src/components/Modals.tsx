@@ -2,12 +2,12 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { createPortal } from "react-dom";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
-import { DEFAULT_ROW_LIMIT, useStore, type Modal, type SettingsSection } from "../store";
+import { DEFAULT_ROW_LIMIT, uid, useStore, type Modal, type SettingsSection } from "../store";
 import { api, errText } from "../lib/api";
 import { highlightInline } from "../lib/sql";
 import { systemFonts } from "../lib/fonts";
 import { BUILTIN, DEFAULT_SCHEME, FAMILIES, SCHEMES, schemeSwatch, type BuiltinId } from "../lib/themes";
-import { DEFAULT_LEVEL, LEVELS, STATEMENTS, type Approval, type Conn, type Engine, type SecurityLevel, type Settings, type SslMode } from "../types";
+import { DEFAULT_LEVEL, LEVELS, MONGO_KINDS, STATEMENTS, type Approval, type Conn, type Engine, type MongoTls, type ReadPref, type SecurityLevel, type Settings, type SslMode } from "../types";
 import { Select } from "./Select";
 import { LevelSelect } from "./LevelPicker";
 import { GroupSelect } from "./GroupPicker";
@@ -18,6 +18,7 @@ import { useUpdates } from "../updates";
 import { RELEASES_URL } from "../lib/updater";
 import { DEV_BUILD } from "../build";
 import { AboutModal } from "./AboutModal";
+import type { CollInfo } from "../types";
 import {
   CircleAlert,
   CircleArrowDown,
@@ -34,6 +35,7 @@ import {
   TriangleAlert,
   Type,
   ico,
+  RefreshCw,
 } from "./Icon";
 
 export function Modals() {
@@ -74,7 +76,123 @@ export function Modals() {
       return <GuardModal m={modal} onClose={close} />;
     case "about":
       return <AboutModal onClose={close} />;
+    case "collInfo":
+      return <CollInfoModal m={modal} onClose={close} />;
   }
+}
+
+// ---------- MongoDB collection Info ----------
+
+/** 712 B, 12.4 MB: 1024-based, one decimal from MB up */
+function bytes(n: number | null | undefined): string {
+  if (n === null || n === undefined) return "unknown";
+  if (n < 1024) return `${n} B`;
+  const units = ["KB", "MB", "GB", "TB"];
+  let v = n / 1024;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v >= 100 || i === 0 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
+}
+
+/**
+ * A collection's sizes and shape: one $collStats (storage stats are metadata; nothing is scanned), read when
+ * the dialog opens and on Refresh, never before and never on a timer.
+ */
+function CollInfoModal({ m, onClose }: { m: Extract<Modal, { kind: "collInfo" }>; onClose: () => void }) {
+  const [info, setInfo] = useState<CollInfo | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(true);
+  const read = () => {
+    setBusy(true);
+    setErr(null);
+    api.mongoStats(m.connId, m.database, m.collection).then(
+      (i) => (setInfo(i), setBusy(false)),
+      (e) => (setErr(errText(e)), setBusy(false)),
+    );
+  };
+  useEffect(read, [m.connId, m.database, m.collection]);
+  const row = (k: string, v: ReactNode, note?: string) => (
+    <>
+      <dt>{k}</dt>
+      <dd>
+        {v}
+        {note && <span className="info-note">{note}</span>}
+      </dd>
+    </>
+  );
+  const kind = info ? { collection: "Standard", view: "View", timeseries: "Time series" }[info.kind] ?? info.kind : "";
+  return (
+    <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="dialog info-dlg" role="dialog" aria-modal="true" aria-labelledby="info-title">
+        <h2 id="info-title">
+          <span className="info-db">{m.database}.</span>
+          {m.collection}
+        </h2>
+        {busy && !info ? (
+          <div className="info-body">
+            <div className="empty">
+              <span className="spinner" />
+              <span>Reading stats for {m.collection}</span>
+            </div>
+          </div>
+        ) : err ? (
+          <div className="info-body">
+            <div className="error-box">
+              <strong>Could not read the stats</strong>
+              <span className="msg">{err}</span>
+            </div>
+          </div>
+        ) : info?.kind === "view" ? (
+          <div className="info-body">
+            <h3 className="cx-h">Collection</h3>
+            <dl className="info-grid">{row("Type", "View", "No storage of its own: it reads another collection")}</dl>
+          </div>
+        ) : info ? (
+          <div className="info-body" aria-busy={busy || undefined}>
+            <h3 className="cx-h">Documents</h3>
+            <dl className="info-grid">
+              {row("Count", info.count === null ? "unknown" : `~${info.count.toLocaleString("en-US")}`, "Kept by the server, not counted")}
+              {row("Average size", bytes(info.avgSize))}
+              {row("Data size", bytes(info.dataSize), "Uncompressed")}
+              {row("On disk", bytes(info.storageSize), info.compression ? `Compressed, ${info.compression}` : undefined)}
+            </dl>
+            <h3 className="cx-h">
+              Indexes{" "}
+              <span className="cx-h-note">
+                {info.indexes.length}, {bytes(info.indexSize)} in all
+              </span>
+            </h3>
+            <dl className="info-grid info-idx">
+              {info.indexes.map(([name, size]) => (
+                <span key={name} style={{ display: "contents" }}>
+                  <dt className="mono">{name}</dt>
+                  <dd>{bytes(size)}</dd>
+                </span>
+              ))}
+            </dl>
+            <h3 className="cx-h">Collection</h3>
+            <dl className="info-grid">
+              {row("Type", info.capped ? `${kind}, capped` : kind)}
+              {row("Validator", info.validator ?? "none", info.validator ? [info.validationLevel, info.validationAction].filter(Boolean).join(", ") : undefined)}
+            </dl>
+          </div>
+        ) : null}
+        <footer>
+          <span className="help info-when">{info ? `Read with $collStats at ${new Date(info.readAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
+          <button type="button" className="btn" disabled={busy} onClick={read}>
+            <RefreshCw {...ico} />
+            Refresh
+          </button>
+          <button type="button" className="btn btn--primary" autoFocus onClick={onClose}>
+            Close
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
 }
 
 function Shell({ title, onClose, children, wide, style }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; style?: React.CSSProperties }) {
@@ -179,10 +297,10 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
           } else approve({ kind: "confirm" });
         }}
       >
-        <p className="help">{m.message ?? (m.ask.unreadable ? "ypacapy could not read what this SQL does, so it asks first." : `It changes data or structure on ${m.connName}:`)}</p>
+        <p className="help">{m.message ?? (m.ask.unreadable ? `ypacapy could not read what this ${m.ask.ops ? "command" : "SQL"} does, so it asks first.` : `It changes data or structure on ${m.connName}:`)}</p>
         {m.ask.kinds.length > 0 && (
           <div className="guard-kinds">
-            {m.ask.kinds.map((k) => (
+            {(m.ask.ops?.length ? m.ask.ops : m.ask.kinds).map((k) => (
               <code key={k} className="stmt">
                 {k}
               </code>
@@ -221,11 +339,22 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
 
 // ---------- New connection ----------
 
-const PORTS: Record<Engine, number | undefined> = { postgres: 5432, mysql: 3306, sqlite: undefined };
+const PORTS: Record<Engine, number | undefined> = { postgres: 5432, mysql: 3306, sqlite: undefined, mongo: 27017 };
 const SSL_MODES: [SslMode, string][] = [["disable", "Disable"], ["prefer", "Prefer"], ["require", "Require"], ["verify-ca", "Verify CA"], ["verify-full", "Verify full"]];
 const ALL_KINDS = STATEMENTS.map(([k]) => k);
+/** MongoDB asks about kinds of write method, not statements */
+const MONGO_ALL = MONGO_KINDS.map(([k]) => k);
+const kindsOf = (e: Engine) => (e === "mongo" ? MONGO_ALL : ALL_KINDS);
 /** a What to protect list as stored: missing when it holds every kind */
-const storedList = (l: string[]) => (l.length === ALL_KINDS.length ? undefined : l);
+const storedList = (l: string[], e: Engine) => (l.length === kindsOf(e).length ? undefined : l);
+const MONGO_TLS: [MongoTls, string][] = [["off", "Off"], ["on", "On"], ["insecure", "On, without checking the certificate"]];
+const READ_PREFS: [ReadPref, string][] = [
+  ["primary", "Primary"],
+  ["primaryPreferred", "Primary, or a secondary if it is down"],
+  ["secondary", "Secondary"],
+  ["secondaryPreferred", "Secondary, or the primary if none is up"],
+  ["nearest", "Nearest"],
+];
 type ConnTab = "general" | "options" | "ssl" | "advanced";
 const CONN_TABS: [ConnTab, string][] = [["general", "General"], ["options", "Options"], ["ssl", "SSL"], ["advanced", "Advanced"]];
 
@@ -237,6 +366,11 @@ interface UrlParts {
   database: string;
   file: string;
   sslMode: SslMode;
+  /** MongoDB */
+  srv: boolean;
+  authSource: string;
+  replicaSet: string;
+  readPref: ReadPref;
 }
 
 // MySQL spells the modes its own way in a URL (ssl-mode=VERIFY_IDENTITY)
@@ -250,6 +384,12 @@ const SSL_ALIASES: Record<string, SslMode> = {
 function connUrl(p: UrlParts): string {
   if (p.engine === "sqlite") return `sqlite:${p.file}`;
   const enc = encodeURIComponent;
+  // MongoDB: mongodb:// or mongodb+srv:// (no port); a seed list stays as typed; the rest rides in the query string
+  if (p.engine === "mongo") {
+    const qs = [["authSource", p.authSource], ["replicaSet", p.replicaSet], ["readPreference", p.readPref === "primary" ? "" : p.readPref]].filter(([, v]) => v).map(([k, v]) => `${k}=${enc(v)}`).join("&");
+    const port = p.srv || p.host.includes(",") || !p.port ? "" : ":" + p.port;
+    return `mongodb${p.srv ? "+srv" : ""}://${p.user ? enc(p.user) + "@" : ""}${p.host}${port}/${p.database ? enc(p.database) : ""}${qs ? "?" + qs : ""}`;
+  }
   const q = p.sslMode === "prefer" ? "" : p.engine === "mysql" ? `?ssl-mode=${MY_SSL[p.sslMode]}` : `?sslmode=${p.sslMode}`;
   return `${p.engine === "mysql" ? "mysql" : "postgresql"}://${p.user ? enc(p.user) + "@" : ""}${p.host}${p.port ? ":" + p.port : ""}${p.database ? "/" + enc(p.database) : ""}${q}`;
 }
@@ -258,6 +398,33 @@ function connUrl(p: UrlParts): string {
 function parseUrl(v: string): (Partial<UrlParts> & { password?: string }) | null {
   const t = v.trim();
   if (/^sqlite:/i.test(t)) return { engine: "sqlite", file: t.replace(/^sqlite:(\/\/)?/i, "") };
+  const mg = t.match(/^mongodb(\+srv)?:\/\/(?:([^@/:]*)(?::([^@]*))?@)?([^/?]*)(?:\/([^?]*))?(?:\?(.*))?$/i);
+  if (mg) {
+    const dec = (x?: string) => {
+      try {
+        return decodeURIComponent(x ?? "");
+      } catch {
+        return x ?? "";
+      }
+    };
+    const hosts = mg[4] ?? "";
+    // one host with its port splits into Host and Port; a seed list stays whole in Host
+    const one = !hosts.includes(",") ? /^(.*?)(?::(\d+))?$/.exec(hosts) : null;
+    const q = new URLSearchParams(mg[6] ?? "");
+    const rp = q.get("readPreference");
+    return {
+      engine: "mongo",
+      srv: !!mg[1],
+      user: dec(mg[2]),
+      password: mg[3] === undefined ? undefined : dec(mg[3]),
+      host: one ? one[1] : hosts,
+      port: one?.[2] ?? (mg[1] ? "" : "27017"),
+      database: dec(mg[5]),
+      authSource: q.get("authSource") ?? "",
+      replicaSet: q.get("replicaSet") ?? "",
+      readPref: READ_PREFS.some(([v]) => v === rp) ? (rp as ReadPref) : "primary",
+    };
+  }
   const m = t.match(/^(postgres(?:ql)?|mysql|mariadb):\/\/(?:([^@/:]*)(?::([^@]*))?@)?([^:/?]*)(?::(\d*))?(?:\/([^?]*))?(?:\?(.*))?$/i);
   if (!m) return null;
   const dec = (s?: string) => {
@@ -324,7 +491,7 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
   const [protection, setProtection] = useState<Protection>({
     touchId: !!conn?.touchId,
     window: conn?.unlockWindow ?? 0,
-    list: conn?.protect ?? ALL_KINDS,
+    list: conn?.protect ?? kindsOf(conn?.engine ?? "postgres"),
   });
   // a Strict connection stays open for lowering only while this dialog is open
   useEffect(() => () => void api.lockProtect().catch(() => {}), []);
@@ -335,14 +502,36 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
   const [appName, setAppName] = useState(conn?.appName ?? "");
   const [connectTimeout, setConnectTimeout] = useState(conn?.connectTimeout ? String(conn.connectTimeout) : "");
   const [heartbeat, setHeartbeat] = useState<"app" | "on" | "off">(conn?.heartbeat === undefined ? "app" : conn.heartbeat ? "on" : "off");
-  const [line, setLine] = useState<{ kind: "testing" | "ok" | "fail"; text: string } | null>(null);
+  // MongoDB
+  const [srv, setSrv] = useState(!!conn?.srv);
+  const [authSource, setAuthSource] = useState(conn?.authSource ?? "");
+  const [tls, setTls] = useState<MongoTls | "">(conn?.tls ?? "");
+  const [tlsCert, setTlsCert] = useState(conn?.tlsCert ?? "");
+  const [replicaSet, setReplicaSet] = useState(conn?.replicaSet ?? "");
+  const [readPref, setReadPref] = useState<ReadPref>(conn?.readPref ?? "primary");
+  const [direct, setDirect] = useState(!!conn?.direct);
+  const [serverCheck, setServerCheck] = useState(conn?.serverCheck ? String(conn.serverCheck) : "");
+  const [line, setLine] = useState<{ kind: "testing" | "ok" | "fail" | "stopped"; text: string } | null>(null);
+  // the test running now; Stop test (or closing the dialog) cancels it and its late answer is dropped
+  const testId = useRef<string | null>(null);
+  useEffect(
+    () => () => {
+      if (testId.current) void api.cancelQuery(testId.current);
+    },
+    [],
+  );
   const nameRef = useRef<HTMLInputElement>(null);
   const tabRefs = useRef<Partial<Record<ConnTab, HTMLButtonElement | null>>>({});
   const nameBad = touched && !name.trim();
   const lite = engine === "sqlite";
-  const url = urlDraft ?? connUrl({ engine, host, port, user, database, file, sslMode });
+  const mongo = engine === "mongo";
+  const url = urlDraft ?? connUrl({ engine, host, port, user, database, file, sslMode, srv, authSource, replicaSet, readPref });
+  // TLS as it will be: an SRV record turns it on unless it was set
+  const tlsNow: MongoTls = tls || (srv || sslCa || tlsCert ? "on" : "off");
 
   const pickEngine = (e: Engine) => {
+    // MongoDB and SQL ask about different things: switching between them starts from every kind of the new one
+    if ((e === "mongo") !== mongo) setProtection((p) => ({ ...p, list: kindsOf(e) }));
     setEngine(e);
     if (e !== "sqlite" && (!port || Object.values(PORTS).includes(Number(port)))) setPort(String(PORTS[e]));
     setLine(null);
@@ -352,8 +541,14 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
     setUrlDraft(v);
     const p = parseUrl(v);
     if (!p) return;
-    if (p.engine && p.engine !== engine) setEngine(p.engine);
+    if (p.engine && p.engine !== engine) pickEngine(p.engine);
     if (p.engine === "sqlite") return setFile(p.file ?? "");
+    if (p.engine === "mongo") {
+      setSrv(!!p.srv);
+      setAuthSource(p.authSource ?? "");
+      setReplicaSet(p.replicaSet ?? "");
+      setReadPref(p.readPref ?? "primary");
+    }
     setUser(p.user ?? "");
     setHost(p.host ?? "");
     setPort(p.port ?? "");
@@ -373,7 +568,7 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
     color,
     group: group.trim() || undefined,
     level,
-    protect: storedList(protection.list),
+    protect: storedList(protection.list, engine),
     // Touch ID and the unlock window mean something only under Strict
     touchId: (level === "strict" && protection.touchId) || undefined,
     unlockWindow: level === "strict" && protection.window ? protection.window : undefined,
@@ -384,13 +579,25 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
       ? { file: file.trim() }
       : {
           host: host.trim() || "localhost",
-          port: Number(port) || PORTS[engine],
+          port: mongo && srv ? undefined : Number(port) || PORTS[engine],
           database: database.trim() || undefined,
           user: user.trim() || undefined,
-          sslMode: sslMode === "prefer" ? undefined : sslMode,
+          sslMode: mongo || sslMode === "prefer" ? undefined : sslMode,
           sslCa: optStr(sslCa),
-          appName: engine === "postgres" ? optStr(appName) : undefined,
+          appName: engine === "postgres" || mongo ? optStr(appName) : undefined,
           connectTimeout: optNum(connectTimeout),
+          ...(mongo
+            ? {
+                srv: srv || undefined,
+                authSource: optStr(authSource),
+                tls: tls || undefined,
+                tlsCert: optStr(tlsCert),
+                replicaSet: optStr(replicaSet),
+                readPref: readPref === "primary" ? undefined : readPref,
+                direct: direct || undefined,
+                serverCheck: optNum(serverCheck),
+              }
+            : {}),
         }),
   });
 
@@ -413,15 +620,25 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
       setTimeout(() => nameRef.current?.focus());
       return;
     }
+    // Stop test: the same button while a test runs; nothing was saved
+    if (action === "test" && testId.current) {
+      void api.cancelQuery(testId.current);
+      testId.current = null;
+      setLine({ kind: "stopped", text: "Stopped the test. Nothing was saved." });
+      return;
+    }
     const c = build();
     if (action === "test") {
-      setLine({ kind: "testing", text: lite ? `Opening ${file}` : `Connecting to ${c.host}:${c.port}` });
+      const id = uid();
+      testId.current = id;
+      setLine({ kind: "testing", text: lite ? `Opening ${file}` : mongo && (srv || c.host?.includes(",")) ? `Connecting to ${c.host}` : `Connecting to ${c.host}:${c.port}` });
       try {
-        const r = await api.testConnection(c, password || null);
-        setLine({ kind: "ok", text: `Connected to ${r.server} in ${r.ms} ms` });
+        const r = await api.testConnection(c, password || null, id);
+        if (testId.current === id) setLine({ kind: "ok", text: `Connected to ${r.server} in ${r.ms} ms` });
       } catch (err) {
-        setLine({ kind: "fail", text: errText(err) });
+        if (testId.current === id) setLine({ kind: "fail", text: errText(err) });
       }
+      if (testId.current === id) testId.current = null;
       return;
     }
     try {
@@ -499,7 +716,7 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
                 onClick={() => setTab(k)}
                 onKeyDown={(e) => tabKey(e, i)}
               >
-                {label}
+                {k === "ssl" && mongo ? "TLS" : label}
               </button>
             ))}
           </div>
@@ -539,9 +756,13 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
                   {!urlOnly && (
                     <>
                       <label htmlFor="c-host">Host</label>
-                      <input className="field mono" id="c-host" autoComplete="off" spellCheck={false} value={host} onChange={(e) => (setHost(e.target.value), setUrlDraft(null))} />
-                      <label htmlFor="c-port">Port</label>
-                      <input className="field mono" id="c-port" inputMode="numeric" autoComplete="off" value={port} onChange={(e) => (setPort(e.target.value.replace(/\D/g, "")), setUrlDraft(null))} />
+                      <input className={`field mono${mongo && srv ? " cx-full" : ""}`} id="c-host" autoComplete="off" spellCheck={false} value={host} onChange={(e) => (setHost(e.target.value), setUrlDraft(null))} />
+                      {!(mongo && srv) && (
+                        <>
+                          <label htmlFor="c-port">Port</label>
+                          <input className="field mono" id="c-port" inputMode="numeric" autoComplete="off" value={port} onChange={(e) => (setPort(e.target.value.replace(/\D/g, "")), setUrlDraft(null))} />
+                        </>
+                      )}
                       <label htmlFor="c-user">User</label>
                       <input className="field mono cx-full" id="c-user" autoComplete="username" spellCheck={false} value={user} onChange={(e) => (setUser(e.target.value), setUrlDraft(null))} />
                     </>
@@ -552,6 +773,20 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
                     <>
                       <label htmlFor="c-db">Database</label>
                       <input className="field mono cx-full" id="c-db" autoComplete="off" spellCheck={false} value={database} onChange={(e) => (setDatabase(e.target.value), setUrlDraft(null))} />
+                      {mongo && (
+                        <>
+                          <label htmlFor="c-authdb">Auth database</label>
+                          <input className="field mono cx-full" id="c-authdb" placeholder="admin" aria-describedby="c-authdb-h" autoComplete="off" spellCheck={false} value={authSource} onChange={(e) => (setAuthSource(e.target.value), setUrlDraft(null))} />
+                          <span className="help cx-full cx-under" id="c-authdb-h">
+                            The database the user is defined in. Empty uses admin.
+                          </span>
+                          <span className="cx-label">SRV record</span>
+                          <label className="check cx-full">
+                            <input type="checkbox" checked={srv} onChange={(e) => (setSrv(e.target.checked), setUrlDraft(null))} />
+                            Host is a DNS seed list name (mongodb+srv), so there is no port
+                          </label>
+                        </>
+                      )}
                     </>
                   )}
                 </>
@@ -578,19 +813,20 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
               value={protection}
               onChange={setProtection}
               lockable={conn?.level === "strict" && passSet}
+              mongo={mongo}
             />
             <h3 className="cx-h">
               Queries <span className="cx-h-note">Empty uses the value in Settings</span>
             </h3>
             <div className="set-list">
-              <SetItem label="Row limit" desc="Added to a select that has no limit of its own" htmlFor="c-limit">
+              <SetItem label="Row limit" desc={mongo ? "Added to a find or aggregate that has no limit of its own" : "Added to a select that has no limit of its own"} htmlFor="c-limit">
                 <OptUnit id="c-limit" unit="rows" placeholder={String(settings.rowLimit ?? DEFAULT_ROW_LIMIT)} value={rowLimit} onChange={setRowLimit} />
               </SetItem>
               <SetItem label="Statement timeout" desc="0 lets a statement run as long as it takes" htmlFor="c-timeout">
                 <OptUnit id="c-timeout" unit="s" placeholder={String(settings.statementTimeout ?? 30)} value={stmtTimeout} onChange={setStmtTimeout} />
               </SetItem>
               {!lite && (
-                <SetItem label="Connection heartbeat" desc="Keeps idle sessions open with select 1" htmlFor="c-beat">
+                <SetItem label="Connection heartbeat" desc={mongo ? "Keeps idle sessions open with a ping command" : "Keeps idle sessions open with select 1"} htmlFor="c-beat">
                   <Select id="c-beat" className="field set-choice" value={heartbeat} onChange={(e) => setHeartbeat(e.target.value as "app" | "on" | "off")}>
                     <option value="app">Use Settings ({settings.heartbeat ? "on" : "off"})</option>
                     <option value="on">On</option>
@@ -604,6 +840,39 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
           <div className="cx-panel" role="tabpanel" id="cp-ssl" aria-labelledby="ct-ssl" hidden={tab !== "ssl"}>
             {lite ? (
               none("SQLite opens a file on this Mac. There is no network to secure.")
+            ) : mongo ? (
+              <div className="cx-grid">
+                <label htmlFor="c-tls">TLS</label>
+                <span className="cx-full">
+                  <Select id="c-tls" className="field" value={tlsNow} onChange={(e) => setTls(e.target.value as MongoTls)}>
+                    {MONGO_TLS.map(([v, t]) => (
+                      <option key={v} value={v}>
+                        {t}
+                      </option>
+                    ))}
+                  </Select>
+                </span>
+                <span className="help cx-full cx-under">An SRV record turns TLS on. Atlas requires it.</span>
+                <label htmlFor="c-tlsca">CA file</label>
+                <span className="with-btn cx-full">
+                  <input className="field mono" id="c-tlsca" placeholder="~/certs/ca.pem" autoComplete="off" spellCheck={false} value={sslCa} onChange={(e) => setSslCa(e.target.value)} />
+                  <button type="button" className="btn" onClick={() => void choose("Choose a CA certificate", setSslCa)}>
+                    <FolderOpen {...ico} />
+                    Choose
+                  </button>
+                </span>
+                <label htmlFor="c-tlscert">Client certificate</label>
+                <span className="with-btn cx-full">
+                  <input className="field mono" id="c-tlscert" placeholder="~/certs/client.pem" aria-describedby="c-tlscert-h" autoComplete="off" spellCheck={false} value={tlsCert} onChange={(e) => setTlsCert(e.target.value)} />
+                  <button type="button" className="btn" onClick={() => void choose("Choose a client certificate", setTlsCert)}>
+                    <FolderOpen {...ico} />
+                    Choose
+                  </button>
+                </span>
+                <span className="help cx-full cx-under" id="c-tlscert-h">
+                  For X.509 sign-in: one file with the certificate and its key. Leave the user and password empty.
+                </span>
+              </div>
             ) : (
               <div className="cx-grid">
                 <label htmlFor="c-sslmode">Mode</label>
@@ -636,7 +905,7 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
               none("Nothing to set for an SQLite file.")
             ) : (
               <div className="cx-grid">
-                {engine === "postgres" && (
+                {(engine === "postgres" || mongo) && (
                   <>
                     <label htmlFor="c-app">Application name</label>
                     <input className="field mono cx-full" id="c-app" placeholder="ypacapy" autoComplete="off" spellCheck={false} value={appName} onChange={(e) => setAppName(e.target.value)} />
@@ -646,19 +915,46 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
                 <span className="cx-full">
                   <OptUnit id="c-ctimeout" unit="s" placeholder="15" value={connectTimeout} onChange={setConnectTimeout} />
                 </span>
+                {mongo && (
+                  <>
+                    <label htmlFor="c-rs">Replica set</label>
+                    <input className="field mono cx-full" id="c-rs" placeholder="Read from the server" autoComplete="off" spellCheck={false} value={replicaSet} onChange={(e) => (setReplicaSet(e.target.value), setUrlDraft(null))} />
+                    <label htmlFor="c-readpref">Read from</label>
+                    <span className="cx-full">
+                      <Select id="c-readpref" className="field" value={readPref} onChange={(e) => (setReadPref(e.target.value as ReadPref), setUrlDraft(null))}>
+                        {READ_PREFS.map(([v, t]) => (
+                          <option key={v} value={v}>
+                            {t}
+                          </option>
+                        ))}
+                      </Select>
+                    </span>
+                    <span className="help cx-full cx-under">A secondary keeps your reads off the primary. Writes always go to the primary.</span>
+                    <span className="cx-label">Direct connection</span>
+                    <label className="check cx-full">
+                      <input type="checkbox" checked={direct} onChange={(e) => setDirect(e.target.checked)} />
+                      Talk to this host only, not the rest of its replica set
+                    </label>
+                    <label htmlFor="c-hb">Server check</label>
+                    <span className="cx-full">
+                      <OptUnit id="c-hb" unit="s" placeholder="60" value={serverCheck} onChange={setServerCheck} />
+                    </span>
+                    <span className="help cx-full cx-under">While connected, the driver sends hello to each host at this interval to find the primary. It cannot be turned off.</span>
+                  </>
+                )}
               </div>
             )}
           </div>
 
           {line && (
             <p className={`test-line${line.kind === "ok" ? " ok" : line.kind === "fail" ? " fail" : ""}`} role="status">
-              {line.kind === "testing" ? <span className="spinner" /> : line.kind === "ok" ? <CircleCheck {...ico} /> : <CircleAlert {...ico} />}
+              {line.kind === "testing" ? <span className="spinner" /> : line.kind === "ok" ? <CircleCheck {...ico} /> : line.kind === "fail" ? <CircleAlert {...ico} /> : null}
               {line.text}
             </p>
           )}
           <footer className="cx-foot">
-            <button type="submit" className="btn" value="test" id="c-test" aria-busy={line?.kind === "testing" || undefined} disabled={line?.kind === "testing"}>
-              Test connection
+            <button type="submit" className="btn" value="test" id="c-test" aria-busy={line?.kind === "testing" || undefined}>
+              {line?.kind === "testing" ? "Stop test" : "Test connection"}
             </button>
             <button type="button" className="btn" onClick={onClose}>
               Cancel
@@ -1036,6 +1332,7 @@ function SecuritySection({
   value,
   onChange,
   lockable,
+  mongo = false,
 }: {
   connId?: string;
   level: SecurityLevel;
@@ -1043,7 +1340,13 @@ function SecuritySection({
   value: Protection;
   onChange: (p: Protection) => void;
   lockable: boolean;
+  /** MongoDB: write methods, grouped by kind, in place of SQL statements */
+  mongo?: boolean;
 }) {
+  const kinds = mongo ? MONGO_ALL : ALL_KINDS;
+  const rows: [string, ReactNode, string?][] = mongo
+    ? MONGO_KINDS.map(([k, methods, tag]) => [k, methods.map((m) => <code key={m} className="stmt">{m}</code>), tag])
+    : STATEMENTS.map(([k, tag]) => [k, <code className="stmt">{k}</code>, tag]);
   const pass = useStore((st) => st.pass);
   // Touch ID opens it for changes only when the connection, as saved, allows Touch ID
   const savedTouch = useStore((st) => !!st.conns.find((c) => c.id === connId)?.touchId);
@@ -1086,7 +1389,7 @@ function SecuritySection({
         <>
           <div className="protect-head cx-protect-head">
             <h3 className="cx-h">
-              Statements to ask about <span className="cx-h-note">For this connection</span>
+              {mongo ? "Writes to ask about" : "Statements to ask about"} <span className="cx-h-note">For this connection</span>
             </h3>
             {lockable && level === "strict" && (
               <button
@@ -1105,13 +1408,13 @@ function SecuritySection({
             )}
           </div>
           <div className="set-list stmts">
-            {STATEMENTS.map(([k, tag], i) => (
+            {rows.map(([k, label, tag], i) => (
               <SetItem
                 key={k}
                 htmlFor={`c-prot-${i}`}
                 label={
                   <>
-                    <code className="stmt">{k}</code>
+                    {label}
                     {tag && <> <span className="tag">{tag}</span></>}
                   </>
                 }
@@ -1123,7 +1426,7 @@ function SecuritySection({
                   role="switch"
                   disabled={level === "strict" && locked}
                   checked={value.list.includes(k)}
-                  onChange={(e) => put({ list: ALL_KINDS.filter((x) => (x === k ? e.target.checked : value.list.includes(x))) })}
+                  onChange={(e) => put({ list: kinds.filter((x) => (x === k ? e.target.checked : value.list.includes(x))) })}
                 />
               </SetItem>
             ))}

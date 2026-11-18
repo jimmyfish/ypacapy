@@ -6,7 +6,12 @@ import { quoteIdent } from "../lib/sql";
 import { clockOf, dayLabel, startOfDay } from "../lib/time";
 import type { Saved } from "../types";
 import { useDismiss } from "./useDismiss";
-import { ChevronDown, ChevronRight, Copy, Ellipsis, Eye, Folder, RefreshCw, Search, SquareCode, SquareFunction, Table2, Trash2, icoC, ico } from "./Icon";
+import { Braces, ChevronDown, ChevronRight, Copy, Database, Ellipsis, Eye, Folder, Info, RefreshCw, Search, SquareCode, SquareFunction, Table2, Trash2, icoC, ico } from "./Icon";
+
+/** MongoDB's own databases: listed, but folded under one group at the end */
+const MONGO_SYSTEM = ["admin", "config", "local"];
+/** db.<name> when the name allows it, db.getCollection("…") otherwise */
+export const mongoColl = (name: string) => (/^[A-Za-z_$][\w$]*$/.test(name) && !["getCollection", "runCommand"].includes(name) ? `db.${name}` : `db.getCollection(${JSON.stringify(name)})`);
 
 export function Sidebar({ view, onResizeStart }: { view: SideView; onResizeStart: (e: React.MouseEvent) => void }) {
   return (
@@ -109,6 +114,16 @@ function SchemaSide() {
   const qualified = (schema: string, name: string) => (engine === "sqlite" && schema === "main" ? quoteIdent(engine, name) : `${quoteIdent(engine, schema)}.${quoteIdent(engine, name)}`);
   const copy = (text: string) => void navigator.clipboard?.writeText(text).then(() => st.showToast(`Copied ${text}`));
 
+  const mongo = engine === "mongo";
+  // MongoDB: a collection's menu. Drop opens db.x.drop() in a query tab, behind the write guard, never run here.
+  const collMenu = (db: string, name: string, view: boolean): MenuItem[] => [
+    { label: "Open documents", icon: <Braces {...ico} />, run: () => st.openTable(db, name) },
+    { label: "New query on this collection", icon: <SquareCode {...ico} />, run: () => (db !== session.database ? void st.setDatabase(db).then(() => st.newQueryTab(`${mongoColl(name)}.find({})\n`)) : st.newQueryTab(`${mongoColl(name)}.find({})\n`)) },
+    { label: "Copy name", icon: <Copy {...ico} />, run: () => copy(name) },
+    { label: "Info", icon: <Info {...ico} />, run: () => st.openModal({ kind: "collInfo", connId: id, database: db, collection: name }) },
+    { label: "sep", sep: true, run: () => {} },
+    { label: view ? "Drop view" : "Drop collection", danger: true, run: () => st.newQueryTab(`${mongoColl(name)}.drop()\n`, "Drop " + name) },
+  ];
   const tableMenu = (schema: string, name: string, view: boolean): MenuItem[] => [
     { label: "Open rows", icon: <Table2 {...ico} />, run: () => st.openTable(schema, name) },
     { label: "New query on this table", icon: <SquareCode {...ico} />, run: () => st.newQueryTab(`select *\nfrom ${qualified(schema, name)}\n`) },
@@ -120,16 +135,20 @@ function SchemaSide() {
   ];
 
   let anyLeaf = false;
-  const body = schemas.map((schema) => {
+  // MongoDB: admin, config and local go last, under System databases, folded until opened
+  const sysOpen = !!session.expanded["~system/"] || !!q;
+  const ordered = mongo ? [...schemas.filter((x) => !MONGO_SYSTEM.includes(x)), ...schemas.filter((x) => MONGO_SYSTEM.includes(x))] : schemas;
+  const renderSchema = (schema: string) => {
+    const base = mongo && MONGO_SYSTEM.includes(schema) ? 16 : 0;
     const node = session.tree[schema];
     const open = !!session.expanded[schema] || (!!q && node?.state === "loaded");
     const tables = node?.data?.tables.filter((t) => t.kind !== "view") ?? [];
     const views = node?.data?.tables.filter((t) => t.kind === "view") ?? [];
     const fns = node?.data?.functions ?? [];
     const groups: [string, string, { name: string; est?: number | null; kind: string }[]][] = [
-      ["tables", "Tables", tables.map((t) => ({ name: t.name, est: t.estimate, kind: t.kind }))],
+      ["tables", mongo ? "Collections" : "Tables", tables.map((t) => ({ name: t.name, est: t.estimate, kind: t.kind }))],
       ["views", "Views", views.map((t) => ({ name: t.name, kind: "view" }))],
-      ...(engine === "sqlite" ? [] : [["functions", "Functions", fns.map((f) => ({ name: f, kind: "function" }))] as [string, string, { name: string; kind: string }[]]]),
+      ...(engine === "sqlite" || mongo ? [] : [["functions", "Functions", fns.map((f) => ({ name: f, kind: "function" }))] as [string, string, { name: string; kind: string }[]]]),
     ];
     const matching = groups.map(([k, l, items]) => [k, l, items.filter((i) => hits(i.name))] as const);
     const count = node?.data ? node.data.tables.length + node.data.functions.length : null;
@@ -137,7 +156,7 @@ function SchemaSide() {
     if (q && node?.state !== "loaded") return null;
     return (
       <div key={schema}>
-        <Row className="collection" name={schema} items={[{ label: "Refresh schema", icon: <RefreshCw {...ico} />, run: () => void st.loadSchema(schema) }, { label: "Copy name", icon: <Copy {...ico} />, run: () => copy(schema) }]}>
+        <Row className={base ? undefined : "collection"} indent={base || undefined} name={schema} items={[{ label: mongo ? "Refresh database" : "Refresh schema", icon: <RefreshCw {...ico} />, run: () => void st.loadSchema(schema) }, { label: "Copy name", icon: <Copy {...ico} />, run: () => copy(schema) }]}>
           <button type="button" className="row-main" aria-expanded={open} onClick={() => st.toggle(schema)}>
             {open ? <ChevronDown {...icoC("caret")} /> : <ChevronRight {...icoC("caret")} />}
             <span className="name">{schema}</span>
@@ -146,7 +165,7 @@ function SchemaSide() {
           </button>
         </Row>
         {open && node?.state === "error" && (
-          <div className="tree-note err" style={{ "--indent": "16px" } as React.CSSProperties}>
+          <div className="tree-note err" style={{ "--indent": `${base + 16}px` } as React.CSSProperties}>
             {node.error}
           </div>
         )}
@@ -158,7 +177,7 @@ function SchemaSide() {
             if (q && !items.length) return null;
             return (
               <div key={key}>
-                <Row indent={16}>
+                <Row indent={base + 16}>
                   <button type="button" className="row-main" aria-expanded={gOpen} onClick={() => st.toggle(path)}>
                     {gOpen ? <ChevronDown {...icoC("caret")} /> : <ChevronRight {...icoC("caret")} />}
                     <Folder {...icoC("folder")} />
@@ -171,19 +190,20 @@ function SchemaSide() {
                     anyLeaf = true;
                     const isFn = it.kind === "function";
                     const cur = activeTab?.kind === "table" && activeTab.schema === schema && activeTab.table === it.name;
-                    const Kind = isFn ? SquareFunction : it.kind === "view" ? Eye : Table2;
+                    const Kind = isFn ? SquareFunction : it.kind === "view" ? Eye : mongo ? Braces : Table2;
                     return (
                       <Row
                         key={it.name}
-                        indent={40}
+                        indent={base + 40}
                         current={cur}
-                        name={it.name} items={isFn ? [{ label: "Copy name", icon: <Copy {...ico} />, run: () => copy(it.name) }] : tableMenu(schema, it.name, it.kind === "view")}
+                        name={it.name}
+                        items={isFn ? [{ label: "Copy name", icon: <Copy {...ico} />, run: () => copy(it.name) }] : mongo ? collMenu(schema, it.name, it.kind === "view") : tableMenu(schema, it.name, it.kind === "view")}
                       >
-                        <button type="button" className="row-main" onClick={() => (isFn ? copy(it.name) : st.openTable(schema, it.name))} title={isFn ? "Copy the name" : `Open the rows of ${it.name}`}>
+                        <button type="button" className="row-main" onClick={() => (isFn ? copy(it.name) : st.openTable(schema, it.name))} title={isFn ? "Copy the name" : mongo ? `Open the documents of ${it.name}` : `Open the rows of ${it.name}`}>
                           <Kind {...icoC("kind")} />
                           <span className="name">{it.name}</span>
                           {it.est !== undefined && it.est !== null && (
-                            <span className="count est" title="Estimate from table statistics">
+                            <span className="count est" title={mongo ? "Estimate from collection metadata, not a count" : "Estimate from table statistics"}>
                               {estimate(it.est)}
                             </span>
                           )}
@@ -196,19 +216,47 @@ function SchemaSide() {
           })}
       </div>
     );
-  });
+  };
+  const userDbs = ordered.filter((x) => !(mongo && MONGO_SYSTEM.includes(x)));
+  const sysDbs = mongo ? ordered.filter((x) => MONGO_SYSTEM.includes(x)) : [];
+  const body = (
+    <>
+      {userDbs.map(renderSchema)}
+      {sysDbs.length > 0 && (
+        <>
+          <Row className="collection">
+            <button type="button" className="row-main" aria-expanded={sysOpen} onClick={() => st.toggle("~system/")}>
+              {sysOpen ? <ChevronDown {...icoC("caret")} /> : <ChevronRight {...icoC("caret")} />}
+              <Database {...icoC("folder")} />
+              <span className="name">System databases</span>
+              <span className="count">({sysDbs.length})</span>
+            </button>
+          </Row>
+          {sysOpen && sysDbs.map(renderSchema)}
+        </>
+      )}
+    </>
+  );
 
   return (
     <>
       <div className="side-head">
-        <h2>Schema</h2>
+        <h2>{mongo ? "Databases" : "Schema"}</h2>
       </div>
       <div className="side-tools">
         <div className="search">
           <Search {...ico} />
-          <input className="field" placeholder="Filter tables" aria-label="Filter tables, views and functions" autoComplete="off" spellCheck={false} value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <input
+            className="field"
+            placeholder={mongo ? "Filter collections" : "Filter tables"}
+            aria-label={mongo ? "Filter collections and views" : "Filter tables, views and functions"}
+            autoComplete="off"
+            spellCheck={false}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
         </div>
-        <button type="button" className="icon-btn icon-btn--outline" title="Refresh schema" aria-label="Refresh schema" onClick={() => st.refreshTree()}>
+        <button type="button" className="icon-btn icon-btn--outline" title={mongo ? "Refresh databases" : "Refresh schema"} aria-label={mongo ? "Refresh databases" : "Refresh schema"} onClick={() => st.refreshTree()}>
           <RefreshCw {...ico} />
         </button>
       </div>
@@ -218,7 +266,7 @@ function SchemaSide() {
         {q && !anyLeaf && (
           <div className="empty">
             <strong>Nothing matches "{filter.trim()}"</strong>
-            <span>Searches table, view and function names in the schemas loaded so far.</span>
+            <span>{mongo ? "Searches collection and view names in the databases loaded so far." : "Searches table, view and function names in the schemas loaded so far."}</span>
             <button type="button" className="link" onClick={() => setFilter("")}>
               Clear the filter
             </button>

@@ -46,7 +46,17 @@ function Sqlite() {
   );
 }
 
-const GLYPHS: Record<Engine, () => JSX.Element> = { postgres: Postgres, mysql: Mysql, sqlite: Sqlite };
+/** Drawn for ypacapy, not MongoDB's logo file: a leaf with its midrib and a short stem, in MongoDB green */
+function Mongo() {
+  return (
+    <>
+      <path d="M8 1.2C8 1.2 3.9 4.7 3.9 9C3.9 11.5 5.6 13.3 7.5 13.8L7.7 15.2H8.3L8.5 13.8C10.4 13.3 12.1 11.5 12.1 9C12.1 4.7 8 1.2 8 1.2Z" style={fill("#00684a", "#00a35c")} />
+      <path d="M8 3.4V13.6" style={stroke("#c1f2d6", "#0b3b2a")} strokeWidth="0.8" strokeLinecap="round" />
+    </>
+  );
+}
+
+const GLYPHS: Record<Engine, () => JSX.Element> = { postgres: Postgres, mysql: Mysql, sqlite: Sqlite, mongo: Mongo };
 
 export function EngineIcon({ engine, size = 16, className }: { engine: Engine; size?: number; className?: string }) {
   const Glyph = GLYPHS[engine];

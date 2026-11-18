@@ -1,6 +1,6 @@
 [package]
 name = "ypacapy"
-version = "0.0.1"
+version = "0.1.0"
 description = "ypacapy — a local-only database explorer"
 edition = "2021"
 

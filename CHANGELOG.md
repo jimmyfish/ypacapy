@@ -4,6 +4,8 @@ All notable changes to ypacapy are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-19
+
 ### Added
 
 - **MongoDB.** Connect with a host and port, a seed list or an SRV record (`mongodb+srv`), or paste a `mongodb://` URL. Includes the auth database, TLS (with a CA file, or a client certificate for X.509 sign-in), replica set, read preference, direct connection and how often the driver checks the servers. The password stays in the macOS login keychain.
@@ -56,4 +58,6 @@ First release.
 - **About dialog.** Shows the version, the update state and, in dev builds, the git commit, branch and tag.
 - **Release pipeline.** GitHub Actions builds Apple silicon and Intel bundles from a version tag into a draft release, with `latest.json` for the updater. The notes are taken from this file.
 
+[Unreleased]: https://github.com/jimmyfish/ypacapy/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/jimmyfish/ypacapy/releases/tag/v0.1.0
 [0.0.1]: https://github.com/jimmyfish/ypacapy/releases/tag/v0.0.1

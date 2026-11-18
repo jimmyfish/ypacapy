@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { isDirty, useCurrent, useStore } from "../store";
+import { diagramChanged, diagramKey } from "../lib/diagramTab";
 import { LEVELS } from "../types";
 import { useDismiss } from "./useDismiss";
 import { LEVEL_ICON, LevelItems } from "./LevelPicker";
-import { Braces, ChevronDown, Key, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Plus, ShieldOff, SquareCode, Table2, X, icoC, ico } from "./Icon";
+import { Braces, ChevronDown, Key, Network, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Plus, ShieldOff, SquareCode, Table2, X, icoC, ico } from "./Icon";
 
 /** The security level of the open connection: voidHTTP's environment picker and menu. Lowering from Strict asks for the passphrase (store.setLevel). */
 function GuardPicker() {
@@ -50,8 +51,11 @@ function GuardPicker() {
   );
 }
 
-/** A tab's right-click menu: Pin tab / Unpin tab, and Close tab (off while pinned). Opens at the pointer. */
-function TabMenu({ x, y, pinned, onPin, onClose, onDismiss }: { x: number; y: number; pinned: boolean; onPin: () => void; onClose: () => void; onDismiss: () => void }) {
+/**
+ * A tab's right-click menu: Pin tab / Unpin tab, and Close tab (off while pinned). Opens at the pointer. A diagram
+ * can't be pinned (unpinnable): it has Close tab and a note that Show diagram reopens it once saved.
+ */
+function TabMenu({ x, y, pinned, unpinnable, onPin, onClose, onDismiss }: { x: number; y: number; pinned: boolean; unpinnable?: boolean; onPin: () => void; onClose: () => void; onDismiss: () => void }) {
   const ref = useDismiss(true, onDismiss);
   const [pos, setPos] = useState({ left: x, top: y });
   // kept inside the window: flips up or left near an edge
@@ -64,16 +68,21 @@ function TabMenu({ x, y, pinned, onPin, onClose, onDismiss }: { x: number; y: nu
   }, [x, y, ref]);
   return createPortal(
     <div className="menu ctx-menu" role="menu" aria-label="Tab" ref={ref} style={pos} onContextMenu={(e) => e.preventDefault()}>
-      <button type="button" role="menuitem" onClick={onPin}>
-        {pinned ? <PinOff {...ico} /> : <Pin {...ico} />}
-        {pinned ? "Unpin tab" : "Pin tab"}
-      </button>
-      <hr />
+      {!unpinnable && (
+        <>
+          <button type="button" role="menuitem" onClick={onPin}>
+            {pinned ? <PinOff {...ico} /> : <Pin {...ico} />}
+            {pinned ? "Unpin tab" : "Pin tab"}
+          </button>
+          <hr />
+        </>
+      )}
       <button type="button" role="menuitem" disabled={pinned} onClick={onClose}>
         <X {...ico} />
         Close tab<kbd>⌘W</kbd>
       </button>
       {pinned && <p className="menu-note">Unpin the tab to close it</p>}
+      {unpinnable && <p className="menu-note tm-wrap">Diagrams are not pinned. Once saved, Show diagram reopens this one as saved.</p>}
     </div>,
     document.body,
   );
@@ -130,7 +139,8 @@ export function TabsBar() {
       </button>
       <div className="tabs" ref={tabsRef}>
         {session?.tabs.map((t) => {
-          const name = t.kind === "query" ? t.title : t.kind === "key" ? t.key : t.table;
+          const name = t.kind === "query" ? t.title : t.kind === "key" ? t.key : t.kind === "table" ? t.table : (t.origin ?? t.schema);
+          const unsaved = t.kind === "query" ? isDirty(t) : t.kind === "diagram" && diagramChanged(t, session.diagrams?.[diagramKey(t)]);
           return (
             <div
               key={t.id}
@@ -143,10 +153,15 @@ export function TabsBar() {
                 setMenu({ id: t.id, x: e.clientX, y: e.clientY });
               }}
             >
-              <button type="button" className="tab-main" title={t.kind === "table" ? `${t.schema}.${t.table}` : name} onClick={() => st.setActiveTab(t.id)}>
-                {t.kind === "query" ? <SquareCode {...ico} /> : t.kind === "key" ? <Key {...ico} /> : conn?.engine === "mongo" ? <Braces {...ico} /> : <Table2 {...ico} />}
+              <button
+                type="button"
+                className="tab-main"
+                title={t.kind === "table" ? `${t.schema}.${t.table}` : t.kind === "diagram" ? `Diagram of ${t.origin ? `${t.schema}.${t.origin}` : t.schema}` : name}
+                onClick={() => st.setActiveTab(t.id)}
+              >
+                {t.kind === "query" ? <SquareCode {...ico} /> : t.kind === "key" ? <Key {...ico} /> : t.kind === "diagram" ? <Network {...ico} /> : conn?.engine === "mongo" ? <Braces {...ico} /> : <Table2 {...ico} />}
                 <span className="name">{name}</span>
-                {t.kind === "query" && isDirty(t) && <span className="dirty" role="img" aria-label="Unsaved changes" />}
+                {unsaved && <span className="dirty" role="img" aria-label={t.kind === "diagram" ? "Unsaved layout" : "Unsaved changes"} />}
               </button>
               {t.pinned ? (
                 <button type="button" className="icon-btn pin" aria-label={`Unpin ${name}`} title={`Pinned: kept with this connection. Click to unpin`} onClick={() => st.pinTab(t.id, false)}>
@@ -171,6 +186,7 @@ export function TabsBar() {
           x={menu.x}
           y={menu.y}
           pinned={!!menuTab.pinned}
+          unpinnable={menuTab.kind === "diagram"}
           onDismiss={() => setMenu(null)}
           onPin={() => {
             setMenu(null);

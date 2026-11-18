@@ -1,0 +1,1822 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ypacapy preview, diagram</title>
+<meta name="description" content="Design preview of ypacapy's ER diagram: a schema's tables, columns and foreign keys, read from the catalog only.">
+<link rel="stylesheet" href="./app.css">
+<link rel="stylesheet" href="./preview.css">
+<script src="./themes.js"></script>
+</head>
+<body>
+<!-- icons: Lucide v1.75.0 (ISC), inlined from lucide-react's icon nodes -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plug-zap" viewBox="0 0 24 24"><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="m2 22 3-3"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m18 3-4 4h6l-4 4"/></symbol>
+  <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
+  <symbol id="i-list-tree" viewBox="0 0 24 24"><path d="M8 5h13"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="M3 10a2 2 0 0 0 2 2h3"/><path d="M3 5v12a2 2 0 0 0 2 2h3"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M17 3a2 2 0 0 1 2 2v15a1 1 0 0 1-1.496.868l-4.512-2.578a2 2 0 0 0-1.984 0l-4.512 2.578A1 1 0 0 1 5 20V5a2 2 0 0 1 2-2z"/></symbol>
+  <symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></symbol>
+  <symbol id="i-hard-drive" viewBox="0 0 24 24"><path d="M10 16h.01"/><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M21.946 12.013H2.054"/><path d="M6 16h.01"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-settings-2" viewBox="0 0 24 24"><path d="M14 17H5"/><path d="M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+  <symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+  <symbol id="i-ellipsis-vertical" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></symbol>
+  <symbol id="i-shredder" viewBox="0 0 24 24"><path d="M4 13V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v5"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 22v-5"/><path d="M14 19v-2"/><path d="M18 20v-3"/><path d="M2 13h20"/><path d="M6 20v-3"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-square-function" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 17c2 0 2.8-1 2.8-2.8V10c0-2 1-3.3 3.2-3"/><path d="M9 11.2h5.7"/></symbol>
+  <symbol id="i-table-2" viewBox="0 0 24 24"><path d="M3 9h18"/><path d="M9 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></symbol>
+  <symbol id="i-square-code" viewBox="0 0 24 24"><path d="m10 9-3 3 3 3"/><path d="m14 15 3-3-3-3"/><rect x="3" y="3" width="18" height="18" rx="2"/></symbol>
+  <symbol id="i-panel-left-close" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></symbol>
+  <symbol id="i-columns-2" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></symbol>
+  <symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></symbol>
+  <symbol id="i-circle-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></symbol>
+  <symbol id="i-key-round" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><path d="m2 21 9.6-9.6"/><path d="m7.5 15.5 2.3 2.3a1 1 0 0 1 0 1.4l-2.1 2.1a1 1 0 0 1-1.4 0L4 19"/><circle cx="15.5" cy="7.5" r="5.5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-folder-open" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M9 20h6"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><path d="M12 19h8"/><path d="m4 17 6-6-6-6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-lock-open" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M9 20h6"/></symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></symbol>
+  <symbol id="i-calendar-clock" viewBox="0 0 24 24"><path d="M16 14v2.2l1.6 1"/><path d="M16 2v3"/><path d="M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338"/><path d="M3 9h5.859"/><path d="M8 2v3"/><circle cx="16" cy="16" r="6"/></symbol>
+  <symbol id="i-toggle-left" viewBox="0 0 24 24"><circle cx="9" cy="12" r="3"/><rect width="20" height="14" x="2" y="5" rx="7"/></symbol>
+  <symbol id="i-braces" viewBox="0 0 24 24"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></symbol>
+  <symbol id="i-arrow-up-down" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-columns-3" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></symbol>
+  <symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+  <symbol id="i-shield-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5 5a1 1 0 0 0-1 1v7c0 5 3.5 7.5 7.67 8.94a1 1 0 0 0 .67.01c2.35-.82 4.48-1.97 5.9-3.71"/><path d="M9.309 3.652A12.252 12.252 0 0 0 11.24 2.28a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1v7a9.784 9.784 0 0 1-.08 1.264"/></symbol>
+  <symbol id="i-fingerprint" viewBox="0 0 24 24"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-wand-sparkles" viewBox="0 0 24 24"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></symbol>
+  <symbol id="i-file-plus" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 15h6"/><path d="M12 18v-6"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol>
+  <symbol id="i-folder-input" viewBox="0 0 24 24"><path d="M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1"/><path d="M2 13h10"/><path d="m9 16 3-3-3-3"/></symbol>
+  <symbol id="i-folder-minus" viewBox="0 0 24 24"><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-folder-plus" viewBox="0 0 24 24"><path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></symbol>
+  <symbol id="i-pin-off" viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M15 9.34V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H7.89"/><path d="m2 2 20 20"/><path d="M9 9v1.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h11"/></symbol>
+  <symbol id="i-circle-arrow-down" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="m8 12 4 4 4-4"/></symbol>
+  <symbol id="i-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol>
+  <symbol id="i-triangle-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-external-link" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-github" viewBox="0 0 24 24"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></symbol>
+  <symbol id="i-circle-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="12" r="10"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M11 20a10 10 0 0010-10 25.9 25.9 0 00-1.04-7.281 1 1 0 00-1.755-.325C15.833 5.5 13 5.5 9.8 6.1A7 7 0 0011 20"/><path d="M2 21a5 5 0 012.911-4.544C7.613 15.212 8.351 15.24 11 13"/></symbol>
+  <symbol id="i-brackets" viewBox="0 0 24 24"><path d="M16 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-3"/><path d="M8 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h3"/></symbol>
+  <symbol id="i-id-card" viewBox="0 0 24 24"><path d="M13 19a4 4 0 00-8 0"/><path d="M16 10h2"/><path d="M16 14h2"/><circle cx="9" cy="12" r="3"/><rect x="2" y="5" width="20" height="14" rx="2"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+  <symbol id="i-table-properties" viewBox="0 0 24 24"><path d="M15 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></symbol>
+  <symbol id="i-file-check" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="m9 15 2 2 4-4"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></symbol>
+  <symbol id="i-network" viewBox="0 0 24 24"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></symbol>
+  <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></symbol>
+  <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="8" x2="14" y1="11" y2="11"/></symbol>
+  <symbol id="i-maximize" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-undo-2" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></symbol>
+  <symbol id="i-list-checks" viewBox="0 0 24 24"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
+  <symbol id="i-file-code" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 12.5 8 15l2 2.5"/><path d="m14 12.5 2 2.5-2 2.5"/></symbol>
+  <symbol id="i-file-down" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></symbol>
+</svg>
+
+<header class="pv-bar">
+  <strong>ypacapy preview · diagram</strong>
+  <nav class="pv-screens" aria-label="Screens">
+    <a class="btn btn--quiet" href="./home.html" style="min-height:var(--control)">Home</a>
+    <a class="btn btn--quiet" href="./index.html" style="min-height:var(--control)">Query</a>
+    <a class="btn btn--quiet" href="./table.html" style="min-height:var(--control)">Table</a>
+    <a class="btn btn--quiet" href="./diagram.html" style="min-height:var(--control)" aria-current="page">Diagram</a>
+    <a class="btn btn--quiet" href="./mongo.html" style="min-height:var(--control)">MongoDB</a>
+    <a class="btn btn--quiet" href="./collection.html" style="min-height:var(--control)">Collection</a>
+    <a class="btn btn--quiet" href="./redis.html" style="min-height:var(--control)">Redis</a>
+    <a class="btn btn--quiet" href="./key.html" style="min-height:var(--control)">Key</a>
+    <a class="btn btn--quiet" href="./settings.html" style="min-height:var(--control)">Settings</a>
+    <a class="btn btn--quiet" href="./connect.html" style="min-height:var(--control)">New connection</a>
+    <a class="btn btn--quiet" href="./updates.html" style="min-height:var(--control)">Updates</a>
+    <a class="btn btn--quiet" href="./about.html" style="min-height:var(--control)">About</a>
+  </nav>
+  <div class="pv-states" role="group" aria-label="States">
+    <button type="button" data-show="picker" aria-pressed="true">Picker, first open</button>
+    <button type="button" data-show="picker-filtered" aria-pressed="false">Picker, filtered</button>
+    <button type="button" data-show="picker-table" aria-pressed="false">Picker from orders</button>
+    <button type="button" data-show="unsaved" aria-pressed="false">Unsaved changes</button>
+    <button type="button" data-show="saved-new" aria-pressed="false">Saved, then 3 ticked</button>
+    <button type="button" data-show="saved-altered" aria-pressed="false">Saved, then orders altered</button>
+    <button type="button" data-show="reopened" aria-pressed="false">Reopened after Save</button>
+    <button type="button" data-show="drawn" aria-pressed="false">All picked</button>
+    <button type="button" data-show="few" aria-pressed="false">Three picked</button>
+    <button type="button" data-show="selected" aria-pressed="false">Table selected</button>
+    <button type="button" data-show="keys" aria-pressed="false">Key columns</button>
+    <button type="button" data-show="names" aria-pressed="false">Table names</button>
+    <button type="button" data-show="moved" aria-pressed="false">Moved by hand</button>
+    <button type="button" data-show="menu" aria-pressed="false">Table menu</button>
+    <button type="button" data-show="tree-menu" aria-pressed="false">Schema menu</button>
+    <button type="button" data-show="tab-menu" aria-pressed="false">Tab menu</button>
+    <button type="button" data-show="close-ask" aria-pressed="false">Close, not saved</button>
+    <button type="button" data-show="export-menu" aria-pressed="false">Export menu</button>
+    <button type="button" data-show="export-png" aria-pressed="false">Export PNG</button>
+    <button type="button" data-show="export-jpg" aria-pressed="false">Export JPG</button>
+    <button type="button" data-show="export-mermaid" aria-pressed="false">Mermaid code</button>
+    <button type="button" data-show="export-dbml" aria-pressed="false">DBML code</button>
+    <button type="button" data-show="export-drawio" aria-pressed="false">Saved .drawio</button>
+    <button type="button" data-show="none" aria-pressed="false">Picker cancelled</button>
+    <button type="button" data-show="loading" aria-pressed="false">Loading</button>
+    <button type="button" data-show="error" aria-pressed="false">Catalog error</button>
+  </div>
+  <div class="pv-fonts">
+    <label>shop_prod colour <select data-tabc><option value="5">Turquoise</option><option value="2">Emerald</option><option value="7">Sunflower</option><option value="3">Carrot</option><option value="6" selected>Alizarin (red)</option><option value="1">River</option><option value="8">Asphalt</option><option value="4">Amethyst</option></select></label>
+  </div>
+  <div class="pv-theme" role="group" aria-label="Density" style="margin-left:0">
+    <button type="button" data-density-set="" aria-pressed="true">Default</button>
+    <button type="button" data-density-set="compact" aria-pressed="false">Compact</button>
+  </div>
+  <div class="pv-theme" role="group" aria-label="Mac appearance" style="margin-left:0">
+    <button type="button" data-os-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-os-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<div class="pv-stage">
+<div class="app">
+  <!-- title strip: the native macOS traffic lights sit in the empty 84px on the left (not drawn here) -->
+  <!-- a connection tab carries its colour (--fg/--bg) on the tab itself; the tile inside inherits it, so tab, ring and
+       tile are always one colour. The tile shows the engine glyph, as on the Home cards. -->
+  <div class="app-strip" data-tauri-drag-region>
+    <nav class="ptabs" aria-label="Connections">
+      <button type="button" class="ptab" data-href="./home.html"><svg aria-hidden="true" class="ico"><use href="#i-house"/></svg>Home</button>
+      <span class="ptab-sep" aria-hidden="true"></span>
+      <div class="ptab ptab--project" style="--fg: var(--proj-6-fg); --bg: var(--proj-6-bg)" aria-current="page">
+        <button type="button" class="ptab-main" data-href="./index.html"><span class="proj-tile proj-tile--sm"><svg class="engine-ico" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M4.2 3C5.4 1.9 7.6 1.5 9.6 1.9C12.4 2.5 14 4.5 13.7 7.4C13.5 9.2 12.6 10.4 11.3 10.7L11.5 13.2C11.5 14 10.7 14.5 10 14L9.1 13.3V11C7.8 11.1 6.6 10.8 5.7 10.1C5.4 11.2 4.8 12.2 3.8 12.5C3 12.7 2.4 11.9 2.8 11.2C3.4 10.1 3.3 8.8 2.9 7.6C2.4 5.9 2.8 4.2 4.2 3Z" style="fill:light-dark(#336791, #4c82b5);stroke:light-dark(#ffffff, #e6eef5)" stroke-width="0.8" stroke-linejoin="round"/><path d="M9.6 4.5C10.8 5.3 11.3 6.8 10.8 8.4" style="stroke:light-dark(#ffffff, #e6eef5)" stroke-width="0.8" stroke-linecap="round"/><circle cx="7.6" cy="5.4" r="0.8" style="fill:light-dark(#ffffff, #e6eef5)"/></svg></span>shop_prod</button>
+        <button type="button" class="icon-btn ptab-close" aria-label="Close shop_prod"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="ptab ptab--project" style="--fg: var(--proj-2-fg); --bg: var(--proj-2-bg)">
+        <button type="button" class="ptab-main" data-href="./index.html"><span class="proj-tile proj-tile--sm"><svg class="engine-ico" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M2 3.5C2 2.67 2.67 2 3.5 2H10.2L7.6 14H3.5C2.67 14 2 13.33 2 12.5V3.5Z" style="fill:light-dark(#0f80cc, #3d8fd1)"/><path d="M14.2 1.4C11.3 2.4 9.3 5.4 8.6 9.3L8 14H8.9L9.5 9.7C12.6 8.6 14.5 5.4 14.2 1.4Z" style="fill:light-dark(#0b4f82, #9ccbf0)"/><path d="M13.4 2.9C11.7 4.6 10.4 6.9 9.5 9.6" style="stroke:light-dark(#bfe0f7, #1e3a52)" stroke-width="0.7" stroke-linecap="round"/></svg></span>analytics.sqlite</button>
+        <button type="button" class="icon-btn ptab-close" aria-label="Close analytics.sqlite"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button>
+      </div>
+    </nav>
+    <div class="strip-end">
+      <button type="button" class="icon-btn strip-settings" title="Settings  ⌘," aria-label="Settings" data-href="./settings.html"><svg aria-hidden="true" class="ico"><use href="#i-settings-2"/></svg></button>
+    </div>
+  </div>
+  <nav class="rail" aria-label="Sections">
+    <div class="rail-mark" aria-hidden="true"><svg aria-hidden="true" class="ico"><use href="#i-database"/></svg></div>
+    <button type="button" class="rail-item" data-rail="schema" aria-label="Schema" title="Schema" aria-current="page"><svg aria-hidden="true" class="ico ico-lg"><use href="#i-list-tree"/></svg></button>
+    <button type="button" class="rail-item" data-rail="history" aria-label="History" title="History"><svg aria-hidden="true" class="ico ico-lg"><use href="#i-history"/></svg></button>
+    <button type="button" class="rail-item" data-rail="saved" aria-label="Saved queries" title="Saved queries"><svg aria-hidden="true" class="ico ico-lg"><use href="#i-bookmark"/></svg></button>
+  </nav>
+  <div class="panel">
+    <aside class="sidebar" data-side="schema">
+      <div class="side-resize" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" title="Drag to resize, drag past the edge to hide"></div>
+      <div class="side-head"><h2>Schema</h2></div>
+      <div class="side-tools">
+        <div class="search"><svg aria-hidden="true" class="ico"><use href="#i-search"/></svg><input class="field" id="tree-filter" placeholder="Filter tables" aria-label="Filter tables, views and functions" autocomplete="off" spellcheck="false"></div>
+        <button type="button" class="icon-btn icon-btn--outline" title="Refresh schema" aria-label="Refresh schema"><svg aria-hidden="true" class="ico"><use href="#i-refresh-cw"/></svg></button>
+      </div>
+      <div class="tree" id="tree">
+        <div class="row collection" data-row-menu="schema-menu" data-path="public"><button type="button" class="row-main" data-group="public" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><span class="name">public</span><span class="count">(13)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for public" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="public/tables"><button type="button" class="row-main" data-group="public/tables" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">Tables</span><span class="count">(8)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Tables" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/orders"><button type="button" class="row-main" data-href="./table.html"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">orders</span><span class="count est" title="Estimate from table statistics">~12k</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for orders" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/order_items"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">order_items</span><span class="count est" title="Estimate from table statistics">~41k</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for order_items" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/customers"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">customers</span><span class="count est" title="Estimate from table statistics">~3.2k</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for customers" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/products"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">products</span><span class="count est" title="Estimate from table statistics">~640</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for products" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/refunds"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">refunds</span><span class="count est" title="Estimate from table statistics">~318</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for refunds" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/shipments"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">shipments</span><span class="count est" title="Estimate from table statistics">~11k</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for shipments" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/warehouses"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">warehouses</span><span class="count est" title="Estimate from table statistics">~4</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for warehouses" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/tables/schema_migrations"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-table-2"/></svg><span class="name">schema_migrations</span><span class="count est" title="Estimate from table statistics">~57</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for schema_migrations" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="public/views"><button type="button" class="row-main" data-group="public/views" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">Views</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Views" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/views/daily_revenue"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-eye"/></svg><span class="name">daily_revenue</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for daily_revenue" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="public/views/open_orders"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-eye"/></svg><span class="name">open_orders</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for open_orders" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="public/functions"><button type="button" class="row-main" data-group="public/functions" aria-expanded="false"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-right"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">Functions</span><span class="count">(3)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Functions" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="public/functions/order_total"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-function"/></svg><span class="name">order_total</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for order_total" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="public/functions/touch_updated_at"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-function"/></svg><span class="name">touch_updated_at</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for touch_updated_at" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="public/functions/refund_window"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-function"/></svg><span class="name">refund_window</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for refund_window" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row collection" data-row-menu="schema-menu" data-path="audit"><button type="button" class="row-main" data-group="audit" aria-expanded="false"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-right"/></svg><span class="name">audit</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for audit" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="empty" id="tree-empty" hidden><strong>Nothing matches <span id="tree-empty-q"></span></strong><span>Searches table, view and function names in the schemas loaded so far.</span><button type="button" class="link" id="tree-clear">Clear the filter</button></div>
+        <div class="menu row-menu" id="row-menu" role="menu" aria-label="Table actions" hidden>
+          <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-table-2"/></svg>Open rows</button>
+          <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg>New query on this table</button>
+          <button type="button" role="menuitem" data-erd-open="table" data-href="./diagram.html?show=table"><svg aria-hidden="true" class="ico"><use href="#i-network"/></svg>Show diagram</button>
+          <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg>Copy name</button>
+          <hr>
+          <button type="button" role="menuitem" class="danger">Truncate</button>
+          <button type="button" role="menuitem" class="danger">Drop</button>
+        </div>
+        <div class="menu row-menu" id="schema-menu" role="menu" aria-label="Schema actions" hidden>
+          <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-refresh-cw"/></svg>Refresh schema</button>
+          <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg>Copy name</button>
+          <button type="button" role="menuitem" data-erd-open="schema" data-href="./diagram.html"><svg aria-hidden="true" class="ico"><use href="#i-network"/></svg>Show diagram</button>
+        </div>
+      </div>
+    </aside>
+    <aside class="sidebar" data-side="history" hidden>
+      <div class="side-head"><h2>History</h2><button type="button" class="btn btn--quiet" id="hist-clear">Clear</button></div>
+      <div class="side-tools"><div class="search"><svg aria-hidden="true" class="ico"><use href="#i-search"/></svg><input class="field" placeholder="Search shop_prod history" aria-label="Search shop_prod history" autocomplete="off" spellcheck="false"></div></div>
+      <div class="tree" id="hist-list">
+        <div class="day">Today</div>
+        <div class="row"><button type="button" class="row-main" title="shop_prod / shop&#10;select c.email, count(*) as refunds from customers c join refunds r on r.customer_id = c.id group by c.email"><span class="name hq">select c.email, count(*) as refunds from customers c join refunds r on r.customer_id = c.id group by c.email</span><span class="htime">09:41</span><span class="hstatus rows">14</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="shop_prod / shop&#10;select id, totl from orders"><span class="name hq">select id, totl from orders</span><span class="htime">09:38</span><span class="hstatus fail">error</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="shop_prod / shop&#10;select * from orders where status = 'open'"><span class="name hq">select * from orders where status = 'open'</span><span class="htime">09:30</span><span class="hstatus rows">20</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="shop_prod / shop_staging&#10;select count(*) from orders where created_at > now() - interval '1 day'"><span class="hdb">shop_staging</span><span class="name hq">select count(*) from orders where created_at > now() - interval '1 day'</span><span class="htime">08:55</span><span class="hstatus rows">1</span></button></div>
+        <div class="day">Yesterday</div>
+        <div class="row"><button type="button" class="row-main" title="shop_prod / shop&#10;update shipments set carrier = 'dhl' where id in (4410, 4411, 4415)"><span class="name hq">update shipments set carrier = 'dhl' where id in (4410, 4411, 4415)</span><span class="htime">17:12</span><span class="hstatus rows">3</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="shop_prod / shop&#10;select pid, state, query from pg_stat_activity"><span class="name hq">select pid, state, query from pg_stat_activity</span><span class="htime">16:40</span><span class="hstatus rows">8</span></button></div>
+      </div>
+      <div class="tree" id="hist-none" hidden>
+        <div class="empty"><strong>No queries on shop_prod yet</strong><span>Each query you run is kept here, on this Mac.</span></div>
+      </div>
+    </aside>
+    <aside class="sidebar" data-side="saved" hidden>
+      <div class="side-head"><h2>Saved queries</h2></div>
+      <div class="side-tools"><div class="search"><svg aria-hidden="true" class="ico"><use href="#i-search"/></svg><input class="field" placeholder="Search saved queries" aria-label="Search saved queries" autocomplete="off" spellcheck="false"></div>
+        <button type="button" class="icon-btn icon-btn--filled" title="New folder" aria-label="New folder"><svg aria-hidden="true" class="ico"><use href="#i-plus"/></svg></button></div>
+      <div class="tree">
+        <div class="row collection"><button type="button" class="row-main" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><span class="name">Reports</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Reports" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px" aria-current="page"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Refunds by customer</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Refunds by customer" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Daily revenue</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Daily revenue" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row collection"><button type="button" class="row-main" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><span class="name">Ops</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Ops" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Stuck shipments</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Stuck shipments" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Long-running queries</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Long-running queries" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+      </div>
+    </aside>
+    <main class="work">
+      <div class="tabsbar">
+        <button type="button" class="icon-btn side-toggle" aria-label="Hide sidebar" title="Hide sidebar  ⌘\"><svg aria-hidden="true" class="ico"><use href="#i-panel-left-close"/></svg></button>
+        <div class="tabs">
+          <div class="tab" data-tab="orders" data-pinned><button type="button" class="tab-main" data-href="./table.html"><svg aria-hidden="true" class="ico"><use href="#i-table-2"/></svg><span class="name">orders</span></button><button type="button" class="icon-btn close" aria-label="Close orders"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin orders" title="Pinned: kept with shop_prod. Click to unpin"><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
+          <div class="tab" data-tab="q1"><button type="button" class="tab-main" data-href="./index.html"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg><span class="name">Query 1</span></button><button type="button" class="icon-btn close" aria-label="Close Query 1"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin Query 1" title="Pinned: kept with shop_prod. Click to unpin"><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
+          <div class="tab" data-tab="erd" data-unpinnable aria-current="page"><button type="button" class="tab-main"><svg aria-hidden="true" class="ico"><use href="#i-network"/></svg><span class="name">public</span></button><button type="button" class="icon-btn close" aria-label="Close public"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin public" title="Pinned: kept with shop_prod. Click to unpin"><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
+          <button type="button" class="icon-btn tab-add" aria-label="New query tab"><svg aria-hidden="true" class="ico"><use href="#i-plus"/></svg></button>
+        </div>
+        <div class="menu-anchor env-group guard">
+          <button type="button" class="env-picker" id="guard-btn" data-menu="guard-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Security level for shop_prod: Low" title="Security level for shop_prod"><svg aria-hidden="true" class="ico guard-ico"><use href="#i-shield"/></svg><span class="env-name" id="guard-name">Low</span><svg aria-hidden="true" class="ico"><use href="#i-chevron-down"/></svg></button>
+          <div class="menu guard-menu" id="guard-menu" role="menu" aria-label="Security level for shop_prod" hidden>
+            <p class="menu-note">Security level for shop_prod</p>
+            <button type="button" role="menuitemradio" aria-checked="false" data-guard="none" data-icon="shield-off"><svg aria-hidden="true" class="ico"><use href="#i-shield-off"/></svg><span class="gm-text"><span>None</span><small>Every statement runs</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+            <button type="button" role="menuitemradio" aria-checked="true" data-guard="low" data-icon="shield"><svg aria-hidden="true" class="ico"><use href="#i-shield"/></svg><span class="gm-text"><span>Low</span><small>Confirm the picked statements</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+            <button type="button" role="menuitemradio" aria-checked="false" data-guard="strict" data-icon="lock"><svg aria-hidden="true" class="ico"><use href="#i-lock"/></svg><span class="gm-text"><span>Strict</span><small>Passphrase for the picked statements</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+          </div>
+        </div>
+      </div>
+      <div class="work-body erd-body">
+        <div class="req-title"><span class="name name--static" id="erd-title">public</span><span class="path" id="erd-path">shop_prod / shop / public</span></div>
+        <div class="erd-tools" role="toolbar" aria-label="Diagram">
+          <button type="button" class="btn btn--quiet erd-pick-btn" id="erd-pick-btn" title="Choose the tables to draw"><svg aria-hidden="true" class="ico"><use href="#i-list-checks"/></svg>Tables<span class="n" id="erd-pick-n"></span></button>
+          <div class="menu-anchor">
+            <button type="button" class="btn btn--quiet erd-export" id="erd-export" data-menu="erd-export-menu" aria-haspopup="menu" aria-expanded="false" title="Export the diagram"><svg aria-hidden="true" class="ico"><use href="#i-download"/></svg>Export</button>
+            <div class="menu" id="erd-export-menu" role="menu" aria-label="Export as" hidden>
+              <p class="menu-note">Export as</p>
+              <button type="button" role="menuitem" data-ex="image"><svg aria-hidden="true" class="ico"><use href="#i-image"/></svg>Image (PNG or JPG)…</button>
+              <button type="button" role="menuitem" data-ex="mermaid"><svg aria-hidden="true" class="ico"><use href="#i-file-code"/></svg>Mermaid code…</button>
+              <button type="button" role="menuitem" data-ex="dbml"><svg aria-hidden="true" class="ico"><use href="#i-file-code"/></svg>DBML for dbdiagram.io…</button>
+              <button type="button" role="menuitem" data-ex="drawio"><svg aria-hidden="true" class="ico"><use href="#i-file-down"/></svg>diagrams.net file (.drawio)…</button>
+            </div>
+          </div>
+          <button type="button" class="btn btn--quiet erd-save" id="erd-save" title="Save the tables and layout with shop_prod  ⌘S" disabled><svg aria-hidden="true" class="ico"><use href="#i-save"/></svg><span>Save</span></button>
+          <button type="button" class="icon-btn" id="erd-refresh" aria-label="Read the catalog again" title="Read the catalog again"><svg aria-hidden="true" class="ico"><use href="#i-refresh-cw"/></svg></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button type="button" class="icon-btn" id="erd-out" aria-label="Zoom out" title="Zoom out  −"><svg aria-hidden="true" class="ico"><use href="#i-zoom-out"/></svg></button>
+          <button type="button" class="icon-btn" id="erd-in" aria-label="Zoom in" title="Zoom in  +"><svg aria-hidden="true" class="ico"><use href="#i-zoom-in"/></svg></button>
+          <button type="button" class="btn btn--quiet erd-zoom" id="erd-actual" title="Actual size  0" aria-label="Zoom 100%, actual size">100%</button>
+          <button type="button" class="icon-btn" id="erd-fit" aria-label="Fit the diagram" title="Fit the diagram"><svg aria-hidden="true" class="ico"><use href="#i-maximize"/></svg></button>
+          <button type="button" class="icon-btn" id="erd-reset" aria-label="Reset layout: arrange every table afresh (Save keeps it)" title="Reset layout: arrange every table afresh (Save keeps it)"><svg aria-hidden="true" class="ico"><use href="#i-undo-2"/></svg></button>
+          <span class="sep" aria-hidden="true"></span>
+          <span class="ctx-select"><select id="erd-detail" aria-label="Columns shown"><option>All columns</option><option>Key columns</option><option>Table names</option></select><svg aria-hidden="true" class="ico"><use href="#i-chevron-down"/></svg></span>
+          <span class="push erd-status" id="erd-status" aria-live="polite"></span>
+        </div>
+        <div class="erd-state" data-erd="ready">
+          <div class="erd-host" id="erd-host" tabindex="0" role="img" aria-label="Diagram of public"><div class="erd-world" id="erd-world"></div></div>
+          <p class="erd-foot">Drag a table to move it. Drag the background or scroll to pan, ⌘ scroll or pinch to zoom. Double-click a table to open its rows. Save keeps the picked tables and this layout with shop_prod; Show diagram brings them back, after a restart too. Tables ticked after a save are placed to the right of the saved ones.</p>
+        </div>
+        <div class="erd-state" data-erd="loading" hidden><div class="empty"><span class="spinner"></span><strong>Reading the catalog of public</strong><span>Tables, columns and foreign keys. No row is read.</span></div></div>
+        <div class="erd-state" data-erd="none" hidden><div class="empty"><strong>No tables picked</strong><span>Pick the tables of public to draw. Only those are read from the catalog.</span><button type="button" class="btn btn--primary" id="erd-pick-empty"><svg aria-hidden="true" class="ico"><use href="#i-list-checks"/></svg>Choose tables</button></div></div>
+        <div class="erd-state" data-erd="error" hidden><div class="empty"><strong>Could not read the catalog of audit</strong><span class="erd-err">permission denied for schema audit</span><span>Ask for USAGE on the schema, then refresh.</span></div></div>
+      </div>
+      <div class="menu ctx-menu" id="erd-menu" role="menu" aria-label="Table" hidden>
+        <button type="button" role="menuitem" data-erd-act="rows"><svg aria-hidden="true" class="ico"><use href="#i-table-2"/></svg>Open rows</button>
+        <button type="button" role="menuitem" data-erd-act="query"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg>New query on this table</button>
+        <hr>
+        <button type="button" role="menuitem" data-erd-act="focus"><svg aria-hidden="true" class="ico"><use href="#i-network"/></svg>Show diagram of this table</button>
+        <button type="button" role="menuitem" data-erd-act="reveal"><svg aria-hidden="true" class="ico"><use href="#i-locate"/></svg>Select in Schema tree</button>
+        <button type="button" role="menuitem" data-erd-act="hide"><svg aria-hidden="true" class="ico"><use href="#i-eye-off"/></svg>Hide from diagram</button>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="backdrop" id="erd-pick-dlg" hidden>
+  <div class="dialog erd-pick" role="dialog" aria-modal="true" aria-labelledby="ep-title">
+    <h2 id="ep-title">Tables to draw</h2>
+    <form>
+      <p class="help">Tables of <strong id="ep-schema">public</strong> on shop_prod. Only the tables you tick are read from the catalog and drawn.</p>
+      <div class="search"><svg aria-hidden="true" class="ico"><use href="#i-search"/></svg><input class="field" id="ep-filter" type="search" placeholder="Filter tables" aria-label="Filter tables" autocomplete="off" spellcheck="false"></div>
+      <div class="ep-tools">
+        <button type="button" class="btn btn--quiet" id="ep-all">Select all</button>
+        <button type="button" class="btn btn--quiet" id="ep-none">Unselect all</button>
+        <button type="button" class="btn btn--quiet" id="ep-linked" title="Tick every table one foreign key away from a ticked one (reads the schema's foreign keys)"><svg aria-hidden="true" class="ico"><use href="#i-link"/></svg><svg aria-hidden="true" class="ico ep-spin"><use href="#i-loader-circle"/></svg><span>Add linked tables</span></button>
+      </div>
+      <div class="ep-list" id="ep-list" role="group" aria-label="Tables of public">
+          <label class="check ep-row"><input type="checkbox" value="orders"><span class="ep-name">orders</span><span class="ep-est" title="Estimate from table statistics">~12k</span></label>
+          <label class="check ep-row"><input type="checkbox" value="order_items"><span class="ep-name">order_items</span><span class="ep-est" title="Estimate from table statistics">~41k</span></label>
+          <label class="check ep-row"><input type="checkbox" value="customers"><span class="ep-name">customers</span><span class="ep-est" title="Estimate from table statistics">~3.2k</span></label>
+          <label class="check ep-row"><input type="checkbox" value="products"><span class="ep-name">products</span><span class="ep-est" title="Estimate from table statistics">~640</span></label>
+          <label class="check ep-row"><input type="checkbox" value="refunds"><span class="ep-name">refunds</span><span class="ep-est" title="Estimate from table statistics">~318</span></label>
+          <label class="check ep-row"><input type="checkbox" value="shipments"><span class="ep-name">shipments</span><span class="ep-est" title="Estimate from table statistics">~11k</span></label>
+          <label class="check ep-row"><input type="checkbox" value="warehouses"><span class="ep-name">warehouses</span><span class="ep-est" title="Estimate from table statistics">~4</span></label>
+          <label class="check ep-row"><input type="checkbox" value="schema_migrations"><span class="ep-name">schema_migrations</span><span class="ep-est" title="Estimate from table statistics">~57</span></label>
+        <p class="ep-empty" id="ep-empty" hidden>No table matches <span id="ep-empty-q"></span></p>
+      </div>
+      <footer>
+        <span class="ep-n" id="ep-n" aria-live="polite"></span>
+        <button type="button" class="btn" data-ep-close>Cancel</button>
+        <button type="submit" class="btn btn--primary" id="ep-show">Show diagram</button>
+      </footer>
+    </form>
+  </div>
+</div>
+<div class="backdrop" id="erd-img-dlg" hidden>
+  <div class="dialog erd-img" role="dialog" aria-modal="true" aria-labelledby="ei-title">
+    <h2 id="ei-title">Export image</h2>
+    <form>
+      <p class="help" id="ei-what">The whole diagram as drawn, at twice its size for sharp text.</p>
+      <div class="seg ei-format" role="radiogroup" aria-label="Format">
+        <button type="button" role="radio" data-fmt="png" aria-pressed="true" aria-checked="true">PNG</button>
+        <button type="button" role="radio" data-fmt="jpg" aria-pressed="false" aria-checked="false">JPG</button>
+      </div>
+      <fieldset class="ei-bg" id="ei-bg">
+        <legend>Background</legend>
+        <label class="check"><input type="radio" name="ei-bg" value="fill" checked>Fill with the diagram's background</label>
+        <label class="check"><input type="radio" name="ei-bg" value="none">Transparent</label>
+      </fieldset>
+      <footer>
+        <button type="button" class="btn" data-ei-close>Cancel</button>
+        <button type="submit" class="btn btn--primary" id="ei-go"><svg aria-hidden="true" class="ico"><use href="#i-download"/></svg>Export</button>
+      </footer>
+    </form>
+  </div>
+</div>
+<div class="backdrop" id="erd-code-dlg" hidden>
+  <div class="dialog wide erd-code" role="dialog" aria-modal="true" aria-labelledby="ec-title">
+    <h2 id="ec-title">Mermaid code</h2>
+    <form>
+      <p class="help" id="ec-help"></p>
+      <pre class="erd-code-pre" id="ec-code" tabindex="0" aria-label="Code"></pre>
+      <footer>
+        <button type="button" class="btn" id="ec-save"><svg aria-hidden="true" class="ico"><use href="#i-download"/></svg>Save as file…</button>
+        <span class="grow"></span>
+        <button type="button" class="btn" data-ec-close>Close</button>
+        <button type="submit" class="btn btn--primary" id="ec-copy"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg>Copy</button>
+      </footer>
+    </form>
+  </div>
+</div>
+<div class="toast" role="status" id="erd-toast" hidden></div>
+<div class="backdrop" id="erd-close-dlg" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ecl-title">
+    <h2 id="ecl-title">Close public?</h2>
+    <form>
+      <p class="help" id="ecl-msg"></p>
+      <footer>
+        <button type="button" class="btn" data-ecl-cancel>Cancel</button>
+        <button type="button" class="btn" data-ecl-save><svg aria-hidden="true" class="ico"><use href="#i-save"/></svg>Save and close</button>
+        <button type="submit" class="btn btn--primary">Close</button>
+      </footer>
+    </form>
+  </div>
+</div>
+</div>
+<script>
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const root = document.documentElement;
+  const q = new URLSearchParams(location.search);
+
+  // Theme: Auto/Light/Dark plus a colour scheme per appearance. The bar's Light/Dark stands in for the Mac's appearance.
+  const { SCHEMES, BUILTIN, DEFAULT_SCHEME, FAMILIES, findScheme, isDark, schemeTokens, schemeSwatch } = window.YpaThemes;
+  const DEF = { mode: "auto", light: DEFAULT_SCHEME.light, dark: DEFAULT_SCHEME.dark, os: "light", density: "" };
+  const st = Object.fromEntries(Object.entries(DEF).map(([k, v]) => [k, q.get(k) ?? v]));
+  // Fonts: the values Settings writes (voidHTTP's four, plus the table face and size)
+  const FONT = { "--font-ui": "fui", "--font-table": "ftable", "--font-mono": "fmono", "--font-size-ui": "sui", "--font-size-table": "stable", "--font-size-code": "scode" };
+  const fonts = {};
+
+  // every link between screens carries the theme, density and fonts, so a pick survives the jump
+  function writeUrl() {
+    const u = new URL(location);
+    for (const k of Object.keys(DEF)) st[k] !== DEF[k] ? u.searchParams.set(k, st[k]) : u.searchParams.delete(k);
+    for (const [prop, k] of Object.entries(FONT)) fonts[prop] ? u.searchParams.set(k, fonts[prop]) : u.searchParams.delete(k);
+    history.replaceState(null, "", u);
+    const carry = new URLSearchParams(u.search); carry.delete("show");
+    $$(".pv-screens a, [data-href], [data-close]").forEach((a) => {
+      const attr = a.tagName === "A" ? "href" : a.dataset.href ? "data-href" : "data-close";
+      const base = a.dataset.base || (a.dataset.base = a.getAttribute(attr));
+      const t = new URL(base, location.href); carry.forEach((v, k) => t.searchParams.set(k, v));
+      a.setAttribute(attr, t.href);
+    });
+  }
+
+  const opts = `<optgroup label="ypacapy">${Object.entries(BUILTIN).map(([id, b]) => `<option value="${id}">${b.name}</option>`).join("")}</optgroup>` +
+    FAMILIES.map((f) => `<optgroup label="${f}">${SCHEMES.filter((x) => x.family === f).map((x) => `<option value="${x.id}">${x.name}</option>`).join("")}</optgroup>`).join("");
+  $$("select[data-scheme]").forEach((sel) => { sel.innerHTML = opts; sel.addEventListener("change", () => { st[sel.dataset.scheme] = sel.value; apply(); }); });
+
+  let set = [];
+  function apply() {
+    const id = st[st.mode === "auto" ? st.os : st.mode];
+    set.forEach((k) => root.style.removeProperty(k)); set = [];
+    const sc = findScheme(id);
+    root.dataset.theme = sc ? (isDark(sc) ? "dark" : "light") : BUILTIN[id]?.dark ? "dark" : "light";
+    if (sc) Object.entries(schemeTokens(sc)).forEach(([k, v]) => { root.style.setProperty(k, v); set.push(k); });
+    if (st.density) root.dataset.density = st.density; else delete root.dataset.density;
+    // rows: both slots under Auto, one under Light or Dark
+    const auto = st.mode === "auto";
+    $$("[data-scheme-row]").forEach((row) => {
+      const slot = row.dataset.schemeRow;
+      row.hidden = !auto && slot !== st.mode;
+      if (row.hidden) return;
+      $("[data-scheme-label]", row).textContent = auto ? (slot === "light" ? "Light theme" : "Dark theme") : "Color scheme";
+      $("select", row).value = st[slot];
+      const [bg, ...dots] = schemeSwatch(st[slot]);
+      const d = $(".scheme-dots", row); d.style.background = bg; d.innerHTML = dots.map((c) => `<i style="background:${c}"></i>`).join("");
+    });
+    $$("[data-set-theme]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.setTheme === st.mode)));
+    $$("[data-os-set]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.osSet === st.os)));
+    $$("[data-density-set]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.densitySet === st.density)));
+    const compact = $("#set-compact"); if (compact) compact.checked = st.density === "compact";
+    writeUrl();
+  }
+  $$("[data-set-theme]").forEach((b) => b.addEventListener("click", () => { st.mode = b.dataset.setTheme; apply(); }));
+  $$("[data-os-set]").forEach((b) => b.addEventListener("click", () => { st.os = b.dataset.osSet; apply(); }));
+  $$("[data-density-set]").forEach((b) => b.addEventListener("click", () => { st.density = b.dataset.densitySet; apply(); }));
+  $("#set-compact")?.addEventListener("change", (e) => { st.density = e.target.checked ? "compact" : ""; apply(); });
+
+  // a font named in Settings gets its kind of fallback; the bar's selects carry whole stacks
+  const FALLBACK = { "--font-ui": "ui-sans-serif, system-ui, sans-serif", "--font-table": "ui-monospace, monospace", "--font-mono": "ui-monospace, monospace" };
+  function setFont(prop, v) {
+    fonts[prop] = v;
+    if (v) root.style.setProperty(prop, v); else root.style.removeProperty(prop);
+    $$(`select[data-font="${prop}"], select[data-size="${prop}"]`).forEach((s) => { s.value = [...s.options].some((o) => o.value === v) ? v : ""; });
+    writeUrl();
+  }
+  for (const [prop, k] of Object.entries(FONT)) if (q.get(k)) setFont(prop, q.get(k));
+  $$("select[data-font], select[data-size]").forEach((sel) => sel.addEventListener("change", () => setFont(sel.dataset.font || sel.dataset.size, sel.value)));
+  $$("input[data-font-name]").forEach((inp) => inp.addEventListener("input", () => {
+    const prop = inp.dataset.fontName, v = inp.value.trim();
+    setFont(prop, v ? `"${v}", ${FALLBACK[prop]}` : "");
+  }));
+  $("#set-reset")?.addEventListener("click", () => {
+    Object.assign(st, { mode: DEF.mode, light: DEF.light, dark: DEF.dark, density: "" });
+    Object.keys(FONT).forEach((p) => setFont(p, ""));
+    $$("input[data-font-name]").forEach((i) => { i.value = ""; });
+    $(".res-actions .menu button").forEach((b) => b.addEventListener("click", () => { const m = b.closest(".menu"); m.hidden = true; $(`[data-menu="${m.id}"]`).setAttribute("aria-expanded", "false"); }));
+  apply();
+  });
+
+  // Screens and states
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-href]"); if (t && !t.disabled) { location.href = t.dataset.href; return; }
+    const b = e.target.closest("[data-close]"); if (b && e.target === b) location.href = b.dataset.close;
+  });
+  document.addEventListener("keydown", (e) => {
+    const b = $("[data-close]"); if (e.key === "Escape" && b && !$(".menu:not([hidden])")) location.href = b.dataset.close;
+    if (e.metaKey && e.key === ",") { e.preventDefault(); location.href = $(".strip-settings").dataset.href; }
+  });
+  const shows = $$("[data-show]");
+  window.pvShow = () => {};
+  function show(k) {
+    shows.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.show === k)));
+    window.pvShow(k);
+    const u = new URL(location); u.searchParams.set("show", k); history.replaceState(null, "", u);
+  }
+  shows.forEach((b) => b.addEventListener("click", () => show(b.dataset.show)));
+  // preview-only: the shop_prod colour picker in the bar recolours its title-strip tab and rides in the URL as ?tabc=
+  function tabColor(n) {
+    const tab = $(".ptab--project");
+    if (tab) { tab.style.setProperty("--fg", `var(--proj-${n}-fg)`); tab.style.setProperty("--bg", `var(--proj-${n}-bg)`); }
+  }
+  $$("select[data-tabc]").forEach((sel) => {
+    const n = q.get("tabc"); if (n) { sel.value = n; tabColor(n); }
+    sel.addEventListener("change", () => {
+      tabColor(sel.value);
+      const u = new URL(location); sel.value === "6" ? u.searchParams.delete("tabc") : u.searchParams.set("tabc", sel.value);
+      history.replaceState(null, "", u); writeUrl();
+    });
+  });
+  function pvStart() { if (!shows.length) return; const k = q.get("show"); show(shows.some((b) => b.dataset.show === k) ? k : shows[0].dataset.show); }
+
+  // ---------- the app itself (shipped behaviour) ----------
+  // Rail: Schema, History and Saved queries swap the sidebar; the tabs bar toggle hides it
+  {
+    const panel = $(".panel");
+    $$(".rail-item[data-rail]").forEach((r) => r.addEventListener("click", () => {
+      $$(".rail-item[data-rail]").forEach((x) => x.toggleAttribute("aria-current", x === r) || x.removeAttribute("aria-current"));
+      r.setAttribute("aria-current", "page");
+      $$("[data-side]").forEach((s) => { s.hidden = s.dataset.side !== r.dataset.rail; });
+      panel?.classList.remove("no-side");
+    }));
+    const tgl = $(".side-toggle");
+    tgl?.addEventListener("click", () => {
+      const off = panel.classList.toggle("no-side");
+      tgl.setAttribute("aria-label", off ? "Show sidebar" : "Hide sidebar");
+      tgl.title = off ? "Show sidebar  ⌘\\" : "Hide sidebar  ⌘\\";
+    });
+  }
+  // Schema tree: groups open and close; the filter narrows by name and says when nothing matches
+  {
+    const rows = $$('#tree .row[data-path]');
+    const shown = (row) => { const parts = row.dataset.path.split("/"); for (let i = 1; i < parts.length; i++) { const g = rows.find((r) => r.dataset.path === parts.slice(0, i).join("/")); if (g && $(".row-main", g).getAttribute("aria-expanded") === "false") return false; } return true; };
+    const layout = (filter = "") => {
+      let any = false;
+      rows.forEach((r) => {
+        const leaf = !$(".row-main", r).hasAttribute("aria-expanded");
+        const hit = !filter || !leaf || $(".name", r).textContent.toLowerCase().includes(filter);
+        r.hidden = filter ? !(leaf && hit) && !(!leaf && rows.some((x) => x.dataset.path.startsWith(r.dataset.path + "/") && !$(".row-main", x).hasAttribute("aria-expanded") && $(".name", x).textContent.toLowerCase().includes(filter))) : !shown(r);
+        if (leaf && !r.hidden) any = true;
+      });
+      const empty = $("#tree-empty"); if (empty) { empty.hidden = !filter || any; $("#tree-empty-q").textContent = `"${filter}"`; }
+    };
+    $$("#tree [data-group]").forEach((g) => g.addEventListener("click", () => {
+      const open = g.getAttribute("aria-expanded") !== "true";
+      g.setAttribute("aria-expanded", String(open));
+      $("use", g).setAttribute("href", open ? "#i-chevron-down" : "#i-chevron-right");
+      layout($("#tree-filter").value.trim().toLowerCase());
+    }));
+    const f = $("#tree-filter");
+    f?.addEventListener("input", () => layout(f.value.trim().toLowerCase()));
+    $("#tree-clear")?.addEventListener("click", () => { f.value = ""; layout(); f.focus(); });
+  }
+  function fillCols(m) {
+    const wrap = $(".grid-wrap[tabindex]").find((w) => w.offsetParent !== null); if (!wrap) return;
+    const heads = $("thead th", wrap).filter((h) => !h.classList.contains("rownum"));
+    m.innerHTML = `<p class="menu-note">${heads.length} columns</p>` + heads.map((h, i) => `<button type="button" role="menuitem" data-col="${i + 1}"><span>${$(".col-name", h).textContent}</span><span class="col-t">${$(".col-type", h).textContent}</span></button>`).join("");
+    $("[data-col]", m).forEach((b) => b.addEventListener("click", () => {
+      const cell = $(`tbody tr td:nth-child(${+b.dataset.col + 1})`, wrap);
+      heads[+b.dataset.col - 1].scrollIntoView({ block: "nearest", inline: "center" });
+      if (cell) cell.click();
+      m.hidden = true; $(`[data-menu="${m.id}"]`).setAttribute("aria-expanded", "false"); wrap.focus();
+    }));
+  }
+  // Security level pickers in dialogs: the menu sets the hidden select; the select's value and disabled options draw the button and menu
+  $$("[data-level-pick]").forEach((wrap) => {
+    const sel = $("select", wrap), btn = $(".level-btn", wrap), menu = $(".menu", wrap);
+    const draw = () => {
+      const v = sel.value, item = $(`[data-pick="${v}"]`, menu);
+      $(".env-name", btn).textContent = $(".gm-text > span", item).textContent;
+      $(".guard-ico use", btn).setAttribute("href", `#i-${item.dataset.icon}`);
+      btn.dataset.level = v;
+      btn.setAttribute("aria-label", `Security level: ${$(".env-name", btn).textContent}`);
+      $$("[data-pick]", menu).forEach((b) => {
+        const opt = $(`option[value="${b.dataset.pick}"]`, sel), small = $("small", b);
+        b.setAttribute("aria-checked", String(b.dataset.pick === v));
+        b.disabled = opt.disabled;
+        small.textContent = opt.disabled && b.dataset.pick === "strict" ? "Set a passphrase in Settings first" : small.dataset.desc;
+      });
+    };
+    sel.addEventListener("change", draw);
+    $$("[data-pick]", menu).forEach((b) => b.addEventListener("click", () => {
+      menu.hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus();
+      if (sel.value === b.dataset.pick) return;
+      sel.value = b.dataset.pick; sel.dispatchEvent(new Event("change"));
+    }));
+    draw();
+  });
+  // Menus: the row "…" menu and Run's menu; Escape or a click elsewhere closes them
+  {
+    const rowMenu = $("#row-menu");
+    const closeAll = () => {
+      $$(".menu:not([hidden])").forEach((m) => { m.hidden = true; });
+      $$(".row.menu-open").forEach((r) => r.classList.remove("menu-open"));
+      $$('[aria-haspopup="menu"][aria-expanded="true"]').forEach((b) => b.setAttribute("aria-expanded", "false"));
+    };
+    $$(".row-more").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const row = b.closest(".row"), open = !row.classList.contains("menu-open");
+      closeAll(); if (!open || !rowMenu) return;
+      // a row can name its own menu (a schema's); table rows share #row-menu
+      const m = row.dataset.rowMenu ? $(`#${row.dataset.rowMenu}`) : rowMenu;
+      row.append(m); m.hidden = false; row.classList.add("menu-open"); b.setAttribute("aria-expanded", "true");
+      m.querySelector("button").focus();
+    }));
+    $$("[data-menu]").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const m = $(`#${b.dataset.menu}`), open = m.hidden;
+      if (open && m.hasAttribute("data-cols")) fillCols(m);
+      closeAll(); if (!open) return;
+      m.hidden = false; b.setAttribute("aria-expanded", "true"); m.querySelector("button").focus();
+    }));
+    // Right-click on a tree row opens the same menu as its "…"
+    $$(".row").forEach((row) => row.addEventListener("contextmenu", (e) => {
+      const b = $(".row-more", row); if (!b) return;
+      e.preventDefault(); closeAll(); b.click();
+    }));
+    document.addEventListener("mousedown", (e) => { if (!e.target.closest(".menu, .row-more, [data-menu]")) closeAll(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
+  }
+  // Right-click on a result cell: copy its value, or its row in the Copy button's formats. Opens at the pointer.
+  const cellMenu = document.createElement("div");
+  cellMenu.className = "menu ctx-menu"; cellMenu.id = "cell-menu"; cellMenu.hidden = true;
+  cellMenu.setAttribute("role", "menu"); cellMenu.setAttribute("aria-label", "Cell");
+  cellMenu.innerHTML = `<button type="button" role="menuitem" data-ctx="value">Copy value<kbd>⌘C</kbd></button><hr><p class="menu-note">Copy row as</p>${["Plain text", "JSON", "Markdown table", "CSV"].map((f) => `<button type="button" role="menuitem">${f}</button>`).join("")}`;
+  document.body.append(cellMenu);
+  $$("button", cellMenu).forEach((b) => b.addEventListener("click", () => { cellMenu.hidden = true; }));
+  const openCellMenu = (x, y, isNull) => {
+    $$(".menu:not([hidden])").forEach((m) => { m.hidden = true; });
+    $('[data-ctx="value"]', cellMenu).disabled = isNull;
+    cellMenu.hidden = false;
+    const r = cellMenu.getBoundingClientRect();
+    cellMenu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
+    cellMenu.style.top = `${y + r.height > innerHeight - 8 ? Math.max(8, y - r.height) : y}px`;
+    $("button:not(:disabled)", cellMenu).focus();
+  };
+  // Grid: a cell is the unit. Click or arrow to a cell; the inspector under the grid shows its column, type, row and full value.
+  // A head sorts the rows already on screen (no new query); the row numbers keep the order the database returned.
+  $$(".grid-wrap[tabindex]").forEach((wrap) => {
+    const ins = wrap.parentElement.querySelector(".inspector");
+    const heads = () => $$("thead th", wrap);
+    let cur = null;
+    const pick = (td, scroll = true) => {
+      if (!td || td.classList.contains("rownum")) return;
+      $$("td.cell-sel", wrap).forEach((x) => x.classList.remove("cell-sel"));
+      $$('tbody tr[aria-selected="true"]', wrap).forEach((r) => r.removeAttribute("aria-selected"));
+      td.classList.add("cell-sel"); td.parentElement.setAttribute("aria-selected", "true"); cur = td;
+      if (ins) {
+        const th = heads()[td.cellIndex];
+        $(".ins-col", ins).textContent = $(".col-name", th).textContent;
+        $(".ins-type", ins).textContent = $(".col-type", th).textContent;
+        $(".ins-row", ins).textContent = `row ${$(".rownum", td.parentElement).textContent}`;
+        // MongoDB: a missing field is not null; the document has no such field
+        const v = $(".ins-value", ins), isNull = td.classList.contains("null"), isMissing = td.classList.contains("missing");
+        v.textContent = isMissing ? "missing, this document has no such field" : isNull ? "null, no value" : td.dataset.full ?? td.textContent;
+        v.classList.toggle("is-null", isNull || isMissing);
+      }
+      if (scroll) td.scrollIntoView({ block: "nearest", inline: "nearest" });
+    };
+    wrap.addEventListener("click", (e) => {
+      const td = e.target.closest("tbody td"); if (!td) return;
+      pick(td.classList.contains("rownum") ? td.nextElementSibling : td);
+    });
+    wrap.addEventListener("contextmenu", (e) => {
+      let td = e.target.closest("tbody td"); if (!td) return;
+      e.preventDefault();
+      if (td.classList.contains("rownum")) td = td.nextElementSibling;
+      pick(td, false);
+      openCellMenu(e.clientX, e.clientY, td.classList.contains("null") || td.classList.contains("missing"));
+    });
+    wrap.addEventListener("keydown", (e) => {
+      const d = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
+      if (!d || !cur) return;
+      e.preventDefault();
+      const rows = $$("tbody tr", wrap), row = rows[Math.max(0, Math.min(rows.length - 1, rows.indexOf(cur.parentElement) + d[0]))];
+      pick(row.cells[Math.max(1, Math.min(row.cells.length - 1, cur.cellIndex + d[1]))]);
+    });
+    ins && $(".ins-copy", ins).addEventListener("click", () => { navigator.clipboard?.writeText($(".ins-value", ins).textContent).catch(() => {}); });
+    $$("thead .th-btn", wrap).forEach((b) => b.addEventListener("click", () => {
+      const th = b.closest("th"), i = th.cellIndex, dir = th.getAttribute("aria-sort") === "ascending" ? "descending" : "ascending";
+      heads().forEach((h) => { if (h.hasAttribute("aria-sort")) { h.setAttribute("aria-sort", "none"); const u = $(".sort-ico use", h); if (u) u.setAttribute("href", "#i-arrow-up-down"); } });
+      th.setAttribute("aria-sort", dir); $(".sort-ico use", th).setAttribute("href", dir === "ascending" ? "#i-arrow-up" : "#i-arrow-down");
+      const key = (tr) => {
+        const td = tr.cells[i]; if (td.classList.contains("null") || td.classList.contains("missing")) return null;
+        const v = td.dataset.full ?? td.textContent, n = Number(v.replace(/,/g, ""));
+        return th.classList.contains("num") && !Number.isNaN(n) ? n : v;
+      };
+      const tb = $("tbody", wrap);
+      $$("tr", tb).sort((x, y) => { const p = key(x), q = key(y); if (p === null) return 1; if (q === null) return -1; const r = p < q ? -1 : p > q ? 1 : 0; return dir === "ascending" ? r : -r; }).forEach((r) => tb.append(r));
+    }));
+    const start = $('tbody tr[aria-selected="true"] td:not(.rownum)', wrap); if (start) pick(start, false);
+  });
+  // The divider between query and results, by pointer and arrow keys
+  {
+    const d = $(".divider"), top = $("#req-pane");
+    if (d && top) {
+      let ratio = 1;
+      const setR = (r) => { ratio = Math.max(0.3, Math.min(3, r)); top.style.flexGrow = String(ratio); };
+      d.addEventListener("pointerdown", (e) => {
+        d.setPointerCapture(e.pointerId);
+        const body = d.parentElement.getBoundingClientRect();
+        const move = (ev) => { const y = ev.clientY - body.top; setR((y / (body.height - y)) * 1.1); };
+        const up = () => { d.removeEventListener("pointermove", move); d.removeEventListener("pointerup", up); };
+        d.addEventListener("pointermove", move); d.addEventListener("pointerup", up);
+      });
+      d.addEventListener("keydown", (e) => { if (e.key === "ArrowUp") setR(ratio * 0.9); if (e.key === "ArrowDown") setR(ratio * 1.1); });
+    }
+  }
+
+  apply();
+  // many tabs: the row scrolls sideways with no scrollbar; the edge with tabs past it fades, and a mouse wheel scrolls the row
+  $$(".tabs").forEach((el) => {
+    const edges = () => { el.dataset.fadeStart = String(el.scrollLeft > 1); el.dataset.fadeEnd = String(el.scrollLeft + el.clientWidth < el.scrollWidth - 1); };
+    new ResizeObserver(edges).observe(el);
+    el.addEventListener("scroll", edges, { passive: true });
+    el.addEventListener("wheel", (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) el.scrollLeft += e.deltaY; }, { passive: true });
+    edges();
+  });
+  // Tabs: right-click for Pin tab / Unpin tab and Close tab. A pinned tab joins the pinned ones at the left, keeps its
+  // width, and shows a pin where its close button was (click the pin to unpin). It stays open: Close and ⌘W skip it.
+  // In the app a pinned tab is kept with its connection, across a restart and a reconnect. A tab marked
+  // data-unpinnable (a diagram) has no Pin tab: once saved, Show diagram reopens it as saved.
+  {
+    const tabsEl = $(".tabs");
+    if (tabsEl) {
+      const icon = (n) => `<svg aria-hidden="true" class="ico"><use href="#i-${n}"/></svg>`;
+      const menu = document.createElement("div");
+      menu.className = "menu ctx-menu"; menu.id = "tab-menu"; menu.hidden = true;
+      menu.setAttribute("role", "menu"); menu.setAttribute("aria-label", "Tab");
+      menu.innerHTML = `<button type="button" role="menuitem" data-tm="pin"></button><hr><button type="button" role="menuitem" data-tm="close">${icon("x")}Close tab<kbd>⌘W</kbd></button><p class="menu-note" data-tm-note hidden>Unpin the tab to close it</p><p class="menu-note tm-wrap" data-tm-unpin hidden>Diagrams are not pinned. Once saved, Show diagram reopens this one as saved.</p>`;
+      document.body.append(menu);
+      let cur = null;
+      const pinned = () => $$(".tab[data-pinned]", tabsEl);
+      const setPinned = (t, on) => {
+        t.toggleAttribute("data-pinned", on);
+        const last = pinned().filter((x) => x !== t).pop();
+        last ? last.after(t) : tabsEl.prepend(t);
+        t.scrollIntoView({ block: "nearest", inline: "nearest" });
+      };
+      $$(".tab .pin", tabsEl).forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); setPinned(b.closest(".tab"), false); }));
+      $$(".tab", tabsEl).forEach((t) => t.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        $$(".menu:not([hidden])").forEach((m) => { m.hidden = true; });
+        cur = t;
+        const on = t.hasAttribute("data-pinned"), fixed = t.hasAttribute("data-unpinnable");
+        $('[data-tm="pin"]', menu).hidden = fixed; $("hr", menu).hidden = fixed; $("[data-tm-unpin]", menu).hidden = !fixed;
+        $('[data-tm="pin"]', menu).innerHTML = on ? `${icon("pin-off")}Unpin tab` : `${icon("pin")}Pin tab`;
+        $('[data-tm="close"]', menu).disabled = on;
+        $("[data-tm-note]", menu).hidden = !on;
+        menu.hidden = false;
+        const r = menu.getBoundingClientRect();
+        menu.style.left = `${Math.max(8, Math.min(e.clientX, innerWidth - r.width - 8))}px`;
+        menu.style.top = `${e.clientY + r.height > innerHeight - 8 ? Math.max(8, e.clientY - r.height) : e.clientY}px`;
+        $("button:not([hidden])", menu).focus();
+      }));
+      $('[data-tm="pin"]', menu).addEventListener("click", () => { menu.hidden = true; if (cur) setPinned(cur, !cur.hasAttribute("data-pinned")); });
+      $('[data-tm="close"]', menu).addEventListener("click", () => { menu.hidden = true; if (cur && !cur.hasAttribute("data-pinned")) cur.hidden = true; });
+    }
+  }
+  // Security level of the open connection: None, Low or Strict; lowering from Strict asks for the passphrase first (in the app)
+  {
+    const btn = $("#guard-btn");
+    if (btn) {
+      const LABEL = { none: "None", low: "Low", strict: "Strict" };
+      const setLevel = (lvl) => {
+        $$("[data-guard]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.guard === lvl)));
+        btn.dataset.level = lvl;
+        $("#guard-name").textContent = LABEL[lvl];
+        $(".guard-ico use", btn).setAttribute("href", `#i-${$(`[data-guard="${lvl}"]`).dataset.icon}`);
+        btn.setAttribute("aria-label", `Security level for shop_prod: ${LABEL[lvl]}`);
+      };
+      $$("[data-guard]").forEach((b) => b.addEventListener("click", () => { setLevel(b.dataset.guard); $("#guard-menu").hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); }));
+      setLevel("low");
+    }
+  }
+
+var Erd = (() => {
+  var __defProp = Object.defineProperty;
+  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+  var __copyProps = (to, from, except, desc) => {
+    if (from && typeof from === "object" || typeof from === "function") {
+      for (let key of __getOwnPropNames(from))
+        if (!__hasOwnProp.call(to, key) && key !== except)
+          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    }
+    return to;
+  };
+  var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+  // <stdin>
+  var stdin_exports = {};
+  __export(stdin_exports, {
+    BODY_PAD: () => BODY_PAD,
+    HEADER_H: () => HEADER_H,
+    ROW_H: () => ROW_H,
+    boxSize: () => boxSize,
+    cardinality: () => cardinality,
+    diagramModel: () => diagramModel,
+    diagramSvg: () => diagramSvg,
+    edgeGeometry: () => edgeGeometry,
+    edgeLabel: () => edgeLabel,
+    layoutDiagram: () => layoutDiagram,
+    layoutWithSaved: () => layoutWithSaved,
+    linkedColumns: () => linkedColumns,
+    positionsOf: () => positionsOf,
+    svgToImage: () => svgToImage,
+    tableKey: () => tableKey,
+    toDbml: () => toDbml,
+    toDrawio: () => toDrawio,
+    toMermaid: () => toMermaid,
+    visibleColumns: () => visibleColumns,
+    withLinked: () => withLinked,
+    withMoves: () => withMoves
+  });
+
+  // src/lib/diagram.ts
+  var tableKey = (schema, name) => `${schema}\0${name}`;
+  function diagramModel(d, ref) {
+    const fkColumns = /* @__PURE__ */ new Map();
+    for (const k of d.keys) {
+      const key = tableKey(k.schema, k.table);
+      const set = fkColumns.get(key) ?? /* @__PURE__ */ new Set();
+      k.columns.forEach((col) => set.add(col));
+      fkColumns.set(key, set);
+    }
+    const byKey = new Map(d.tables.map((t) => [tableKey(t.schema, t.name), t]));
+    const picked = new Set(ref.tables);
+    const core = (schema, name) => schema === ref.schema && picked.has(name);
+    const included = new Set(d.tables.filter((t) => core(t.schema, t.name)).map((t) => tableKey(t.schema, t.name)));
+    for (const k of d.keys) {
+      const from = tableKey(k.schema, k.table);
+      const to = tableKey(k.refSchema, k.refTable);
+      if (core(k.schema, k.table) && k.refSchema !== ref.schema && byKey.has(to)) included.add(to);
+      if (core(k.refSchema, k.refTable) && k.schema !== ref.schema && byKey.has(from)) included.add(from);
+    }
+    const tables = [];
+    for (const key of included) {
+      const t = byKey.get(key);
+      const fks = fkColumns.get(key);
+      tables.push({
+        key,
+        schema: t.schema,
+        name: t.name,
+        label: t.schema === ref.schema ? t.name : `${t.schema}.${t.name}`,
+        kind: t.kind,
+        columns: t.columns.map((col) => ({ name: col.name, type: col.type, primaryKey: col.primary, foreignKey: fks?.has(col.name) ?? false, nullable: col.nullable })),
+        uniques: t.uniques
+      });
+    }
+    tables.sort((a, b) => a.label.localeCompare(b.label));
+    const edges = d.keys.map((k) => ({ name: k.name, from: tableKey(k.schema, k.table), to: tableKey(k.refSchema, k.refTable), columns: k.columns, refColumns: k.refColumns })).filter((e) => included.has(e.from) && included.has(e.to));
+    return { tables, edges };
+  }
+  function withLinked(all, picked, links) {
+    const on = new Set(picked);
+    const add = new Set(picked);
+    for (const [a, b] of links) {
+      if (on.has(a)) add.add(b);
+      if (on.has(b)) add.add(a);
+    }
+    return all.filter((t) => add.has(t));
+  }
+  function visibleColumns(t, detail) {
+    if (detail === "none") return [];
+    if (detail === "keys") return t.columns.filter((c) => c.primaryKey || c.foreignKey);
+    return t.columns;
+  }
+  var HEADER_H = 26;
+  var ROW_H = 20;
+  var BODY_PAD = 4;
+  var CHAR_W = 7.3;
+  var ICON_W = 22;
+  var SIDE_PAD = 10;
+  var TYPE_GAP = 18;
+  var MIN_W = 120;
+  var MAX_W = 440;
+  var LAYER_GAP = 100;
+  var SUBCOLUMN_GAP = 48;
+  var ROW_GAP = 28;
+  var MAX_COLUMN_H = 1400;
+  var MARGIN = 24;
+  function boxSize(t, detail) {
+    const cols = visibleColumns(t, detail);
+    const header = ICON_W + t.label.length * CHAR_W;
+    const rows = cols.map((c) => ICON_W + c.name.length * CHAR_W + TYPE_GAP + c.type.length * CHAR_W);
+    const w = Math.ceil(Math.min(MAX_W, Math.max(MIN_W, header + 2 * SIDE_PAD, ...rows.map((r) => r + 2 * SIDE_PAD))));
+    return { w, h: HEADER_H + (cols.length ? cols.length * ROW_H + 2 * BODY_PAD : 0) };
+  }
+  function layoutDiagram(model, detail) {
+    const size = new Map(model.tables.map((t) => [t.key, boxSize(t, detail)]));
+    const parents = /* @__PURE__ */ new Map();
+    const children = /* @__PURE__ */ new Map();
+    for (const e of model.edges) {
+      if (e.from === e.to) continue;
+      if (!parents.has(e.from)) parents.set(e.from, /* @__PURE__ */ new Set());
+      if (!children.has(e.to)) children.set(e.to, /* @__PURE__ */ new Set());
+      parents.get(e.from).add(e.to);
+      children.get(e.to).add(e.from);
+    }
+    const linked = model.tables.filter((t) => parents.has(t.key) || children.has(t.key)).map((t) => t.key);
+    const isolated = model.tables.filter((t) => !parents.has(t.key) && !children.has(t.key)).map((t) => t.key);
+    const layer = /* @__PURE__ */ new Map();
+    const visiting = /* @__PURE__ */ new Set();
+    const layerOf = (k) => {
+      const known = layer.get(k);
+      if (known !== void 0) return known;
+      visiting.add(k);
+      let l = 0;
+      for (const p of parents.get(k) ?? []) if (!visiting.has(p)) l = Math.max(l, layerOf(p) + 1);
+      visiting.delete(k);
+      layer.set(k, l);
+      return l;
+    };
+    linked.forEach(layerOf);
+    for (const k of [...linked].sort((a, b) => layer.get(b) - layer.get(a))) {
+      const below = [...children.get(k) ?? []].map((c) => layer.get(c)).filter((l) => l > layer.get(k));
+      if (below.length && below.length === children.get(k).size) layer.set(k, Math.min(...below) - 1);
+    }
+    const used = [...new Set(layer.values())].sort((a, b) => a - b);
+    for (const [k, l] of layer) layer.set(k, used.indexOf(l));
+    const layers = [];
+    for (const k of linked) (layers[layer.get(k)] ??= []).push(k);
+    const pos = /* @__PURE__ */ new Map();
+    const index = () => layers.forEach((l) => l.forEach((k, i) => pos.set(k, i)));
+    index();
+    const neighbours = (k) => [...parents.get(k) ?? [], ...children.get(k) ?? []];
+    const sweep = (l, adjacent) => {
+      const row = layers[l];
+      if (!row) return;
+      const centre = (k) => {
+        const ns = neighbours(k).filter((n) => layer.get(n) === adjacent);
+        return ns.length ? ns.reduce((s, n) => s + pos.get(n), 0) / ns.length : pos.get(k);
+      };
+      const keyed = row.map((k) => [k, centre(k)]);
+      keyed.sort((a, b) => a[1] - b[1]);
+      layers[l] = keyed.map(([k]) => k);
+      layers[l].forEach((k, i) => pos.set(k, i));
+    };
+    for (let pass = 0; pass < 4; pass++) {
+      for (let l = 1; l < layers.length; l++) sweep(l, l - 1);
+      for (let l = layers.length - 2; l >= 0; l--) sweep(l, l + 1);
+    }
+    const columns = [];
+    for (const row of layers) {
+      let current = [];
+      let h = 0;
+      let firstOfLayer = true;
+      const flush = () => {
+        const gapBefore = !columns.length ? 0 : firstOfLayer ? LAYER_GAP : SUBCOLUMN_GAP;
+        columns.push({ keys: current, gapBefore });
+        firstOfLayer = false;
+        current = [];
+        h = 0;
+      };
+      for (const k of row) {
+        const bh = size.get(k).h;
+        if (current.length && h + bh > MAX_COLUMN_H) flush();
+        current.push(k);
+        h += bh + ROW_GAP;
+      }
+      if (current.length) flush();
+    }
+    const heights = columns.map((c) => c.keys.reduce((s, k) => s + size.get(k).h, 0) + (c.keys.length - 1) * ROW_GAP);
+    const tallest = Math.max(0, ...heights);
+    const boxes = /* @__PURE__ */ new Map();
+    let x = MARGIN;
+    columns.forEach((c, i) => {
+      x += c.gapBefore;
+      const w = Math.max(...c.keys.map((k) => size.get(k).w));
+      let y = MARGIN + (tallest - heights[i]) / 2;
+      for (const k of c.keys) {
+        const s = size.get(k);
+        boxes.set(k, { x, y, ...s });
+        y += s.h + ROW_GAP;
+      }
+      x += w;
+    });
+    let width = columns.length ? x + MARGIN : 0;
+    let height = columns.length ? MARGIN + tallest + MARGIN : 0;
+    if (isolated.length) {
+      const wrap = Math.max(width - MARGIN, 1200);
+      let rx = MARGIN;
+      let ry = height ? height + ROW_GAP : MARGIN;
+      let rowH = 0;
+      for (const k of isolated) {
+        const s = size.get(k);
+        if (rx > MARGIN && rx + s.w > wrap) {
+          rx = MARGIN;
+          ry += rowH + ROW_GAP;
+          rowH = 0;
+        }
+        boxes.set(k, { x: rx, y: ry, ...s });
+        rx += s.w + SUBCOLUMN_GAP;
+        rowH = Math.max(rowH, s.h);
+        width = Math.max(width, rx - SUBCOLUMN_GAP + MARGIN);
+      }
+      height = ry + rowH + MARGIN;
+    }
+    return { boxes, width, height };
+  }
+  function anchorY(box, t, column, detail) {
+    const i = column === void 0 ? -1 : visibleColumns(t, detail).findIndex((c) => c.name === column);
+    return i < 0 ? box.y + HEADER_H / 2 : box.y + HEADER_H + BODY_PAD + i * ROW_H + ROW_H / 2;
+  }
+  var ARROW = 7;
+  function edgeGeometry(e, layout, tables, detail) {
+    const a = layout.boxes.get(e.from);
+    const b = layout.boxes.get(e.to);
+    const ta = tables.get(e.from);
+    const tb = tables.get(e.to);
+    if (!a || !b || !ta || !tb) return null;
+    const y1 = anchorY(a, ta, e.columns[0], detail);
+    const y2 = anchorY(b, tb, e.refColumns[0], detail);
+    let x1, x2, c1, c2, dir, out1;
+    if (e.from !== e.to && b.x + b.w < a.x) {
+      x1 = a.x;
+      x2 = b.x + b.w + ARROW;
+      const bend = Math.max(30, (x1 - x2) / 2);
+      c1 = x1 - bend;
+      c2 = x2 + bend;
+      dir = -1;
+      out1 = -1;
+    } else if (e.from !== e.to && a.x + a.w < b.x) {
+      x1 = a.x + a.w;
+      x2 = b.x - ARROW;
+      const bend = Math.max(30, (x2 - x1) / 2);
+      c1 = x1 + bend;
+      c2 = x2 - bend;
+      dir = 1;
+      out1 = 1;
+    } else {
+      x1 = a.x + a.w;
+      x2 = b.x + b.w + ARROW;
+      const out = Math.max(x1, x2) + 40 + Math.abs(y2 - y1) / 8;
+      c1 = out;
+      c2 = out;
+      dir = -1;
+      out1 = 1;
+    }
+    const tip = x2 + dir * ARROW;
+    const path = `M${x1},${y1} C${c1},${y1} ${c2},${y2} ${x2},${y2}`;
+    const arrow = `M${tip},${y2} L${x2},${y2 - ARROW / 2 - 1} L${x2},${y2 + ARROW / 2 + 1} Z`;
+    const mid = { x: (x1 + 3 * c1 + 3 * c2 + x2) / 8, y: (y1 + y2) / 2 };
+    return { path, arrow, mid, start: { x: x1, y: y1, out: out1 }, end: { x: tip, y: y2, out: -dir } };
+  }
+  function cardinality(e, from) {
+    const fk = new Set(e.columns);
+    const pk = from.columns.filter((c) => c.primaryKey).map((c) => c.name);
+    const one = [pk, ...from.uniques].some((k) => k.length > 0 && k.every((c) => fk.has(c)));
+    const optional = e.columns.length > 0 && e.columns.every((c) => from.columns.find((x) => x.name === c)?.nullable);
+    return { from: one ? "1" : "*", to: optional ? "0..1" : "1", kind: one ? "1:1" : "N:1" };
+  }
+  function edgeLabel(e, from, to, c) {
+    const side = (t, cols) => {
+      const names = cols.length === 1 ? cols[0] : `(${cols.join(", ")})`;
+      const types = cols.map((n) => t.columns.find((x) => x.name === n)?.type ?? "?").join(", ");
+      return `${t.label}.${names} ${types}`;
+    };
+    return `${side(from, e.columns)} \u2192 ${side(to, e.refColumns)} \xB7 ${c.kind}`;
+  }
+  function linkedColumns(edges, selected) {
+    const out = /* @__PURE__ */ new Map();
+    if (selected === null) return out;
+    const add = (table, cols) => {
+      const set = out.get(table) ?? /* @__PURE__ */ new Set();
+      cols.forEach((c) => set.add(c));
+      out.set(table, set);
+    };
+    for (const e of edges) {
+      if (e.from !== selected && e.to !== selected) continue;
+      add(e.from, e.columns);
+      add(e.to, e.refColumns);
+    }
+    return out;
+  }
+  function layoutWithSaved(model, detail, saved) {
+    const kept = model.tables.filter((t) => saved.has(t.key));
+    if (!kept.length) return layoutDiagram(model, detail);
+    const boxes = /* @__PURE__ */ new Map();
+    let right = 0;
+    let top = Infinity;
+    let width = 0;
+    let height = 0;
+    for (const t of kept) {
+      const p = saved.get(t.key);
+      const b = { x: Math.max(0, p.x), y: Math.max(0, p.y), ...boxSize(t, detail) };
+      boxes.set(t.key, b);
+      right = Math.max(right, b.x + b.w);
+      top = Math.min(top, b.y);
+      width = Math.max(width, b.x + b.w + MARGIN);
+      height = Math.max(height, b.y + b.h + MARGIN);
+    }
+    const fresh = model.tables.filter((t) => !saved.has(t.key));
+    if (fresh.length) {
+      const keys = new Set(fresh.map((t) => t.key));
+      const more = layoutDiagram({ tables: fresh, edges: model.edges.filter((e) => keys.has(e.from) && keys.has(e.to)) }, detail);
+      const dx = right + LAYER_GAP - MARGIN;
+      const dy = top - MARGIN;
+      for (const [k, b] of more.boxes) {
+        const m = { ...b, x: b.x + dx, y: b.y + dy };
+        boxes.set(k, m);
+        width = Math.max(width, m.x + m.w + MARGIN);
+        height = Math.max(height, m.y + m.h + MARGIN);
+      }
+    }
+    return { boxes, width, height };
+  }
+  function positionsOf(layout) {
+    return new Map([...layout.boxes].map(([k, b]) => [k, { x: Math.round(b.x), y: Math.round(b.y) }]));
+  }
+  function withMoves(layout, moves) {
+    if (!moves.size) return layout;
+    const boxes = new Map(layout.boxes);
+    let { width, height } = layout;
+    for (const [k, p] of moves) {
+      const b = boxes.get(k);
+      if (!b) continue;
+      const moved = { ...b, x: Math.max(0, p.x), y: Math.max(0, p.y) };
+      boxes.set(k, moved);
+      width = Math.max(width, moved.x + moved.w + MARGIN);
+      height = Math.max(height, moved.y + moved.h + MARGIN);
+    }
+    return { boxes, width, height };
+  }
+
+  // src/lib/diagramExport.ts
+  var xml = (v) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  var MONO = "ui-monospace, SFMono-Regular, Menlo, monospace";
+  function diagramSvg(model, layout, detail, p, background) {
+    const tables = new Map(model.tables.map((t) => [t.key, t]));
+    const halo = background ? p.background : p.box;
+    const out = [];
+    out.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${layout.width}" height="${layout.height}" viewBox="0 0 ${layout.width} ${layout.height}">`);
+    out.push(`<style>text{font-family:${MONO};font-size:12px}.l{font-size:11px;fill:${p.muted};paint-order:stroke;stroke:${halo};stroke-width:3px;stroke-linejoin:round;text-anchor:middle}</style>`);
+    if (background) out.push(`<rect width="100%" height="100%" fill="${p.background}"/>`);
+    for (const e of model.edges) {
+      const g = edgeGeometry(e, layout, tables, detail);
+      if (!g) continue;
+      out.push(`<path d="${g.path}" fill="none" stroke="${p.line}" stroke-width="1.25"/><path d="${g.arrow}" fill="${p.line}"/>`);
+      out.push(`<text class="l" x="${g.mid.x}" y="${g.mid.y - 5}">${xml(e.columns.join(", "))}</text>`);
+    }
+    model.tables.forEach((t, i) => {
+      const b = layout.boxes.get(t.key);
+      if (!b) return;
+      const { x, y, w, h } = b;
+      const r = 6;
+      const cols = visibleColumns(t, detail);
+      out.push(`<clipPath id="c${i}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}"/></clipPath><g clip-path="url(#c${i})">`);
+      out.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${p.box}"/><rect x="${x}" y="${y}" width="${w}" height="${HEADER_H}" fill="${p.head}"/>`);
+      if (cols.length) out.push(`<line x1="${x}" y1="${y + HEADER_H - 0.5}" x2="${x + w}" y2="${y + HEADER_H - 0.5}" stroke="${p.border}"/>`);
+      out.push(`<text x="${x + 10}" y="${y + 17}" fill="${p.ink}" font-weight="600">${xml(t.label)}</text>`);
+      cols.forEach((c, j) => {
+        const cy = y + HEADER_H + BODY_PAD + j * ROW_H + 14;
+        const mark = c.primaryKey ? ["PK", p.pk] : c.foreignKey ? ["FK", p.fk] : null;
+        if (mark) out.push(`<text x="${x + 10}" y="${cy - 1}" fill="${mark[1]}" font-size="9" font-weight="700">${mark[0]}</text>`);
+        out.push(`<text x="${x + 30}" y="${cy}" fill="${p.ink}">${xml(c.name)}</text><text x="${x + w - 10}" y="${cy}" fill="${p.muted}" text-anchor="end">${xml(c.type)}</text>`);
+      });
+      out.push(`</g><rect x="${x + 0.5}" y="${y + 0.5}" width="${w - 1}" height="${h - 1}" rx="${r}" fill="none" stroke="${p.border}"/>`);
+    });
+    out.push(`</svg>`);
+    return out.join("");
+  }
+  async function svgToImage(svg, width, height, type, fill, scale = 2) {
+    const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(width * scale);
+      canvas.height = Math.ceil(height * scale);
+      const ctx = canvas.getContext("2d");
+      if (fill) {
+        ctx.fillStyle = fill;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise((res) => canvas.toBlob(res, type === "jpg" ? "image/jpeg" : "image/png", 0.92));
+      if (!blob) throw new Error("The image could not be made");
+      return blob;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+  var mmId = (s) => s.replace(/[^A-Za-z0-9_-]/g, "_").replace(/^([^A-Za-z_])/, "_$1");
+  var mmType = (t) => {
+    const s = t.replace(/\s+/g, "_");
+    return /^[A-Za-z][A-Za-z0-9_\-()[\]]*$/.test(s) ? s : mmId(s.replace(/\(.*$/, "")) || "type";
+  };
+  function toMermaid(model) {
+    const ids = /* @__PURE__ */ new Map();
+    const used = /* @__PURE__ */ new Set();
+    for (const t of model.tables) {
+      let id = mmId(t.label);
+      while (used.has(id)) id += "_";
+      used.add(id);
+      ids.set(t.key, id);
+    }
+    const lines = ["erDiagram"];
+    for (const t of model.tables) {
+      const id = ids.get(t.key);
+      const unique = new Set(t.uniques.filter((u) => u.length === 1).map((u) => u[0]));
+      lines.push(`  ${id}${id === t.label ? "" : `["${t.label.replace(/"/g, "'")}"]`} {`);
+      for (const c of t.columns) {
+        const keys = [c.primaryKey && "PK", c.foreignKey && "FK", unique.has(c.name) && "UK"].filter(Boolean).join(", ");
+        const type = mmType(c.type);
+        const name = mmId(c.name);
+        const notes = [type !== c.type.replace(/\s+/g, "_") && c.type, name !== c.name && `column ${c.name}`].filter(Boolean).join("; ");
+        lines.push(`    ${type} ${name}${keys ? ` ${keys}` : ""}${notes ? ` "${String(notes).replace(/"/g, "'")}"` : ""}`);
+      }
+      lines.push("  }");
+    }
+    const byKey = new Map(model.tables.map((t) => [t.key, t]));
+    for (const e of model.edges) {
+      const from = byKey.get(e.from);
+      const card = cardinality(e, from);
+      const left = card.from === "*" ? "}o" : "|o";
+      const right = card.to === "1" ? "||" : "o|";
+      const pk = new Set(from.columns.filter((c) => c.primaryKey).map((c) => c.name));
+      const line = e.columns.some((c) => pk.has(c)) ? "--" : "..";
+      lines.push(`  ${ids.get(e.from)} ${left}${line}${right} ${ids.get(e.to)} : "${e.columns.join(", ").replace(/"/g, "'")}"`);
+    }
+    return lines.join("\n") + "\n";
+  }
+  var q = (s) => `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  function toDbml(model, schema) {
+    const name = (t) => t.schema === schema ? q(t.name) : `${q(t.schema)}.${q(t.name)}`;
+    const out = [];
+    for (const t of model.tables) {
+      const pk = t.columns.filter((c) => c.primaryKey);
+      const single = new Set(t.uniques.filter((u) => u.length === 1).map((u) => u[0]));
+      out.push(`Table ${name(t)} {`);
+      for (const c of t.columns) {
+        const settings = [pk.length === 1 && c.primaryKey && "pk", single.has(c.name) && "unique", !c.nullable && !c.primaryKey && "not null"].filter(Boolean);
+        out.push(`  ${q(c.name)} ${q(c.type)}${settings.length ? ` [${settings.join(", ")}]` : ""}`);
+      }
+      const composite = t.uniques.filter((u) => u.length > 1);
+      if (pk.length > 1 || composite.length) {
+        out.push("", "  indexes {");
+        if (pk.length > 1) out.push(`    (${pk.map((c) => q(c.name)).join(", ")}) [pk]`);
+        for (const u of composite) out.push(`    (${u.map(q).join(", ")}) [unique]`);
+        out.push("  }");
+      }
+      out.push("}", "");
+    }
+    const byKey = new Map(model.tables.map((t) => [t.key, t]));
+    for (const e of model.edges) {
+      const from = byKey.get(e.from);
+      const to = byKey.get(e.to);
+      const cols = (cs) => cs.length === 1 ? q(cs[0]) : `(${cs.map(q).join(", ")})`;
+      const op = cardinality(e, from).kind === "1:1" ? "-" : ">";
+      out.push(`Ref ${q(e.name)}: ${name(from)}.${cols(e.columns)} ${op} ${name(to)}.${cols(e.refColumns)}`);
+    }
+    return out.join("\n").trimEnd() + "\n";
+  }
+  function toDrawio(model, layout, detail, title) {
+    const font = "fontFamily=Courier New;fontSize=12;";
+    const cells = ['<mxCell id="0"/>', '<mxCell id="1" parent="0"/>'];
+    const rowId = /* @__PURE__ */ new Map();
+    model.tables.forEach((t, i) => {
+      const b = layout.boxes.get(t.key);
+      if (!b) return;
+      const id = `t${i}`;
+      rowId.set(t.key, id);
+      cells.push(
+        `<mxCell id="${id}" value="${xml(t.label)}" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=${HEADER_H};horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;rounded=1;arcSize=4;${font}" vertex="1" parent="1"><mxGeometry x="${Math.round(b.x)}" y="${Math.round(b.y)}" width="${b.w}" height="${b.h}" as="geometry"/></mxCell>`
+      );
+      visibleColumns(t, detail).forEach((c, j) => {
+        const cid = `${id}c${j}`;
+        rowId.set(`${t.key}${c.name}`, cid);
+        const keys = [c.primaryKey && "PK", c.foreignKey && "FK"].filter(Boolean).join(" ");
+        cells.push(
+          `<mxCell id="${cid}" value="${xml(`${c.name}: ${c.type}${keys ? `  ${keys}` : ""}`)}" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;${c.primaryKey ? "fontStyle=1;" : ""}${font}" vertex="1" parent="${id}"><mxGeometry y="${HEADER_H + j * ROW_H}" width="${b.w}" height="${ROW_H}" as="geometry"/></mxCell>`
+        );
+      });
+    });
+    const byKey = new Map(model.tables.map((t) => [t.key, t]));
+    model.edges.forEach((e, i) => {
+      const card = cardinality(e, byKey.get(e.from));
+      const source = rowId.get(`${e.from}${e.columns[0]}`) ?? rowId.get(e.from);
+      const target = rowId.get(`${e.to}${e.refColumns[0]}`) ?? rowId.get(e.to);
+      if (!source || !target) return;
+      const start = card.from === "*" ? "ERzeroToMany" : "ERzeroToOne";
+      const end = card.to === "1" ? "ERmandOne" : "ERzeroToOne";
+      cells.push(
+        `<mxCell id="e${i}" value="${xml(e.columns.join(", "))}" style="edgeStyle=entityRelationEdgeStyle;startArrow=${start};endArrow=${end};startFill=0;endFill=0;fontSize=11;${font.replace("fontSize=12;", "")}" edge="1" parent="1" source="${source}" target="${target}"><mxGeometry relative="1" as="geometry"/></mxCell>`
+      );
+    });
+    return `<mxfile host="ypacapy"><diagram id="erd" name="${xml(title)}"><mxGraphModel grid="1" gridSize="10" page="0"><root>${cells.join("")}</root></mxGraphModel></diagram></mxfile>
+`;
+  }
+  return __toCommonJS(stdin_exports);
+})();
+
+window.ERD_DATA = {"tables":[{"schema":"public","name":"customers","kind":"table","columns":[{"name":"id","type":"int8","nullable":false,"primary":true},{"name":"email","type":"text","nullable":false,"primary":false},{"name":"full_name","type":"text","nullable":false,"primary":false},{"name":"phone","type":"text","nullable":true,"primary":false},{"name":"is_vip","type":"bool","nullable":false,"primary":false},{"name":"country","type":"char(2)","nullable":false,"primary":false},{"name":"created_at","type":"timestamptz","nullable":false,"primary":false}],"uniques":[["email"]]},{"schema":"public","name":"orders","kind":"table","columns":[{"name":"id","type":"int8","nullable":false,"primary":true},{"name":"customer_id","type":"int8","nullable":false,"primary":false},{"name":"status","type":"text","nullable":false,"primary":false},{"name":"total","type":"numeric(12,2)","nullable":false,"primary":false},{"name":"currency","type":"char(3)","nullable":false,"primary":false},{"name":"created_at","type":"timestamptz","nullable":false,"primary":false},{"name":"shipped_at","type":"timestamptz","nullable":true,"primary":false},{"name":"meta","type":"jsonb","nullable":true,"primary":false}],"uniques":[]},{"schema":"public","name":"order_items","kind":"table","columns":[{"name":"order_id","type":"int8","nullable":false,"primary":true},{"name":"line","type":"int4","nullable":false,"primary":true},{"name":"product_id","type":"int8","nullable":false,"primary":false},{"name":"qty","type":"int4","nullable":false,"primary":false},{"name":"unit_price","type":"numeric(12,2)","nullable":false,"primary":false}],"uniques":[]},{"schema":"public","name":"products","kind":"table","columns":[{"name":"id","type":"int8","nullable":false,"primary":true},{"name":"sku","type":"text","nullable":false,"primary":false},{"name":"name","type":"text","nullable":false,"primary":false},{"name":"price","type":"numeric(12,2)","nullable":false,"primary":false},{"name":"warehouse_id","type":"int8","nullable":true,"primary":false}],"uniques":[["sku"]]},{"schema":"public","name":"refunds","kind":"table","columns":[{"name":"id","type":"int8","nullable":false,"primary":true},{"name":"order_id","type":"int8","nullable":false,"primary":false},{"name":"customer_id","type":"int8","nullable":false,"primary":false},{"name":"amount","type":"numeric(12,2)","nullable":false,"primary":false},{"name":"reason","type":"text","nullable":true,"primary":false},{"name":"created_at","type":"timestamptz","nullable":false,"primary":false}],"uniques":[]},{"schema":"public","name":"shipments","kind":"table","columns":[{"name":"id","type":"int8","nullable":false,"primary":true},{"name":"order_id","type":"int8","nullable":false,"primary":false},{"name":"warehouse_id","type":"int8","nullable":false,"primary":false},{"name":"carrier","type":"text","nullable":false,"primary":false},{"name":"tracking","type":"text","nullable":true,"primary":false},{"name":"shipped_at","type":"timestamptz","nullable":true,"primary":false}],"uniques":[["order_id"]]},{"schema":"public","name":"warehouses","kind":"table","columns":[{"name":"id","type":"int8","nullable":false,"primary":true},{"name":"code","type":"text","nullable":false,"primary":false},{"name":"city","type":"text","nullable":false,"primary":false}],"uniques":[]},{"schema":"public","name":"schema_migrations","kind":"table","columns":[{"name":"version","type":"text","nullable":false,"primary":true},{"name":"applied_at","type":"timestamptz","nullable":false,"primary":false}],"uniques":[]},{"schema":"audit","name":"order_events","kind":"table","columns":[{"name":"id","type":"int8","nullable":false,"primary":true},{"name":"order_id","type":"int8","nullable":false,"primary":false},{"name":"kind","type":"text","nullable":false,"primary":false},{"name":"at","type":"timestamptz","nullable":false,"primary":false}],"uniques":[]}],"keys":[{"name":"orders_customer_id_fkey","schema":"public","table":"orders","columns":["customer_id"],"refSchema":"public","refTable":"customers","refColumns":["id"]},{"name":"order_items_order_id_fkey","schema":"public","table":"order_items","columns":["order_id"],"refSchema":"public","refTable":"orders","refColumns":["id"]},{"name":"order_items_product_id_fkey","schema":"public","table":"order_items","columns":["product_id"],"refSchema":"public","refTable":"products","refColumns":["id"]},{"name":"products_warehouse_id_fkey","schema":"public","table":"products","columns":["warehouse_id"],"refSchema":"public","refTable":"warehouses","refColumns":["id"]},{"name":"refunds_order_id_fkey","schema":"public","table":"refunds","columns":["order_id"],"refSchema":"public","refTable":"orders","refColumns":["id"]},{"name":"refunds_customer_id_fkey","schema":"public","table":"refunds","columns":["customer_id"],"refSchema":"public","refTable":"customers","refColumns":["id"]},{"name":"shipments_order_id_fkey","schema":"public","table":"shipments","columns":["order_id"],"refSchema":"public","refTable":"orders","refColumns":["id"]},{"name":"shipments_warehouse_id_fkey","schema":"public","table":"shipments","columns":["warehouse_id"],"refSchema":"public","refTable":"warehouses","refColumns":["id"]},{"name":"order_events_order_id_fkey","schema":"audit","table":"order_events","columns":["order_id"],"refSchema":"public","refTable":"orders","refColumns":["id"]}]};
+window.ERD_LINKS = [["orders","customers"],["order_items","orders"],["order_items","products"],["products","warehouses"],["refunds","orders"],["refunds","customers"],["shipments","orders"],["shipments","warehouses"]];
+const TYPE_ICON = (t) => (/^objectId/.test(t) ? "id-card" : /^object/.test(t) ? "braces" : /^array/.test(t) ? "brackets" : /^(int|numeric|float|real|double|decimal|serial|bigint|smallint)/.test(t) ? "hash" : /timestamp|^date|^time/.test(t) ? "calendar-clock" : /^bool/.test(t) ? "toggle-left" : /^json/.test(t) ? "braces" : "type");
+  // ER diagram tab, read-only (port of opengrip's DiagramView). Model, layout and line geometry come from
+  // src/lib/diagram.ts (inlined above as window.Erd); this script only draws and handles the pointer.
+  // Every diagram opened from a menu starts with the table picker; only the ticked tables are read and drawn.
+  // Tables reopens the picker. Drag a table to move it (Reset layout undoes it), drag the background or scroll to
+  // pan, ⌘ + scroll or pinch to zoom. Selecting a table marks the columns its keys link and the cardinality at both ends.
+  // Diagram tabs can't be pinned. Save (⌘S) keeps a diagram's picked tables, the place of every box, zoom and column
+  // detail: in the app with the connection's workspace (~/.config/ypacapy), here in `saved`. Nothing is kept on its
+  // own: no listener writes on change or drag. Show diagram reopens a saved diagram as saved, with no picker (Tables
+  // changes the picks); a diagram never saved opens the picker again. Tables ticked after the save are laid out to the right of the saved ones;
+  // a saved table altered since keeps its place and takes its new size, overlapping its neighbours if it must.
+  {
+    const E = window.Erd, BASE = window.ERD_DATA, LINKS = window.ERD_LINKS;
+    // the catalog as read now; preview states alter a copy to show a table changed since the save
+    let DATA = structuredClone(BASE);
+    const host = $("#erd-host"), world = $("#erd-world"), menu = $("#erd-menu"), detailSel = $("#erd-detail");
+    const dlg = $("#erd-pick-dlg"), list = $("#ep-list"), filter = $("#ep-filter");
+    const ALL = $$("input[type=checkbox]", list).map((c) => c.value);
+    const DETAILS = { "All columns": "all", "Key columns": "keys", "Table names": "none" };
+    const MIN_ZOOM = 0.1, MAX_ZOOM = 3, FIT_PAD = 24, MARK_GAP = 5, ARROW_GAP = 12, GRID = 16;
+    const clampZoom = (k) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, k));
+    const escH = (v) => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+    const icon = (n, cls = "") => `<svg aria-hidden="true" class="ico${cls ? " " + cls : ""}"><use href="#i-${n}"/></svg>`;
+    const colIcon = (c) => (c.primaryKey ? "key-round" : c.foreignKey ? "link" : TYPE_ICON(c.type));
+    const markAt = (end, gap) => ({ x: end.x + end.out * gap, y: end.y - 5, anchor: end.out > 0 ? "start" : "end" });
+
+    // title: what the tab was opened from (the schema, or a table's Show diagram); tables: the picked ones
+    let ref = { schema: "public", tables: [] }, title = "public", detail = "all", selected = null, view = { x: 0, y: 0, k: 1 }, moves = new Map();
+    let model, layout, tables;
+    /** per diagram (its title), written by Save only: { schema, tables, positions, view, detail, at } */
+    const saved = new Map();
+    let restoreView = null, restoring = null;
+    /** Reset layout pressed: draw every table afresh, ignoring the saved places, until the next Save */
+    let auto = false;
+    const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
+    /** A never-saved diagram as first drawn from the picker: what "Not saved" compares against until the first Save */
+    let baseline = null;
+    /** Changed by hand: picks, places or column detail differ from the last Save, or from the first drawing when
+     *  never saved. Zoom and pan alone don't count. "Not saved", the tab's dot and Close's ask follow this. */
+    function changed() {
+      const base = saved.get(title) ?? baseline;
+      if (!base || !ref.tables.length) return false;
+      return !sameSet(ref.tables, base.tables) || moves.size > 0 || auto || detail !== base.detail;
+    }
+    /** Save is offered for any change, and for a diagram never saved at all */
+    const canSave = () => ref.tables.length > 0 && (!saved.has(title) || changed());
+    const two = (n) => String(n).padStart(2, "0");
+    function savedAt(d) {
+      const time = `${two(d.getHours())}:${two(d.getMinutes())}`;
+      const today = new Date().toDateString() === d.toDateString();
+      return today ? `Last saved at ${time}` : `Last saved ${d.getDate()} ${d.toLocaleString("en", { month: "short" })} at ${time}`;
+    }
+    /** The toolbar's right end: nothing when never saved and untouched, Not saved after a change, else Last saved at */
+    function showDirty() {
+      const ready = !$('[data-erd="ready"]').hidden;
+      const c = ready && changed(), sv = saved.get(title);
+      const btn = $("#erd-save");
+      btn.disabled = !ready || !canSave(); $("span", btn).textContent = ready && !canSave() && sv ? "Saved" : "Save";
+      $('.tab[data-tab="erd"] .dirty').hidden = !c;
+      const st = $("#erd-status");
+      st.textContent = !ready ? "" : c ? "Not saved" : sv ? savedAt(sv.at) : "";
+      st.classList.toggle("unsaved", c);
+      st.title = !c && sv ? sv.at.toLocaleString("en", { dateStyle: "full", timeStyle: "short" }) : "";
+    }
+    function save() {
+      if (!layout || !canSave()) return;
+      saved.set(title, { schema: ref.schema, tables: [...ref.tables], positions: E.positionsOf(layout), view: { ...view }, detail, at: new Date() });
+      moves = new Map(); auto = false;
+      draw();
+    }
+    // boxes carry their index in model.tables: table keys hold a NUL, which HTML turns into U+FFFD
+    const keyOf = (el) => { const i = el?.closest("[data-table]")?.dataset.table; return i === undefined ? null : model.tables[+i].key; };
+
+    // the canvas tools work on a drawn diagram only; Tables stays on to pick again
+    const TOOLS = ["#erd-refresh", "#erd-out", "#erd-in", "#erd-actual", "#erd-fit", "#erd-reset", "#erd-detail", "#erd-export"];
+    const canReset = () => moves.size > 0 || (!auto && !!saved.get(title)?.positions.size);
+    function state(k) {
+      $$(".erd-state").forEach((s) => { s.hidden = s.dataset.erd !== k; });
+      TOOLS.forEach((id) => { $(id).disabled = k !== "ready" || (id === "#erd-reset" && !canReset()); });
+      showDirty();
+    }
+    function draw() {
+      const places = auto ? new Map() : saved.get(title)?.positions ?? new Map();
+      layout = E.withMoves(E.layoutWithSaved(model, detail, places), moves);
+      const linked = E.linkedColumns(model.edges, selected);
+      const edges = model.edges.map((e) => {
+        const g = E.edgeGeometry(e, layout, tables, detail);
+        if (!g) return "";
+        const from = tables.get(e.from), to = tables.get(e.to);
+        const card = E.cardinality(e, from);
+        const on = selected !== null && (e.from === selected || e.to === selected);
+        const a = markAt(g.start, MARK_GAP), b = markAt(g.end, ARROW_GAP);
+        return `<g class="erd-edge${on ? " on" : ""}"><title>${escH(e.name)}&#10;${escH(E.edgeLabel(e, from, to, card))}</title>` +
+          `<path class="erd-hit" d="${g.path}"/><path class="erd-line" d="${g.path}"/><path class="erd-arrow" d="${g.arrow}"/>` +
+          `<text class="erd-label" x="${g.mid.x}" y="${g.mid.y - 5}">${escH(e.columns.join(", "))}</text>` +
+          (on ? `<text class="erd-mark" x="${a.x}" y="${a.y}" text-anchor="${a.anchor}">${card.from}</text><text class="erd-mark" x="${b.x}" y="${b.y}" text-anchor="${b.anchor}">${card.to}</text>` : "") +
+          `</g>`;
+      }).join("");
+      const boxes = model.tables.map((t, i) => {
+        const b = layout.boxes.get(t.key);
+        const outside = t.schema !== ref.schema;
+        const rows = E.visibleColumns(t, detail).map((c) => `<div class="erd-row${linked.get(t.key)?.has(c.name) ? " linked" : ""}">${icon(colIcon(c), c.primaryKey ? "pk" : c.foreignKey ? "fk" : "")}<span class="erd-name">${escH(c.name)}</span><span class="erd-type">${escH(c.type)}</span></div>`).join("");
+        return `<div class="erd-table${selected === t.key ? " selected" : ""}${outside ? " outside" : ""}" data-table="${i}" style="left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px" title="${escH(`${t.schema}.${t.name}`)}${outside ? " (linked from another schema)" : ""}">` +
+          `<div class="erd-head">${icon("table-2")}<span class="erd-name">${escH(t.label)}</span></div>${rows ? `<div class="erd-rows">${rows}</div>` : ""}</div>`;
+      }).join("");
+      world.style.width = `${layout.width}px`; world.style.height = `${layout.height}px`;
+      world.innerHTML = `<svg class="erd-edges" width="${layout.width}" height="${layout.height}" aria-hidden="true">${edges}</svg>${boxes}`;
+      place();
+      $("#erd-reset").disabled = !canReset();
+      showDirty();
+    }
+    function place() {
+      world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.k})`;
+      host.style.backgroundSize = `${GRID * view.k}px ${GRID * view.k}px`;
+      host.style.backgroundPosition = `${view.x}px ${view.y}px`;
+      $("#erd-actual").textContent = `${Math.round(view.k * 100)}%`;
+    }
+    function fit() {
+      const { width, height } = host.getBoundingClientRect();
+      if (!width || !height || !layout?.width) return;
+      const k = clampZoom(Math.min(1, (width - FIT_PAD) / layout.width, (height - FIT_PAD) / layout.height));
+      view = { k, x: (width - layout.width * k) / 2, y: Math.max(FIT_PAD / 2, (height - layout.height * k) / 2) };
+      place();
+    }
+    function zoomBy(f, at) {
+      const r = host.getBoundingClientRect();
+      const px = at?.x ?? r.width / 2, py = at?.y ?? r.height / 2;
+      const k = clampZoom(view.k * f);
+      view = { k, x: px - ((px - view.x) * k) / view.k, y: py - ((py - view.y) * k) / view.k };
+      place();
+    }
+    function heading() {
+      $("#erd-title").textContent = title;
+      $('.tab[data-tab="erd"] .name').textContent = title;
+      host.setAttribute("aria-label", `Diagram of ${title}`);
+      $("#erd-pick-n").textContent = ref.tables.length ? `${ref.tables.length} of ${ALL.length}` : "";
+    }
+    /** Draws the picked tables: saved ones where they were saved, the rest laid out beside them. */
+    function apply(picked, { refit = true } = {}) {
+      ref = { schema: ref.schema, tables: picked };
+      if (selected && !picked.some((n) => E.tableKey(ref.schema, n) === selected)) selected = null;
+      heading();
+      if (!picked.length) { state("none"); return; }
+      state("ready");
+      model = E.diagramModel(DATA, ref);
+      tables = new Map(model.tables.map((t) => [t.key, t]));
+      if (!saved.has(title) && !baseline) baseline = { tables: [...picked], detail };
+      draw();
+      if (restoreView) { view = restoreView; restoreView = null; place(); } else if (refit) fit();
+    }
+    /** Show diagram from a menu: the tab comes back (it may have been closed). Saved: drawn as saved. Never saved: the picker. */
+    function openDiagram(name, schema, preset) {
+      const tab = $('.tab[data-tab="erd"]');
+      tab.hidden = false; $$(".tab[aria-current]").forEach((t) => t.removeAttribute("aria-current")); tab.setAttribute("aria-current", "page");
+      restoring = saved.get(name) ?? null;
+      title = name; ref = { schema, tables: [] }; selected = null;
+      moves = new Map(); auto = false; baseline = null;
+      detail = restoring?.detail ?? "all";
+      detailSel.value = Object.keys(DETAILS).find((l) => DETAILS[l] === detail);
+      heading(); state("none");
+      if (restoring) { restoreView = restoring.view; restoring = null; apply(saved.get(name).tables); return; }
+      openPicker(preset, true);
+    }
+
+    // ---------- the picker ----------
+    const boxesOf = () => $$("input[type=checkbox]", list);
+    const shown = () => boxesOf().filter((c) => !c.closest(".ep-row").hidden);
+    let firstOpen = false;
+    function count() {
+      const n = boxesOf().filter((c) => c.checked).length;
+      $("#ep-n").textContent = `${n} of ${ALL.length} ticked`;
+      $("#ep-show").textContent = n ? `Show diagram (${n})` : "Show diagram";
+      $("#ep-show").disabled = !n;
+      $("#ep-linked").disabled = !n;
+      const q = filter.value.trim();
+      $("#ep-all").textContent = q ? "Select shown" : "Select all";
+      $("#ep-none").textContent = q ? "Unselect shown" : "Unselect all";
+    }
+    function runFilter() {
+      const q = filter.value.trim().toLowerCase();
+      boxesOf().forEach((c) => { c.closest(".ep-row").hidden = !!q && !c.value.toLowerCase().includes(q); });
+      $("#ep-empty").hidden = shown().length > 0; $("#ep-empty-q").textContent = filter.value.trim();
+      count();
+    }
+    /** Opens the picker ticked with `ticked`; `first`: nothing drawn yet, so Cancel leaves the tab empty. */
+    function openPicker(ticked, first = false, q = "") {
+      firstOpen = first;
+      boxesOf().forEach((c) => { c.checked = ticked.includes(c.value); });
+      $("#ep-schema").textContent = ref.schema;
+      filter.value = q; runFilter();
+      dlg.hidden = false;
+      (q ? filter : boxesOf()[0]).focus();
+    }
+    function closePicker() {
+      dlg.hidden = true;
+      if (firstOpen && restoring) { restoreView = restoring.view; restoring = null; apply(saved.get(title).tables); return; }
+      if (firstOpen && !ref.tables.length) state("none");
+    }
+    list.addEventListener("change", count);
+    filter.addEventListener("input", runFilter);
+    filter.addEventListener("keydown", (e) => { if (e.key === "Escape" && filter.value) { e.stopPropagation(); filter.value = ""; runFilter(); } });
+    $("#ep-all").addEventListener("click", () => { shown().forEach((c) => { c.checked = true; }); count(); });
+    $("#ep-none").addEventListener("click", () => { shown().forEach((c) => { c.checked = false; }); count(); });
+    // the app reads schema_links once per picker, then ticks the neighbours
+    $("#ep-linked").addEventListener("click", () => {
+      const b = $("#ep-linked"); b.setAttribute("aria-busy", "true"); b.disabled = true;
+      setTimeout(() => {
+        const on = E.withLinked(ALL, boxesOf().filter((c) => c.checked).map((c) => c.value), LINKS);
+        boxesOf().forEach((c) => { c.checked = on.includes(c.value); });
+        b.removeAttribute("aria-busy"); count();
+      }, 350);
+    });
+    $("[data-ep-close]", dlg).addEventListener("click", closePicker);
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) closePicker(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !dlg.hidden) closePicker(); });
+    $("form", dlg).addEventListener("submit", (e) => {
+      e.preventDefault();
+      const picked = ALL.filter((n) => boxesOf().find((c) => c.value === n).checked);
+      if (!picked.length) return;
+      dlg.hidden = true;
+      if (restoring) { restoreView = restoring.view; restoring = null; }
+      // the app reads the catalog of the newly ticked tables only; the preview shows a short read
+      state("loading");
+      setTimeout(() => apply(picked), 400);
+    });
+    $("#erd-pick-btn").addEventListener("click", () => openPicker(ref.tables));
+    $("#erd-pick-empty").addEventListener("click", () => openPicker(ref.tables, true));
+
+    // ---------- the canvas ----------
+    host.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) { const r = host.getBoundingClientRect(); zoomBy(Math.exp(-e.deltaY * 0.01), { x: e.clientX - r.left, y: e.clientY - r.top }); }
+      else { view = { ...view, x: view.x - e.deltaX, y: view.y - e.deltaY }; place(); }
+    }, { passive: false });
+    let drag = null;
+    host.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      menu.hidden = true;
+      const key = keyOf(e.target);
+      const box = key === null ? undefined : layout.boxes.get(key);
+      drag = box ? { x: e.clientX, y: e.clientY, moved: false, ox: box.x, oy: box.y, table: key } : { x: e.clientX, y: e.clientY, moved: false, ox: view.x, oy: view.y, table: null };
+    });
+    host.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+      if (!drag.moved) { host.setPointerCapture(e.pointerId); drag.moved = true; host.classList.add("dragging"); if (drag.table !== null) selected = drag.table; }
+      if (drag.table === null) { view = { ...view, x: drag.ox + dx, y: drag.oy + dy }; place(); }
+      else { moves = new Map(moves).set(drag.table, { x: drag.ox + dx / view.k, y: drag.oy + dy / view.k }); draw(); }
+    });
+    const endDrag = (e) => {
+      const d = drag; drag = null; host.classList.remove("dragging");
+      if (!d || d.moved || e.type === "pointercancel") return;
+      selected = d.table; draw();
+    };
+    host.addEventListener("pointerup", endDrag);
+    host.addEventListener("pointercancel", endDrag);
+    host.addEventListener("dblclick", (e) => { if (tables.get(keyOf(e.target))?.name === "orders") location.href = "./table.html"; });
+    host.addEventListener("keydown", (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "+" || e.key === "=") zoomBy(1.25);
+      else if (e.key === "-") zoomBy(0.8);
+      else if (e.key === "0") zoomBy(1 / view.k);
+      else if (e.key === "Escape") { selected = null; menu.hidden = true; draw(); }
+      else return;
+      e.preventDefault();
+    });
+
+    // a table's menu: right-click on its box
+    let menuFor = null;
+    function openMenu(key, x, y) {
+      menuFor = tables.get(key); selected = key; draw();
+      const outside = menuFor.schema !== ref.schema;
+      $('[data-erd-act="hide"]', menu).disabled = outside;
+      $('[data-erd-act="hide"]', menu).title = outside ? "Shown because a picked table links to it; hide that table instead" : "";
+      menu.hidden = false;
+      const r = menu.getBoundingClientRect();
+      menu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
+      menu.style.top = `${y + r.height > innerHeight - 8 ? Math.max(8, y - r.height) : y}px`;
+      $("button:not(:disabled)", menu).focus();
+    }
+    host.addEventListener("contextmenu", (e) => {
+      const key = keyOf(e.target);
+      if (key === null) return;
+      e.preventDefault(); openMenu(key, e.clientX, e.clientY);
+    });
+    /** A table's Show diagram (box menu or tree): in the app a new tab named after it, its picker ticked with it and its links. */
+    function tableDiagram(name) { openDiagram(name, ref.schema, E.withLinked(ALL, [name], LINKS)); }
+    $$("[data-erd-act]", menu).forEach((b) => b.addEventListener("click", () => {
+      menu.hidden = true;
+      const t = menuFor; if (!t) return;
+      const act = b.dataset.erdAct;
+      if (act === "rows" && t.name === "orders") location.href = "./table.html";
+      if (act === "query") location.href = "./index.html";
+      if (act === "focus") tableDiagram(t.name);
+      if (act === "hide") apply(ref.tables.filter((n) => n !== t.name), { refit: false });
+      if (act === "reveal") {
+        const row = $(`#tree .row[data-path$="/${CSS.escape(t.name)}"]`);
+        $$("#tree .row[aria-current]").forEach((r) => r.removeAttribute("aria-current"));
+        row?.setAttribute("aria-current", "page"); row?.scrollIntoView({ block: "nearest" });
+      }
+    }));
+    document.addEventListener("mousedown", (e) => { if (!e.target.closest("#erd-menu")) menu.hidden = true; });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") menu.hidden = true; });
+
+    // Show diagram from the tree, on this page: switch the tab in place instead of reloading
+    document.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-erd-open]"); if (!b) return;
+      e.stopPropagation(); e.preventDefault();
+      const row = b.closest(".row");
+      b.closest(".menu").hidden = true; row?.classList.remove("menu-open");
+      const name = row ? $(".name", row).textContent : "public";
+      if (b.dataset.erdOpen === "table") { tableDiagram(name); return; }
+      openDiagram(name, name, []);
+    }, true);
+
+    $("#erd-in").addEventListener("click", () => zoomBy(1.25));
+    $("#erd-out").addEventListener("click", () => zoomBy(0.8));
+    $("#erd-actual").addEventListener("click", () => zoomBy(1 / view.k));
+    $("#erd-fit").addEventListener("click", fit);
+    $("#erd-reset").addEventListener("click", () => { moves = new Map(); auto = true; draw(); fit(); });
+    $("#erd-save").addEventListener("click", save);
+    document.addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s" && !$('[data-erd="ready"]').hidden) { e.preventDefault(); save(); }
+    });
+    detailSel.addEventListener("change", () => { detail = DETAILS[detailSel.value]; draw(); });
+    $("#erd-refresh").addEventListener("click", () => { state("loading"); setTimeout(() => apply(ref.tables, { refit: false }), 500); });
+    new ResizeObserver(() => { if (!drag && layout) place(); }).observe(host);
+
+    // ---------- export ----------
+    // In the app each file goes through the save dialog (@tauri-apps/plugin-dialog) and is written on this Mac;
+    // the preview downloads it. No export contacts dbdiagram.io, diagrams.net or anything else.
+    const toast = $("#erd-toast");
+    let toastTimer;
+    function say(text) { toast.textContent = text; toast.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { toast.hidden = true; }, 3200); }
+    function download(blob, name) {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+    /** The theme's colours as the canvas paints them (a token may hold light-dark() or a scheme's value) */
+    function palette() {
+      const probe = document.createElement("span"); document.body.append(probe);
+      const css = (v) => { probe.style.color = `var(${v})`; return getComputedStyle(probe).color; };
+      const p = { background: css("--color-paper-3"), box: css("--color-paper"), head: css("--color-paper-2"), border: css("--color-field-edge"), ink: css("--color-ink"), muted: css("--color-muted"), line: css("--color-muted"), pk: css("--color-warn"), fk: css("--color-link") };
+      probe.remove(); return p;
+    }
+    const exportMenu = $("#erd-export-menu");
+    const closeMenu = () => { exportMenu.hidden = true; $("#erd-export").setAttribute("aria-expanded", "false"); };
+    // image: PNG asks fill or transparent; JPG has no transparency, so nothing to ask
+    const imgDlg = $("#erd-img-dlg");
+    let fmt = "png";
+    function setFmt(f) {
+      fmt = f;
+      $$("[data-fmt]", imgDlg).forEach((b) => { const on = b.dataset.fmt === f; b.setAttribute("aria-pressed", String(on)); b.setAttribute("aria-checked", String(on)); });
+      $("#ei-bg").hidden = f !== "png";
+      $("#ei-go").lastChild.textContent = `Export ${f.toUpperCase()}`;
+    }
+    function openImage(f = "png") {
+      closeMenu(); setFmt(f);
+      const n = model.tables.length;
+      $("#ei-what").textContent = `The whole diagram as drawn: ${n} ${n === 1 ? "table" : "tables"}, ${{ all: "all columns", keys: "key columns", none: "table names only" }[detail]}. Twice its size for sharp text.`;
+      imgDlg.hidden = false; $(`[data-fmt="${f}"]`, imgDlg).focus();
+    }
+    $$("[data-fmt]", imgDlg).forEach((b) => b.addEventListener("click", () => setFmt(b.dataset.fmt)));
+    $("[data-ei-close]", imgDlg).addEventListener("click", () => { imgDlg.hidden = true; });
+    $("form", imgDlg).addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const p = palette();
+      const fill = fmt === "jpg" || $('input[name="ei-bg"]:checked', imgDlg).value === "fill" ? p.background : null;
+      const svg = E.diagramSvg(model, layout, detail, p, !!fill);
+      const blob = await E.svgToImage(svg, layout.width, layout.height, fmt, fill);
+      imgDlg.hidden = true;
+      download(blob, `${title}.${fmt}`);
+      say(`Saved ${title}.${fmt}`);
+    });
+    // Mermaid and DBML: the code, to copy or save
+    const codeDlg = $("#erd-code-dlg");
+    const CODE = {
+      mermaid: { title: "Mermaid code", ext: "mmd", type: "text/plain", help: "Paste it where Mermaid renders: a Markdown file on GitHub or GitLab, Notion, or the Mermaid live editor. It lists every column of the tables drawn.", text: () => E.toMermaid(model) },
+      dbml: { title: "DBML for dbdiagram.io", ext: "dbml", type: "text/plain", help: "Paste it into the editor at dbdiagram.io (ypacapy doesn't open or send anything there). It lists every column of the tables drawn, their keys and references.", text: () => E.toDbml(model, ref.schema) },
+    };
+    let code = null;
+    function openCode(k) {
+      closeMenu(); code = CODE[k];
+      $("#ec-title").textContent = code.title; $("#ec-help").textContent = code.help;
+      $("#ec-code").textContent = code.text();
+      codeDlg.hidden = false; $("#ec-copy").focus();
+    }
+    $("[data-ec-close]", codeDlg).addEventListener("click", () => { codeDlg.hidden = true; });
+    $("form", codeDlg).addEventListener("submit", (e) => {
+      e.preventDefault();
+      navigator.clipboard?.writeText($("#ec-code").textContent).catch(() => {});
+      say(`Copied the ${code.title.replace(" for dbdiagram.io", "")}`);
+    });
+    $("#ec-save").addEventListener("click", () => { download(new Blob([$("#ec-code").textContent], { type: code.type }), `${title}.${code.ext}`); say(`Saved ${title}.${code.ext}`); });
+    // diagrams.net: straight to a file, boxes where they are on screen
+    function saveDrawio() {
+      closeMenu();
+      download(new Blob([E.toDrawio(model, layout, detail, title)], { type: "application/xml" }), `${title}.drawio`);
+      say(`Saved ${title}.drawio. Open it in diagrams.net with File › Open from › Device.`);
+    }
+    $$("[data-ex]", exportMenu).forEach((b) => b.addEventListener("click", () => {
+      const k = b.dataset.ex;
+      if (k === "image") openImage(); else if (k === "drawio") saveDrawio(); else openCode(k);
+    }));
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") { imgDlg.hidden = true; codeDlg.hidden = true; } });
+    [imgDlg, codeDlg].forEach((d) => d.addEventListener("click", (e) => { if (e.target === d) d.hidden = true; }));
+
+    // ---------- closing ----------
+    // Closing the tab (its x, or Close tab in its menu) with "Not saved" asks first, like a query tab with unsaved
+    // text; untouched, or saved, it just closes. A never-saved diagram that was only drawn opens the picker next time.
+    const closeDlg = $("#erd-close-dlg"), erdTab = $('.tab[data-tab="erd"]');
+    let ctxTab = null;
+    $$(".tab").forEach((t) => t.addEventListener("contextmenu", () => { ctxTab = t; }, true));
+    function closeTab() { closeDlg.hidden = true; erdTab.hidden = true; }
+    function askClose() {
+      if (!changed()) { closeTab(); return; }
+      $("#ecl-title").textContent = `Close ${title}?`;
+      $("#ecl-msg").textContent = saved.has(title) ? "Its changes since the last save are lost. Show diagram brings back the saved one." : "Its tables and layout are not saved anywhere.";
+      closeDlg.hidden = false; $("[data-ecl-cancel]", closeDlg).focus();
+    }
+    document.addEventListener("click", (e) => {
+      const x = e.target.closest('.tab[data-tab="erd"] .close');
+      const item = e.target.closest('[data-tm="close"]');
+      if (!x && !(item && ctxTab === erdTab)) return;
+      e.stopPropagation(); e.preventDefault();
+      if (item) item.closest(".menu").hidden = true;
+      askClose();
+    }, true);
+    $("[data-ecl-cancel]", closeDlg).addEventListener("click", () => { closeDlg.hidden = true; });
+    $("[data-ecl-save]", closeDlg).addEventListener("click", () => { save(); closeTab(); });
+    $("form", closeDlg).addEventListener("submit", (e) => { e.preventDefault(); closeTab(); });
+    closeDlg.addEventListener("click", (e) => { if (e.target === closeDlg) closeDlg.hidden = true; });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDlg.hidden = true; });
+
+    $('.tab[data-tab="erd"] .tab-main').insertAdjacentHTML("beforeend", '<span class="dirty" role="img" aria-label="Unsaved layout" hidden></span>');
+    const FEW = ["orders", "customers", "refunds"];
+    const moveTo = (name, x, y) => { moves = new Map(moves).set(E.tableKey("public", name), { x, y }); draw(); };
+    const boxOf = (name) => layout.boxes.get(E.tableKey("public", name));
+    window.pvShow = (k) => {
+      menu.hidden = true; dlg.hidden = true; imgDlg.hidden = true; codeDlg.hidden = true; toast.hidden = true; closeMenu();
+      $$(".row-menu").forEach((m) => { m.hidden = true; }); $$(".row.menu-open").forEach((r) => r.classList.remove("menu-open"));
+      saved.clear(); restoring = null; restoreView = null; auto = false; baseline = null; DATA = structuredClone(BASE); closeDlg.hidden = true; erdTab.hidden = false;
+      title = "public"; ref = { schema: "public", tables: [] }; moves = new Map(); selected = null;
+      detail = k === "keys" ? "keys" : k === "names" ? "none" : "all";
+      detailSel.value = Object.keys(DETAILS).find((l) => DETAILS[l] === detail);
+      if (k === "picker" || k === "none") { heading(); state("none"); if (k === "picker") openPicker([], true); return; }
+      if (k === "picker-filtered") { heading(); state("none"); openPicker(["orders", "order_items"], true, "ord"); return; }
+      if (k === "picker-table") { tableDiagram("orders"); return; }
+      if (k === "reopened") {
+        // worked on earlier (three tables, refunds moved, zoomed in) and saved, then the tab was closed; Show diagram
+        // again draws it as saved, no picker
+        apply(FEW);
+        moveTo("refunds", boxOf("refunds").x, boxOf("refunds").y + 180); zoomBy(1.2); save();
+        $('.tab[data-tab="erd"]').hidden = true;
+        openDiagram("public", "public", []);
+        return;
+      }
+      if (k.startsWith("export-")) {
+        apply(ALL);
+        if (k === "export-menu") { $("#erd-export").click(); return; }
+        if (k === "export-png" || k === "export-jpg") { openImage(k.slice(7)); return; }
+        if (k === "export-drawio") { say(`Saved ${title}.drawio. Open it in diagrams.net with File › Open from › Device.`); return; }
+        openCode(k.slice(7));
+        return;
+      }
+      if (k === "close-ask") { apply(FEW); moveTo("refunds", boxOf("refunds").x + 40, boxOf("refunds").y + 160); askClose(); return; }
+      if (k === "tab-menu") {
+        apply(ALL);
+        const t = $('.tab[data-tab="erd"]'), r = t.getBoundingClientRect();
+        t.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX: r.left + 30, clientY: r.bottom - 6 }));
+        return;
+      }
+      if (k === "loading") { apply(ALL); state("loading"); return; }
+      if (k === "error") { title = "audit"; ref.schema = "audit"; heading(); state("error"); return; }
+      if (k === "unsaved") { apply(FEW); moveTo("refunds", boxOf("refunds").x + 40, boxOf("refunds").y + 160); return; }
+      if (k === "saved-new") {
+        // saved with three tables (refunds moved under orders); products, order_items and shipments ticked afterwards
+        apply(FEW); moveTo("refunds", boxOf("orders").x, boxOf("orders").y + boxOf("orders").h + 40); save();
+        apply([...FEW, "products", "order_items", "shipments"]);
+        return;
+      }
+      if (k === "saved-altered") {
+        // saved as above; since then orders gained five columns and customers lost phone (the catalog read again)
+        apply(FEW); moveTo("refunds", boxOf("orders").x, boxOf("orders").y + boxOf("orders").h + 40); save();
+        const orders = DATA.tables.find((t) => t.name === "orders"), customers = DATA.tables.find((t) => t.name === "customers");
+        orders.columns.push(...["discount numeric(12,2)", "coupon text", "channel text", "paid_at timestamptz", "note text"].map((c) => { const [name, type] = c.split(" "); return { name, type, nullable: true, primary: false }; }));
+        customers.columns = customers.columns.filter((c) => c.name !== "phone");
+        apply(FEW, { refit: false });
+        return;
+      }
+      apply(k === "few" ? FEW : ALL);
+      if (k === "selected") { selected = E.tableKey("public", "orders"); draw(); }
+      if (k === "moved") {
+        const key = E.tableKey("public", "warehouses"), b = layout.boxes.get(key);
+        moves = new Map([[key, { x: b.x + 40, y: b.y + 260 }]]); selected = key; draw();
+      }
+      if (k === "menu") {
+        const el = $(`[data-table="${model.tables.findIndex((t) => t.name === "orders")}"]`, world), r = el.getBoundingClientRect();
+        openMenu(E.tableKey("public", "orders"), r.left + 40, r.top + 30);
+      }
+      if (k === "tree-menu") $('#tree .row[data-path="public"] .row-more').click();
+    };
+  }
+pvStart();
+</script>
+</body>
+</html>

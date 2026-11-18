@@ -7,7 +7,7 @@ import { clockOf, dayLabel, startOfDay } from "../lib/time";
 import { ttlLeft } from "../lib/time";
 import type { Saved, ScanKey } from "../types";
 import { useDismiss } from "./useDismiss";
-import { Braces, ChevronDown, ChevronRight, Copy, Database, Ellipsis, Eye, Folder, Info, Key, RefreshCw, Search, Shredder, SquareCode, SquareFunction, Table2, Timer, icoC, ico } from "./Icon";
+import { Braces, ChevronDown, ChevronRight, Copy, Database, Ellipsis, Eye, Folder, Info, Key, Network, RefreshCw, Search, Shredder, SquareCode, SquareFunction, Table2, Timer, icoC, ico } from "./Icon";
 
 /** MongoDB's own databases: listed, but folded under one group at the end */
 const MONGO_SYSTEM = ["admin", "config", "local"];
@@ -151,6 +151,8 @@ function SchemaSide() {
   const tableMenu = (schema: string, name: string, view: boolean): MenuItem[] => [
     { label: "Open rows", icon: <Table2 {...ico} />, run: () => st.openTable(schema, name) },
     { label: "New query on this table", icon: <SquareCode {...ico} />, run: () => st.newQueryTab(`select *\nfrom ${qualified(schema, name)}\n`) },
+    // views declare no keys and are never drawn
+    ...(view ? [] : [{ label: "Show diagram", icon: <Network {...ico} />, run: () => st.openDiagram(schema, name) }]),
     { label: "Copy name", icon: <Copy {...ico} />, run: () => copy(name) },
     { label: "sep", sep: true, run: () => {} },
     // never run on the person's behalf: the statement opens in a query tab, behind the write guard
@@ -180,7 +182,17 @@ function SchemaSide() {
     if (q && node?.state !== "loaded") return null;
     return (
       <div key={schema}>
-        <Row className={base ? undefined : "collection"} indent={base || undefined} name={schema} items={[{ label: mongo ? "Refresh database" : "Refresh schema", icon: <RefreshCw {...ico} />, run: () => void st.loadSchema(schema) }, { label: "Copy name", icon: <Copy {...ico} />, run: () => copy(schema) }]}>
+        <Row
+          className={base ? undefined : "collection"}
+          indent={base || undefined}
+          name={schema}
+          items={[
+            { label: mongo ? "Refresh database" : "Refresh schema", icon: <RefreshCw {...ico} />, run: () => void st.loadSchema(schema) },
+            { label: "Copy name", icon: <Copy {...ico} />, run: () => copy(schema) },
+            // ER diagram: SQL engines only (MongoDB declares no foreign keys)
+            ...(mongo ? [] : [{ label: "Show diagram", icon: <Network {...ico} />, run: () => st.openDiagram(schema, null) }]),
+          ]}
+        >
           <button type="button" className="row-main" aria-expanded={open} onClick={() => st.toggle(schema)}>
             {open ? <ChevronDown {...icoC("caret")} /> : <ChevronRight {...icoC("caret")} />}
             <span className="name">{schema}</span>

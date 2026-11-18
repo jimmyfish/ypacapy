@@ -72,6 +72,19 @@ export {
   Type,
   WandSparkles,
   X,
+  // ER diagram
+  EyeOff,
+  FileCode,
+  FileDown,
+  Image as ImageIcon,
+  ListChecks,
+  Locate,
+  Maximize,
+  Network,
+  Save,
+  Undo2,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 
 /** Lucide 1.x dropped brand icons; GitHub's mark kept from Lucide's last brand set (ISC). */

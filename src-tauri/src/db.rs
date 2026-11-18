@@ -28,6 +28,8 @@ use crate::store::{HistoryEntry, LocalStore};
 pub mod mongo;
 /// Redis: the tree's SCAN, key tabs, Info and the console's runs
 pub mod redis;
+/// ER diagrams: one schema's tables, columns and foreign keys, from the catalog
+pub mod erd;
 
 /// Rows kept from one result set when no row limit could be added to the query itself.
 const HARD_CAP: usize = 10_000;
@@ -1534,6 +1536,44 @@ mod tests {
         assert_eq!(info.indexes.iter().map(|i| (i.name.as_str(), i.columns.as_str())).collect::<Vec<_>>(), [("ord_pkey", "id"), ("ord_status_at", "status, at desc")]);
         assert_eq!(info.foreign_keys[0].on_delete, "restrict");
         assert_eq!(info.foreign_keys[0].column, "customer_id");
+    }
+
+    /// The ER diagram's catalog reads against session temp tables: a composite key, a one-to-one key, a view left out, a pick.
+    #[tokio::test]
+    #[ignore]
+    async fn postgres_diagram() {
+        let c = conn(Engine::Postgres);
+        let pool = connect(&c, "", None, false, 1).await.expect("connect");
+        raw_rows(
+            &pool,
+            "create temp table cust (id int8 primary key, email text); \
+             create temp table prof (cust_id int8 not null unique references cust (id), bio text); \
+             create temp table ord (id int8, n int, cust_id int8 references cust (id), primary key (id, n)); \
+             create temp table line (ord_id int8, ord_n int, sku text, foreign key (ord_id, ord_n) references ord (id, n)); \
+             create temp view v as select 1 as one",
+        )
+        .await
+        .unwrap();
+        let schema = first(&raw_rows(&pool, "select nspname::text from pg_namespace where oid = pg_my_temp_schema()").await.unwrap());
+        let d = serde_json::to_value(erd::diagram(&pool, Engine::Postgres, &schema, None, true).await.unwrap()).unwrap();
+        // views are left out
+        let names: Vec<&str> = d["tables"].as_array().unwrap().iter().map(|t| t["name"].as_str().unwrap()).collect();
+        assert_eq!(names, ["cust", "line", "ord", "prof"]);
+        let line = d["keys"].as_array().unwrap().iter().find(|k| k["table"] == "line").unwrap();
+        assert_eq!(line["columns"], serde_json::json!(["ord_id", "ord_n"]));
+        assert_eq!(line["refColumns"], serde_json::json!(["id", "n"]));
+        let prof = d["tables"].as_array().unwrap().iter().find(|t| t["name"] == "prof").unwrap();
+        assert_eq!(prof["uniques"], serde_json::json!([["cust_id"]]));
+        assert_eq!(d["tables"][2]["columns"][1]["primary"], true);
+        assert_eq!(d["keys"].as_array().unwrap().len(), 3);
+        // picked tables only: line and ord, the composite key between them, nothing of cust or prof
+        let picked = ["line".to_string(), "ord".to_string()];
+        let d = serde_json::to_value(erd::diagram(&pool, Engine::Postgres, &schema, Some(&picked), true).await.unwrap()).unwrap();
+        let names: Vec<&str> = d["tables"].as_array().unwrap().iter().map(|t| t["name"].as_str().unwrap()).collect();
+        assert_eq!(names, ["line", "ord"]);
+        let mut l = erd::links(&pool, Engine::Postgres, &schema).await.unwrap();
+        l.sort();
+        assert_eq!(l, [["line", "ord"], ["ord", "cust"], ["prof", "cust"]].map(|p| p.map(String::from)));
     }
 
     #[tokio::test]

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Approval, CollInfo, ColumnBrief, Conn, HistoryEntry, KeyInfo, KeyPage, OpenInfo, RunOutcome, Saved, ScanKey, SchemaObjects, SecurityLevel, Settings, TableInfo } from "../types";
+import type { Approval, CollInfo, ColumnBrief, Conn, HistoryEntry, KeyInfo, KeyPage, OpenInfo, RunOutcome, Saved, ScanKey, SchemaDiagram, SchemaObjects, SecurityLevel, Settings, TableInfo } from "../types";
 
 /** Every Tauri command, typed. Rust errors arrive as strings. */
 export const api = {
@@ -22,6 +22,10 @@ export const api = {
   /** columns only, for autocomplete */
   tableColumns: (id: string, database: string, schema: string, table: string) => invoke<ColumnBrief[]>("table_columns", { id, database, schema, table }),
   tableInfo: (id: string, database: string, schema: string, table: string) => invoke<TableInfo>("table_info", { id, database, schema, table }),
+  /** ER diagram: the picked tables of a schema, their columns and foreign keys, from the catalog (SQL engines only) */
+  schemaDiagram: (id: string, database: string, schema: string, tables: string[]) => invoke<SchemaDiagram>("schema_diagram", { id, database, schema, tables }),
+  /** the diagram picker's Add linked tables: [referencing, referenced] table pairs within the schema, one catalog read */
+  schemaLinks: (id: string, database: string, schema: string) => invoke<[string, string][]>("schema_links", { id, database, schema }),
   runQuery: (req: { runId: string; connId: string; database?: string; schema?: string; sql: string; addLimit: boolean; approval?: Approval; history: boolean }) =>
     invoke<RunOutcome>("run_query", { req }),
   cancelQuery: (runId: string) => invoke<void>("cancel_query", { runId }),
@@ -55,6 +59,8 @@ export const api = {
   saveWorkspace: (connId: string, data: string | null) => invoke<void>("save_workspace", { connId, data }),
   configPath: () => invoke<string>("config_path"),
   writeTextFile: (path: string, contents: string) => invoke<void>("write_text_file", { path, contents }),
+  /** an exported image: its bytes as base64 */
+  writeBinaryFile: (path: string, base64: string) => invoke<void>("write_binary_file", { path, base64 }),
 };
 
 export const errText = (e: unknown) => (typeof e === "string" ? e : e instanceof Error ? e.message : String(e));

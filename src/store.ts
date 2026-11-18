@@ -2,7 +2,9 @@ import { create } from "zustand";
 import { api, errText } from "./lib/api";
 import { tableSelect } from "./lib/sql";
 import { editCount, type Edits } from "./lib/edit";
-import type { Approval, Ask, ColumnsEntry, Conn, HistoryEntry, KeyTab, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
+import { positionsOf, withLinked } from "./lib/diagram";
+import { diagramCanSave, diagramChanged, diagramKey, diagramLayoutOf, diagramModelOf, diagramViews, mergeDiagram } from "./lib/diagramTab";
+import type { Approval, Ask, ColumnsEntry, Conn, DiagramTab, HistoryEntry, KeyTab, SavedDiagram, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
 
 export type SettingsSection = "appearance" | "queries" | "security" | "data" | "updates";
 export type SideView = "schema" | "history" | "saved";
@@ -11,8 +13,8 @@ export type Modal =
   | { kind: "settings"; section?: SettingsSection }
   | { kind: "about" }
   | { kind: "connect"; conn?: Conn; group?: string }
-  /** final: it cannot be undone; the dialog says so and the button carries the shredder */
-  | { kind: "confirm"; title: string; message: string; confirmLabel?: string; final?: boolean; onConfirm: () => void }
+  /** final: it cannot be undone; the dialog says so and the button carries the shredder. alt: a second way on (Save and close) */
+  | { kind: "confirm"; title: string; message: string; confirmLabel?: string; final?: boolean; onConfirm: () => void; alt?: { label: string; run: () => void } }
   | { kind: "prompt"; title: string; label: string; initial: string; onSubmit: (v: string) => void }
   | { kind: "saveQuery"; tabId: string }
   /** the passphrase or confirm ask before a run; with title and message, the passphrase before lowering Strict */
@@ -82,11 +84,19 @@ interface State {
 
   newQueryTab(sql?: string, title?: string, saved?: Saved): string;
   openTable(schema: string, table: string): void;
+  /** ER diagram of a schema (origin null) or of a table and its links: a saved one opens as saved, else the picker */
+  openDiagram(schema: string, origin: string | null): void;
+  /** the picker's Show (the picked tables) or Cancel (null) */
+  pickDiagramTables(tabId: string, tables: string[] | null): void;
+  /** reads the catalog of picked tables not read yet; reload reads them all again */
+  readDiagram(tabId: string, opts?: { reload?: boolean }): Promise<void>;
+  /** Save: the picks, every box where it is, zoom and column detail, into the workspace */
+  saveDiagram(tabId: string, view?: DiagramTab["view"]): void;
   setActiveTab(id: string): void;
   closeTab(id: string, force?: boolean): void;
   /** pins or unpins a tab; a pinned tab moves to the end of the pinned ones at the left */
   pinTab(id: string, on: boolean): void;
-  updateTab(id: string, patch: Partial<QueryTab> | Partial<TableTab> | Partial<KeyTab>): void;
+  updateTab(id: string, patch: Partial<QueryTab> | Partial<TableTab> | Partial<KeyTab> | Partial<DiagramTab>): void;
   run(tabId: string, opts?: { sql?: string; approval?: Approval; discard?: boolean }): Promise<void>;
   cancel(tabId: string): void;
   readTable(tabId: string, opts?: { offset?: number; approval?: Approval; discard?: boolean }): Promise<void>;
@@ -110,6 +120,8 @@ interface Workspace {
   v: 1;
   active: string | null;
   tabs: (KeptQuery | KeptTable | KeptKey)[];
+  /** saved ER diagrams, by diagramKey; diagram tabs themselves are never kept */
+  diagrams?: Record<string, SavedDiagram>;
 }
 /** a short pause after the last change, so a quit right after typing loses little */
 const WORKSPACE_SAVE_MS = 300;
@@ -126,13 +138,16 @@ function workspaceOf(s: Session): string {
   const w: Workspace = {
     v: 1,
     active,
-    tabs: kept.map((t) =>
+    tabs: kept.map((t): KeptQuery | KeptTable | KeptKey | null =>
       t.kind === "query"
         ? { id: t.id, title: t.title, sql: t.sql, savedId: t.savedId, savedFolder: t.savedFolder, savedSql: t.savedSql, pinned: t.pinned || undefined }
         : t.kind === "key"
           ? { kind: "key", id: t.id, key: t.key, pattern: t.pattern || undefined, ascending: t.ascending || undefined, as: t.as, pinned: true }
-          : { kind: "table", id: t.id, schema: t.schema, table: t.table, where: t.where, view: t.view, pinned: true, project: t.project || undefined, sort: t.sort || undefined, limit: t.limit || undefined, as: t.as === "json" ? "json" : undefined },
-    ),
+          : t.kind === "table"
+            ? { kind: "table", id: t.id, schema: t.schema, table: t.table, where: t.where, view: t.view, pinned: true, project: t.project || undefined, sort: t.sort || undefined, limit: t.limit || undefined, as: t.as === "json" ? "json" : undefined }
+            : null,
+    ).filter((t): t is KeptQuery | KeptTable | KeptKey => t !== null),
+    ...(s.diagrams && Object.keys(s.diagrams).length ? { diagrams: s.diagrams } : {}),
   };
   return JSON.stringify(w);
 }
@@ -152,10 +167,22 @@ async function flushWorkspace(id: string): Promise<void> {
   });
 }
 
-async function readWorkspace(id: string): Promise<{ tabs: Tab[]; active: string | null }> {
+/** Saved diagrams read back: the well-formed ones only */
+function keptDiagrams(v: unknown): Record<string, SavedDiagram> {
+  const out: Record<string, SavedDiagram> = {};
+  if (!v || typeof v !== "object") return out;
+  for (const [k, d] of Object.entries(v as Record<string, Partial<SavedDiagram>>)) {
+    if (!d || !Array.isArray(d.tables) || !d.positions || typeof d.positions !== "object" || !d.view || typeof d.at !== "number") continue;
+    const detail = d.detail === "keys" || d.detail === "none" ? d.detail : "all";
+    out[k] = { tables: d.tables.filter((t) => typeof t === "string"), positions: d.positions, view: d.view, detail, at: d.at };
+  }
+  return out;
+}
+
+async function readWorkspace(id: string): Promise<{ tabs: Tab[]; active: string | null; diagrams: Record<string, SavedDiagram> }> {
   try {
     const raw = await api.loadWorkspace(id);
-    if (!raw) return { tabs: [], active: null };
+    if (!raw) return { tabs: [], active: null, diagrams: {} };
     lastWritten.set(id, raw);
     const w = JSON.parse(raw) as Partial<Workspace>;
     const tabs: Tab[] = [];
@@ -199,9 +226,9 @@ async function readWorkspace(id: string): Promise<{ tabs: Tab[]; active: string 
     }
     // pinned tabs first, each group in its kept order
     tabs.sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned));
-    return { tabs, active: tabs.some((t) => t.id === w.active) ? (w.active ?? null) : (tabs[tabs.length - 1]?.id ?? null) };
+    return { tabs, active: tabs.some((t) => t.id === w.active) ? (w.active ?? null) : (tabs[tabs.length - 1]?.id ?? null), diagrams: keptDiagrams(w.diagrams) };
   } catch {
-    return { tabs: [], active: null };
+    return { tabs: [], active: null, diagrams: {} };
   }
 }
 
@@ -221,7 +248,7 @@ export const useStore = create<State>()((set, get) => {
     }
     return null;
   };
-  const patchTab = (tabId: string, patch: Partial<QueryTab> | Partial<TableTab> | Partial<KeyTab>) => {
+  const patchTab = (tabId: string, patch: Partial<QueryTab> | Partial<TableTab> | Partial<KeyTab> | Partial<DiagramTab>) => {
     const hit = sessionOfTab(tabId);
     if (!hit) return;
     patchSession(hit[0], (s) => ({ tabs: s.tabs.map((t) => (t.id === tabId ? ({ ...t, ...patch } as Tab) : t)) }));
@@ -381,10 +408,10 @@ export const useStore = create<State>()((set, get) => {
       set((st) => ({ view: "conn", currentId: id, openIds: st.openIds.includes(id) ? st.openIds : [...st.openIds, id] }));
       const existing = get().sessions[id];
       if (existing && existing.status !== "error") return;
-      set((st) => ({ sessions: { ...st.sessions, [id]: { ...emptySession(), tabs: existing?.tabs ?? [], activeTabId: existing?.activeTabId ?? null } } }));
+      set((st) => ({ sessions: { ...st.sessions, [id]: { ...emptySession(), tabs: existing?.tabs ?? [], activeTabId: existing?.activeTabId ?? null, diagrams: existing?.diagrams } } }));
       if (!restored.has(id)) {
         const ws = await readWorkspace(id);
-        patchSession(id, (s) => ({ tabs: [...ws.tabs, ...s.tabs], activeTabId: s.activeTabId ?? ws.active }));
+        patchSession(id, (s) => ({ tabs: [...ws.tabs, ...s.tabs], activeTabId: s.activeTabId ?? ws.active, diagrams: { ...ws.diagrams, ...s.diagrams } }));
         restored.add(id);
       }
       void api.touchConnection(id).then(() => get().refreshConns());
@@ -657,6 +684,95 @@ export const useStore = create<State>()((set, get) => {
       void get().loadTableInfo(t.id);
     },
 
+    openDiagram(schema, origin) {
+      const id = get().currentId;
+      if (!id) return;
+      const s = get().sessions[id];
+      const database = s.database;
+      const hit = s.tabs.find((t) => t.kind === "diagram" && t.database === database && t.schema === schema && t.origin === origin);
+      if (hit) {
+        patchSession(id, () => ({ activeTabId: hit.id }));
+        return;
+      }
+      const saved = s.diagrams?.[diagramKey({ database, schema, origin })];
+      const t: DiagramTab = saved
+        ? { id: uid(), kind: "diagram", database, schema, origin, tables: saved.tables, detail: saved.detail, moves: {}, view: saved.view, run: { status: "idle" } }
+        : { id: uid(), kind: "diagram", database, schema, origin, tables: [], detail: "all", moves: {}, picking: true, ...(origin ? { preset: [origin] } : {}), run: { status: "idle" } };
+      patchSession(id, (x) => ({ tabs: [...x.tabs, t], activeTabId: t.id }));
+      // a saved diagram draws as saved; one never saved opens the picker (its list is the tree's)
+      if (saved) {
+        void get().readDiagram(t.id);
+        return;
+      }
+      if (!s.tree[schema]) void get().loadSchema(schema);
+      // a table's diagram ticks the table and the tables one key away (one catalog read of the schema's keys)
+      if (origin)
+        void api
+          .schemaLinks(id, database, schema)
+          .then((links) => {
+            const now = sessionOfTab(t.id)?.[2];
+            if (now?.kind !== "diagram" || !now.picking) return;
+            const names = get().sessions[id]?.tree[schema]?.data?.tables.map((x) => x.name) ?? [...new Set(links.flat())];
+            patchTab(t.id, { preset: withLinked(names.includes(origin) ? names : [origin, ...names], [origin], links) });
+          })
+          .catch(() => {});
+    },
+
+    pickDiagramTables(tabId, tables) {
+      const hit = sessionOfTab(tabId);
+      if (!hit || hit[2].kind !== "diagram") return;
+      const [id, s, tab] = hit;
+      if (tables === null) {
+        patchTab(tabId, { picking: false });
+        return;
+      }
+      const saved = s.diagrams?.[diagramKey(tab)];
+      const changedPicks = tables.length !== tab.tables.length || tables.some((n) => !tab.tables.includes(n));
+      patchTab(tabId, {
+        tables,
+        picking: false,
+        preset: undefined,
+        // new picks are fitted to the window; the first drawing of a diagram never saved is what "Not saved" measures from
+        ...(changedPicks ? { view: undefined } : {}),
+        ...(!saved && !tab.baseline ? { baseline: { tables, detail: tab.detail } } : {}),
+      });
+      void id;
+      void get().readDiagram(tabId);
+    },
+
+    async readDiagram(tabId, opts) {
+      const hit = sessionOfTab(tabId);
+      if (!hit || hit[2].kind !== "diagram") return;
+      const [id, , tab] = hit;
+      if (!tab.tables.length) return;
+      const have = new Set(opts?.reload ? [] : (tab.data?.tables.filter((t) => t.schema === tab.schema).map((t) => t.name) ?? []));
+      const want = tab.tables.filter((n) => !have.has(n));
+      if (!want.length) return;
+      patchTab(tabId, { loading: true, error: undefined });
+      try {
+        const d = await api.schemaDiagram(id, tab.database, tab.schema, want);
+        const now = sessionOfTab(tabId)?.[2];
+        if (now?.kind !== "diagram") return;
+        patchTab(tabId, { data: opts?.reload ? d : mergeDiagram(now.data, d), loading: false });
+      } catch (e) {
+        patchTab(tabId, { loading: false, error: errText(e) });
+      }
+    },
+
+    saveDiagram(tabId, view) {
+      const hit = sessionOfTab(tabId);
+      if (!hit || hit[2].kind !== "diagram") return;
+      const [id, s, tab] = hit;
+      const key = diagramKey(tab);
+      const saved = s.diagrams?.[key];
+      const model = diagramModelOf(tab);
+      if (!model || !diagramCanSave(tab, saved)) return;
+      const positions = Object.fromEntries(positionsOf(diagramLayoutOf(tab, model, saved)));
+      const v = view ?? diagramViews.get(tabId)?.current ?? tab.view ?? { x: 0, y: 0, k: 1 };
+      patchSession(id, (x) => ({ diagrams: { ...x.diagrams, [key]: { tables: [...tab.tables], positions, view: v, detail: tab.detail, at: Date.now() } } }));
+      patchTab(tabId, { moves: {}, auto: undefined, baseline: undefined, view: v });
+    },
+
     setActiveTab(tabId) {
       const hit = sessionOfTab(tabId);
       if (hit) patchSession(hit[0], () => ({ activeTabId: tabId }));
@@ -681,11 +797,29 @@ export const useStore = create<State>()((set, get) => {
         });
         return;
       }
+      if (!force && tab.kind === "diagram" && diagramChanged(tab, get().sessions[id]?.diagrams?.[diagramKey(tab)])) {
+        const saved = get().sessions[id]?.diagrams?.[diagramKey(tab)];
+        get().openModal({
+          kind: "confirm",
+          title: `Close ${tab.origin ?? tab.schema}?`,
+          message: saved ? "Its changes since the last save are lost. Show diagram brings back the saved one." : "Its tables and layout are not saved anywhere.",
+          confirmLabel: "Close",
+          onConfirm: () => get().closeTab(tabId, true),
+          alt: {
+            label: "Save and close",
+            run: () => {
+              get().saveDiagram(tabId);
+              get().closeTab(tabId, true);
+            },
+          },
+        });
+        return;
+      }
       const pending = pendingIn(tabId);
       if (!force && pending) {
         get().openModal({
           kind: "confirm",
-          title: `Close ${tab.kind === "query" ? tab.title : tab.kind === "key" ? tab.key : tab.table}?`,
+          title: `Close ${tab.kind === "query" ? tab.title : tab.kind === "key" ? tab.key : tab.kind === "table" ? tab.table : (tab.origin ?? tab.schema)}?`,
           message: `${pending} unsaved change${pending === 1 ? "" : "s"} to its rows ${pending === 1 ? "is" : "are"} lost.`,
           confirmLabel: "Close",
           onConfirm: () => get().closeTab(tabId, true),
@@ -812,6 +946,8 @@ export const useStore = create<State>()((set, get) => {
 
     async saveTab(tabId, name, folder) {
       const t = sessionOfTab(tabId)?.[2];
+      // ⌘S on a diagram saves its layout
+      if (t?.kind === "diagram") return get().saveDiagram(tabId);
       if (!t || t.kind !== "query") return;
       if (!t.savedId && name === undefined) {
         get().openModal({ kind: "saveQuery", tabId });
@@ -853,7 +989,7 @@ useStore.subscribe((st, prev) => {
   if (st.sessions === prev.sessions) return;
   for (const [id, s] of Object.entries(st.sessions)) {
     const before = prev.sessions[id];
-    if (!restored.has(id) || (before && s.tabs === before.tabs && s.activeTabId === before.activeTabId)) continue;
+    if (!restored.has(id) || (before && s.tabs === before.tabs && s.activeTabId === before.activeTabId && s.diagrams === before.diagrams)) continue;
     clearTimeout(saveTimers.get(id));
     saveTimers.set(id, setTimeout(() => void flushWorkspace(id), WORKSPACE_SAVE_MS));
   }

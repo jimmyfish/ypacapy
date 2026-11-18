@@ -235,6 +235,40 @@ export interface TableInfo {
   foreignKeys: { name: string; column: string; references: string; onDelete: string }[];
 }
 
+/** The ER diagram of one schema (schema_diagram): read from the catalog when the person opens it */
+export interface ErdColumn {
+  name: string;
+  type: string;
+  nullable: boolean;
+  primary: boolean;
+}
+
+export interface ErdTable {
+  schema: string;
+  name: string;
+  /** views are never drawn: they declare no keys */
+  kind: "table" | "foreign";
+  columns: ErdColumn[];
+  /** unique keys other than the primary key, each its columns in key order */
+  uniques: string[][];
+}
+
+/** columns of schema.table reference refColumns of refSchema.refTable, pairwise */
+export interface ErdKey {
+  name: string;
+  schema: string;
+  table: string;
+  columns: string[];
+  refSchema: string;
+  refTable: string;
+  refColumns: string[];
+}
+
+export interface SchemaDiagram {
+  tables: ErdTable[];
+  keys: ErdKey[];
+}
+
 export interface ColMeta {
   name: string;
   type: string;
@@ -391,7 +425,59 @@ export interface KeyTab {
   data?: KeyPage;
   error?: string;
 }
-export type Tab = QueryTab | TableTab | KeyTab;
+/** Where a diagram's box is, in diagram units */
+export interface DiagramPoint {
+  x: number;
+  y: number;
+}
+
+/** A diagram as its Save left it, kept in the connection's workspace (ypacapy.db), so it survives a restart */
+export interface SavedDiagram {
+  tables: string[];
+  /** every box, by table key ("schema\u0000table") */
+  positions: Record<string, DiagramPoint>;
+  view: { x: number; y: number; k: number };
+  detail: "all" | "keys" | "none";
+  /** when it was saved (ms since the epoch) */
+  at: number;
+}
+
+/**
+ * An ER diagram of one schema's picked tables. Never pinned: once saved, Show diagram reopens it as saved. What
+ * differs from the save (picks, dragged boxes, column detail) lives here until Save or until the tab closes.
+ */
+export interface DiagramTab {
+  id: string;
+  kind: "diagram";
+  database: string;
+  schema: string;
+  /** null: the schema's diagram; a table: opened with that table's Show diagram (its own saved diagram) */
+  origin: string | null;
+  /** the picked tables of `schema`; empty until the picker's first Show */
+  tables: string[];
+  detail: "all" | "keys" | "none";
+  /** boxes dragged since the last Save, by table key */
+  moves: Record<string, DiagramPoint>;
+  /** Reset layout pressed since the last Save: every box laid out afresh */
+  auto?: boolean;
+  /** zoom and pan, kept while the tab is away; none means fit the diagram */
+  view?: { x: number; y: number; k: number };
+  /** never saved: the picks and detail as first drawn, what "Not saved" compares against */
+  baseline?: { tables: string[]; detail: DiagramTab["detail"] };
+  /** the table picker is open */
+  picking?: boolean;
+  /** what the picker ticks first for a table's diagram: the table and the tables linked to it */
+  preset?: string[];
+  /** the catalog read of the picked tables (merged as more are picked) */
+  data?: SchemaDiagram;
+  loading?: boolean;
+  error?: string;
+  /** diagrams are never pinned; here for the tab bar's sake */
+  pinned?: undefined;
+  run: RunState;
+}
+
+export type Tab = QueryTab | TableTab | KeyTab | DiagramTab;
 
 export interface SchemaNode {
   state: "loading" | "loaded" | "error";
@@ -415,4 +501,6 @@ export interface Session {
   keys?: RedisKeys;
   tabs: Tab[];
   activeTabId: string | null;
+  /** saved diagrams, by diagramKey (database, schema, origin); kept with the workspace */
+  diagrams?: Record<string, SavedDiagram>;
 }

@@ -60,6 +60,11 @@ export function Modals() {
             <button type="button" className="btn" onClick={close}>
               Cancel
             </button>
+            {modal.alt && (
+              <button type="button" className="btn" onClick={() => (close(), modal.alt!.run())}>
+                {modal.alt.label}
+              </button>
+            )}
             <button type="button" className="btn btn--danger" autoFocus onClick={() => (close(), modal.onConfirm())}>
               {modal.final && <Shredder {...ico} />}
               {modal.confirmLabel ?? "Delete"}

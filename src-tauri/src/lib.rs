@@ -146,6 +146,8 @@ pub fn run() {
             db::load_schema,
             db::table_info,
             db::table_columns,
+            db::erd::schema_diagram,
+            db::erd::schema_links,
             db::run_query,
             db::cancel_query,
             db::apply_edits,
@@ -170,6 +172,7 @@ pub fn run() {
             fonts::list_fonts,
             paths::config_path,
             paths::write_text_file,
+            paths::write_binary_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running ypacapy");

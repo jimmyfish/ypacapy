@@ -1486,3 +1486,105 @@ body.cards-dragging .group-drop-new { display: flex; }
 .ttl-in .select-wrap { flex: 1; }
 .ttl-actions { display: flex; justify-content: flex-end; gap: var(--space-xs); }
 .rk-del { color: var(--color-error); }
+
+/* ER diagram tab (ported from opengrip's DiagramView). Box metrics match src/lib/diagram.ts:
+   HEADER_H 26, ROW_H 20, BODY_PAD 4, 12px monospace (CHAR_W 7.3), ICON_W 22, SIDE_PAD 10. */
+.erd-body { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.erd-tools { display: flex; align-items: center; gap: var(--space-3xs); padding: 0 var(--space-md) var(--space-xs); }
+.erd-tools .icon-btn { min-width: 28px; min-height: 28px; border-radius: 6px; }
+.erd-tools .icon-btn:disabled { opacity: 0.4; cursor: default; }
+.erd-tools .sep { width: 1px; height: 18px; margin: 0 var(--space-2xs); background: var(--color-rule); }
+.erd-tools .push { margin-left: auto; }
+.erd-zoom { min-height: 28px; min-width: 5ch; padding: 0 var(--space-2xs); font-variant-numeric: tabular-nums; }
+.erd-status { color: var(--color-muted); font-size: var(--text-sm); white-space: nowrap; }
+.erd-status.unsaved { color: var(--color-ink-2); }
+.erd-state { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.erd-err { font-family: var(--font-mono); font-size: var(--text-code); color: var(--color-error); }
+.erd-host {
+  position: relative; flex: 1; min-height: 0; overflow: hidden; margin: 0 var(--space-md);
+  border: 1px solid var(--color-rule); border-radius: var(--radius-control);
+  background-color: var(--color-paper-3);
+  background-image: radial-gradient(circle, var(--color-rule) 1px, transparent 1.2px);
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.erd-host.dragging { cursor: grabbing; }
+.erd-host:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+.erd-foot { margin: 0; padding: var(--space-2xs) var(--space-md) var(--space-sm); color: var(--color-muted); font-size: var(--text-sm); }
+.erd-world { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.erd-edges { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.erd-line { fill: none; stroke: var(--color-muted); stroke-width: 1.25; }
+.erd-arrow { fill: var(--color-muted); }
+/* a wide invisible stroke: hovering near a line shows its key */
+.erd-hit { fill: none; stroke: transparent; stroke-width: 10; pointer-events: stroke; }
+.erd-edge:hover .erd-line { stroke: var(--color-ink-2); }
+.erd-edge:hover .erd-arrow { fill: var(--color-ink-2); }
+.erd-label, .erd-mark { font-family: var(--font-mono); paint-order: stroke; stroke: var(--color-paper-3); stroke-width: 3px; stroke-linejoin: round; }
+.erd-label { text-anchor: middle; fill: var(--color-ink-2); font-size: 11px; }
+.erd-mark { fill: var(--color-accent); font-size: 12px; font-weight: 700; }
+.erd-edge.on .erd-line { stroke: var(--color-accent); stroke-width: 2; }
+.erd-edge.on .erd-arrow { fill: var(--color-accent); }
+.erd-edge.on .erd-label { fill: var(--color-accent); font-weight: 600; }
+.erd-table {
+  position: absolute; box-sizing: border-box; overflow: hidden;
+  border: 1px solid var(--color-field-edge); border-radius: 6px; background: var(--color-paper);
+  font: 12px/1 var(--font-mono); color: var(--color-ink); cursor: grab;
+}
+/* linked from another schema: drawn because a picked table links to it, not picked itself */
+.erd-table.outside { border-style: dashed; }
+.erd-table.selected { z-index: 1; border-color: var(--color-accent); box-shadow: 0 0 0 1px var(--color-accent); }
+.erd-head {
+  display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; box-sizing: border-box;
+  background: var(--color-paper-2); border-bottom: 1px solid var(--color-rule); font-weight: 600;
+}
+.erd-table:not(:has(.erd-rows)) .erd-head { border-bottom: none; height: 24px; }
+.erd-head .ico { width: 14px; height: 14px; color: var(--color-muted); }
+.erd-rows { padding: 4px 0; }
+.erd-row { display: flex; align-items: center; gap: 6px; height: 20px; padding: 0 9px; }
+.erd-row .ico { width: 14px; height: 14px; color: var(--color-muted); }
+.erd-row .ico.pk { color: var(--color-warn); }
+.erd-row .ico.fk { color: var(--color-link); }
+.erd-row.linked { background: var(--color-accent-soft); font-weight: 600; }
+.erd-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.erd-type { flex: 1; min-width: 0; margin-left: 12px; overflow: hidden; text-align: right; text-overflow: ellipsis; white-space: nowrap; color: var(--color-muted); }
+.ctx-menu .tm-wrap { max-width: 240px; white-space: normal; }
+.erd-save { min-height: 28px; gap: var(--space-2xs); padding: 0 var(--space-xs); }
+.erd-save:disabled { color: var(--color-muted); cursor: default; }
+.erd-pick-btn { min-height: 28px; gap: var(--space-2xs); padding: 0 var(--space-xs); }
+.erd-pick-btn .n { color: var(--color-muted); font-variant-numeric: tabular-nums; }
+
+/* the diagram's table picker: a dialog before drawing, reopened by Tables */
+.dialog.erd-pick { width: 480px; }
+.dialog.erd-pick p.help { display: block; }
+.erd-pick .search { margin-bottom: var(--space-xs); }
+.erd-pick .search .field { width: 100%; }
+.ep-tools { display: flex; align-items: center; gap: var(--space-3xs); margin-bottom: var(--space-xs); }
+.ep-tools .btn { min-height: 28px; padding: 0 var(--space-xs); gap: var(--space-2xs); }
+.ep-tools .btn .ico { width: 14px; height: 14px; }
+#ep-linked .ep-spin { display: none; animation: spin 0.7s linear infinite; }
+#ep-linked[aria-busy] .ep-spin { display: block; }
+#ep-linked[aria-busy] .ico:not(.ep-spin) { display: none; }
+.ep-n { margin-right: auto; align-self: center; color: var(--color-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ep-list { height: 300px; overflow: auto; padding: var(--space-3xs) 0; border: 1px solid var(--color-rule); border-radius: var(--radius-control); }
+.dialog .ep-list label.ep-row { display: flex; align-items: center; gap: var(--space-xs); margin: 0; padding: 0 var(--space-sm); min-height: 32px; cursor: pointer; }
+.dialog .ep-list label.ep-row[hidden] { display: none; }
+.ep-row:hover { background: var(--color-paper-2); }
+.ep-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ep-est { color: var(--color-muted); font: var(--text-sm) var(--font-mono); }
+.ep-empty { margin: 0; padding: var(--space-md); color: var(--color-muted); text-align: center; }
+.dialog.erd-pick footer { margin-top: var(--space-md); }
+
+/* diagram exports */
+.erd-export { min-height: 28px; gap: var(--space-2xs); padding: 0 var(--space-xs); }
+.erd-export:disabled { color: var(--color-muted); cursor: default; }
+#erd-export-menu { min-width: 240px; }
+.dialog.erd-img { width: 400px; }
+.ei-format { margin-bottom: var(--space-md); }
+.ei-format button { min-width: 64px; min-height: 28px; font-size: var(--text-md); }
+.ei-bg { margin: 0; padding: 0; border: none; display: grid; gap: var(--space-xs); }
+.ei-bg[hidden] { display: none; }
+.ei-bg legend { margin-bottom: var(--space-xs); padding: 0; color: var(--color-muted); font-size: var(--text-sm); }
+.dialog .ei-bg label.check { margin: 0; }
+.dialog.erd-code p.help { display: block; }
+.erd-code-pre { height: 360px; margin: 0; padding: var(--space-sm) var(--space-md); overflow: auto; border: 1px solid var(--color-rule); border-radius: var(--radius-control); background: var(--color-paper-3); font: var(--text-code)/1.5 var(--font-mono); color: var(--color-ink); white-space: pre; tab-size: 2; }
+.erd-code-pre:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+.dialog.erd-code footer .grow { flex: 1; }

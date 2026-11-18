@@ -2,6 +2,8 @@
 // Run: node .hallmark/build/build.mjs
 // ypacapy Hallmark preview, on voidHTTP's components and tokens. Writes .hallmark/preview/*.html and app.css.
 import fs from "node:fs";
+// esbuild (Vite's own) bundles src/lib/diagram.ts and diagramExport.ts, types stripped, for the diagram page
+import { buildSync } from "esbuild";
 const SP = new URL(".", import.meta.url).pathname;
 const OUT = new URL("../preview", import.meta.url).pathname;
 // icon nodes are read as text from ypacapy's own lucide-react (the version in package.json, as the app)
@@ -15,7 +17,8 @@ const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "hous
   "ellipsis", "ellipsis-vertical", "shredder", "chevron-down", "chevron-right", "chevron-left", "folder", "eye", "square-function", "table-2", "square-code", "panel-left-close",
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus", "pin", "pin-off",
-  "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check", "timer"];
+  "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check", "timer",
+  "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down"];
 // Lucide 1.x renamed fingerprint; the old name is what the pages use
 const RENAMED = { fingerprint: "fingerprint-pattern" };
 // Lucide 1.x has no brand icons: GitHub's mark as lucide-react 0.460.0 drew it (ISC), the same as src/components/Icon.tsx
@@ -144,6 +147,8 @@ const more = (name) => `<button type="button" class="icon-btn row-more" aria-lab
 const group = (key, label, count, indent, open, folder = true) => `        <div class="row${indent ? "" : " collection"}"${indent ? ` style="--indent:${indent}px"` : ""} data-path="${key}"><button type="button" class="row-main" data-group="${key}" aria-expanded="${open}">${ic(open ? "chevron-down" : "chevron-right", "caret")}${folder ? ic("folder", "folder") : ""}<span class="name">${label}</span><span class="count">(${count})</span></button>${more(label)}</div>`;
 const item = (key, icon, name, est, current, href) => `        <div class="row" style="--indent:40px" data-path="${key}"${current ? ' aria-current="page"' : ""}><button type="button" class="row-main"${href ? ` data-href="${href}"` : ""}>${ic(icon, "kind")}<span class="name">${name}</span>${est ? `<span class="count est" title="Estimate from table statistics">~${est}</span>` : ""}</button>${more(name)}</div>`;
 const TABLES = [["orders", "12k"], ["order_items", "41k"], ["customers", "3.2k"], ["products", "640"], ["refunds", "318"], ["shipments", "11k"], ["warehouses", "4"], ["schema_migrations", "57"]];
+// a schema's own "…" menu (data-row-menu): Refresh schema, Copy name, Show diagram
+const schemaRow = (...a) => group(...a).replace('<div class="row collection"', '<div class="row collection" data-row-menu="schema-menu"');
 const schemaSide = (current) => `
     <aside class="sidebar" data-side="schema">
       <div class="side-resize" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" title="Drag to resize, drag past the edge to hide"></div>
@@ -153,7 +158,7 @@ const schemaSide = (current) => `
         <button type="button" class="icon-btn icon-btn--outline" title="Refresh schema" aria-label="Refresh schema">${ic("refresh-cw")}</button>
       </div>
       <div class="tree" id="tree">
-${group("public", "public", 13, 0, true, false)}
+${schemaRow("public", "public", 13, 0, true, false)}
 ${group("public/tables", "Tables", 8, 16, true)}
 ${TABLES.map(([n, e]) => item(`public/tables/${n}`, "table-2", n, e, current === n, n === "orders" ? "./table.html" : "")).join("\n")}
 ${group("public/views", "Views", 2, 16, true)}
@@ -161,15 +166,21 @@ ${item("public/views/daily_revenue", "eye", "daily_revenue")}
 ${item("public/views/open_orders", "eye", "open_orders")}
 ${group("public/functions", "Functions", 3, 16, false)}
 ${["order_total", "touch_updated_at", "refund_window"].map((n) => item(`public/functions/${n}`, "square-function", n).replace('class="row"', 'class="row" hidden')).join("\n")}
-${group("audit", "audit", 2, 0, false, false)}
+${schemaRow("audit", "audit", 2, 0, false, false)}
         <div class="empty" id="tree-empty" hidden><strong>Nothing matches <span id="tree-empty-q"></span></strong><span>Searches table, view and function names in the schemas loaded so far.</span><button type="button" class="link" id="tree-clear">Clear the filter</button></div>
         <div class="menu row-menu" id="row-menu" role="menu" aria-label="Table actions" hidden>
           <button type="button" role="menuitem">${ic("table-2")}Open rows</button>
           <button type="button" role="menuitem">${ic("square-code")}New query on this table</button>
+          <button type="button" role="menuitem" data-erd-open="table" data-href="./diagram.html?show=table">${ic("network")}Show diagram</button>
           <button type="button" role="menuitem">${ic("copy")}Copy name</button>
           <hr>
           <button type="button" role="menuitem" class="danger">Truncate</button>
           <button type="button" role="menuitem" class="danger">Drop</button>
+        </div>
+        <div class="menu row-menu" id="schema-menu" role="menu" aria-label="Schema actions" hidden>
+          <button type="button" role="menuitem">${ic("refresh-cw")}Refresh schema</button>
+          <button type="button" role="menuitem">${ic("copy")}Copy name</button>
+          <button type="button" role="menuitem" data-erd-open="schema" data-href="./diagram.html">${ic("network")}Show diagram</button>
         </div>
       </div>
     </aside>`;
@@ -358,7 +369,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
       </div>`;
 
 // ---------- preview bar ----------
-const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["mongo", "MongoDB"], ["collection", "Collection"], ["redis", "Redis"], ["key", "Key"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["about", "About"]];
+const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["diagram", "Diagram"], ["mongo", "MongoDB"], ["collection", "Collection"], ["redis", "Redis"], ["key", "Key"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["about", "About"]];
 const UI_FONTS = `<option value="">System</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option><option value="Avenir Next, Avenir, sans-serif">Avenir</option><option value="Georgia, serif">Georgia</option>`;
 const MONO_FONTS = `<option value="">System mono</option><option value="Menlo, monospace">Menlo</option><option value="'Courier New', monospace">Courier</option><option value="Monaco, monospace">Monaco</option>`;
 // preview-only: recolour the first connection tab (shop_prod) to try each connection colour on the title strip
@@ -741,6 +752,174 @@ ${ORDERS}
         </section>
       </div>` }),
   script: js("page-table.js"),
+});
+
+// Diagram: the ER diagram tab, ported from opengrip's DiagramView. Layout and exports are ypacapy's own
+// src/lib/diagram.ts and diagramExport.ts, bundled by esbuild and inlined as is, so the preview draws and exports
+// what the app will.
+const ERD_LIB = buildSync({
+  stdin: { contents: 'export * from "./diagram"; export * from "./diagramExport";', resolveDir: new URL("../../src/lib", import.meta.url).pathname, loader: "ts" },
+  bundle: true, format: "iife", globalName: "Erd", write: false,
+}).outputFiles[0].text;
+// schema_diagram's answer for shop_prod / shop / public: what the catalog holds, no row read
+const ecol = (spec) => spec.split(", ").map((c) => { const [name, type, flags = ""] = c.trim().split(" "); return { name, type, nullable: flags.includes("?"), primary: flags.includes("!") }; });
+const etab = (schema, name, cols, kind = "table", uniques = []) => ({ schema, name, kind, columns: ecol(cols), uniques });
+const ekey = (table, cols, refTable, refCols, schema = "public", refSchema = "public") => ({ name: `${table}_${cols.join("_")}_fkey`, schema, table, columns: cols, refSchema, refTable, refColumns: refCols });
+const ERD = {
+  tables: [
+    etab("public", "customers", "id int8 !, email text, full_name text, phone text ?, is_vip bool, country char(2), created_at timestamptz", "table", [["email"]]),
+    etab("public", "orders", "id int8 !, customer_id int8, status text, total numeric(12,2), currency char(3), created_at timestamptz, shipped_at timestamptz ?, meta jsonb ?"),
+    etab("public", "order_items", "order_id int8 !, line int4 !, product_id int8, qty int4, unit_price numeric(12,2)"),
+    etab("public", "products", "id int8 !, sku text, name text, price numeric(12,2), warehouse_id int8 ?", "table", [["sku"]]),
+    etab("public", "refunds", "id int8 !, order_id int8, customer_id int8, amount numeric(12,2), reason text ?, created_at timestamptz"),
+    etab("public", "shipments", "id int8 !, order_id int8, warehouse_id int8, carrier text, tracking text ?, shipped_at timestamptz ?", "table", [["order_id"]]),
+    etab("public", "warehouses", "id int8 !, code text, city text"),
+    etab("public", "schema_migrations", "version text !, applied_at timestamptz"),
+    etab("audit", "order_events", "id int8 !, order_id int8, kind text, at timestamptz"),
+  ],
+  keys: [
+    ekey("orders", ["customer_id"], "customers", ["id"]),
+    ekey("order_items", ["order_id"], "orders", ["id"]),
+    ekey("order_items", ["product_id"], "products", ["id"]),
+    ekey("products", ["warehouse_id"], "warehouses", ["id"]),
+    ekey("refunds", ["order_id"], "orders", ["id"]),
+    ekey("refunds", ["customer_id"], "customers", ["id"]),
+    ekey("shipments", ["order_id"], "orders", ["id"]),
+    ekey("shipments", ["warehouse_id"], "warehouses", ["id"]),
+    ekey("order_events", ["order_id"], "orders", ["id"], "audit"),
+  ],
+};
+// schema_links' answer for public: [referencing, referenced] pairs, read when the picker's Add linked tables is pressed
+const ERD_LINKS = [...new Set(ERD.keys.filter((k) => k.schema === "public" && k.refSchema === "public").map((k) => `${k.table}\t${k.refTable}`))].map((p) => p.split("\t"));
+const ERD_TABS = [TABS[0], TABS[1], ["erd", "network", "public", ""]];
+// Export: the image dialog (PNG: fill or transparent background; JPG: nothing to choose), the code dialog for Mermaid
+// and DBML (Copy, Save as file), and a toast after a file is saved. Nothing is sent anywhere: the person pastes or opens it.
+const erdExport = `
+<div class="backdrop" id="erd-img-dlg" hidden>
+  <div class="dialog erd-img" role="dialog" aria-modal="true" aria-labelledby="ei-title">
+    <h2 id="ei-title">Export image</h2>
+    <form>
+      <p class="help" id="ei-what">The whole diagram as drawn, at twice its size for sharp text.</p>
+      <div class="seg ei-format" role="radiogroup" aria-label="Format">
+        <button type="button" role="radio" data-fmt="png" aria-pressed="true" aria-checked="true">PNG</button>
+        <button type="button" role="radio" data-fmt="jpg" aria-pressed="false" aria-checked="false">JPG</button>
+      </div>
+      <fieldset class="ei-bg" id="ei-bg">
+        <legend>Background</legend>
+        <label class="check"><input type="radio" name="ei-bg" value="fill" checked>Fill with the diagram's background</label>
+        <label class="check"><input type="radio" name="ei-bg" value="none">Transparent</label>
+      </fieldset>
+      <footer>
+        <button type="button" class="btn" data-ei-close>Cancel</button>
+        <button type="submit" class="btn btn--primary" id="ei-go">${ic("download")}Export</button>
+      </footer>
+    </form>
+  </div>
+</div>
+<div class="backdrop" id="erd-code-dlg" hidden>
+  <div class="dialog wide erd-code" role="dialog" aria-modal="true" aria-labelledby="ec-title">
+    <h2 id="ec-title">Mermaid code</h2>
+    <form>
+      <p class="help" id="ec-help"></p>
+      <pre class="erd-code-pre" id="ec-code" tabindex="0" aria-label="Code"></pre>
+      <footer>
+        <button type="button" class="btn" id="ec-save">${ic("download")}Save as file…</button>
+        <span class="grow"></span>
+        <button type="button" class="btn" data-ec-close>Close</button>
+        <button type="submit" class="btn btn--primary" id="ec-copy">${ic("copy")}Copy</button>
+      </footer>
+    </form>
+  </div>
+</div>
+<div class="toast" role="status" id="erd-toast" hidden></div>
+<div class="backdrop" id="erd-close-dlg" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ecl-title">
+    <h2 id="ecl-title">Close public?</h2>
+    <form>
+      <p class="help" id="ecl-msg"></p>
+      <footer>
+        <button type="button" class="btn" data-ecl-cancel>Cancel</button>
+        <button type="button" class="btn" data-ecl-save>${ic("save")}Save and close</button>
+        <button type="submit" class="btn btn--primary">Close</button>
+      </footer>
+    </form>
+  </div>
+</div>`;
+// the picker lists the schema's tables as the tree already has them (load_schema): no extra read to open it
+const pickRow = ([n, est]) => `
+          <label class="check ep-row"><input type="checkbox" value="${n}"><span class="ep-name">${n}</span><span class="ep-est" title="Estimate from table statistics">~${est}</span></label>`;
+const erdPicker = `
+<div class="backdrop" id="erd-pick-dlg" hidden>
+  <div class="dialog erd-pick" role="dialog" aria-modal="true" aria-labelledby="ep-title">
+    <h2 id="ep-title">Tables to draw</h2>
+    <form>
+      <p class="help">Tables of <strong id="ep-schema">public</strong> on shop_prod. Only the tables you tick are read from the catalog and drawn.</p>
+      <div class="search">${ic("search")}<input class="field" id="ep-filter" type="search" placeholder="Filter tables" aria-label="Filter tables" autocomplete="off" spellcheck="false"></div>
+      <div class="ep-tools">
+        <button type="button" class="btn btn--quiet" id="ep-all">Select all</button>
+        <button type="button" class="btn btn--quiet" id="ep-none">Unselect all</button>
+        <button type="button" class="btn btn--quiet" id="ep-linked" title="Tick every table one foreign key away from a ticked one (reads the schema's foreign keys)">${ic("link")}${ic("loader-circle", "ep-spin")}<span>Add linked tables</span></button>
+      </div>
+      <div class="ep-list" id="ep-list" role="group" aria-label="Tables of public">${TABLES.map(pickRow).join("")}
+        <p class="ep-empty" id="ep-empty" hidden>No table matches <span id="ep-empty-q"></span></p>
+      </div>
+      <footer>
+        <span class="ep-n" id="ep-n" aria-live="polite"></span>
+        <button type="button" class="btn" data-ep-close>Cancel</button>
+        <button type="submit" class="btn btn--primary" id="ep-show">Show diagram</button>
+      </footer>
+    </form>
+  </div>
+</div>`;
+const erdTool = (icon, label, id, kbd = "") => `<button type="button" class="icon-btn" id="${id}" aria-label="${label}" title="${label}${kbd ? `  ${kbd}` : ""}">${ic(icon)}</button>`;
+pages["diagram.html"] = page({
+  title: "ypacapy preview, diagram",
+  desc: "Design preview of ypacapy's ER diagram: a schema's tables, columns and foreign keys, read from the catalog only.",
+  barHtml: bar("diagram", [["picker", "Picker, first open"], ["picker-filtered", "Picker, filtered"], ["picker-table", "Picker from orders"], ["unsaved", "Unsaved changes"], ["saved-new", "Saved, then 3 ticked"], ["saved-altered", "Saved, then orders altered"], ["reopened", "Reopened after Save"], ["drawn", "All picked"], ["few", "Three picked"], ["selected", "Table selected"], ["keys", "Key columns"], ["names", "Table names"], ["moved", "Moved by hand"], ["menu", "Table menu"], ["tree-menu", "Schema menu"], ["tab-menu", "Tab menu"], ["close-ask", "Close, not saved"], ["export-menu", "Export menu"], ["export-png", "Export PNG"], ["export-jpg", "Export JPG"], ["export-mermaid", "Mermaid code"], ["export-dbml", "DBML code"], ["export-drawio", "Saved .drawio"], ["none", "Picker cancelled"], ["loading", "Loading"], ["error", "Catalog error"]]),
+  body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: `${tabsbar("erd", ["erd"], { tabs: ERD_TABS }).replace('data-tab="erd"', 'data-tab="erd" data-unpinnable')}
+      <div class="work-body erd-body">
+        <div class="req-title"><span class="name name--static" id="erd-title">public</span><span class="path" id="erd-path">shop_prod / shop / public</span></div>
+        <div class="erd-tools" role="toolbar" aria-label="Diagram">
+          <button type="button" class="btn btn--quiet erd-pick-btn" id="erd-pick-btn" title="Choose the tables to draw">${ic("list-checks")}Tables<span class="n" id="erd-pick-n"></span></button>
+          <div class="menu-anchor">
+            <button type="button" class="btn btn--quiet erd-export" id="erd-export" data-menu="erd-export-menu" aria-haspopup="menu" aria-expanded="false" title="Export the diagram">${ic("download")}Export</button>
+            <div class="menu" id="erd-export-menu" role="menu" aria-label="Export as" hidden>
+              <p class="menu-note">Export as</p>
+              <button type="button" role="menuitem" data-ex="image">${ic("image")}Image (PNG or JPG)…</button>
+              <button type="button" role="menuitem" data-ex="mermaid">${ic("file-code")}Mermaid code…</button>
+              <button type="button" role="menuitem" data-ex="dbml">${ic("file-code")}DBML for dbdiagram.io…</button>
+              <button type="button" role="menuitem" data-ex="drawio">${ic("file-down")}diagrams.net file (.drawio)…</button>
+            </div>
+          </div>
+          <button type="button" class="btn btn--quiet erd-save" id="erd-save" title="Save the tables and layout with shop_prod  ⌘S" disabled>${ic("save")}<span>Save</span></button>
+          ${erdTool("refresh-cw", "Read the catalog again", "erd-refresh")}
+          <span class="sep" aria-hidden="true"></span>
+          ${erdTool("zoom-out", "Zoom out", "erd-out", "−")}
+          ${erdTool("zoom-in", "Zoom in", "erd-in", "+")}
+          <button type="button" class="btn btn--quiet erd-zoom" id="erd-actual" title="Actual size  0" aria-label="Zoom 100%, actual size">100%</button>
+          ${erdTool("maximize", "Fit the diagram", "erd-fit")}
+          ${erdTool("undo-2", "Reset layout: arrange every table afresh (Save keeps it)", "erd-reset")}
+          <span class="sep" aria-hidden="true"></span>
+          ${sel("Columns shown", ["All columns", "Key columns", "Table names"]).replace("<select ", '<select id="erd-detail" ')}
+          <span class="push erd-status" id="erd-status" aria-live="polite"></span>
+        </div>
+        <div class="erd-state" data-erd="ready">
+          <div class="erd-host" id="erd-host" tabindex="0" role="img" aria-label="Diagram of public"><div class="erd-world" id="erd-world"></div></div>
+          <p class="erd-foot">Drag a table to move it. Drag the background or scroll to pan, ⌘ scroll or pinch to zoom. Double-click a table to open its rows. Save keeps the picked tables and this layout with shop_prod; Show diagram brings them back, after a restart too. Tables ticked after a save are placed to the right of the saved ones.</p>
+        </div>
+        <div class="erd-state" data-erd="loading" hidden><div class="empty"><span class="spinner"></span><strong>Reading the catalog of public</strong><span>Tables, columns and foreign keys. No row is read.</span></div></div>
+        <div class="erd-state" data-erd="none" hidden><div class="empty"><strong>No tables picked</strong><span>Pick the tables of public to draw. Only those are read from the catalog.</span><button type="button" class="btn btn--primary" id="erd-pick-empty">${ic("list-checks")}Choose tables</button></div></div>
+        <div class="erd-state" data-erd="error" hidden><div class="empty"><strong>Could not read the catalog of audit</strong><span class="erd-err">permission denied for schema audit</span><span>Ask for USAGE on the schema, then refresh.</span></div></div>
+      </div>
+      <div class="menu ctx-menu" id="erd-menu" role="menu" aria-label="Table" hidden>
+        <button type="button" role="menuitem" data-erd-act="rows">${ic("table-2")}Open rows</button>
+        <button type="button" role="menuitem" data-erd-act="query">${ic("square-code")}New query on this table</button>
+        <hr>
+        <button type="button" role="menuitem" data-erd-act="focus">${ic("network")}Show diagram of this table</button>
+        <button type="button" role="menuitem" data-erd-act="reveal">${ic("locate")}Select in Schema tree</button>
+        <button type="button" role="menuitem" data-erd-act="hide">${ic("eye-off")}Hide from diagram</button>
+      </div>`, overlay: erdPicker + erdExport }),
+  script: `${ERD_LIB}\nwindow.ERD_DATA = ${JSON.stringify(ERD)};\nwindow.ERD_LINKS = ${JSON.stringify(ERD_LINKS)};\nconst TYPE_ICON = ${TYPE_ICON.toString()};\n` + js("page-diagram.js"),
 });
 
 // Settings: voidHTTP's one dialog, its .vars.settings layout

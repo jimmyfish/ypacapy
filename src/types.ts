@@ -1,4 +1,4 @@
-export type Engine = "postgres" | "mysql" | "sqlite" | "mongo";
+export type Engine = "postgres" | "mysql" | "sqlite" | "mongo" | "redis";
 /**
  * A connection's security level, for the statements it asks about (Conn.protect): None runs them, Low asks to
  * confirm, Strict asks for the passphrase (needs one set, in Settings › Security). Other statements run.
@@ -13,7 +13,7 @@ export const LEVELS: [SecurityLevel, string, string][] = [
   ["strict", "Strict", "Passphrase for the picked statements"],
 ];
 export type SslMode = "disable" | "prefer" | "require" | "verify-ca" | "verify-full";
-/** MongoDB TLS; missing = on for an SRV record, off for a host and port */
+/** MongoDB and Redis TLS; MongoDB: missing = on for an SRV record, off for a host and port. Redis: on = rediss:// */
 export type MongoTls = "off" | "on" | "insecure";
 export type ReadPref = "primary" | "primaryPreferred" | "secondary" | "secondaryPreferred" | "nearest";
 
@@ -68,6 +68,10 @@ export interface Conn {
   direct?: boolean;
   /** MongoDB: seconds between the driver's hello to each host; missing = 60 */
   serverCheck?: number;
+  /** Redis: the tree puts keys into folders on this; missing = ":", "" = every key flat */
+  keySep?: string;
+  /** Redis: about this many keys per SCAN call; missing = 1000 */
+  scanCount?: number;
   lastOpened?: number;
   /** ms since the epoch; missing on connections saved before it was recorded */
   createdAt?: number;
@@ -122,6 +126,70 @@ export const MONGO_KINDS: [string, string[], string?][] = [
   ["users", ["createUser", "grantRolesToUser", "revokeRolesFromUser"]],
 ];
 
+/**
+ * Redis's guard kinds (redis_cli::KINDS in Rust), each with the commands it shows and a tag. KEYS is a read, on the
+ * list because it walks every key and holds the server while it does.
+ */
+export const REDIS_KINDS: [string, string[], string?][] = [
+  ["strings", ["SET", "MSET", "APPEND", "INCR", "DECR"], "Strings"],
+  ["hashes", ["HSET", "HDEL", "HINCRBY"], "Hashes"],
+  ["lists", ["LPUSH", "RPUSH", "LPOP", "RPOP", "LREM", "LTRIM"], "Lists"],
+  ["sets", ["SADD", "SREM", "SMOVE"], "Sets"],
+  ["zsets", ["ZADD", "ZREM", "ZINCRBY", "ZREMRANGEBYSCORE"], "Sorted sets"],
+  ["streams", ["XADD", "XDEL", "XTRIM"], "Streams"],
+  ["keys", ["DEL", "UNLINK", "RENAME"]],
+  ["expire", ["EXPIRE", "PERSIST"]],
+  ["flush", ["FLUSHDB", "FLUSHALL"]],
+  ["scripts", ["EVAL", "EVALSHA", "FCALL"], "Scripts can write"],
+  ["server", ["CONFIG SET", "SCRIPT FLUSH", "SHUTDOWN"]],
+  ["KEYS", ["KEYS"], "A read that blocks the server"],
+];
+/** Redis: one key the tree's SCAN returned, with its TYPE and PTTL from the same read */
+export interface ScanKey {
+  key: string;
+  /** string, hash, list, set, zset, stream, or a module's type */
+  type: string;
+  /** ms left when it was read; -1 no expiry */
+  ttlMs: number;
+}
+/** Redis: the keys read so far, for the tree. cursor "0" after a read: the scan is done */
+export interface RedisKeys {
+  state: "loading" | "loaded" | "error";
+  keys: ScanKey[];
+  cursor: string;
+  /** DBSIZE */
+  total: number;
+  /** SCAN's MATCH; "" for every key */
+  pattern: string;
+  /** ms since the epoch, when the TTLs were read */
+  readAt: number;
+  error?: string;
+}
+/** Redis: one page of a key */
+export interface KeyPage {
+  /** string, hash, list, set, zset, stream, a module's type, or none (the key is gone) */
+  type: string;
+  len: number | null;
+  ttlMs: number;
+  columns: ColMeta[];
+  rows: (string | null)[][];
+  value: string | null;
+  binary: boolean;
+  cut: boolean;
+  /** the next page's cursor, offset or last id; null at the end */
+  next: string | null;
+  ms: number;
+}
+/** Redis Info: read when the dialog opens */
+export interface KeyInfo {
+  type: string;
+  encoding: string | null;
+  len: number | null;
+  ttlMs: number;
+  memory: number | null;
+  idle: number | null;
+  readAt: number;
+}
 export interface OpenInfo {
   server: string;
   databases: string[];
@@ -180,6 +248,8 @@ export interface ResultSet {
   docs?: unknown[];
   /** MongoDB: a cell whose document has no such field, by row then column (not null: absent) */
   missing?: boolean[][];
+  /** Redis: the reply as redis-cli prints it */
+  raw?: string;
 }
 
 /** MongoDB Info: one $collStats, read when the dialog opens */
@@ -207,8 +277,10 @@ export interface Ask {
   touchId: boolean;
   unreadable: boolean;
   error: string | null;
-  /** MongoDB: the methods asked about (deleteMany, $merge), shown in place of kinds */
+  /** MongoDB and Redis: the methods or commands asked about (deleteMany, DEL), shown in place of kinds */
   ops?: string[];
+  /** something asked about deletes or overwrites: the ask says it cannot be undone */
+  final?: boolean;
 }
 
 export type RunOutcome =
@@ -224,7 +296,8 @@ export type RunOutcome =
       server: string;
     }
   | Ask
-  | { kind: "error"; title: string; says: string | null; message: string; hint: string | null; lost: boolean; ms: number }
+  /** fix: Redis, a command that does what was meant (HGETALL for a hash read with LRANGE) */
+  | { kind: "error"; title: string; says: string | null; message: string; hint: string | null; lost: boolean; ms: number; fix?: string }
   | { kind: "cancelled"; ms: number; timeout: boolean };
 
 export type Approval = { kind: "confirm" } | { kind: "passphrase"; passphrase: string } | { kind: "touchId" };
@@ -298,7 +371,27 @@ export interface TableTab {
   infoError?: string;
 }
 
-export type Tab = QueryTab | TableTab;
+/** Redis: one key, read a page at a time */
+export interface KeyTab {
+  id: string;
+  kind: "key";
+  key: string;
+  /** hash and set: HSCAN or SSCAN's MATCH */
+  pattern: string;
+  /** sorted set: lowest score first */
+  ascending?: boolean;
+  /** string: as text or as JSON */
+  as?: "text" | "json";
+  /** where each page read so far starts (cursor, offset or last id); "" for the first. page indexes it */
+  starts: string[];
+  page: number;
+  pinned?: boolean;
+  /** the page's read: status and runId as a query's (Close and Cancel stop it); no outcome */
+  run: RunState;
+  data?: KeyPage;
+  error?: string;
+}
+export type Tab = QueryTab | TableTab | KeyTab;
 
 export interface SchemaNode {
   state: "loading" | "loaded" | "error";
@@ -318,6 +411,8 @@ export interface Session {
   /** columns autocomplete has read, per "schema.table"; cleared with the tree */
   columns: Record<string, ColumnsEntry>;
   expanded: Record<string, boolean>;
+  /** Redis: the keys the tree read with SCAN */
+  keys?: RedisKeys;
   tabs: Tab[];
   activeTabId: string | null;
 }

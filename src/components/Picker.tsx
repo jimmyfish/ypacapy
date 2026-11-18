@@ -236,9 +236,10 @@ export const ENGINE_LABELS: Record<Engine, string> = {
   mysql: "MySQL / MariaDB",
   sqlite: "SQLite",
   mongo: "MongoDB",
+  redis: "Redis",
 };
 
-const ENGINES: Engine[] = ["postgres", "mysql", "sqlite", "mongo"];
+const ENGINES: Engine[] = ["postgres", "mysql", "sqlite", "mongo", "redis"];
 
 export function EnginePicker({
   id,

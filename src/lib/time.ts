@@ -47,3 +47,15 @@ export function duration(ms: number): string {
   const m = Math.floor(ms / 60_000);
   return `${m} min ${Math.round((ms % 60_000) / 1000)} s`;
 }
+
+/** Redis: a TTL as people say it, from its largest unit: 48 s, 23 min, 1 h 52 min, 3 days */
+export function ttlLeft(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 60) return `${s} s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return m % 60 ? `${h} h ${m % 60} min` : `${h} h`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? "1 day" : `${d} days`;
+}

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Approval, CollInfo, ColumnBrief, Conn, HistoryEntry, OpenInfo, RunOutcome, Saved, SchemaObjects, SecurityLevel, Settings, TableInfo } from "../types";
+import type { Approval, CollInfo, ColumnBrief, Conn, HistoryEntry, KeyInfo, KeyPage, OpenInfo, RunOutcome, Saved, ScanKey, SchemaObjects, SecurityLevel, Settings, TableInfo } from "../types";
 
 /** Every Tauri command, typed. Rust errors arrive as strings. */
 export const api = {
@@ -30,6 +30,12 @@ export const api = {
     invoke<RunOutcome>("mongo_find", { req }),
   /** MongoDB Info: listCollections and $collStats, once */
   mongoStats: (id: string, database: string, collection: string) => invoke<CollInfo>("mongo_stats", { id, database, collection }),
+  /** Redis's tree: one SCAN step from cursor ("0" starts over), with TYPE and PTTL for each key, and DBSIZE */
+  redisScan: (id: string, cursor: string, pattern?: string) => invoke<{ cursor: string; keys: ScanKey[]; total: number }>("redis_scan", { id, cursor, pattern }),
+  /** Redis's key tab: one page, read for the key's type; cursor (hash, set), offset (list, zset) or after (stream) */
+  redisKey: (req: { runId: string; connId: string; key: string; cursor?: string; offset?: number; after?: string; pattern?: string; ascending?: boolean }) => invoke<KeyPage>("redis_key", { req }),
+  /** Redis Info: TYPE, OBJECT, PTTL, MEMORY USAGE, once */
+  redisKeyInfo: (id: string, key: string) => invoke<KeyInfo>("redis_key_info", { id, key }),
   /** one transaction; every statement must change exactly one row */
   applyEdits: (req: { connId: string; database?: string; statements: string[]; approval?: Approval }) => invoke<RunOutcome>("apply_edits", { req }),
   passphraseStatus: () => invoke<{ set: boolean; touchIdAvailable: boolean }>("passphrase_status"),

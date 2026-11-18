@@ -15,7 +15,7 @@ const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "hous
   "ellipsis", "ellipsis-vertical", "shredder", "chevron-down", "chevron-right", "chevron-left", "folder", "eye", "square-function", "table-2", "square-code", "panel-left-close",
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus", "pin", "pin-off",
-  "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check"];
+  "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check", "timer"];
 // Lucide 1.x renamed fingerprint; the old name is what the pages use
 const RENAMED = { fingerprint: "fingerprint-pattern" };
 // Lucide 1.x has no brand icons: GitHub's mark as lucide-react 0.460.0 drew it (ISC), the same as src/components/Icon.tsx
@@ -111,6 +111,8 @@ const inspector = (col, type, row, value) => `
             </div>`;
 
 // ---------- shell: title strip, rail, panel ----------
+// where a connection opens: MongoDB on a collection, Redis on its console, SQL engines on the query tab
+const openHref = (engine) => `./${{ mongo: "collection", redis: "redis" }[engine] || "index"}.html`;
 const CONNS = [["shop_prod", "server", 6, "postgres"], ["analytics.sqlite", "hard-drive", 2, "sqlite"], ["legacy_cms", "server", 3, "mysql"]];
 const tile = (icon, n, sm = true) => `<span class="proj-tile${sm ? " proj-tile--sm" : ""}" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)">${ic(icon)}</span>`;
 const strip = (current, chip = "", conns = CONNS.slice(0, 2)) => `
@@ -122,7 +124,7 @@ const strip = (current, chip = "", conns = CONNS.slice(0, 2)) => `
       <button type="button" class="ptab" data-href="./home.html"${current === "home" ? ' aria-current="page"' : ""}>${ic("house")}Home</button>
       <span class="ptab-sep" aria-hidden="true"></span>
 ${conns.map(([name, , n, engine]) => `      <div class="ptab ptab--project" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)"${current === name ? ' aria-current="page"' : ""}>
-        <button type="button" class="ptab-main" data-href="./${engine === "mongo" ? "collection" : "index"}.html"><span class="proj-tile proj-tile--sm">${engIco(engine, 13)}</span>${name}</button>
+        <button type="button" class="ptab-main" data-href="${openHref(engine)}"><span class="proj-tile proj-tile--sm">${engIco(engine, 13)}</span>${name}</button>
         <button type="button" class="icon-btn ptab-close" aria-label="Close ${name}">${ic("x")}</button>
       </div>`).join("\n")}
     </nav>
@@ -356,7 +358,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
       </div>`;
 
 // ---------- preview bar ----------
-const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["mongo", "MongoDB"], ["collection", "Collection"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["about", "About"]];
+const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["mongo", "MongoDB"], ["collection", "Collection"], ["redis", "Redis"], ["key", "Key"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["about", "About"]];
 const UI_FONTS = `<option value="">System</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option><option value="Avenir Next, Avenir, sans-serif">Avenir</option><option value="Georgia, serif">Georgia</option>`;
 const MONO_FONTS = `<option value="">System mono</option><option value="Menlo, monospace">Menlo</option><option value="'Courier New', monospace">Courier</option><option value="Monaco, monospace">Monaco</option>`;
 // preview-only: recolour the first connection tab (shop_prod) to try each connection colour on the title strip
@@ -418,12 +420,14 @@ const pages = {};
 
 // Engine glyphs, the same as src/components/EngineIcon.tsx (adopted from opengrip): a PostgreSQL elephant, a MySQL
 // dolphin, an SQLite feather, 16x16 in their brand colours. Each fill is a light-dark() pair, so it follows color-scheme.
-const ENGINE_NAME = { postgres: "PostgreSQL", mysql: "MySQL", sqlite: "SQLite", mongo: "MongoDB" };
+const ENGINE_NAME = { postgres: "PostgreSQL", mysql: "MySQL", sqlite: "SQLite", mongo: "MongoDB", redis: "Redis" };
 const ld = (l, d) => `light-dark(${l}, ${d})`;
 const ENGINE_GLYPH = {
   postgres: `<path d="M4.2 3C5.4 1.9 7.6 1.5 9.6 1.9C12.4 2.5 14 4.5 13.7 7.4C13.5 9.2 12.6 10.4 11.3 10.7L11.5 13.2C11.5 14 10.7 14.5 10 14L9.1 13.3V11C7.8 11.1 6.6 10.8 5.7 10.1C5.4 11.2 4.8 12.2 3.8 12.5C3 12.7 2.4 11.9 2.8 11.2C3.4 10.1 3.3 8.8 2.9 7.6C2.4 5.9 2.8 4.2 4.2 3Z" style="fill:${ld("#336791", "#4c82b5")};stroke:${ld("#ffffff", "#e6eef5")}" stroke-width="0.8" stroke-linejoin="round"/><path d="M9.6 4.5C10.8 5.3 11.3 6.8 10.8 8.4" style="stroke:${ld("#ffffff", "#e6eef5")}" stroke-width="0.8" stroke-linecap="round"/><circle cx="7.6" cy="5.4" r="0.8" style="fill:${ld("#ffffff", "#e6eef5")}"/>`,
   mysql: `<path d="M1.5 12C3.1 8.3 6.3 5.7 10.2 5.2C11 4.1 12.1 3.3 13.6 3.1C13.2 4 13.1 4.9 13.4 5.7C14.2 6.6 14.6 7.9 14.4 9.3C13.8 8.5 12.8 8 11.7 8C8.7 8 5.4 9.6 1.5 12Z" style="fill:${ld("#00758f", "#2a9bb5")}"/><path d="M11.8 9.7C12.4 10.9 12.3 12.4 11.5 13.7C11.3 12.5 10.6 11.6 9.7 11.1" style="stroke:${ld("#f29111", "#f5a742")}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`,
   sqlite: `<path d="M2 3.5C2 2.67 2.67 2 3.5 2H10.2L7.6 14H3.5C2.67 14 2 13.33 2 12.5V3.5Z" style="fill:${ld("#0f80cc", "#3d8fd1")}"/><path d="M14.2 1.4C11.3 2.4 9.3 5.4 8.6 9.3L8 14H8.9L9.5 9.7C12.6 8.6 14.5 5.4 14.2 1.4Z" style="fill:${ld("#0b4f82", "#9ccbf0")}"/><path d="M13.4 2.9C11.7 4.6 10.4 6.9 9.5 9.6" style="stroke:${ld("#bfe0f7", "#1e3a52")}" stroke-width="0.7" stroke-linecap="round"/>`,
+  // Redis: three stacked layers in Redis red; ypacapy's own drawing, not the Redis logo
+  redis: `<path d="M8 1.8L14.2 4.4L8 7L1.8 4.4Z" style="fill:${ld("#d82c20", "#ff5a4e")}"/><path d="M1.8 7.4L8 10L14.2 7.4V8.8L8 11.4L1.8 8.8Z" style="fill:${ld("#a41e11", "#e8443a")}"/><path d="M1.8 10.6L8 13.2L14.2 10.6V12L8 14.6L1.8 12Z" style="fill:${ld("#a41e11", "#e8443a")}"/>`,
   mongo: `<path d="M8 1.2C8 1.2 3.9 4.7 3.9 9C3.9 11.5 5.6 13.3 7.5 13.8L7.7 15.2H8.3L8.5 13.8C10.4 13.3 12.1 11.5 12.1 9C12.1 4.7 8 1.2 8 1.2Z" style="fill:${ld("#00684a", "#00a35c")}"/><path d="M8 3.4V13.6" style="stroke:${ld("#c1f2d6", "#0b3b2a")}" stroke-width="0.8" stroke-linecap="round"/>`,
 };
 const engIco = (engine, size = 14) => `<svg class="engine-ico" width="${size}" height="${size}" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">${ENGINE_GLYPH[engine]}</svg>`;
@@ -432,8 +436,8 @@ const engIco = (engine, size = 14) => `<svg class="engine-ico" width="${size}" h
 // A connection card. Its "…" shows on hover and holds every action: Edit, Duplicate, Move to group, Remove.
 const GROUPS = ["Production", "Staging"];
 const card = ([name, icon, n, engine], [head, tail], when, o = {}) => `
-          <div class="project-card conn-card"${o.id ? ` data-card="${o.id}"` : ""} data-q="${esc(`${name} ${head}${tail} ${{ postgres: "postgresql pg", mysql: "mysql", sqlite: "sqlite", mongo: "mongodb mongo" }[engine]} ${o.group || ""}`.toLowerCase())}">
-            <button type="button" class="project-open" aria-label="Open ${name}, ${head}${tail}" data-href="./${engine === "mongo" ? "collection" : "index"}.html"></button>
+          <div class="project-card conn-card"${o.id ? ` data-card="${o.id}"` : ""} data-q="${esc(`${name} ${head}${tail} ${{ postgres: "postgresql pg", mysql: "mysql", sqlite: "sqlite", mongo: "mongodb mongo", redis: "redis cache" }[engine]} ${o.group || ""}`.toLowerCase())}">
+            <button type="button" class="project-open" aria-label="Open ${name}, ${head}${tail}" data-href="${openHref(engine)}"></button>
             <span class="proj-tile" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)">${engIco(engine, 22)}</span>
             <span class="conn-id"><span class="proj-name">${name}</span><span class="proj-cols"><span class="sr-only">${ENGINE_NAME[engine]}</span><span class="addr"><span class="addr-head">${head}</span><span class="addr-tail">${tail}</span></span></span></span>
             <span class="proj-when">${when}</span>${o.id ? `
@@ -488,6 +492,7 @@ const C = {
   shopCopy: card(["shop_prod copy", "server", 6, "postgres"], ["localhost", ":5432 / shop"], "Not opened yet", { id: "shopcopy", group: "Production" }),
   cms: card(CONNS[2], ["10.0.4.12", ":3306 / cms"], "Opened yesterday at 16:40", { id: "cms", group: "Production" }),
   events: card(["events_prod", "server", 2, "mongo"], ["events-prod.x1y2z.mongodb.net", " / events"], "Opened today at 09:58", { id: "events", group: "Production" }),
+  cache: card(["cache_prod", "server", 3, "redis"], ["cache-prod.k3j9qa.ng.0001.apse3.cache.amazonaws.com", ":6379 / db0"], "Opened today at 10:02", { id: "cache", group: "Production" }),
   staging: card(["loophealth-staging", "server", 4, "postgres"], ["loophealth-staging-3may.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com", ":5432 / postgres"], "Opened today at 09:12", { id: "staging", group: "Staging" }),
   analytics: card(CONNS[1], ["~/data/", "analytics.sqlite"], "Opened today at 08:30", { id: "analytics" }),
   backup: card(["production.sqlite", "hard-drive", 2, "sqlite"], ["~/Shelter/data/rabbit/backup/", "production.sqlite"], "Opened today at 08:55", { id: "backup" }),
@@ -501,6 +506,7 @@ const MANY = [
     ["inventory_prod", "postgres", 5, RDS("inventory-prod"), ":5432 / inventory", "Opened yesterday at 17:02"],
     ["legacy_cms", "mysql", 3, "10.0.4.12", ":3306 / cms", "Opened yesterday at 16:40"],
     ["events_prod", "mongo", 2, "events-prod.x1y2z.mongodb.net", " / events", "Opened today at 09:58"],
+    ["cache_prod", "redis", 3, "cache-prod.k3j9qa.ng.0001.apse3.cache.amazonaws.com", ":6379 / db0", "Opened today at 10:02"],
     ["auth_prod", "postgres", 7, RDS("auth-prod"), ":5432 / auth", "Opened 3 days ago"],
     ["search_prod", "mysql", 6, "10.0.4.31", ":3306 / search", "Opened 4 days ago"],
     ["notifications_prod", "postgres", 8, RDS("notifications-prod"), ":5432 / notify", "Opened last week"],
@@ -513,6 +519,7 @@ const MANY = [
     ["cms_staging", "mysql", 3, "10.1.4.12", ":3306 / cms", "Opened 5 days ago"],
     ["auth_staging", "postgres", 7, RDS("auth-staging"), ":5432 / auth", "Opened last week"],
     ["search_staging", "mysql", 6, "10.1.4.31", ":3306 / search", "Not opened yet"],
+    ["sessions_staging", "redis", 3, "sessions-staging.k3j9qa.ng.0001.apse3.cache.amazonaws.com", ":6379 / db2", "Opened 2 days ago"],
   ]],
   ["Analytics", 0, [
     ["warehouse", "postgres", 8, RDS("warehouse"), ":5432 / dwh", "Opened today at 08:12"],
@@ -532,6 +539,7 @@ const MANY = [
     ["orders_dev", "postgres", 1, "localhost", ":5432 / orders_dev", "Opened yesterday at 18:44"],
     ["cms_dev", "mysql", 3, "localhost", ":3306 / cms", "Opened 2 days ago"],
     ["events_dev", "mongo", 2, "localhost", ":27017 / events", "Opened 3 days ago"],
+    ["redis_dev", "redis", 3, "localhost", ":6379 / db0", "Opened 3 days ago"],
     ["fixtures.sqlite", "sqlite", 2, "~/code/shop/test/", "fixtures.sqlite", "Opened 4 days ago"],
     ["docker_pg16", "postgres", 4, "127.0.0.1", ":55432 / postgres", "Opened last week"],
   ]],
@@ -582,7 +590,7 @@ pages["home.html"] = page({
       </div>
       <p class="sr-only" id="home-q-h">Enter opens the first match. Escape clears the search.</p>
       <div class="empty home-empty" id="home-empty" hidden><strong>No connection matches <span id="home-empty-q"></span></strong><span>Searches names, hosts, users, databases, files, engines and groups.</span><button type="button" class="link" id="home-clear">Clear the search</button></div>
-      <div class="conn-groups" data-when="grouped">${groupSection("prod", "Production", [C.shop, C.shopCopy, C.events, C.cms], { open: 2 })}${groupSection("staging", "Staging", [C.staging])}
+      <div class="conn-groups" data-when="grouped">${groupSection("prod", "Production", [C.shop, C.shopCopy, C.events, C.cache, C.cms], { open: 2 })}${groupSection("staging", "Staging", [C.staging])}
       <section class="conn-group" data-group-id="none">
         <div class="group-head"><h2>Ungrouped</h2><span class="group-count">2</span><span class="drop-note">Drop to remove from its group</span></div>
         <div class="projects">${C.analytics}${C.backup}${newCard("")}
@@ -606,9 +614,10 @@ ${manyHtml}
     <h2 id="rm-title">Remove shop_prod?</h2>
     <form>
       <p class="help">ypacapy removes the connection, its keychain password and its query history from this Mac. Saved queries stay. The database is not touched.</p>
+      <p class="guard-final">${ic("shredder")}<span>It cannot be undone. To use the connection again, add it again with its password.</span></p>
       <footer>
         <button type="button" class="btn" data-rm-close>Cancel</button>
-        <button type="submit" class="btn btn--danger">Remove</button>
+        <button type="submit" class="btn btn--danger">${ic("shredder", "final-ico")}Remove</button>
       </footer>
     </form>
   </div>
@@ -629,6 +638,8 @@ ${manyHtml}
   script: js("page-home.js"),
 });
 
+// The write guard's ask, before a write runs. A statement that deletes or overwrites (DELETE, DROP, TRUNCATE, deleteMany,
+// $merge, DEL, FLUSHDB…) also says it cannot be undone, and Run carries the shredder; a dialog with data-final="false" hides both.
 // The write guard's ask, before a write runs. Ask to confirm: Run or Cancel. Passphrase protection (the
 // statement is in the connection's What to protect, a passphrase is set): the passphrase or Touch ID, whatever the guard.
 const guardDialogs = `
@@ -638,9 +649,10 @@ const guardDialogs = `
     <form>
       <p class="help">It changes data or structure on shop_prod:</p>
       <div class="guard-kinds"><code class="stmt">DELETE</code></div>
+      <p class="guard-final" data-final>${ic("shredder")}<span>It cannot be undone. ypacapy keeps no copy of what it deletes or overwrites.</span></p>
       <footer>
         <button type="button" class="btn" data-guard-close>Cancel</button>
-        <button type="submit" class="btn btn--danger">Run</button>
+        <button type="submit" class="btn btn--danger">${ic("shredder", "final-ico")}<span data-run-label>Run</span></button>
       </footer>
     </form>
   </div>
@@ -651,12 +663,13 @@ const guardDialogs = `
     <form>
       <p class="help">It changes data or structure on shop_prod:</p>
       <div class="guard-kinds"><code class="stmt">DELETE</code></div>
+      <p class="guard-final" data-final>${ic("shredder")}<span>It cannot be undone. ypacapy keeps no copy of what it deletes or overwrites.</span></p>
       <label>Passphrase<input class="field" type="password" id="guard-pass-in" autocomplete="current-password"></label>
       <p class="help err" role="alert" id="guard-pass-err" hidden>That passphrase is not right.</p>
       <footer>
         <button type="button" class="btn" id="guard-touch" hidden>${ic("fingerprint")}Use Touch ID</button>
         <button type="button" class="btn" data-guard-close>Cancel</button>
-        <button type="submit" class="btn btn--danger">Run</button>
+        <button type="submit" class="btn btn--danger">${ic("shredder", "final-ico")}<span data-run-label>Run</span></button>
       </footer>
     </form>
   </div>
@@ -764,6 +777,11 @@ const LEVEL_DESC = { none: "Every statement runs", low: "Confirm the statements 
 // $out or $merge writes too, so it is on the list; a plain aggregate is a read.
 const MONGO_OPS = [[["insertOne", "insertMany"]], [["updateOne", "updateMany", "replaceOne"]], [["deleteOne", "deleteMany"]], [["findOneAndUpdate", "findOneAndReplace", "findOneAndDelete"]], [["bulkWrite"]],
   [["$out", "$merge"], "In aggregate"], [["drop", "dropDatabase", "dropIndex"]], [["createCollection", "createIndex"]], [["renameCollection", "collMod"]], [["createUser", "grantRolesToUser", "revokeRolesFromUser"]]];
+// Redis has commands: the guard asks about the ones that write, grouped by the type they write to, plus KEYS, a read
+// that walks every key and holds the server while it does. A script can write, so EVAL and friends are on the list too.
+const REDIS_OPS = [[["SET", "MSET", "APPEND", "INCR", "DECR"], "Strings"], [["HSET", "HDEL", "HINCRBY"], "Hashes"], [["LPUSH", "RPUSH", "LPOP", "RPOP", "LREM", "LTRIM"], "Lists"],
+  [["SADD", "SREM", "SMOVE"], "Sets"], [["ZADD", "ZREM", "ZINCRBY", "ZREMRANGEBYSCORE"], "Sorted sets"], [["XADD", "XDEL", "XTRIM"], "Streams"], [["DEL", "UNLINK", "RENAME"]], [["EXPIRE", "PERSIST"]],
+  [["FLUSHDB", "FLUSHALL"]], [["EVAL", "EVALSHA", "FCALL"], "Scripts can write"], [["CONFIG SET", "SCRIPT FLUSH", "SHUTDOWN"]], [["KEYS"], "A read that blocks the server"]];
 const STMTS = [["INSERT"], ["UPDATE"], ["DELETE"], ["REPLACE", "MySQL"], ["ALTER"], ["DROP"], ["TRUNCATE"], ["CREATE"], ["GRANT"], ["REVOKE"]];
 const passField = (id, label, auto) => `<label>${label}<input class="field" id="${id}" type="password" autocomplete="${auto}" required aria-required="true"></label>`;
 const subDialog = (key, title, body, primary, danger) => `
@@ -873,8 +891,8 @@ const lab = (id, t) => `<label for="${id}">${t}</label>`;
 const COLORS = [["5", "Turquoise"], ["2", "Emerald"], ["7", "Sunflower"], ["3", "Carrot"], ["6", "Alizarin"], ["1", "River"], ["8", "Asphalt"], ["4", "Amethyst"]];
 pages["connect.html"] = page({
   title: "ypacapy preview, new connection",
-  desc: "Design preview of adding a PostgreSQL, MySQL, SQLite or MongoDB connection in ypacapy, with its password kept in the macOS keychain.",
-  barHtml: bar("connect", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["mongo", "MongoDB (SRV)"], ["mongo-host", "MongoDB host and port"], ["mongo-url", "MongoDB URL only"], ["mongo-options", "MongoDB Options"], ["mongo-tls", "MongoDB TLS"], ["mongo-advanced", "MongoDB Advanced"], ["mongo-test-ok", "MongoDB test passed"], ["mongo-test-failed", "MongoDB test failed"], ["url-only", "URL only"], ["options", "Options tab"], ["options-low", "Low"], ["options-strict", "Strict"], ["options-nopass", "No passphrase set"], ["level-menu", "Security level menu"], ["group-menu", "Group menu"], ["group-new", "New group"], ["ssl", "SSL tab"], ["advanced", "Advanced tab"], ["name-missing", "Name missing"], ["testing", "Testing"], ["test-stopped", "Test stopped"], ["test-ok", "Test passed"], ["test-failed", "Test failed"]]),
+  desc: "Design preview of adding a PostgreSQL, MySQL, SQLite, MongoDB or Redis connection in ypacapy, with its password kept in the macOS keychain.",
+  barHtml: bar("connect", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["mongo", "MongoDB (SRV)"], ["mongo-host", "MongoDB host and port"], ["mongo-url", "MongoDB URL only"], ["mongo-options", "MongoDB Options"], ["mongo-tls", "MongoDB TLS"], ["mongo-advanced", "MongoDB Advanced"], ["mongo-test-ok", "MongoDB test passed"], ["mongo-test-failed", "MongoDB test failed"], ["redis", "Redis"], ["redis-url", "Redis URL only"], ["redis-options", "Redis Options"], ["redis-tls", "Redis TLS"], ["redis-advanced", "Redis Advanced"], ["redis-test-ok", "Redis test passed"], ["redis-test-failed", "Redis test failed"], ["url-only", "URL only"], ["options", "Options tab"], ["options-low", "Low"], ["options-strict", "Strict"], ["options-nopass", "No passphrase set"], ["level-menu", "Security level menu"], ["group-menu", "Group menu"], ["group-new", "New group"], ["ssl", "SSL tab"], ["advanced", "Advanced tab"], ["name-missing", "Name missing"], ["testing", "Testing"], ["test-stopped", "Test stopped"], ["test-ok", "Test passed"], ["test-failed", "Test failed"]]),
   body: `
 <div class="app">${strip("home")}
   <div class="home"><div class="home-inner"><div class="home-head"><div><h1>Connections</h1><p class="muted">Everything stays on this Mac, in ~/.config/ypacapy.</p></div></div></div></div>
@@ -901,12 +919,13 @@ pages["connect.html"] = page({
 
       <div class="cx-panel" role="tabpanel" id="p-general" aria-labelledby="t-general">
         <div class="cx-grid">
-          ${lab("c-engine", "Driver")}<span class="cx-full cx-driver">${ic("server", "drv-ico")}${csel("c-engine", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["mongo", "MongoDB"]], "postgres")}</span>
+          ${lab("c-engine", "Driver")}<span class="cx-full cx-driver">${ic("server", "drv-ico")}${csel("c-engine", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["mongo", "MongoDB"], ["redis", "Redis"]], "postgres")}</span>
           <span class="cx-label" id="c-type-l" data-for="server">Connection type</span><span class="cx-full" data-for="server"><span class="seg seg--lg" role="group" aria-labelledby="c-type-l"><button type="button" aria-pressed="true" data-type="default">Default</button><button type="button" aria-pressed="false" data-type="url">URL only</button></span></span>
           <span data-for="fields" class="cx-sub">${lab("c-host", "Host")}<input class="field mono" id="c-host" name="host" value="localhost" autocomplete="off" spellcheck="false">${lab("c-port", "Port")}<input class="field mono cx-port" id="c-port" name="port" value="5432" inputmode="numeric" autocomplete="off">
           ${lab("c-user", "User")}<input class="field mono cx-full" id="c-user" name="user" value="ops" autocomplete="username" spellcheck="false"></span>
           <span data-for="server" class="cx-sub">${lab("c-pass", "Password")}<input class="field cx-full" id="c-pass" name="password" type="password" autocomplete="current-password" aria-describedby="c-pass-h"></span>
           <span data-for="fields" class="cx-sub">${lab("c-db", "Database")}<input class="field mono cx-full" id="c-db" name="database" value="shop" autocomplete="off" spellcheck="false"></span>
+          <span data-for="redis-fields" class="cx-sub" hidden><span class="help cx-full cx-under">A number, 0 to 15. Empty uses 0. ypacapy shows this database only.</span></span>
           <span data-for="mongo-fields" class="cx-sub" hidden>${lab("c-authdb", "Auth database")}<input class="field mono cx-full" id="c-authdb" name="authSource" placeholder="admin" autocomplete="off" spellcheck="false" aria-describedby="c-authdb-h">
           <span class="help cx-full cx-under" id="c-authdb-h">The database the user is defined in. Empty uses admin.</span>
           <span class="cx-label">SRV record</span><label class="check cx-full"><input id="c-srv" type="checkbox">Host is a DNS seed list name (mongodb+srv), so there is no port</label></span>
@@ -923,14 +942,14 @@ pages["connect.html"] = page({
         </div>
         <div data-when-guarded hidden>
         <div class="protect-head cx-protect-head">
-          <h3 class="cx-h"><span data-for="sql">Statements to ask about</span><span data-for="mongo" hidden>Writes to ask about</span> <span class="cx-h-note">For this connection</span></h3>
+          <h3 class="cx-h"><span data-for="sql">Statements to ask about</span><span data-for="mongo" hidden>Writes to ask about</span><span data-for="redis" hidden>Commands to ask about</span> <span class="cx-h-note">For this connection</span></h3>
           <button type="button" class="btn btn--quiet" id="protect-toggle" data-when-strict hidden>${ic("lock")}<span>Change</span></button>
         </div>
-        <div class="set-list stmts" id="protect">${STMTS.map(([k, tag], i) => setItem(`<code class="stmt">${k}</code>${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-${i}" class="switch" type="checkbox" role="switch" checked>`, `prot-${i}`).replace('class="set-item"', 'class="set-item" data-for="sql"')).join("")}${MONGO_OPS.map(([ks, tag], i) => setItem(`${ks.map((k) => `<code class="stmt">${k}</code>`).join(" ")}${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-m${i}" class="switch" type="checkbox" role="switch" checked>`, `prot-m${i}`).replace('class="set-item"', 'class="set-item" data-for="mongo" hidden')).join("")}
+        <div class="set-list stmts" id="protect">${STMTS.map(([k, tag], i) => setItem(`<code class="stmt">${k}</code>${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-${i}" class="switch" type="checkbox" role="switch" checked>`, `prot-${i}`).replace('class="set-item"', 'class="set-item" data-for="sql"')).join("")}${MONGO_OPS.map(([ks, tag], i) => setItem(`${ks.map((k) => `<code class="stmt">${k}</code>`).join(" ")}${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-m${i}" class="switch" type="checkbox" role="switch" checked>`, `prot-m${i}`).replace('class="set-item"', 'class="set-item" data-for="mongo" hidden')).join("")}${REDIS_OPS.map(([ks, tag], i) => setItem(`${ks.map((k) => `<code class="stmt">${k}</code>`).join(" ")}${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-r${i}" class="switch" type="checkbox" role="switch" checked>`, `prot-r${i}`).replace('class="set-item"', 'class="set-item" data-for="redis" hidden')).join("")}
         </div>
         </div>
         <h3 class="cx-h">Queries <span class="cx-h-note">Empty uses the value in Settings</span></h3>
-        <div class="set-list">${setItem("Row limit", '<span data-for="sql">Added to a select that has no limit of its own</span><span data-for="mongo" hidden>Added to a find or aggregate that has no limit of its own</span>', '<span class="unit-field"><input id="c-limit" class="field" inputmode="numeric" placeholder="100"><span class="unit">rows</span></span>', "c-limit")}${setItem("Statement timeout", "0 lets a statement run as long as it takes", '<span class="unit-field"><input id="c-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "c-timeout")}${setItem("Connection heartbeat", '<span data-for="sql">Keeps idle sessions open with select 1</span><span data-for="mongo" hidden>Keeps idle sessions open with a ping command</span>', choice("c-beat", [["app", "Use Settings (off)"], ["on", "On"], ["off", "Off"]], "app"), "c-beat")}
+        <div class="set-list">${setItem('<span data-for="no-redis">Row limit</span><span data-for="redis" hidden>Page size</span>', '<span data-for="sql">Added to a select that has no limit of its own</span><span data-for="mongo" hidden>Added to a find or aggregate that has no limit of its own</span><span data-for="redis" hidden>How many fields, items or members a key tab reads at a time</span>', '<span class="unit-field"><input id="c-limit" class="field" inputmode="numeric" placeholder="100"><span class="unit">rows</span></span>', "c-limit")}${setItem('<span data-for="no-redis">Statement timeout</span><span data-for="redis" hidden>Command timeout</span>', '<span data-for="no-redis">0 lets a statement run as long as it takes</span><span data-for="redis" hidden>ypacapy stops waiting; Redis has no way to stop a command it started</span>', '<span class="unit-field"><input id="c-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "c-timeout")}${setItem("Connection heartbeat", '<span data-for="sql">Keeps idle sessions open with select 1</span><span data-for="mongo" hidden>Keeps idle sessions open with a ping command</span><span data-for="redis" hidden>Keeps idle connections open with PING</span>', choice("c-beat", [["app", "Use Settings (off)"], ["on", "On"], ["off", "Off"]], "app"), "c-beat")}
         </div>
       </div>
 
@@ -947,6 +966,13 @@ pages["connect.html"] = page({
           ${lab("c-tlscert", "Client certificate")}<span class="with-btn cx-full"><input class="field mono" id="c-tlscert" placeholder="~/certs/client.pem" autocomplete="off" spellcheck="false" aria-describedby="c-tlscert-h"><button type="button" class="btn">${ic("folder-open")}Choose</button></span>
           <span class="help cx-full cx-under" id="c-tlscert-h">For X.509 sign-in: one file with the certificate and its key. Leave the password empty.</span>
         </div>
+        <div class="cx-grid" data-for="redis" hidden>
+          ${lab("c-rtls", "TLS")}<span class="cx-full">${csel("c-rtls", [["off", "Off"], ["on", "On"], ["insecure", "On, without checking the certificate"]], "on")}</span>
+          <span class="help cx-full cx-under">On uses rediss://. ElastiCache with encryption in transit requires it.</span>
+          ${lab("c-rtlsca", "CA file")}<span class="with-btn cx-full"><input class="field mono" id="c-rtlsca" placeholder="~/certs/ca.pem" autocomplete="off" spellcheck="false"><button type="button" class="btn">${ic("folder-open")}Choose</button></span>
+          ${lab("c-rtlscert", "Client certificate")}<span class="with-btn cx-full"><input class="field mono" id="c-rtlscert" placeholder="~/certs/client.pem" autocomplete="off" spellcheck="false" aria-describedby="c-rtlscert-h"><button type="button" class="btn">${ic("folder-open")}Choose</button></span>
+          <span class="help cx-full cx-under" id="c-rtlscert-h">Only when the server asks for one: a file with the certificate and its key.</span>
+        </div>
         <p class="cx-none" data-for="sqlite" hidden>SQLite opens a file on this Mac. There is no network to secure.</p>
       </div>
 
@@ -960,6 +986,10 @@ pages["connect.html"] = page({
           <span class="cx-label">Direct connection</span><label class="check cx-full"><input id="c-direct" type="checkbox">Talk to this host only, not the rest of its replica set</label>
           ${lab("c-hb", "Server check")}<span class="unit-field cx-full"><input class="field" id="c-hb" inputmode="numeric" placeholder="60" aria-describedby="c-hb-h"><span class="unit">s</span></span>
           <span class="help cx-full cx-under" id="c-hb-h">While connected, the driver sends hello to each host at this interval to find the primary. It cannot be turned off.</span></span>
+          <span data-for="redis" class="cx-sub" hidden>${lab("c-sep", "Key separator")}<input class="field mono cx-full" id="c-sep" value=":" autocomplete="off" spellcheck="false" aria-describedby="c-sep-h">
+          <span class="help cx-full cx-under" id="c-sep-h">The tree groups keys into folders on it: user:3107 goes in user. Empty shows every key flat.</span>
+          ${lab("c-scan", "Keys per scan")}<span class="unit-field cx-full"><input class="field" id="c-scan" inputmode="numeric" placeholder="1000" aria-describedby="c-scan-h"><span class="unit">keys</span></span>
+          <span class="help cx-full cx-under" id="c-scan-h">The tree reads keys with SCAN, about this many per call, and only when you ask for more. It never sends KEYS.</span></span>
         </div>
         <p class="cx-none" data-for="sqlite" hidden>Nothing to set for an SQLite file.</p>
       </div>
@@ -1448,6 +1478,336 @@ pages["collection.html"] = page({
         </section>
       </div>` }),
   script: js("page-collection.js") + js("page-mongo-info.js"),
+});
+
+// ---------- Redis: the command console and a key tab ----------
+// A Redis connection uses the same shell: title strip, rail, tree, tabs, editor over results. What changes: the tree is
+// databases > keys, put into folders on the key separator (":"); the editor takes redis-cli commands, one per line;
+// replies show as a table or as redis-cli prints them. The tree shows the connection's database only (0 unless
+// the connection says otherwise), never the others. Nothing heavy runs on its own: its size comes from DBSIZE, the tree reads keys with SCAN (about 1,000 per call, more only on Scan more, never KEYS) and one
+// pipelined TYPE for the keys it got; a key opens with its O(1) length (HLEN, LLEN, SCARD, ZCARD, XLEN, STRLEN) and
+// one page of its value (HSCAN, LRANGE 0 19, SSCAN, ZRANGE 0 19 REV, XREVRANGE COUNT 20, GET).
+const RCONN = "cache_prod";
+const RCONNS = [CONNS[0], [RCONN, "server", 3, "redis"]];
+// a key's type as a badge, coloured from the connection palette (River, Amethyst, Emerald, Carrot, Sunflower, Turquoise)
+const RTYPE = { string: ["STR", 1], hash: ["HASH", 4], list: ["LIST", 2], set: ["SET", 3], zset: ["ZSET", 7], stream: ["STREAM", 5] };
+const rtype = (t) => `<span class="rtype" style="--fg: var(--proj-${RTYPE[t][1]}-fg); --bg: var(--proj-${RTYPE[t][1]}-bg)" title="${t}">${RTYPE[t][0]}</span>`;
+// a key with its folder part muted: user:3107 reads as user: + 3107
+const rkey = (k) => { const i = k.lastIndexOf(":"); return i < 0 ? esc(k) : `<span class="fp-parent">${esc(k.slice(0, i + 1))}</span>${esc(k.slice(i + 1))}`; };
+
+// the first SCAN of db0 returned these 26 keys; [key, type, the preview state that shows it]
+const RFOLDERS = [
+  ["cart", false, [["cart:9921", "hash"], ["cart:9930", "hash"], ["cart:9934", "hash"]]],
+  ["events", false, [["events:orders", "stream", "stream"]]],
+  ["leaderboard", true, [["leaderboard:daily", "zset"], ["leaderboard:weekly", "zset", "zset"]]],
+  ["queue", false, [["queue:emails", "list", "list"], ["queue:webhooks", "list"]]],
+  ["rate", false, [["rate:ip:10.0.4.12", "string"], ["rate:ip:10.0.9.31", "string"], ["rate:ip:172.16.2.40", "string"]]],
+  ["session", true, [["session:7f3a91c2", "string", "string"], ["session:8b04de17", "string"], ["session:c1e6f09a", "string"]]],
+  ["tags", false, [["tags:new", "set"], ["tags:sale", "set", "set"]]],
+  ["user", true, [["user:3100", "hash"], ["user:3107", "hash", "hash"], ["user:3114", "hash"], ["user:3121", "hash"]]],
+];
+const RLOOSE = [["feature_flags", "hash"], ["maintenance", "string"]];
+// TTLs the tree read in the same pipeline as TYPE, one O(1) TTL per key; as of the last scan, not counted down
+const RTTL = { "leaderboard:daily": "14 h", "leaderboard:weekly": "3 days", "rate:ip:10.0.4.12": "48 s", "rate:ip:10.0.9.31": "12 s", "rate:ip:172.16.2.40": "55 s",
+  "session:7f3a91c2": "23 min", "session:8b04de17": "41 min", "session:c1e6f09a": "1 h 52 min" };
+const rttl = (key) => (RTTL[key] ? `<span class="rttl" title="Expires in ${RTTL[key]}, as of the last scan at 10:02"><span class="visually-hidden">Expires in ${RTTL[key]}</span>${ic("timer")}</span>` : "");
+const RSCANNED = RFOLDERS.reduce((n, [, , ks]) => n + ks.length, RLOOSE.length);
+// inside a folder a key shows the part after the folder's path; the full key is on hover
+const ritem = (path, key, type, show, current, indent = 40, folder = "") => `        <div class="row" style="--indent:${indent}px" data-path="${path}" data-key="${esc(key)}"${RTTL[key] ? " data-ttl" : ""}${show ? ` data-state="${show}"` : ""}${current ? ' aria-current="page"' : ""}><button type="button" class="row-main"${show ? ` data-href="./key.html?show=${show}"` : ""} title="${esc(key)}">${rtype(type)}<span class="name">${esc(folder && key.startsWith(folder) ? key.slice(folder.length) : key)}</span>${rttl(key)}</button>${more(key)}</div>`;
+const redisSide = (current) => `
+    <aside class="sidebar" data-side="schema">
+      <div class="side-resize" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" title="Drag to resize, drag past the edge to hide"></div>
+      <div class="side-head"><h2>Keys</h2></div>
+      <div class="side-tools">
+        <div class="search">${ic("search")}<input class="field" id="tree-filter" placeholder="Filter keys" aria-label="Filter keys" aria-describedby="tree-filter-h" autocomplete="off" spellcheck="false"></div>
+        <button type="button" class="icon-btn icon-btn--outline ttl-only" id="ttl-only" aria-pressed="false" title="Show only keys that expire" aria-label="Expiring keys only">${ic("timer")}</button>
+        <button type="button" class="icon-btn icon-btn--outline" title="Scan again from the start" aria-label="Scan keys again">${ic("refresh-cw")}</button>
+      </div>
+      <p class="sr-only" id="tree-filter-h">Narrows the keys read so far. Enter scans the database for keys that match.</p>
+      <div class="tree" id="tree">
+${group("db0", "db0", "1,204,331", 0, true, false)}
+${RFOLDERS.map(([f, open, ks]) => `${group(`db0/${f}`, `${f}:`, ks.length, 16, open)}
+${ks.map(([k, t, show]) => ritem(`db0/${f}/${k}`, k, t, show, current === k, 40, `${f}:`).replace(open ? /^$/ : 'class="row"', 'class="row" hidden')).join("\n")}`).join("\n")}
+${RLOOSE.map(([k, t]) => ritem(`db0/${k}`, k, t, "", current === k, 24)).join("\n")}
+        <div class="empty" id="tree-empty" hidden><strong>Nothing matches <span id="tree-empty-q"></span></strong><span>Searches the keys read so far. Press Enter to scan db0 for keys that match.</span><button type="button" class="link" id="tree-clear">Clear the filter</button></div>
+        <div class="menu row-menu" id="row-menu" role="menu" aria-label="Key actions" hidden>
+          <button type="button" role="menuitem">${ic("key")}Open key</button>
+          <button type="button" role="menuitem">${ic("square-code")}New command on this key</button>
+          <button type="button" role="menuitem">${ic("copy")}Copy name</button>
+          <button type="button" role="menuitem" data-info>${ic("info")}Info</button>
+          <hr>
+          <button type="button" role="menuitem" class="danger">${ic("shredder")}Delete key</button>
+        </div>
+      </div>
+      <!-- what the scan has read, pinned at the sidebar's foot whatever the tree's length -->
+      <div class="side-foot"><div class="scan-more"><span id="scan-n" data-all="${RSCANNED} of 1,204,331 keys read" data-ttl="${Object.keys(RTTL).length} of the ${RSCANNED} keys read expire">${RSCANNED} of 1,204,331 keys read</span><button type="button" class="link" title="SCAN from where the last call stopped">Scan more</button></div></div>
+    </aside>`;
+const rhrow = (src, time, status, cls) => `        <div class="row"><button type="button" class="row-main" title="${RCONN} / db0&#10;${esc(src)}"><span class="name hq">${esc(src)}</span><span class="htime">${time}</span><span class="hstatus ${cls}">${status}</span></button></div>`;
+const redisHistory = `
+    <aside class="sidebar" data-side="history" hidden>
+      <div class="side-head"><h2>History</h2><button type="button" class="btn btn--quiet" id="hist-clear">Clear</button></div>
+      <div class="side-tools"><div class="search">${ic("search")}<input class="field" placeholder="Search ${RCONN} history" aria-label="Search ${RCONN} history" autocomplete="off" spellcheck="false"></div></div>
+      <div class="tree" id="hist-list">
+        <div class="day">Today</div>
+${rhrow("ZRANGE leaderboard:weekly 0 9 REV WITHSCORES", "10:02", "20", "rows")}
+${rhrow("LRANGE user:3107 0 -1", "09:58", "error", "fail")}
+${rhrow("HGETALL user:3107", "09:57", "24", "rows")}
+${rhrow("TTL session:7f3a91c2", "09:50", "1", "rows")}
+        <div class="day">Yesterday</div>
+${rhrow("DEL cart:9811 cart:9812", "17:20", "2", "rows")}
+${rhrow("INFO memory", "16:02", "1", "rows")}
+      </div>
+    </aside>`;
+
+// replies. RESP2 strings come back as strings, so a score or a count in a hash is text; the table says so.
+const LB = [["mei.tanaka", 4820], ["a.lindqvist", 4415], ["r.okonkwo", 3980], ["k.nowak", 3622], ["s.ferreira", 3507], ["d.mensah", 3110], ["l.bianchi", 2984], ["t.nguyen", 2870], ["n.kapoor", 2641], ["j.moreau", 2533]];
+const USER = [["email", "mei.tanaka@example.org"], ["full_name", "Mei Tanaka"], ["phone", "+81 90 2231 7754"], ["country", "JP"], ["city", "Osaka"], ["is_vip", "1"], ["lifetime_value", "4820.00"], ["orders_count", "17"],
+  ["prefs", '{"lang":"ja","newsletter":true,"currency":"JPY"}'], ["last_order_id", "10482"], ["created_at", "2024-03-11T08:21:00Z"], ["last_seen_at", "2026-11-18T09:52:14Z"]];
+const SESSIONS = ["session:7f3a91c2", "session:8b04de17", "session:c1e6f09a", "session:0d5b72e4", "session:e93a1f60", "session:41c08b9d", "session:b7720ae5", "session:5fe3d014", "session:9a61c7b2", "session:2c84f5ee", "session:f019d6a3", "session:6e2b90c1"];
+// a string cell: JSON text is drawn as JSON (it is still a string to Redis)
+const rcell = (v) => { if (/^[{[]/.test(v)) { try { const o = JSON.parse(v); return `<td class="json" data-full="${esc(JSON.stringify(o, null, 2))}">${jsonHtml(o)}</td>`; } catch {} } return c.text(v); };
+const rgrid = (label, cols, rows, sel = 0) => `
+            <div class="grid-wrap" tabindex="0" aria-label="${label}">
+              <table class="grid"><thead><tr>${ROWHEAD}${cols.map(([n, t, num]) => th(n, t, { num })).join("")}</tr></thead><tbody>
+${rows.map((r, i) => tr(i + 1, r, i === sel)).join("\n")}
+              </tbody></table>
+            </div>${inspector(cols[0][0], cols[0][1], sel + 1, plain(rows[sel][0]))}`;
+// as redis-cli prints a reply: numbered lines, strings in quotes
+const rawReply = (label, items) => {
+  const w = String(items.length).length;
+  return `
+            <pre class="code docs raw" tabindex="0" aria-label="${label}">${items.map((x, i) => `<span class="l"><span class="idx">${String(i + 1).padStart(w)})</span> ${typeof x === "number" ? `<span class="j-num">(integer) ${x}</span>` : `<span class="j-str">"${esc(x)}"</span>`}</span>`).join("")}</pre>`;
+};
+
+// redis-cli in the editor, coloured: # comments, the command, its key, options, numbers, quoted strings
+const ROPT = /^(WITHSCORES|REV|MATCH|COUNT|TYPE|LIMIT|BYSCORE|BYLEX|EX|PX|NX|XX|KEEPTTL|GET)$/i;
+const hlRedis = (line) => {
+  if (/^\s*#/.test(line)) return `<span class="q-c">${esc(line)}</span>`;
+  let n = 0;
+  return (line.match(/"(?:[^"\\]|\\.)*"|'[^']*'|\S+|\s+/g) || []).map((t) => {
+    if (/^\s+$/.test(t)) return t;
+    const i = n++;
+    return i === 0 ? `<span class="q-k">${esc(t)}</span>` : /^["']/.test(t) ? `<span class="q-s">${esc(t)}</span>` : ROPT.test(t) ? `<span class="q-f">${esc(t)}</span>`
+      : /^-?\d+(\.\d+)?$/.test(t) ? `<span class="q-n">${t}</span>` : `<span class="q-tb">${esc(t)}</span>`;
+  }).join("");
+};
+const rqLines = (src, cur = -1) => { const lines = src.split("\n"); return lines.map((l, i) => `<span class="l${i === (cur < 0 ? lines.length - 1 : cur) ? " cur" : ""}">${hlRedis(l)}</span>`).join(""); };
+const rq = (id, n, src, hidden = true, extra = "") => `<pre class="code" id="code-${id}" tabindex="0" aria-label="Command editor, Query ${n}"${hidden ? " hidden" : ""}${extra}>${rqLines(src)}</pre>`;
+const RQ1 = `# This week's top ten\nZRANGE leaderboard:weekly 0 9 REV WITHSCORES`;
+const RQ2 = `HGETALL user:3107`;
+const RQ3 = `LRANGE user:3107 0 -1`;
+const RQ4 = `# Carts nobody came back to\nDEL cart:9921 cart:9930 cart:9934`;
+const RQ5 = `KEYS session:*`;
+
+const RTABS = [["key", "key", "user:3107", "./key.html"], ["q1", "square-code", "Query 1", "./redis.html"], ["q2", "square-code", "Query 2", "./redis.html?show=hgetall"], ["q3", "square-code", "Query 3", "./redis.html?show=error"], ["q4", "square-code", "Query 4", "./redis.html?show=guard-confirm"], ["q5", "square-code", "Query 5", "./redis.html?show=keys"]];
+const rtabs = (active, local) => tabsbar(active, local, { tabs: RTABS, pinned: ["key"], conn: RCONN }).replace(/Every statement runs/g, "Every command runs").replace(/the picked statements/g, "the picked commands");
+const RFORMATS = ["redis-cli", "JSON", "CSV", "Markdown table"];
+const rasSeg = `<span class="seg" role="group" aria-label="Show the reply as"><button type="button" aria-pressed="true" data-as="table">Table</button><button type="button" aria-pressed="false" data-as="raw">Raw</button></span>`;
+const rresActions = (id) => resActions(id).replace(/<p class="menu-note">(Copy|Export) as<\/p>.*?<\/div>/g, (m, k) => `<p class="menu-note">${k} as</p>${RFORMATS.map((x) => `<button type="button" role="menuitem">${x}</button>`).join("")}</div>`);
+// the guard's ask; for KEYS it offers SCAN, which reads the same keys in small steps and never holds the server
+const rguardDialogs = guardDialogs.replace(/shop_prod/g, RCONN)
+  .replace(/<div class="guard-kinds"><code class="stmt">DELETE<\/code><\/div>/g, '<div class="guard-kinds" data-kinds><code class="stmt">DEL</code></div>')
+  .replace(/<button type="button" class="btn" data-guard-close>Cancel<\/button>/g, '<button type="button" class="btn" data-guard-close>Cancel</button><button type="button" class="btn" data-use-scan hidden>Use SCAN instead</button>');
+const Q1ROWS = LB.map(([m, s]) => [c.text(m), c.num(s)]);
+const Q1RAW = LB.flatMap(([m, s]) => [m, String(s)]);
+const Q2ROWS = USER.map(([f, v]) => [c.text(f), rcell(v)]);
+const Q2RAW = USER.flat();
+const redisWork = `${rtabs("q1", ["q1", "q2", "q3", "q4", "q5"])}
+      <div class="work-body">
+        <div class="req-pane" id="req-pane">
+          <div class="request-line">
+            <div class="url-field"><div class="ctx"><span class="e e-redis">REDIS</span><strong>${RCONN}</strong><span class="sep">/</span><span class="ctx-db" title="The connection's database. Change it in Edit connection.">db0</span></div></div>
+            <button type="button" class="btn btn--save" id="save" title="Save  ⌘S">${ic("circle-check", "save-ico")}<span class="save-label">Save</span></button>${runGroup}
+          </div>
+          <div class="req-title"><button type="button" class="name" id="q-name">Weekly top ten</button><span class="path" id="q-path">Saved queries / Growth</span></div>
+          <div class="section">
+            <div class="editor">
+${rq("q1", 1, RQ1, false)}
+${rq("q2", 2, RQ2)}
+${rq("q3", 3, RQ3, true, ` data-fixed="${esc(rqLines("HGETALL user:3107"))}" data-orig="${esc(rqLines(RQ3))}"`)}
+${rq("q4", 4, RQ4)}
+${rq("q5", 5, RQ5, true, ` data-fixed="${esc(rqLines("SCAN 0 MATCH session:* COUNT 1000"))}" data-orig="${esc(rqLines(RQ5))}"`)}
+            </div>
+          </div>
+        </div>
+        <div class="divider" role="separator" aria-orientation="horizontal" aria-label="Resize panes" tabindex="0"></div>
+        <section class="response" aria-label="Results">
+          <nav class="subtabs" aria-label="Results">
+            <button type="button" class="subtab" data-sub="results" aria-pressed="true">Results<span class="n" id="r-n">10</span></button>
+            <button type="button" class="subtab" data-sub="messages" aria-pressed="false">Messages</button>
+            <span class="push meta" id="r-meta"></span>
+          </nav>
+          <div class="res-tools">${rasSeg}${rresActions("q")}</div>
+          <div class="state" data-when="full" data-for="q1" data-as="table">${rgrid("Reply to Query 1", [["member", "string"], ["score", "double", true]], Q1ROWS, 0)}
+          </div>
+          <div class="state" data-when="full" data-for="q1" data-as="raw" hidden>${rawReply("Reply to Query 1", Q1RAW)}
+          </div>
+          <div class="state" data-when="full" data-for="q2" data-as="table" hidden>${rgrid("Reply to Query 2", [["field", "string"], ["value", "string"]], Q2ROWS, 0)}
+          </div>
+          <div class="state" data-when="full" data-for="q2" data-as="raw" hidden>${rawReply("Reply to Query 2", Q2RAW)}
+          </div>
+          <div class="state" data-when="full" data-for="q3" data-as="table" hidden>${rgrid("Reply to Query 3", [["field", "string"], ["value", "string"]], Q2ROWS, 0)}
+          </div>
+          <div class="state" data-when="full" data-for="q3" data-as="raw" hidden>${rawReply("Reply to Query 3", Q2RAW)}
+          </div>
+          <div class="state" data-when="full" data-for="q5" data-as="table" hidden>${rgrid("Reply to Query 5", [["key", "string"]], SESSIONS.map((k) => [c.text(k)]), 0)}
+          </div>
+          <div class="state" data-when="full" data-for="q5" data-as="raw" hidden>${rawReply("Reply to Query 5", SESSIONS)}
+          </div>
+          <div class="state" data-when="idle" data-for="q4" hidden><div class="empty"><strong>Not run yet</strong><span>DEL removes keys on ${RCONN}, so Run asks first.</span></div></div>
+          <div class="state" data-when="idle" data-for="q5" hidden><div class="empty"><strong>Not run yet</strong><span>KEYS reads all 1,204,331 keys in db0, and ${RCONN} answers no one else until it is done. Run asks first.</span></div></div>
+          <div class="state" data-when="written" hidden><div class="empty write-res">${ic("circle-check", "ok-ico")}<strong id="w-title">Deleted 3 keys</strong><pre class="db-says" id="w-raw">(integer) 3</pre></div></div>
+          <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Running on ${RCONN}</strong><span>Started 0.4&nbsp;s ago</span><button type="button" class="btn" id="cancel">Stop waiting</button><span class="muted">Redis cannot stop a command it started. ypacapy stops waiting and opens a new connection.</span></div></div>
+          <div class="state" data-when="empty" hidden><div class="empty"><strong>(nil)</strong><span>session:9a61c7b2 does not exist. It may have expired.</span></div></div>
+          <div class="state" data-when="error" hidden><div class="error-box">
+            <strong>user:3107 is a hash, and LRANGE reads lists</strong>
+            <span class="hint-line">Redis checked the key's type and read nothing. HGETALL reads a whole hash.</span>
+<pre class="db-says"><span class="bad">WRONGTYPE Operation against a key holding the wrong kind of value</span></pre>
+            <div class="actions"><button type="button" class="btn" id="q3-fix">Use HGETALL and run</button></div>
+          </div></div>
+          <div class="state" data-when="lost" hidden><div class="error-box">
+            <strong>${RCONN} closed the connection</strong>
+            <span class="msg">Connection reset by peer (os error 54)</span>
+            <span class="hint-line">ElastiCache may be moving the primary to the replica. A read is safe to send again; ypacapy does not resend a write on its own.</span>
+            <div class="actions"><button type="button" class="btn" id="reconnect">Reconnect</button></div>
+          </div></div>
+          <div class="state" data-when="messages" hidden><pre class="code messages" aria-label="Messages"><span class="l">ZRANGE replied with 20 elements, 10 members and their scores, in 2 ms</span><span class="l">From ${RCONN}, db0 (Redis 7.1.0, primary cache-prod-0001-001)</span></pre></div>
+        </section>
+      </div>`;
+// Info, from a key's "…" menu or the key tab: TYPE, OBJECT ENCODING, the O(1) length, TTL and a sampled MEMORY USAGE,
+// read when the dialog opens and on Refresh. Never on a timer.
+const rInfoDlg = `
+<div class="backdrop" id="info-dlg" data-default="user:3107" hidden>
+  <div class="dialog info-dlg" role="dialog" aria-modal="true" aria-labelledby="info-title">
+    <h2 id="info-title"><span class="info-db">db0 · </span><span id="info-name">user:3107</span></h2>
+    <div class="info-body" data-info-state="ready">
+      <h3 class="cx-h">Key</h3>
+      <dl class="info-grid">${infoRow("Type", "hash")}${infoRow("Encoding", "listpack", "Small hashes are packed")}${infoRow("Length", "12 fields")}${infoRow("Expires", "Never", "No TTL set")}</dl>
+      <h3 class="cx-h">Memory</h3>
+      <dl class="info-grid">${infoRow("Size", "~1.1 KB", "MEMORY USAGE, 5 samples")}${infoRow("Idle", "4 min", "Since the last read or write")}</dl>
+    </div>
+    <div class="info-body" data-info-state="loading" hidden><div class="empty"><span class="spinner"></span><span>Reading <span data-info-name>user:3107</span></span></div></div>
+    <footer>
+      <span class="help info-when">Read with TYPE, OBJECT and MEMORY USAGE at 10:02</span>
+      <button type="button" class="btn" id="info-refresh">${ic("refresh-cw")}Refresh</button>
+      <button type="button" class="btn btn--primary" data-info-close>Close</button>
+    </footer>
+  </div>
+</div>`;
+pages["redis.html"] = page({
+  title: "ypacapy preview, Redis",
+  desc: "Design preview of a Redis connection in ypacapy: redis-cli commands, replies as a table or as redis-cli prints them, keys read with SCAN, and the write guard on Redis commands.",
+  barHtml: bar("redis", [["results", "Sorted set reply"], ["hgetall", "Hash reply"], ["raw", "Raw view"], ["messages", "Messages"], ["running", "Running"], ["nil", "(nil)"], ["error", "WRONGTYPE"], ["lost", "Connection lost"], ["guard-confirm", "Low: DEL"], ["guard-pass", "Strict: passphrase"], ["written", "Write result"], ["keys", "KEYS, not run"], ["guard-keys", "Low: KEYS"], ["row-menu", "Key menu"], ["info", "Info"], ["info-loading", "Info, reading"], ["tree-empty", "Filter, no match"], ["expiring", "Expiring only"], ["history", "History"]]),
+  body: app({ current: RCONN, conns: RCONNS, side: redisSide("") + redisHistory + savedSide, work: redisWork, overlay: rguardDialogs + rInfoDlg }),
+  script: js("page-redis-tree.js") + js("page-redis.js") + js("page-mongo-info.js"),
+});
+
+// Key tab: one key, read a page at a time. The head says its type, length and TTL; the body is its value, drawn for
+// its type. Each type is a separate key in the preview; the bar picks one.
+const LIST = Array.from({ length: 20 }, (_, i) => JSON.stringify({ job: ["receipt", "refund_notice", "welcome", "cart_reminder"][i % 4], to: PEOPLE[i % 12][0], order: 10482 - i * 3, attempt: 1 + (i % 7 === 3) }));
+const SALE = ["TEE-M-BLK", "MUG-12", "CAP-OS", "SOCK-3P", "TEE-L-WHT", "HOOD-M-GRY", "BAG-TOTE", "TEE-S-BLK", "MUG-16", "PIN-SET", "TEE-XL-BLK", "SOCK-6P", "CAP-KIDS", "HOOD-L-BLK", "BOTTLE-500", "STICKER-PK", "TEE-M-NVY", "BEANIE", "SCARF-WOOL", "GLOVES-M"];
+const ZSET = [...LB, ["h.adeyemi", 2490], ["p.haddad", 2312], ["sofia.f", 2280], ["k.ito", 2194], ["m.santos", 2101], ["o.berg", 1987], ["y.park", 1950], ["c.dubois", 1876], ["e.kowalski", 1810], ["f.rossi", 1777]];
+const STREAM = Array.from({ length: 20 }, (_, i) => { const ms = 1763459534512 - i * 41117, st = ST[i % 10]; return [`${ms}-${i % 3}`, `order_id ${10482 - i} · status ${st} · total ${money([4820, 129.9, 642.75, 88, 1499][i % 5])}`]; });
+const SESSION = { user_id: 3107, email: "mei.tanaka@example.org", roles: ["customer", "vip"], cart: { id: 9921, items: 3 }, csrf: "q4X9v2LkTzR8mW1c", ip: "203.0.113.77", ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_1) AppleWebKit/605.1.15", created_at: "2026-11-18T09:31:02Z" };
+const jsonPretty = (o) => JSON.stringify(o, null, 2).split("\n").map((l) => `<span class="l">${esc(l).replace(/^(\s*)"([^"]+)":/, '$1<span class="j-key">"$2"</span><span class="j-p">:</span>').replace(/: "([^"]*)"/, ': <span class="j-str">"$1"</span>').replace(/: (-?\d[\d.]*|true|false|null)(,?)$/, ': <span class="j-num">$1</span>$2')}</span>`).join("");
+// [state, key, type, length line, TTL, encoding, what the value pane is called, its body]
+const KEYS = {
+  hash: ["user:3107", "hash", "12 fields", "", "listpack", "Fields", `
+            <div class="res-tools"><span class="muted">Fields in HSCAN order. Double-click a value to change it.</span>${rresActions("k")}</div>
+            <div class="as-pane">${rgrid("Fields of user:3107", [["field", "string"], ["value", "string"]], Q2ROWS, 0)}</div>
+            <div class="grid-foot"><button type="button" class="btn btn--quiet grid-add" data-edit>${ic("plus")}Add field</button><span>1 to 12 of 12</span><button type="button" class="icon-btn" aria-label="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page" disabled>${ic("chevron-right")}</button></div>`],
+  string: ["session:7f3a91c2", "string", "412 bytes", "Expires in 23 min", "embstr", "Value", `
+            <div class="res-tools"><span class="muted">Valid JSON, 412 bytes</span><span class="seg" role="group" aria-label="Show the value as"><button type="button" aria-pressed="false" data-as="text">Text</button><button type="button" aria-pressed="true" data-as="json">JSON</button></span><button type="button" class="btn btn--quiet" data-edit title="Change the value  ↵">${ic("pencil")}Edit</button>${rresActions("k")}</div>
+            <div class="as-pane" data-as="text" hidden><pre class="code docs str-val" tabindex="0" aria-label="Value of session:7f3a91c2"><span class="l">${esc(JSON.stringify(SESSION))}</span></pre></div>
+            <div class="as-pane" data-as="json"><pre class="code docs" tabindex="0" aria-label="Value of session:7f3a91c2, as JSON">${jsonPretty(SESSION)}</pre></div>`],
+  list: ["queue:emails", "list", "1,284 items", "", "quicklist", "Items", `
+            <div class="res-tools"><span class="muted">Items 0 to 19, from the head</span>${rresActions("k")}</div>
+            <div class="as-pane">${rgrid("Items of queue:emails", [["index", "int", true], ["value", "string"]], LIST.map((v, i) => [c.id(i), rcell(v)]), 0)}</div>
+            <div class="grid-foot"><span>0 to 19 of 1,284</span><button type="button" class="icon-btn" aria-label="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page">${ic("chevron-right")}</button></div>`],
+  set: ["tags:sale", "set", "86 members", "", "listpack", "Members", `
+            <div class="res-tools"><span class="muted">Members in SSCAN order. A set has no order of its own.</span>${rresActions("k")}</div>
+            <div class="as-pane">${rgrid("Members of tags:sale", [["member", "string"]], SALE.map((m) => [c.text(m)]), 0)}</div>
+            <div class="grid-foot"><span>1 to 20 of 86</span><button type="button" class="icon-btn" aria-label="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page">${ic("chevron-right")}</button></div>`],
+  zset: ["leaderboard:weekly", "zset", "12,408 members", "Expires in 3 days", "skiplist", "Members", `
+            <div class="res-tools"><span class="seg" role="group" aria-label="Order"><button type="button" aria-pressed="true">Score high to low</button><button type="button" aria-pressed="false">Low to high</button></span>${rresActions("k")}</div>
+            <div class="as-pane">${rgrid("Members of leaderboard:weekly", [["rank", "int", true], ["member", "string"], ["score", "double", true]], ZSET.map(([m, s], i) => [c.id(i + 1), c.text(m), c.num(s)]), 0)}</div>
+            <div class="grid-foot"><span>1 to 20 of 12,408</span><button type="button" class="icon-btn" aria-label="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page">${ic("chevron-right")}</button></div>`],
+  stream: ["events:orders", "stream", "2,113,940 entries", "", "stream", "Entries", `
+            <div class="res-tools"><span class="muted">Newest first, read with XREVRANGE</span>${rresActions("k")}</div>
+            <div class="as-pane">${rgrid("Entries of events:orders", [["id", "stream id"], ["fields", "field value …"]], STREAM.map(([id, f]) => [c.text(id), c.text(f)]), 0)}</div>
+            <div class="grid-foot"><span>Newest 20 of 2,113,940</span><button type="button" class="icon-btn" aria-label="Newer" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Older">${ic("chevron-right")}</button></div>`],
+};
+const KTITLES = { hash: "Fields", string: "Value", list: "Items", set: "Members", zset: "Members", stream: "Entries" };
+// The expiry: the TTL in the head is a button; its popover sets it with EXPIRE, or takes it off with PERSIST.
+// Both go through the write guard (Expire in Commands to ask about). The time left is not counted down on screen.
+const ttlPop = `<span class="menu-anchor rk-ttl-anchor"><button type="button" class="rk-ttl-btn" id="rk-ttl" aria-haspopup="dialog" aria-expanded="false" aria-controls="ttl-pop" title="Change the expiry">${ic("timer")}<span>No expiry</span>${ic("pencil", "rk-ttl-pen")}</button>
+            <div class="upd-pop ttl-pop" id="ttl-pop" role="dialog" aria-label="Expiry" hidden>
+              <p class="upd-title">Expiry of&nbsp;<code class="ttl-key" data-rk-name>user:3107</code></p>
+              <label class="check"><input type="radio" name="ttl" value="none" id="ttl-none">No expiry</label>
+              <div class="ttl-in"><label class="check"><input type="radio" name="ttl" value="in" id="ttl-on" checked>Expires in</label><input class="field" id="ttl-n" inputmode="numeric" value="30" aria-label="How long"><span class="select-wrap"><select class="field" id="ttl-u" aria-label="Unit"><option value="1">seconds</option><option value="60">minutes</option><option value="3600">hours</option><option value="86400" selected>days</option></select>${ic("chevron-down", "select-chev")}</span></div>
+              <p class="upd-sub mono" id="ttl-cmd">EXPIRE user:3107 2592000</p>
+              <div class="ttl-actions"><button type="button" class="btn" id="ttl-cancel">Cancel</button><button type="button" class="btn btn--primary" id="ttl-set">Set expiry</button></div>
+            </div></span>`;
+// Editing a hash: the grid's own editing, as on a table. Double-click (or ↵) a value to change it; ⌘⌫ marks a field
+// to delete; Add field adds a row. Changed cells are green, a deleted field red and struck through, until Save
+// writes them all at once (HSET, HDEL in one MULTI) or Revert drops them.
+const editCell = (td) => td.replace(/^<td( class="([^"]*)")?/, (m, a, cls) => `<td class="${cls ? cls + " " : ""}cell-edit"`);
+const HASH_EDIT_ROWS = USER.map(([f, v], i) => {
+  const del = f === "phone", changed = f === "city";
+  const cells = [c.text(f), changed ? editCell(c.text("Kyoto")) : rcell(v)];
+  return tr(i + 1, cells, changed).replace("<tr", `<tr${del ? ' class="row-del"' : ""}`);
+}).concat(`<tr class="row-edit row-new"><td class="rownum">+</td>${editCell(c.text("tier"))}${editCell(c.text("gold"))}</tr>`).join("\n");
+const hashEdit = `
+            <div class="res-tools"><span class="muted">Fields in HSCAN order</span><div class="edit-bar" role="group" aria-label="Unsaved changes"><span class="edit-n">3 changes</span><button type="button" class="btn btn--primary" id="hash-save" title="Write the changes at once  ⌘S">Save</button><button type="button" class="btn" data-revert title="Drop the changes">Revert</button></div>${rresActions("ke")}</div>
+            <div class="as-pane"><div class="grid-wrap" tabindex="0" aria-label="Fields of user:3107, edited"><table class="grid"><thead><tr>${ROWHEAD}${th("field", "string")}${th("value", "string")}</tr></thead><tbody>
+${HASH_EDIT_ROWS}
+            </tbody></table></div>${inspector("value", "string", 5, "Kyoto")}</div>
+            <div class="grid-foot"><button type="button" class="btn btn--quiet grid-add">${ic("plus")}Add field</button><span class="edit-what">city changed · phone deleted · tier added</span><span>1 to 12 of 12</span><button type="button" class="icon-btn" aria-label="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page" disabled>${ic("chevron-right")}</button></div>`;
+// Editing a string: the value in a text box, JSON pretty when it was JSON. Save writes SET … KEEPTTL, so the
+// expiry stays. Text that stopped being JSON is said, and can still be saved.
+const SESSION_EDIT = JSON.stringify({ ...SESSION, roles: ["customer", "vip", "beta"] }, null, 2);
+const stringEdit = `
+            <div class="res-tools"><span class="muted str-check">Valid JSON, 421 bytes</span><div class="edit-bar" role="group" aria-label="Unsaved changes"><span class="edit-n">Changed</span><button type="button" class="btn btn--primary" id="str-save" title="Write it with SET  ⌘S">Save</button><button type="button" class="btn" data-revert title="Drop the change">Revert</button></div></div>
+            <textarea class="str-edit" spellcheck="false" aria-label="Value of session:7f3a91c2">${esc(SESSION_EDIT)}</textarea>
+            <p class="help str-note">Save writes it with SET … KEEPTTL, so its expiry stays. Format keeps JSON two spaces deep.</p>`;
+
+pages["key.html"] = page({
+  title: "ypacapy preview, key",
+  desc: "Design preview of a Redis key in ypacapy: its type, length and TTL, and one page of its value drawn for its type.",
+  barHtml: bar("key", [["hash", "Hash"], ["string", "String, JSON"], ["list", "List"], ["set", "Set"], ["zset", "Sorted set"], ["stream", "Stream"], ["match", "Field pattern"], ["no-match", "Pattern matches nothing"], ["gone", "Key gone"], ["loading", "Loading"], ["info", "Info"], ["info-loading", "Info, reading"], ["edit-hash", "Editing fields"], ["save-hash", "Save: Low asks"], ["edit-string", "Editing a string"], ["save-string", "Save string: Low asks"], ["ttl", "Change expiry"], ["ttl-set", "Set expiry: Low asks"], ["delete-key", "Delete key"], ["long-key", "Long key name"]]),
+  body: app({ current: RCONN, conns: RCONNS, side: redisSide("user:3107") + redisHistory + savedSide, overlay: rInfoDlg + rguardDialogs, work: `${rtabs("key", ["key"])}
+      <div class="work-body">
+        <div class="rk-bar" role="group" aria-label="Key">
+          <div class="rk-id"><span id="rk-type">${rtype("hash")}</span><h2 class="rk-name" id="rk-name" title="user:3107"><span class="rk-head">user:3107</span><span class="rk-tail"></span></h2><button type="button" class="icon-btn" title="Copy the key name" aria-label="Copy the key name">${ic("copy")}</button></div>
+          <div class="mq-actions"><button type="button" class="btn btn--quiet" data-info-open>${ic("info")}Info</button><button type="button" class="btn btn--quiet" id="rk-console" data-href="./redis.html?show=hgetall" title="Open a query tab with the command that reads this key">${ic("square-code")}Open in console</button><button type="button" class="btn" id="rk-refresh" title="Read this page again  ⌘R">${ic("refresh-cw")}Refresh</button><button type="button" class="icon-btn icon-btn--outline rk-del" id="rk-del" title="Delete key…" aria-label="Delete key">${ic("shredder")}</button></div>
+          <div class="rk-meta"><span id="rk-len">12 fields</span>${ttlPop}<span id="rk-enc" title="OBJECT ENCODING">listpack</span><span class="rk-db">db0</span></div>
+          <div class="mq-row" id="rk-match-row">
+            <label class="mq-field"><span class="mq-k">match</span><input class="mq-in" id="rk-match" placeholder="*" spellcheck="false" autocomplete="off" aria-describedby="rk-match-h"></label>
+          </div>
+          <p class="help rk-match-h" id="rk-match-h">A pattern for HSCAN: * any text, ? one character. Enter reads again.</p>
+        </div>
+        <section class="response" aria-label="Value">
+          <nav class="subtabs" aria-label="Key">
+            <button type="button" class="subtab" aria-pressed="true"><span id="rk-what">Fields</span><span class="n" id="rk-n">12</span></button>
+            <span class="push meta"><span class="dim" id="rk-ms">2&nbsp;ms</span></span>
+          </nav>
+${Object.entries(KEYS).map(([k, [, , , , , , body]]) => `          <div class="state" data-when="full" data-key-state="${k}"${k === "hash" ? "" : " hidden"}>${body}
+          </div>`).join("\n")}
+          <div class="state" data-when="full" data-key-state="hash-edit" hidden>${hashEdit}
+          </div>
+          <div class="state" data-when="full" data-key-state="string-edit" hidden>${stringEdit}
+          </div>
+          <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Reading <span data-rk-name>user:3107</span></strong><span>${RCONN}, db0</span></div></div>
+          <div class="state" data-when="empty" hidden><div class="empty"><strong>No field in user:3107 matches <span id="rk-empty-q">addr*</span></strong><span>HSCAN read all 12 fields. Their names start with email, full_name, phone, country, city and 7 more.</span><button type="button" class="link" id="rk-clear">Clear the pattern</button></div></div>
+          <div class="state" data-when="gone" hidden><div class="error-box">
+            <strong>user:3107 is gone</strong>
+            <span class="hint-line">It expired or was deleted after the tree read it. Nothing else changed.</span>
+<pre class="db-says"><span class="bad">TYPE user:3107 → none</span></pre>
+            <div class="actions"><button type="button" class="btn" id="rk-close">Close this tab</button></div>
+          </div></div>
+        </section>
+      </div>` }),
+  script: `window.RKEYS = ${JSON.stringify(Object.fromEntries(Object.entries(KEYS).map(([k, [key, type, len, ttl, enc]]) => [k, { key, type, len, ttl, enc, what: KTITLES[k], badge: rtype(type) }])))};\n` + js("page-redis-tree.js") + js("page-key.js") + js("page-mongo-info.js"),
 });
 
 for (const old of ["table.css", "settings.css", "connect.css"]) fs.rmSync(`${OUT}/${old}`, { force: true });

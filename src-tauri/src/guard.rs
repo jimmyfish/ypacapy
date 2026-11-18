@@ -67,7 +67,7 @@ fn dialect(engine: Engine) -> Box<dyn Dialect> {
         Engine::Mysql => Box::new(MySqlDialect {}),
         Engine::Sqlite => Box::new(SQLiteDialect {}),
         // MongoDB text never reaches sqlparser (mongo_shell parses it); a dialect only to keep the match whole
-        Engine::Mongo => Box::new(sqlparser::dialect::GenericDialect {}),
+        Engine::Mongo | Engine::Redis => Box::new(sqlparser::dialect::GenericDialect {}),
     }
 }
 
@@ -330,6 +330,19 @@ pub struct Ask {
     pub unreadable: bool,
     /// a wrong passphrase on the previous try
     pub error: Option<String>,
+    /// something asked about deletes or overwrites: the ask says it cannot be undone
+    #[serde(rename = "final")]
+    pub final_: bool,
+}
+
+/// Whether the kinds asked about delete or overwrite. Redis decides by command (ops), the others by kind.
+/// Text nobody can read says nothing either way.
+fn is_final(engine: Engine, asked: &[&'static str], ops: Option<&Vec<String>>) -> bool {
+    match engine {
+        Engine::Redis => ops.is_some_and(|o| crate::redis_cli::is_final(o)),
+        Engine::Mongo => asked.iter().any(|k| matches!(*k, "update" | "delete" | "findAndModify" | "bulkWrite" | "$out/$merge" | "drop")),
+        _ => asked.iter().any(|k| matches!(*k, "UPDATE" | "DELETE" | "REPLACE" | "ALTER" | "DROP" | "TRUNCATE")),
+    }
 }
 
 /// Whether a run may go ahead. Ok(None): run. Ok(Some(ask)): ask first, then call again with an approval.
@@ -353,18 +366,19 @@ pub async fn check_kinds(writes: Vec<&'static str>, unreadable: bool, ops: Optio
         return Ok(None);
     }
     let ops = ops.map(|o| o.into_iter().filter(|(k, _)| asked.contains(k)).map(|(_, m)| m).collect::<Vec<_>>());
+    let final_ = is_final(conn.engine, &asked, ops.as_ref());
     let c = Classified { unreadable, ..Default::default() };
     // Strict without a passphrase (it was disabled meanwhile) asks as Low does
     let strict = conn.level == SecurityLevel::Strict && tokio::task::spawn_blocking(crate::keychain::has_passphrase).await.map_err(|e| e.to_string())??;
     if !strict {
         return Ok(match approval {
             Some(_) => None,
-            None => Some(Ask { kinds: asked, ops, level: SecurityLevel::Low, touch_id: false, unreadable: c.unreadable, error: None }),
+            None => Some(Ask { kinds: asked, ops, level: SecurityLevel::Low, touch_id: false, unreadable: c.unreadable, error: None, final_ }),
         });
     }
     let touch = conn.touch_id;
     let window = conn.unlock_window.unwrap_or(0);
-    let ask = |error: Option<String>| Ask { kinds: asked.clone(), ops: ops.clone(), level: SecurityLevel::Strict, touch_id: touch, unreadable: c.unreadable, error };
+    let ask = |error: Option<String>| Ask { kinds: asked.clone(), ops: ops.clone(), level: SecurityLevel::Strict, touch_id: touch, unreadable: c.unreadable, error, final_ };
     if guard.unlocked(&conn.id) {
         return Ok(None);
     }

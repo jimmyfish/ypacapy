@@ -4,7 +4,7 @@ import { isDirty, useCurrent, useStore } from "../store";
 import { LEVELS } from "../types";
 import { useDismiss } from "./useDismiss";
 import { LEVEL_ICON, LevelItems } from "./LevelPicker";
-import { Braces, ChevronDown, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Plus, ShieldOff, SquareCode, Table2, X, icoC, ico } from "./Icon";
+import { Braces, ChevronDown, Key, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Plus, ShieldOff, SquareCode, Table2, X, icoC, ico } from "./Icon";
 
 /** The security level of the open connection: voidHTTP's environment picker and menu. Lowering from Strict asks for the passphrase (store.setLevel). */
 function GuardPicker() {
@@ -36,6 +36,7 @@ function GuardPicker() {
         <div className="menu guard-menu" role="menu" aria-label={`Security level for ${conn.name}`}>
           <p className="menu-note">Security level for {conn.name}</p>
           <LevelItems
+            commands={conn.engine === "redis"}
             value={level}
             off={(l) => l === "strict" && !passSet && level !== "strict" && "Set a passphrase in Settings first"}
             onPick={(l) => {
@@ -129,7 +130,7 @@ export function TabsBar() {
       </button>
       <div className="tabs" ref={tabsRef}>
         {session?.tabs.map((t) => {
-          const name = t.kind === "query" ? t.title : t.table;
+          const name = t.kind === "query" ? t.title : t.kind === "key" ? t.key : t.table;
           return (
             <div
               key={t.id}
@@ -143,7 +144,7 @@ export function TabsBar() {
               }}
             >
               <button type="button" className="tab-main" title={t.kind === "table" ? `${t.schema}.${t.table}` : name} onClick={() => st.setActiveTab(t.id)}>
-                {t.kind === "query" ? <SquareCode {...ico} /> : conn?.engine === "mongo" ? <Braces {...ico} /> : <Table2 {...ico} />}
+                {t.kind === "query" ? <SquareCode {...ico} /> : t.kind === "key" ? <Key {...ico} /> : conn?.engine === "mongo" ? <Braces {...ico} /> : <Table2 {...ico} />}
                 <span className="name">{name}</span>
                 {t.kind === "query" && isDirty(t) && <span className="dirty" role="img" aria-label="Unsaved changes" />}
               </button>

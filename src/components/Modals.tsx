@@ -7,18 +7,18 @@ import { api, errText } from "../lib/api";
 import { highlightInline } from "../lib/sql";
 import { systemFonts } from "../lib/fonts";
 import { BUILTIN, DEFAULT_SCHEME, FAMILIES, SCHEMES, schemeSwatch, type BuiltinId } from "../lib/themes";
-import { DEFAULT_LEVEL, LEVELS, MONGO_KINDS, STATEMENTS, type Approval, type Conn, type Engine, type MongoTls, type ReadPref, type SecurityLevel, type Settings, type SslMode } from "../types";
+import { DEFAULT_LEVEL, LEVELS, MONGO_KINDS, REDIS_KINDS, STATEMENTS, type Approval, type Conn, type Engine, type MongoTls, type ReadPref, type SecurityLevel, type Settings, type SslMode } from "../types";
 import { Select } from "./Select";
 import { LevelSelect } from "./LevelPicker";
 import { GroupSelect } from "./GroupPicker";
 import { ColorPicker, EnginePicker } from "./Picker";
-import { ago, when } from "../lib/time";
+import { ago, ttlLeft, when } from "../lib/time";
 import { CONN_COLOR_COUNT } from "../lib/connColors";
 import { useUpdates } from "../updates";
 import { RELEASES_URL } from "../lib/updater";
 import { DEV_BUILD } from "../build";
 import { AboutModal } from "./AboutModal";
-import type { CollInfo } from "../types";
+import type { CollInfo, KeyInfo } from "../types";
 import {
   CircleAlert,
   CircleArrowDown,
@@ -31,6 +31,7 @@ import {
   LockOpen,
   PlugZap,
   ShieldCheck,
+  Shredder,
   Terminal,
   TriangleAlert,
   Type,
@@ -54,11 +55,13 @@ export function Modals() {
       return (
         <Shell title={modal.title} onClose={close}>
           <p>{modal.message}</p>
+          {modal.final && <Final>It cannot be undone.</Final>}
           <footer>
             <button type="button" className="btn" onClick={close}>
               Cancel
             </button>
             <button type="button" className="btn btn--danger" autoFocus onClick={() => (close(), modal.onConfirm())}>
+              {modal.final && <Shredder {...ico} />}
               {modal.confirmLabel ?? "Delete"}
             </button>
           </footer>
@@ -78,7 +81,111 @@ export function Modals() {
       return <AboutModal onClose={close} />;
     case "collInfo":
       return <CollInfoModal m={modal} onClose={close} />;
+    case "keyInfo":
+      return <KeyInfoModal m={modal} onClose={close} />;
   }
+}
+
+/** An ask before something that cannot be undone: a red line with the shredder */
+function Final({ children }: { children: ReactNode }) {
+  return (
+    <p className="guard-final">
+      <Shredder {...ico} />
+      <span>{children}</span>
+    </p>
+  );
+}
+
+// ---------- Redis key Info ----------
+
+const REDIS_TYPE_NAME: Record<string, string> = { string: "string", hash: "hash", list: "list", set: "set", zset: "sorted set", stream: "stream" };
+const REDIS_PARTS: Record<string, string> = { string: "bytes", hash: "fields", list: "items", set: "members", zset: "members", stream: "entries" };
+
+/**
+ * A key's type, encoding, length, TTL, memory and idle time: TYPE, OBJECT ENCODING, the O(1) length, PTTL, MEMORY
+ * USAGE (5 samples) and OBJECT IDLETIME, read when the dialog opens and on Refresh. Never on a timer.
+ */
+function KeyInfoModal({ m, onClose }: { m: Extract<Modal, { kind: "keyInfo" }>; onClose: () => void }) {
+  const [info, setInfo] = useState<KeyInfo | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(true);
+  const db = useStore((s) => s.sessions[m.connId]?.database || "0");
+  const read = () => {
+    setBusy(true);
+    setErr(null);
+    api.redisKeyInfo(m.connId, m.key).then(
+      (i) => (setInfo(i), setBusy(false)),
+      (e) => (setErr(errText(e)), setBusy(false)),
+    );
+  };
+  useEffect(read, [m.connId, m.key]);
+  const row = (k: string, v: ReactNode, note?: string) => (
+    <>
+      <dt>{k}</dt>
+      <dd>
+        {v}
+        {note && <span className="info-note">{note}</span>}
+      </dd>
+    </>
+  );
+  const idle = (s: number) => (s < 60 ? `${s} s` : ttlLeft(s * 1000));
+  return (
+    <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="dialog info-dlg" role="dialog" aria-modal="true" aria-labelledby="info-title">
+        <h2 id="info-title">
+          <span className="info-db">db{db} · </span>
+          {m.key}
+        </h2>
+        {busy && !info ? (
+          <div className="info-body">
+            <div className="empty">
+              <span className="spinner" />
+              <span>Reading {m.key}</span>
+            </div>
+          </div>
+        ) : err ? (
+          <div className="info-body">
+            <div className="error-box">
+              <strong>Could not read {m.key}</strong>
+              <span className="msg">{err}</span>
+            </div>
+          </div>
+        ) : info?.type === "none" ? (
+          <div className="info-body">
+            <div className="empty">
+              <strong>{m.key} is gone</strong>
+              <span>It expired or was deleted.</span>
+            </div>
+          </div>
+        ) : info ? (
+          <div className="info-body" aria-busy={busy || undefined}>
+            <h3 className="cx-h">Key</h3>
+            <dl className="info-grid">
+              {row("Type", REDIS_TYPE_NAME[info.type] ?? info.type)}
+              {row("Encoding", info.encoding ?? "unknown")}
+              {info.len !== null && row("Length", `${info.len.toLocaleString("en-US")} ${REDIS_PARTS[info.type] ?? ""}`)}
+              {row("Expires", info.ttlMs >= 0 ? `in ${ttlLeft(info.ttlMs)}` : "Never", info.ttlMs >= 0 ? undefined : "No TTL set")}
+            </dl>
+            <h3 className="cx-h">Memory</h3>
+            <dl className="info-grid">
+              {row("Size", info.memory === null ? "unknown" : `~${bytes(info.memory)}`, info.memory === null ? "MEMORY USAGE is not allowed for this user" : "MEMORY USAGE, 5 samples")}
+              {row("Idle", info.idle === null ? "unknown" : idle(info.idle), info.idle === null ? "Not kept under an LFU eviction policy" : "Since the last read or write")}
+            </dl>
+          </div>
+        ) : null}
+        <footer>
+          <span className="help info-when">{info ? `Read with TYPE, OBJECT and MEMORY USAGE at ${new Date(info.readAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
+          <button type="button" className="btn" disabled={busy} onClick={read}>
+            <RefreshCw {...ico} />
+            Refresh
+          </button>
+          <button type="button" className="btn btn--primary" autoFocus onClick={onClose}>
+            Close
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
 }
 
 // ---------- MongoDB collection Info ----------
@@ -287,6 +394,8 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
     onClose();
     m.onApprove(a);
   };
+  // Redis KEYS is a read: the ask says why it asks, and offers SCAN
+  const keysOnly = !!m.ask.ops?.length && m.ask.ops.every((o) => o === "KEYS");
   return (
     <Shell title={m.title ?? (verify ? "Enter the passphrase to run this" : "Run this on " + m.connName + "?")} onClose={onClose}>
       <form
@@ -297,7 +406,14 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
           } else approve({ kind: "confirm" });
         }}
       >
-        <p className="help">{m.message ?? (m.ask.unreadable ? `ypacapy could not read what this ${m.ask.ops ? "command" : "SQL"} does, so it asks first.` : `It changes data or structure on ${m.connName}:`)}</p>
+        <p className="help">
+          {m.message ??
+            (m.ask.unreadable
+              ? `ypacapy could not read what this ${m.ask.ops ? "command" : "SQL"} does, so it asks first.`
+              : keysOnly
+                ? `It reads every key in the database, and ${m.connName} answers no one else until it is done:`
+                : `It changes data or structure on ${m.connName}:`)}
+        </p>
         {m.ask.kinds.length > 0 && (
           <div className="guard-kinds">
             {(m.ask.ops?.length ? m.ask.ops : m.ask.kinds).map((k) => (
@@ -313,6 +429,7 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
             <input className="field" type="password" autoFocus autoComplete="current-password" aria-invalid={m.ask.error ? true : undefined} value={pass} onChange={(e) => setPass(e.target.value)} />
           </label>
         )}
+        {m.ask.final && <Final>It cannot be undone. ypacapy keeps no copy of what it deletes or overwrites.</Final>}
         {m.ask.error && (
           <p className="help err" role="alert">
             {m.ask.error}
@@ -328,8 +445,14 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
           <button type="button" className="btn" onClick={onClose}>
             Cancel
           </button>
+          {m.alt && (
+            <button type="button" className="btn" onClick={() => (onClose(), m.alt!.run())}>
+              {m.alt.label}
+            </button>
+          )}
           <button type="submit" className="btn btn--danger" autoFocus={!verify}>
-            {m.title ? "Lower it" : "Run"}
+            {m.ask.final && <Shredder {...ico} />}
+            {m.title ? "Lower it" : keysOnly ? "Run KEYS" : "Run"}
           </button>
         </footer>
       </form>
@@ -339,12 +462,14 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
 
 // ---------- New connection ----------
 
-const PORTS: Record<Engine, number | undefined> = { postgres: 5432, mysql: 3306, sqlite: undefined, mongo: 27017 };
+const PORTS: Record<Engine, number | undefined> = { postgres: 5432, mysql: 3306, sqlite: undefined, mongo: 27017, redis: 6379 };
 const SSL_MODES: [SslMode, string][] = [["disable", "Disable"], ["prefer", "Prefer"], ["require", "Require"], ["verify-ca", "Verify CA"], ["verify-full", "Verify full"]];
 const ALL_KINDS = STATEMENTS.map(([k]) => k);
 /** MongoDB asks about kinds of write method, not statements */
 const MONGO_ALL = MONGO_KINDS.map(([k]) => k);
-const kindsOf = (e: Engine) => (e === "mongo" ? MONGO_ALL : ALL_KINDS);
+/** Redis asks about kinds of command */
+const REDIS_ALL = REDIS_KINDS.map(([k]) => k);
+const kindsOf = (e: Engine) => (e === "mongo" ? MONGO_ALL : e === "redis" ? REDIS_ALL : ALL_KINDS);
 /** a What to protect list as stored: missing when it holds every kind */
 const storedList = (l: string[], e: Engine) => (l.length === kindsOf(e).length ? undefined : l);
 const MONGO_TLS: [MongoTls, string][] = [["off", "Off"], ["on", "On"], ["insecure", "On, without checking the certificate"]];
@@ -371,6 +496,8 @@ interface UrlParts {
   authSource: string;
   replicaSet: string;
   readPref: ReadPref;
+  /** Redis: rediss:// */
+  tls: boolean;
 }
 
 // MySQL spells the modes its own way in a URL (ssl-mode=VERIFY_IDENTITY)
@@ -384,6 +511,8 @@ const SSL_ALIASES: Record<string, SslMode> = {
 function connUrl(p: UrlParts): string {
   if (p.engine === "sqlite") return `sqlite:${p.file}`;
   const enc = encodeURIComponent;
+  // Redis: redis:// or rediss:// (TLS on); the database is the number after the slash
+  if (p.engine === "redis") return `redis${p.tls ? "s" : ""}://${p.user ? enc(p.user) + "@" : ""}${p.host}${p.port ? ":" + p.port : ""}${p.database ? "/" + p.database : ""}`;
   // MongoDB: mongodb:// or mongodb+srv:// (no port); a seed list stays as typed; the rest rides in the query string
   if (p.engine === "mongo") {
     const qs = [["authSource", p.authSource], ["replicaSet", p.replicaSet], ["readPreference", p.readPref === "primary" ? "" : p.readPref]].filter(([, v]) => v).map(([k, v]) => `${k}=${enc(v)}`).join("&");
@@ -424,6 +553,17 @@ function parseUrl(v: string): (Partial<UrlParts> & { password?: string }) | null
       replicaSet: q.get("replicaSet") ?? "",
       readPref: READ_PREFS.some(([v]) => v === rp) ? (rp as ReadPref) : "primary",
     };
+  }
+  const rd = t.match(/^(rediss?|valkeys?):\/\/(?:([^@/:]*)(?::([^@]*))?@)?([^:/?]*)(?::(\d*))?(?:\/(\d*))?/i);
+  if (rd) {
+    const dec = (x?: string) => {
+      try {
+        return decodeURIComponent(x ?? "");
+      } catch {
+        return x ?? "";
+      }
+    };
+    return { engine: "redis", tls: /s$/i.test(rd[1]), user: dec(rd[2]), password: rd[3] === undefined ? undefined : dec(rd[3]), host: rd[4], port: rd[5] || "6379", database: rd[6] ?? "" };
   }
   const m = t.match(/^(postgres(?:ql)?|mysql|mariadb):\/\/(?:([^@/:]*)(?::([^@]*))?@)?([^:/?]*)(?::(\d*))?(?:\/([^?]*))?(?:\?(.*))?$/i);
   if (!m) return null;
@@ -511,6 +651,9 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
   const [readPref, setReadPref] = useState<ReadPref>(conn?.readPref ?? "primary");
   const [direct, setDirect] = useState(!!conn?.direct);
   const [serverCheck, setServerCheck] = useState(conn?.serverCheck ? String(conn.serverCheck) : "");
+  // Redis
+  const [keySep, setKeySep] = useState(conn?.keySep ?? ":");
+  const [scanCount, setScanCount] = useState(conn?.scanCount ? String(conn.scanCount) : "");
   const [line, setLine] = useState<{ kind: "testing" | "ok" | "fail" | "stopped"; text: string } | null>(null);
   // the test running now; Stop test (or closing the dialog) cancels it and its late answer is dropped
   const testId = useRef<string | null>(null);
@@ -525,13 +668,14 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
   const nameBad = touched && !name.trim();
   const lite = engine === "sqlite";
   const mongo = engine === "mongo";
-  const url = urlDraft ?? connUrl({ engine, host, port, user, database, file, sslMode, srv, authSource, replicaSet, readPref });
-  // TLS as it will be: an SRV record turns it on unless it was set
-  const tlsNow: MongoTls = tls || (srv || sslCa || tlsCert ? "on" : "off");
+  const redis = engine === "redis";
+  // TLS as it will be. MongoDB: an SRV record turns it on unless it was set. Redis: off until it is set (redis://)
+  const tlsNow: MongoTls = tls || (!redis && (srv || sslCa || tlsCert) ? "on" : "off");
+  const url = urlDraft ?? connUrl({ engine, host, port, user, database, file, sslMode, srv, authSource, replicaSet, readPref, tls: tlsNow !== "off" });
 
   const pickEngine = (e: Engine) => {
-    // MongoDB and SQL ask about different things: switching between them starts from every kind of the new one
-    if ((e === "mongo") !== mongo) setProtection((p) => ({ ...p, list: kindsOf(e) }));
+    // MongoDB, Redis and SQL ask about different things: switching between them starts from every kind of the new one
+    if (kindsOf(e) !== kindsOf(engine)) setProtection((p) => ({ ...p, list: kindsOf(e) }));
     setEngine(e);
     if (e !== "sqlite" && (!port || Object.values(PORTS).includes(Number(port)))) setPort(String(PORTS[e]));
     setLine(null);
@@ -549,6 +693,8 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
       setReplicaSet(p.replicaSet ?? "");
       setReadPref(p.readPref ?? "primary");
     }
+    // Redis: rediss:// is TLS on; a TLS mode picked before stays when the scheme agrees
+    if (p.engine === "redis") setTls(p.tls ? (tls === "insecure" ? "insecure" : "on") : "off");
     setUser(p.user ?? "");
     setHost(p.host ?? "");
     setPort(p.port ?? "");
@@ -584,7 +730,7 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
           user: user.trim() || undefined,
           sslMode: mongo || sslMode === "prefer" ? undefined : sslMode,
           sslCa: optStr(sslCa),
-          appName: engine === "postgres" || mongo ? optStr(appName) : undefined,
+          appName: engine === "postgres" || mongo || redis ? optStr(appName) : undefined,
           connectTimeout: optNum(connectTimeout),
           ...(mongo
             ? {
@@ -597,7 +743,14 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
                 direct: direct || undefined,
                 serverCheck: optNum(serverCheck),
               }
-            : {}),
+            : redis
+              ? {
+                  tls: tls && tls !== "off" ? tls : undefined,
+                  tlsCert: optStr(tlsCert),
+                  keySep: keySep === ":" ? undefined : keySep,
+                  scanCount: optNum(scanCount),
+                }
+              : {}),
         }),
   });
 
@@ -716,7 +869,7 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
                 onClick={() => setTab(k)}
                 onKeyDown={(e) => tabKey(e, i)}
               >
-                {k === "ssl" && mongo ? "TLS" : label}
+                {k === "ssl" && (mongo || redis) ? "TLS" : label}
               </button>
             ))}
           </div>
@@ -772,7 +925,8 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
                   {!urlOnly && (
                     <>
                       <label htmlFor="c-db">Database</label>
-                      <input className="field mono cx-full" id="c-db" autoComplete="off" spellCheck={false} value={database} onChange={(e) => (setDatabase(e.target.value), setUrlDraft(null))} />
+                      <input className="field mono cx-full" id="c-db" autoComplete="off" spellCheck={false} placeholder={redis ? "0" : undefined} inputMode={redis ? "numeric" : undefined} value={database} onChange={(e) => (setDatabase(redis ? e.target.value.replace(/\D/g, "") : e.target.value), setUrlDraft(null))} />
+                      {redis && <span className="help cx-full cx-under">A number, 0 to 15. Empty uses 0. ypacapy shows this database only.</span>}
                       {mongo && (
                         <>
                           <label htmlFor="c-authdb">Auth database</label>
@@ -814,19 +968,28 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
               onChange={setProtection}
               lockable={conn?.level === "strict" && passSet}
               mongo={mongo}
+              redis={redis}
             />
             <h3 className="cx-h">
               Queries <span className="cx-h-note">Empty uses the value in Settings</span>
             </h3>
             <div className="set-list">
-              <SetItem label="Row limit" desc={mongo ? "Added to a find or aggregate that has no limit of its own" : "Added to a select that has no limit of its own"} htmlFor="c-limit">
+              <SetItem
+                label={redis ? "Page size" : "Row limit"}
+                desc={redis ? "How many fields, items or members a key tab reads at a time" : mongo ? "Added to a find or aggregate that has no limit of its own" : "Added to a select that has no limit of its own"}
+                htmlFor="c-limit"
+              >
                 <OptUnit id="c-limit" unit="rows" placeholder={String(settings.rowLimit ?? DEFAULT_ROW_LIMIT)} value={rowLimit} onChange={setRowLimit} />
               </SetItem>
-              <SetItem label="Statement timeout" desc="0 lets a statement run as long as it takes" htmlFor="c-timeout">
+              <SetItem
+                label={redis ? "Command timeout" : "Statement timeout"}
+                desc={redis ? "ypacapy stops waiting; Redis has no way to stop a command it started" : "0 lets a statement run as long as it takes"}
+                htmlFor="c-timeout"
+              >
                 <OptUnit id="c-timeout" unit="s" placeholder={String(settings.statementTimeout ?? 30)} value={stmtTimeout} onChange={setStmtTimeout} />
               </SetItem>
               {!lite && (
-                <SetItem label="Connection heartbeat" desc={mongo ? "Keeps idle sessions open with a ping command" : "Keeps idle sessions open with select 1"} htmlFor="c-beat">
+                <SetItem label="Connection heartbeat" desc={redis ? "Keeps idle connections open with PING" : mongo ? "Keeps idle sessions open with a ping command" : "Keeps idle sessions open with select 1"} htmlFor="c-beat">
                   <Select id="c-beat" className="field set-choice" value={heartbeat} onChange={(e) => setHeartbeat(e.target.value as "app" | "on" | "off")}>
                     <option value="app">Use Settings ({settings.heartbeat ? "on" : "off"})</option>
                     <option value="on">On</option>
@@ -840,6 +1003,39 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
           <div className="cx-panel" role="tabpanel" id="cp-ssl" aria-labelledby="ct-ssl" hidden={tab !== "ssl"}>
             {lite ? (
               none("SQLite opens a file on this Mac. There is no network to secure.")
+            ) : redis ? (
+              <div className="cx-grid">
+                <label htmlFor="c-tls">TLS</label>
+                <span className="cx-full">
+                  <Select id="c-tls" className="field" value={tlsNow} onChange={(e) => (setTls(e.target.value as MongoTls), setUrlDraft(null))}>
+                    {MONGO_TLS.map(([v, t]) => (
+                      <option key={v} value={v}>
+                        {t}
+                      </option>
+                    ))}
+                  </Select>
+                </span>
+                <span className="help cx-full cx-under">On uses rediss://. ElastiCache with encryption in transit requires it.</span>
+                <label htmlFor="c-tlsca">CA file</label>
+                <span className="with-btn cx-full">
+                  <input className="field mono" id="c-tlsca" placeholder="~/certs/ca.pem" autoComplete="off" spellCheck={false} value={sslCa} onChange={(e) => setSslCa(e.target.value)} />
+                  <button type="button" className="btn" onClick={() => void choose("Choose a CA certificate", setSslCa)}>
+                    <FolderOpen {...ico} />
+                    Choose
+                  </button>
+                </span>
+                <label htmlFor="c-tlscert">Client certificate</label>
+                <span className="with-btn cx-full">
+                  <input className="field mono" id="c-tlscert" placeholder="~/certs/client.pem" aria-describedby="c-tlscert-h" autoComplete="off" spellCheck={false} value={tlsCert} onChange={(e) => setTlsCert(e.target.value)} />
+                  <button type="button" className="btn" onClick={() => void choose("Choose a client certificate", setTlsCert)}>
+                    <FolderOpen {...ico} />
+                    Choose
+                  </button>
+                </span>
+                <span className="help cx-full cx-under" id="c-tlscert-h">
+                  Only when the server asks for one: a file with the certificate and its key.
+                </span>
+              </div>
             ) : mongo ? (
               <div className="cx-grid">
                 <label htmlFor="c-tls">TLS</label>
@@ -905,7 +1101,7 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
               none("Nothing to set for an SQLite file.")
             ) : (
               <div className="cx-grid">
-                {(engine === "postgres" || mongo) && (
+                {(engine === "postgres" || mongo || redis) && (
                   <>
                     <label htmlFor="c-app">Application name</label>
                     <input className="field mono cx-full" id="c-app" placeholder="ypacapy" autoComplete="off" spellCheck={false} value={appName} onChange={(e) => setAppName(e.target.value)} />
@@ -940,6 +1136,20 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
                       <OptUnit id="c-hb" unit="s" placeholder="60" value={serverCheck} onChange={setServerCheck} />
                     </span>
                     <span className="help cx-full cx-under">While connected, the driver sends hello to each host at this interval to find the primary. It cannot be turned off.</span>
+                  </>
+                )}
+                {redis && (
+                  <>
+                    <label htmlFor="c-sep">Key separator</label>
+                    <input className="field mono cx-full" id="c-sep" autoComplete="off" spellCheck={false} aria-describedby="c-sep-h" value={keySep} onChange={(e) => setKeySep(e.target.value)} />
+                    <span className="help cx-full cx-under" id="c-sep-h">
+                      The tree groups keys into folders on it: user:3107 goes in user. Empty shows every key flat.
+                    </span>
+                    <label htmlFor="c-scan">Keys per scan</label>
+                    <span className="cx-full">
+                      <OptUnit id="c-scan" unit="keys" placeholder="1000" value={scanCount} onChange={setScanCount} />
+                    </span>
+                    <span className="help cx-full cx-under">The tree reads keys with SCAN, about this many per call, and only when you ask for more. It never sends KEYS.</span>
                   </>
                 )}
               </div>
@@ -1333,6 +1543,7 @@ function SecuritySection({
   onChange,
   lockable,
   mongo = false,
+  redis = false,
 }: {
   connId?: string;
   level: SecurityLevel;
@@ -1342,11 +1553,14 @@ function SecuritySection({
   lockable: boolean;
   /** MongoDB: write methods, grouped by kind, in place of SQL statements */
   mongo?: boolean;
+  /** Redis: commands, grouped by the type they write to */
+  redis?: boolean;
 }) {
-  const kinds = mongo ? MONGO_ALL : ALL_KINDS;
-  const rows: [string, ReactNode, string?][] = mongo
-    ? MONGO_KINDS.map(([k, methods, tag]) => [k, methods.map((m) => <code key={m} className="stmt">{m}</code>), tag])
-    : STATEMENTS.map(([k, tag]) => [k, <code className="stmt">{k}</code>, tag]);
+  const kinds = mongo ? MONGO_ALL : redis ? REDIS_ALL : ALL_KINDS;
+  const rows: [string, ReactNode, string?][] =
+    mongo || redis
+      ? (mongo ? MONGO_KINDS : REDIS_KINDS).map(([k, methods, tag]) => [k, methods.map((m) => <code key={m} className="stmt">{m}</code>), tag])
+      : STATEMENTS.map(([k, tag]) => [k, <code className="stmt">{k}</code>, tag]);
   const pass = useStore((st) => st.pass);
   // Touch ID opens it for changes only when the connection, as saved, allows Touch ID
   const savedTouch = useStore((st) => !!st.conns.find((c) => c.id === connId)?.touchId);
@@ -1354,7 +1568,7 @@ function SecuritySection({
   const [unlocked, setUnlocked] = useState(false);
   const locked = lockable && !unlocked;
   const put = (p: Partial<Protection>) => onChange({ ...value, ...p });
-  const desc = LEVELS.find(([l]) => l === level)?.[2];
+  const desc = LEVELS.find(([l]) => l === level)?.[2]?.replace("statement", redis ? "command" : "statement");
 
   return (
     <>
@@ -1363,6 +1577,7 @@ function SecuritySection({
         <SetItem label="Security level" desc={locked ? "Locked. Use Change below to lower it" : desc} htmlFor="c-level">
           <LevelSelect
             id="c-level"
+            commands={redis}
             value={level}
             off={(v) => (v === "strict" && !pass.set && level !== "strict" ? "Set a passphrase in Settings first" : locked && v !== "strict")}
             onChange={onLevel}
@@ -1389,7 +1604,7 @@ function SecuritySection({
         <>
           <div className="protect-head cx-protect-head">
             <h3 className="cx-h">
-              {mongo ? "Writes to ask about" : "Statements to ask about"} <span className="cx-h-note">For this connection</span>
+              {mongo ? "Writes to ask about" : redis ? "Commands to ask about" : "Statements to ask about"} <span className="cx-h-note">For this connection</span>
             </h3>
             {lockable && level === "strict" && (
               <button

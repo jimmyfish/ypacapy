@@ -4,6 +4,7 @@ mod fonts;
 mod guard;
 mod keychain;
 mod mongo_shell;
+mod redis_cli;
 mod paths;
 mod settings;
 mod store;
@@ -150,6 +151,9 @@ pub fn run() {
             db::apply_edits,
             db::mongo::mongo_find,
             db::mongo::mongo_stats,
+            db::redis::redis_scan,
+            db::redis::redis_key,
+            db::redis::redis_key_info,
             guard::passphrase_status,
             guard::set_passphrase,
             guard::disable_passphrase,

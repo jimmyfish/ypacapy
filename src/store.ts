@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { api, errText } from "./lib/api";
 import { tableSelect } from "./lib/sql";
 import { editCount, type Edits } from "./lib/edit";
-import type { Approval, Ask, ColumnsEntry, Conn, HistoryEntry, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
+import type { Approval, Ask, ColumnsEntry, Conn, HistoryEntry, KeyTab, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
 
 export type SettingsSection = "appearance" | "queries" | "security" | "data" | "updates";
 export type SideView = "schema" | "history" | "saved";
@@ -11,13 +11,16 @@ export type Modal =
   | { kind: "settings"; section?: SettingsSection }
   | { kind: "about" }
   | { kind: "connect"; conn?: Conn; group?: string }
-  | { kind: "confirm"; title: string; message: string; confirmLabel?: string; onConfirm: () => void }
+  /** final: it cannot be undone; the dialog says so and the button carries the shredder */
+  | { kind: "confirm"; title: string; message: string; confirmLabel?: string; final?: boolean; onConfirm: () => void }
   | { kind: "prompt"; title: string; label: string; initial: string; onSubmit: (v: string) => void }
   | { kind: "saveQuery"; tabId: string }
   /** the passphrase or confirm ask before a run; with title and message, the passphrase before lowering Strict */
-  | { kind: "guard"; ask: Ask; connName: string; title?: string; message?: string; onApprove: (a: Approval) => void }
+  | { kind: "guard"; ask: Ask; connName: string; title?: string; message?: string; onApprove: (a: Approval) => void; alt?: { label: string; run: () => void } }
   /** MongoDB: a collection's sizes and shape, read with $collStats when it opens */
-  | { kind: "collInfo"; connId: string; database: string; collection: string };
+  | { kind: "collInfo"; connId: string; database: string; collection: string }
+  /** Redis: a key's type, encoding, length, TTL and memory, read when it opens */
+  | { kind: "keyInfo"; connId: string; key: string };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -70,6 +73,12 @@ interface State {
   refreshTree(id?: string): void;
   /** autocomplete: reads a table's columns once; later calls reuse them until the tree is cleared */
   loadColumns(schema: string, table: string): void;
+  /** Redis: the tree's keys. Without more it starts over (SCAN 0); pattern is SCAN's MATCH ("" every key) */
+  scanKeys(opts?: { more?: boolean; pattern?: string; connId?: string }): Promise<void>;
+  /** Redis: a key in its own tab */
+  openKey(key: string): void;
+  /** Redis: a page of the key tab's key; page indexes the starts read so far, one past the last for the next */
+  readKey(tabId: string, opts?: { page?: number }): Promise<void>;
 
   newQueryTab(sql?: string, title?: string, saved?: Saved): string;
   openTable(schema: string, table: string): void;
@@ -77,7 +86,7 @@ interface State {
   closeTab(id: string, force?: boolean): void;
   /** pins or unpins a tab; a pinned tab moves to the end of the pinned ones at the left */
   pinTab(id: string, on: boolean): void;
-  updateTab(id: string, patch: Partial<QueryTab> | Partial<TableTab>): void;
+  updateTab(id: string, patch: Partial<QueryTab> | Partial<TableTab> | Partial<KeyTab>): void;
   run(tabId: string, opts?: { sql?: string; approval?: Approval; discard?: boolean }): Promise<void>;
   cancel(tabId: string): void;
   readTable(tabId: string, opts?: { offset?: number; approval?: Approval; discard?: boolean }): Promise<void>;
@@ -95,16 +104,20 @@ interface State {
  */
 type KeptQuery = { kind?: "query"; id: string; title: string; sql: string; savedId?: string; savedFolder?: string; savedSql?: string; pinned?: boolean };
 type KeptTable = { kind: "table"; id: string; schema: string; table: string; where: string; view: TableTab["view"]; pinned?: boolean; project?: string; sort?: string; limit?: string; as?: TableTab["as"] };
+/** Redis: a pinned key tab */
+type KeptKey = { kind: "key"; id: string; key: string; pattern?: string; ascending?: boolean; as?: KeyTab["as"]; pinned?: boolean };
 interface Workspace {
   v: 1;
   active: string | null;
-  tabs: (KeptQuery | KeptTable)[];
+  tabs: (KeptQuery | KeptTable | KeptKey)[];
 }
 /** a short pause after the last change, so a quit right after typing loses little */
 const WORKSPACE_SAVE_MS = 300;
 /** connections whose kept tabs were read back; only those are written, so an empty session never overwrites them */
 const restored = new Set<string>();
 const saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+/** Redis: the latest SCAN read per connection; an answer to an older one is dropped */
+const scanTokens = new Map<string, string>();
 const lastWritten = new Map<string, string>();
 
 function workspaceOf(s: Session): string {
@@ -116,7 +129,9 @@ function workspaceOf(s: Session): string {
     tabs: kept.map((t) =>
       t.kind === "query"
         ? { id: t.id, title: t.title, sql: t.sql, savedId: t.savedId, savedFolder: t.savedFolder, savedSql: t.savedSql, pinned: t.pinned || undefined }
-        : { kind: "table", id: t.id, schema: t.schema, table: t.table, where: t.where, view: t.view, pinned: true, project: t.project || undefined, sort: t.sort || undefined, limit: t.limit || undefined, as: t.as === "json" ? "json" : undefined },
+        : t.kind === "key"
+          ? { kind: "key", id: t.id, key: t.key, pattern: t.pattern || undefined, ascending: t.ascending || undefined, as: t.as, pinned: true }
+          : { kind: "table", id: t.id, schema: t.schema, table: t.table, where: t.where, view: t.view, pinned: true, project: t.project || undefined, sort: t.sort || undefined, limit: t.limit || undefined, as: t.as === "json" ? "json" : undefined },
     ),
   };
   return JSON.stringify(w);
@@ -147,7 +162,10 @@ async function readWorkspace(id: string): Promise<{ tabs: Tab[]; active: string 
     for (const t of Array.isArray(w.tabs) ? w.tabs : []) {
       if (!t) continue;
       const pinned = t.pinned ? { pinned: true } : {};
-      if (t.kind === "table") {
+      if (t.kind === "key") {
+        if (typeof t.key !== "string" || !t.key) continue;
+        tabs.push({ id: t.id || uid(), kind: "key", key: t.key, pattern: typeof t.pattern === "string" ? t.pattern : "", ...(t.ascending ? { ascending: true } : {}), ...(t.as === "text" || t.as === "json" ? { as: t.as } : {}), starts: [""], page: 0, ...pinned, run: { status: "idle" } });
+      } else if (t.kind === "table") {
         if (typeof t.schema !== "string" || typeof t.table !== "string" || !t.table) continue;
         const view = t.view === "columns" || t.view === "indexes" ? t.view : "rows";
         const str = (v: unknown) => (typeof v === "string" && v ? { v } : null);
@@ -203,7 +221,7 @@ export const useStore = create<State>()((set, get) => {
     }
     return null;
   };
-  const patchTab = (tabId: string, patch: Partial<QueryTab> | Partial<TableTab>) => {
+  const patchTab = (tabId: string, patch: Partial<QueryTab> | Partial<TableTab> | Partial<KeyTab>) => {
     const hit = sessionOfTab(tabId);
     if (!hit) return;
     patchSession(hit[0], (s) => ({ tabs: s.tabs.map((t) => (t.id === tabId ? ({ ...t, ...patch } as Tab) : t)) }));
@@ -383,7 +401,7 @@ export const useStore = create<State>()((set, get) => {
           tree: {},
           columns: {},
           expanded: schema ? { [schema]: true, [`${schema}/tables`]: true, [`${schema}/views`]: true } : {},
-          // MongoDB opens on its first collection (below), not on an empty console
+          // MongoDB opens on its first collection (below), not on an empty console; Redis on its console
           ...(s.tabs.length || mongo ? {} : (() => {
             const t = newQuery(1);
             return { tabs: [t], activeTabId: t.id };
@@ -399,8 +417,14 @@ export const useStore = create<State>()((set, get) => {
               if (first) get().openTable(schema, first.name);
               else get().newQueryTab();
             });
+        // Redis: the tree's first SCAN
+        if (get().conns.find((c) => c.id === id)?.engine === "redis") void get().scanKeys({ connId: id });
         // pinned table tabs kept from last time read their rows and columns now that the pool is open
         for (const t of get().sessions[id]?.tabs ?? []) {
+          if (t.kind === "key") {
+            if (t.run.status === "idle") void get().readKey(t.id);
+            continue;
+          }
           if (t.kind !== "table" || t.run.status !== "idle" || t.info) continue;
           void get().readTable(t.id);
           void get().loadTableInfo(t.id);
@@ -429,7 +453,7 @@ export const useStore = create<State>()((set, get) => {
 
     async reconnect(id) {
       await api.closeConnection(id).catch(() => {});
-      patchSession(id, () => ({ status: "error" }));
+      patchSession(id, () => ({ status: "error", keys: undefined }));
       await get().openConn(id);
     },
 
@@ -529,6 +553,11 @@ export const useStore = create<State>()((set, get) => {
       if (!s) return;
       const open = Object.keys(s.tree);
       patchSession(id, () => ({ tree: {}, columns: {} }));
+      // Redis: the keys are read again from the start, with the same pattern
+      if (get().conns.find((c) => c.id === id)?.engine === "redis") {
+        void get().scanKeys({ connId: id, pattern: s.keys?.pattern ?? "" });
+        return;
+      }
       // the databases and schemas too (one catalog read), so one made or dropped elsewhere shows up
       if (s.status === "open")
         void api.openConnection(id, s.database || undefined).then(
@@ -536,6 +565,69 @@ export const useStore = create<State>()((set, get) => {
           () => {},
         );
       if (id === get().currentId) for (const schema of open) void get().loadSchema(schema);
+    },
+
+    async scanKeys(opts = {}) {
+      const id = opts.connId ?? get().currentId;
+      if (!id) return;
+      const s = get().sessions[id];
+      if (!s) return;
+      const more = !!opts.more && !!s.keys && s.keys.cursor !== "0";
+      const pattern = opts.pattern ?? s.keys?.pattern ?? "";
+      const prev = more && s.keys ? s.keys : { keys: [], cursor: "0", total: s.keys?.total ?? 0, readAt: 0 };
+      const token = uid();
+      scanTokens.set(id, token);
+      patchSession(id, () => ({ keys: { ...prev, pattern, state: "loading" } }));
+      try {
+        const page = await api.redisScan(id, more ? prev.cursor : "0", pattern || undefined);
+        // a newer read (Refresh, another pattern) started meanwhile: that one wins
+        if (scanTokens.get(id) !== token || !get().sessions[id]) return;
+        const seen = new Set(prev.keys.map((k) => k.key));
+        const keys = [...prev.keys, ...page.keys.filter((k) => !seen.has(k.key))];
+        patchSession(id, () => ({ keys: { state: "loaded", keys, cursor: page.cursor, total: page.total, pattern, readAt: Date.now() } }));
+      } catch (e) {
+        if (scanTokens.get(id) !== token) return;
+        patchSession(id, () => ({ keys: { ...prev, pattern, state: "error", error: errText(e) } }));
+      }
+    },
+
+    openKey(key) {
+      const id = get().currentId;
+      if (!id) return;
+      const s = get().sessions[id];
+      const hit = s.tabs.find((t) => t.kind === "key" && t.key === key);
+      if (hit) {
+        patchSession(id, () => ({ activeTabId: hit.id }));
+        return;
+      }
+      const t: KeyTab = { id: uid(), kind: "key", key, pattern: "", starts: [""], page: 0, run: { status: "idle" } };
+      patchSession(id, (x) => ({ tabs: [...x.tabs, t], activeTabId: t.id }));
+      void get().readKey(t.id);
+    },
+
+    async readKey(tabId, opts = {}) {
+      const hit = sessionOfTab(tabId);
+      if (!hit) return;
+      const [connId, , tab] = hit;
+      if (tab.kind !== "key" || tab.run.status === "running") return;
+      const page = Math.max(0, Math.min(opts.page ?? 0, tab.starts.length - 1));
+      const start = tab.starts[page] ?? "";
+      const runId = uid();
+      patchTab(tabId, { page, run: { status: "running", runId, startedAt: Date.now() } });
+      // where the page starts, in the terms of the key's type (the type the page before had)
+      const ty = tab.data?.type;
+      const at = !start ? {} : ty === "list" || ty === "zset" ? { offset: Number(start) } : ty === "stream" ? { after: start } : { cursor: start };
+      try {
+        const data = await api.redisKey({ runId, connId, key: tab.key, pattern: tab.pattern || undefined, ascending: !!tab.ascending, ...at });
+        const now = sessionOfTab(tabId)?.[2];
+        if (!now || now.kind !== "key" || now.run.runId !== runId) return;
+        // the next page's start, kept so Previous can go back
+        const starts = [...now.starts.slice(0, page + 1), ...(data.next !== null ? [data.next] : [])];
+        patchTab(tabId, { data, error: undefined, starts, run: { status: "done", runId } });
+      } catch (e) {
+        const now = sessionOfTab(tabId)?.[2];
+        if (now?.run.runId === runId) patchTab(tabId, { error: errText(e), run: { status: "done", runId } });
+      }
     },
 
     newQueryTab(sql = "", title, saved) {
@@ -593,7 +685,7 @@ export const useStore = create<State>()((set, get) => {
       if (!force && pending) {
         get().openModal({
           kind: "confirm",
-          title: `Close ${tab.kind === "query" ? tab.title : tab.table}?`,
+          title: `Close ${tab.kind === "query" ? tab.title : tab.kind === "key" ? tab.key : tab.table}?`,
           message: `${pending} unsaved change${pending === 1 ? "" : "s"} to its rows ${pending === 1 ? "is" : "are"} lost.`,
           confirmLabel: "Close",
           onConfirm: () => get().closeTab(tabId, true),
@@ -646,7 +738,18 @@ export const useStore = create<State>()((set, get) => {
       if (out.kind === "ask") {
         patchTab(tabId, { run: prev });
         const conn = get().conns.find((c) => c.id === connId);
-        get().openModal({ kind: "guard", ask: out, connName: conn?.name ?? "", onApprove: (approval) => void get().run(tabId, { ...opts, approval }) });
+        // Redis KEYS: SCAN reads the same keys a batch at a time and never holds the server
+        const scan = conn?.engine === "redis" && out.ops?.includes("KEYS") ? keysToScan(sql) : null;
+        const alt = scan
+          ? {
+              label: "Use SCAN instead",
+              run: () => {
+                if (sql === tab.sql) get().updateTab(tabId, { sql: scan });
+                void get().run(tabId, { ...opts, sql: scan });
+              },
+            }
+          : undefined;
+        get().openModal({ kind: "guard", ask: out, connName: conn?.name ?? "", onApprove: (approval) => void get().run(tabId, { ...opts, approval }), alt });
         return;
       }
       dropEdits(tabId);
@@ -758,6 +861,21 @@ useStore.subscribe((st, prev) => {
 
 function newQuery(n: number): QueryTab {
   return { id: uid(), kind: "query", title: `Query ${n}`, sql: "", run: { status: "idle" } };
+}
+
+/** Redis: each KEYS line as the first SCAN step over the same pattern; null when there is no KEYS to change */
+export function keysToScan(text: string): string | null {
+  let hit = false;
+  const out = text
+    .split("\n")
+    .map((l) => {
+      const m = /^(\s*)KEYS\s+(\S+)\s*$/i.exec(l);
+      if (!m) return l;
+      hit = true;
+      return `${m[1]}SCAN 0 MATCH ${m[2]} COUNT 1000`;
+    })
+    .join("\n");
+  return hit ? out : null;
 }
 
 export const isDirty = (t: QueryTab) => (t.savedId ? t.sql !== t.savedSql : t.sql.trim() !== "");

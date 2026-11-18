@@ -31,6 +31,9 @@ sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio",
 # MongoDB: the official driver (tokio, rustls, SRV through its own DNS resolver). Its bson 2 is re-exported as
 # mongodb::bson. Queries are mongosh text parsed in mongo_shell.rs, never evaluated as JavaScript.
 mongodb = "3.10"
+# Redis: redis-rs on tokio, TLS through rustls (the macOS roots, or the CA file the connection names). Only raw
+# commands: the console's text is split as redis-cli splits it (redis_cli.rs), and the guard classifies by command name.
+redis = { version = "1.8", default-features = false, features = ["tokio-rustls-comp", "tls-rustls-insecure"] }
 # Write guard: statements are classified from the parsed AST (tokenizer fallback), never by regex.
 sqlparser = { version = "0.64", features = ["visitor"] }
 # settings.toml and connections.toml

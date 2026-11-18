@@ -15,6 +15,7 @@ pub enum Engine {
     Mysql,
     Sqlite,
     Mongo,
+    Redis,
 }
 
 impl Engine {
@@ -24,6 +25,7 @@ impl Engine {
             Engine::Mysql => "MySQL",
             Engine::Sqlite => "SQLite",
             Engine::Mongo => "MongoDB",
+            Engine::Redis => "Redis",
         }
     }
 }
@@ -139,10 +141,11 @@ pub struct Conn {
     /// MongoDB: host is a DNS seed list name (mongodb+srv), so there is no port
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub srv: bool,
-    /// MongoDB TLS; the CA file is ssl_ca
+    /// MongoDB and Redis TLS; the CA file is ssl_ca. Redis: on is rediss://
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tls: Option<MongoTls>,
-    /// MongoDB: a PEM file with the client certificate and its key, for X.509 sign-in
+    /// MongoDB: a PEM file with the client certificate and its key, for X.509 sign-in. Redis: the same file,
+    /// when the server asks for a client certificate
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tls_cert: Option<String>,
     /// MongoDB: the replica set name; missing = read from the server
@@ -158,6 +161,12 @@ pub struct Conn {
     /// cannot stop checking, so this only makes it rarer.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub server_check: Option<u32>,
+    /// Redis: the tree puts keys into folders on this; missing = ":", empty = every key flat
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key_sep: Option<String>,
+    /// Redis: about this many keys per SCAN call when the tree reads keys; missing = 1000
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scan_count: Option<u32>,
     /// ms since the epoch
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_opened: Option<i64>,
@@ -171,9 +180,14 @@ fn one() -> u8 {
 }
 
 impl Conn {
-    /// What to protect, in STATEMENTS order (MONGO_KINDS for MongoDB); every kind when the list was never changed.
+    /// What to protect, in STATEMENTS order (MONGO_KINDS for MongoDB, redis_cli::KINDS for Redis); every kind
+    /// when the list was never changed.
     pub fn protect_list(&self) -> Vec<&'static str> {
-        let all: &[&'static str] = if self.engine == Engine::Mongo { &crate::guard::MONGO_KINDS } else { &crate::guard::STATEMENTS };
+        let all: &[&'static str] = match self.engine {
+            Engine::Mongo => &crate::guard::MONGO_KINDS,
+            Engine::Redis => &crate::redis_cli::KINDS,
+            _ => &crate::guard::STATEMENTS,
+        };
         all.iter().copied().filter(|k| self.protect.as_ref().is_none_or(|l| l.iter().any(|x| x == k))).collect()
     }
 }

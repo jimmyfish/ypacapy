@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isDirty, useCurrent, useStore } from "../store";
 import { ENGINE_LABEL, ENGINE_NAME, formatSql, statementAt } from "../lib/sql";
 import { highlightMongo, mongoStatementAt } from "../lib/mongosh";
+import { highlightRedis, redisCommandAt } from "../lib/rediscli";
 import { docsToSet, shellPretty } from "../lib/bson";
 import { duration } from "../lib/time";
 import { returnsRows, sourceOf, statements, targetOf, type EditTarget } from "../lib/edit";
@@ -46,7 +47,16 @@ export function QueryContext() {
     <div className="ctx">
       <span className={`e e-${conn.engine}`}>{ENGINE_LABEL[conn.engine]}</span>
       <strong>{conn.name}</strong>
-      {conn.engine !== "sqlite" && info && (
+      {/* Redis: the connection's own database only; it changes in Edit connection */}
+      {conn.engine === "redis" && info && (
+        <>
+          <span className="sep">/</span>
+          <span className="ctx-db" title="The connection's database. Change it in Edit connection.">
+            db{session.database || "0"}
+          </span>
+        </>
+      )}
+      {conn.engine !== "sqlite" && conn.engine !== "redis" && info && (
         <>
           <span className="sep">/</span>
           <CtxSelect label="Database" value={session.database} options={info.databases} onChange={(v) => void st.setDatabase(v)} />
@@ -140,7 +150,7 @@ export function RunMeta({ run, extra }: { run: RunState; extra?: ReactNode }) {
 }
 
 /** Error states: the database's own words, or a lost connection with Reconnect. */
-export function ErrorState({ o, onReconnect }: { o: Extract<RunOutcome, { kind: "error" }>; onReconnect: () => void }) {
+export function ErrorState({ o, onReconnect, onFix }: { o: Extract<RunOutcome, { kind: "error" }>; onReconnect: () => void; onFix?: (command: string) => void }) {
   if (o.lost)
     return (
       <div className="state">
@@ -166,6 +176,14 @@ export function ErrorState({ o, onReconnect }: { o: Extract<RunOutcome, { kind: 
           <span className="bad">{first}</span>
           {rest.length ? "\n" + rest.join("\n") : ""}
         </pre>
+        {/* Redis: the command that reads the key's real type */}
+        {o.fix && onFix && (
+          <div className="actions">
+            <button type="button" className="btn" onClick={() => onFix(o.fix!)}>
+              Use {o.fix.split(" ")[0]} and run
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -218,27 +236,31 @@ function QueryResults({ tab }: { tab: QueryTab }) {
   const run = tab.run;
   const o = run.outcome;
   const mongo = conn?.engine === "mongo";
-  // MongoDB: documents become columns and rows here (lib/bson.ts); shown as a table or as mongosh prints them
-  const [as, setAs] = useState<"table" | "json">("table");
+  const redis = conn?.engine === "redis";
+  // MongoDB: documents become columns and rows here (lib/bson.ts); shown as a table or as mongosh prints them.
+  // Redis: a reply as a table, or as redis-cli prints it (raw)
+  const [as, setAs] = useState<"table" | "json" | "raw">("table");
   const raw = o?.kind === "done" ? o.sets : [];
   const sets = useMemo(() => raw.map((x) => (x.docs ? docsToSet(x.docs, x.truncated) : x)), [raw]);
   const shownIdx = Math.min(setIdx ?? sets.length - 1, sets.length - 1);
   const shown = sets.length ? sets[shownIdx] : undefined;
   // a save replaces a set in place (same run): the picked set stays
   useEffect(() => setSetIdx(null), [run.runId]);
-  const target = useEditTarget(tab, mongo ? undefined : shown, shownIdx);
-  // no grid editing on MongoDB documents yet
-  const edit: GridEdit | undefined = conn && session && shown && !mongo ? { target, connId: conn.id, connName: conn.name, database: session.database, key: `${tab.id}:${shownIdx}`, onSaved: (rs) => st.replaceSet(tab.id, shownIdx, rs) } : undefined;
-  const asSeg = mongo && (
-    <span className="seg" role="group" aria-label="Show documents as">
+  const target = useEditTarget(tab, mongo || redis ? undefined : shown, shownIdx);
+  // no grid editing on MongoDB documents or Redis replies yet
+  const edit: GridEdit | undefined = conn && session && shown && !mongo && !redis ? { target, connId: conn.id, connName: conn.name, database: session.database, key: `${tab.id}:${shownIdx}`, onSaved: (rs) => st.replaceSet(tab.id, shownIdx, rs) } : undefined;
+  const asSeg = (mongo || redis) && (
+    <span className="seg" role="group" aria-label={redis ? "Show the reply as" : "Show documents as"}>
       <button type="button" aria-pressed={as === "table"} onClick={() => setAs("table")}>
         Table
       </button>
-      <button type="button" aria-pressed={as === "json"} onClick={() => setAs("json")}>
-        JSON
+      <button type="button" aria-pressed={as !== "table"} onClick={() => setAs(redis ? "raw" : "json")}>
+        {redis ? "Raw" : "JSON"}
       </button>
     </span>
   );
+  // Redis: the reply was nil (the key does not exist)
+  const nil = redis && shown?.raw === "(nil)";
   const name = conn?.name ?? "";
 
   let body: ReactNode;
@@ -277,18 +299,87 @@ function QueryResults({ tab }: { tab: QueryTab }) {
       <div className="state">
         <div className="empty">
           <strong>Run a query to see its rows here</strong>
-          <span>{mongo ? "⌘↵ runs the selection or the statement at the cursor." : "⌘↵ runs the selection or the statement at the cursor, ⇧⌘↵ the whole editor."}</span>
+          <span>{redis ? "⌘↵ runs the command on the cursor's line, ⇧⌘↵ every line in order." : mongo ? "⌘↵ runs the selection or the statement at the cursor." : "⌘↵ runs the selection or the statement at the cursor, ⇧⌘↵ the whole editor."}</span>
         </div>
       </div>
     );
-  else if (o.kind === "error") body = <ErrorState o={o} onReconnect={() => conn && void st.reconnect(conn.id).then(() => st.run(tab.id))} />;
+  else if (o.kind === "error")
+    body = (
+      <ErrorState
+        o={o}
+        onReconnect={() => conn && void st.reconnect(conn.id).then(() => st.run(tab.id))}
+        // Redis WRONGTYPE: the line that failed becomes the command that reads the key's type, and runs
+        onFix={(cmd) => {
+          const failed = (run.sql ?? "").trim();
+          const next = failed && tab.sql.includes(failed) ? tab.sql.replace(failed, cmd) : tab.sql;
+          st.updateTab(tab.id, { sql: next });
+          void st.run(tab.id, { sql: cmd });
+        }}
+      />
+    );
   else if (o.kind === "cancelled")
     body = (
       <div className="state">
         <div className="empty">
           <strong>{o.timeout ? "Stopped by the statement timeout" : "Cancelled"}</strong>
-          <span>{o.timeout ? "Settings › Queries sets how long a statement may run." : "ypacapy asked the database to stop the statement."}</span>
+          <span>
+            {redis
+              ? "Redis cannot stop a command it started. ypacapy stopped waiting and opens a new connection for the next one."
+              : o.timeout
+                ? "Settings › Queries sets how long a statement may run."
+                : "ypacapy asked the database to stop the statement."}
+          </span>
         </div>
+      </div>
+    );
+  // Redis: a write says what it did, with the reply as redis-cli prints it
+  else if (o.kind === "done" && redis && !o.lastIsQuery)
+    body = (
+      <div className="state">
+        <div className="empty write-res">
+          <CircleCheck {...icoC("ok-ico")} />
+          <strong>{[...o.messages].reverse().find((m) => / replied /.test(m)) ?? "Done"}</strong>
+          {shown?.raw !== undefined && <pre className="db-says">{shown.raw}</pre>}
+        </div>
+      </div>
+    );
+  else if (o.kind === "done" && nil)
+    body = (
+      <div className="state">
+        <div className="empty">
+          <strong>(nil)</strong>
+          <span>No value: the key does not exist, or it expired.</span>
+        </div>
+      </div>
+    );
+  else if (o.kind === "done" && shown && redis && as === "raw")
+    body = (
+      <div className="state">
+        <div className="res-tools">
+          {sets.length > 1 ? (
+            <div className="seg" role="group" aria-label="Reply">
+              {sets.map((_, i) => (
+                <button key={i} type="button" aria-pressed={shown === sets[i]} onClick={() => setSetIdx(i)}>
+                  Reply {i + 1}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="muted">As redis-cli prints it</span>
+          )}
+          {asSeg}
+        </div>
+        <pre className="code docs raw" tabIndex={0} aria-label={`Reply to ${tab.title}`}>
+          {(shown.raw ?? "").split("\n").map((l, i) => {
+            const m = /^(\s*\d+[)#] )+/.exec(l);
+            return (
+              <span key={i} className="l">
+                {m && <span className="idx">{m[0]}</span>}
+                <span className={/^"/.test(l.slice(m?.[0].length ?? 0)) ? "j-str" : /^\((integer|double)\)/.test(l.slice(m?.[0].length ?? 0)) ? "j-num" : undefined}>{l.slice(m?.[0].length ?? 0)}</span>
+              </span>
+            );
+          })}
+        </pre>
       </div>
     );
   // MongoDB: a write says what it changed, with the server's own reply under it
@@ -332,13 +423,16 @@ function QueryResults({ tab }: { tab: QueryTab }) {
           exportName={tab.title}
           lead={
             sets.length > 1 ? (
-              <div className="seg" role="group" aria-label="Result set">
-                {sets.map((_, i) => (
-                  <button key={i} type="button" aria-pressed={shown === sets[i]} onClick={() => setSetIdx(i)}>
-                    Result {i + 1}
-                  </button>
-                ))}
-              </div>
+              <>
+                <div className="seg" role="group" aria-label="Result set">
+                  {sets.map((_, i) => (
+                    <button key={i} type="button" aria-pressed={shown === sets[i]} onClick={() => setSetIdx(i)}>
+                      {redis ? "Reply" : "Result"} {i + 1}
+                    </button>
+                  ))}
+                </div>
+                {redis && asSeg}
+              </>
             ) : shown.truncated ? (
               <>
                 <span className="muted">First {shown.rows.length} rows; the rest were left unread</span>
@@ -393,8 +487,8 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
   const engine = conn?.engine;
   const { status, schema, info, tree, columns } = session ?? {};
   const complete = useMemo<Completer | undefined>(() => {
-    // MongoDB: no autocomplete (documents declare no fields)
-    if (!engine || engine === "mongo" || status !== "open" || !schema || !tree || !columns) return undefined;
+    // MongoDB and Redis: no autocomplete (documents and keys declare no columns)
+    if (!engine || engine === "mongo" || engine === "redis" || status !== "open" || !schema || !tree || !columns) return undefined;
     return {
       engine,
       schema,
@@ -435,7 +529,7 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
   // the selection when there is one, else the statement the cursor is in
   const runSel = () => {
     const at = editor.current?.selectionStart ?? tab.sql.length;
-    const s = selection().trim() ? selection() : conn?.engine === "mongo" ? mongoStatementAt(tab.sql, at) : statementAt(tab.sql, at);
+    const s = selection().trim() ? selection() : conn?.engine === "mongo" ? mongoStatementAt(tab.sql, at) : conn?.engine === "redis" ? redisCommandAt(tab.sql, at) : statementAt(tab.sql, at);
     if (s.trim()) void st.run(tab.id, { sql: s });
   };
 
@@ -516,11 +610,16 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
             ref={editor}
             value={tab.sql}
             onChange={(sql) => st.updateTab(tab.id, { sql })}
-            label={`${conn?.engine === "mongo" ? "Query" : "SQL"} editor, ${tab.title}`}
+            label={`${conn?.engine === "mongo" ? "Query" : conn?.engine === "redis" ? "Command" : "SQL"} editor, ${tab.title}`}
             complete={complete}
-            highlight={conn?.engine === "mongo" ? highlightMongo : undefined}
+            highlight={conn?.engine === "mongo" ? highlightMongo : conn?.engine === "redis" ? highlightRedis : undefined}
             empty={
-              conn?.engine === "mongo" ? (
+              conn?.engine === "redis" ? (
+                <>
+                  <strong>Write a command for Redis</strong>
+                  <span>As in redis-cli: HGETALL user:3107. One command per line; # starts a comment.</span>
+                </>
+              ) : conn?.engine === "mongo" ? (
                 <>
                   <strong>Write a query for MongoDB</strong>
                   <span>As in mongosh: db.orders.find({"{ status: 'paid' }"}). A find or aggregate without a limit of its own gets the row limit from Settings.</span>
@@ -533,7 +632,7 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
               )
             }
             tools={
-              conn?.engine === "mongo" ? undefined : (
+              conn?.engine === "mongo" || conn?.engine === "redis" ? undefined : (
                 <button type="button" className="btn btn--quiet" onClick={formatEditor}>
                   <WandSparkles {...ico} />
                   Format

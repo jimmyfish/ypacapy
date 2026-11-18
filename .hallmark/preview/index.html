@@ -87,6 +87,7 @@
   <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
   <symbol id="i-table-properties" viewBox="0 0 24 24"><path d="M15 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></symbol>
   <symbol id="i-file-check" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="m9 15 2 2 4-4"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></symbol>
 </svg>
 
 <header class="pv-bar">
@@ -97,6 +98,8 @@
     <a class="btn btn--quiet" href="./table.html" style="min-height:var(--control)">Table</a>
     <a class="btn btn--quiet" href="./mongo.html" style="min-height:var(--control)">MongoDB</a>
     <a class="btn btn--quiet" href="./collection.html" style="min-height:var(--control)">Collection</a>
+    <a class="btn btn--quiet" href="./redis.html" style="min-height:var(--control)">Redis</a>
+    <a class="btn btn--quiet" href="./key.html" style="min-height:var(--control)">Key</a>
     <a class="btn btn--quiet" href="./settings.html" style="min-height:var(--control)">Settings</a>
     <a class="btn btn--quiet" href="./connect.html" style="min-height:var(--control)">New connection</a>
     <a class="btn btn--quiet" href="./updates.html" style="min-height:var(--control)">Updates</a>
@@ -412,9 +415,10 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
     <form>
       <p class="help">It changes data or structure on shop_prod:</p>
       <div class="guard-kinds"><code class="stmt">DELETE</code></div>
+      <p class="guard-final" data-final><svg aria-hidden="true" class="ico"><use href="#i-shredder"/></svg><span>It cannot be undone. ypacapy keeps no copy of what it deletes or overwrites.</span></p>
       <footer>
         <button type="button" class="btn" data-guard-close>Cancel</button>
-        <button type="submit" class="btn btn--danger">Run</button>
+        <button type="submit" class="btn btn--danger"><svg aria-hidden="true" class="ico final-ico"><use href="#i-shredder"/></svg><span data-run-label>Run</span></button>
       </footer>
     </form>
   </div>
@@ -425,12 +429,13 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
     <form>
       <p class="help">It changes data or structure on shop_prod:</p>
       <div class="guard-kinds"><code class="stmt">DELETE</code></div>
+      <p class="guard-final" data-final><svg aria-hidden="true" class="ico"><use href="#i-shredder"/></svg><span>It cannot be undone. ypacapy keeps no copy of what it deletes or overwrites.</span></p>
       <label>Passphrase<input class="field" type="password" id="guard-pass-in" autocomplete="current-password"></label>
       <p class="help err" role="alert" id="guard-pass-err" hidden>That passphrase is not right.</p>
       <footer>
         <button type="button" class="btn" id="guard-touch" hidden><svg aria-hidden="true" class="ico"><use href="#i-fingerprint"/></svg>Use Touch ID</button>
         <button type="button" class="btn" data-guard-close>Cancel</button>
-        <button type="submit" class="btn btn--danger">Run</button>
+        <button type="submit" class="btn btn--danger"><svg aria-hidden="true" class="ico final-ico"><use href="#i-shredder"/></svg><span data-run-label>Run</span></button>
       </footer>
     </form>
   </div>

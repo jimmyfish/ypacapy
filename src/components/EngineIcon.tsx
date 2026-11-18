@@ -56,7 +56,18 @@ function Mongo() {
   );
 }
 
-const GLYPHS: Record<Engine, () => JSX.Element> = { postgres: Postgres, mysql: Mysql, sqlite: Sqlite, mongo: Mongo };
+/** Drawn for ypacapy, not Redis's logo: three stacked layers in Redis red */
+function Redis() {
+  return (
+    <>
+      <path d="M8 1.8L14.2 4.4L8 7L1.8 4.4Z" style={fill("#d82c20", "#ff5a4e")} />
+      <path d="M1.8 7.4L8 10L14.2 7.4V8.8L8 11.4L1.8 8.8Z" style={fill("#a41e11", "#e8443a")} />
+      <path d="M1.8 10.6L8 13.2L14.2 10.6V12L8 14.6L1.8 12Z" style={fill("#a41e11", "#e8443a")} />
+    </>
+  );
+}
+
+const GLYPHS: Record<Engine, () => JSX.Element> = { postgres: Postgres, mysql: Mysql, sqlite: Sqlite, mongo: Mongo, redis: Redis };
 
 export function EngineIcon({ engine, size = 16, className }: { engine: Engine; size?: number; className?: string }) {
   const Glyph = GLYPHS[engine];

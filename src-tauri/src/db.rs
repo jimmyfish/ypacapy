@@ -26,6 +26,8 @@ use crate::store::{HistoryEntry, LocalStore};
 /// MongoDB: the driver, the console's runs, the collection tab and Info (a child module, so it shares
 /// this module's result types)
 pub mod mongo;
+/// Redis: the tree's SCAN, key tabs, Info and the console's runs
+pub mod redis;
 
 /// Rows kept from one result set when no row limit could be added to the query itself.
 const HARD_CAP: usize = 10_000;
@@ -62,6 +64,8 @@ pub struct DbState {
     open: tokio::sync::Mutex<HashMap<(String, String), Arc<Open>>>,
     /// MongoDB: one client per connection, for every database on it
     mongo: tokio::sync::Mutex<HashMap<String, Arc<mongo::MOpen>>>,
+    /// Redis: one entry per connection, on its own database
+    redis: tokio::sync::Mutex<HashMap<String, Arc<redis::ROpen>>>,
     runs: std::sync::Mutex<HashMap<String, CancellationToken>>,
 }
 
@@ -202,6 +206,9 @@ pub struct ResultSet {
     /// MongoDB: the documents as canonical Extended JSON; columns and rows stay empty and the app draws them
     #[serde(skip_serializing_if = "Option::is_none")]
     docs: Option<Vec<serde_json::Value>>,
+    /// Redis: the reply as redis-cli prints it, for the Raw view
+    #[serde(skip_serializing_if = "Option::is_none")]
+    raw: Option<String>,
 }
 
 impl ResultSet {
@@ -239,6 +246,7 @@ fn port_of(conn: &Conn) -> u16 {
     conn.port.unwrap_or(match conn.engine {
         Engine::Mysql => 3306,
         Engine::Mongo => 27017,
+        Engine::Redis => 6379,
         _ => 5432,
     })
 }
@@ -317,7 +325,8 @@ async fn connect(conn: &Conn, database: &str, password: Option<String>, read_onl
             Pool::Lite(SqlitePoolOptions::new().max_connections(max).test_before_acquire(true).acquire_timeout(acquire).connect_with(o).await?)
         }
         // MongoDB goes through mongo.rs, never a SQL pool
-        Engine::Mongo => return Err(sqlx::Error::Configuration("MongoDB has no SQL pool".into())),
+        // MongoDB and Redis go through their own modules, never a SQL pool
+        Engine::Mongo | Engine::Redis => return Err(sqlx::Error::Configuration("MongoDB and Redis have no SQL pool".into())),
     })
 }
 
@@ -362,6 +371,7 @@ async fn server_version(pool: &Pool, engine: Engine) -> Result<String, sqlx::Err
         }
         Engine::Sqlite => format!("SQLite {}", first(&raw_rows(pool, "select sqlite_version()").await?)),
         Engine::Mongo => "MongoDB".into(),
+        Engine::Redis => "Redis".into(),
     })
 }
 
@@ -369,7 +379,7 @@ async fn server_version(pool: &Pool, engine: Engine) -> Result<String, sqlx::Err
 fn pinned(conn: &Conn) -> Option<&str> {
     match conn.engine {
         // SQLite has no databases; a MongoDB connection's Database is where it starts, not a limit
-        Engine::Sqlite | Engine::Mongo => None,
+        Engine::Sqlite | Engine::Mongo | Engine::Redis => None,
         _ => conn.database.as_deref().map(str::trim).filter(|d| !d.is_empty()),
     }
 }
@@ -417,6 +427,7 @@ impl DbState {
             on_pool!(&o.pool, p => p.close().await);
         }
         self.drop_mongo(id).await;
+        self.drop_redis(id).await;
     }
 }
 
@@ -452,6 +463,9 @@ pub async fn test_connection(conn: Conn, password: Option<String>, test_id: Opti
     let work = async {
         if conn.engine == Engine::Mongo {
             return mongo::test(&conn, password).await;
+        }
+        if conn.engine == Engine::Redis {
+            return redis::test(&conn, password).await;
         }
         let t = Instant::now();
         let pool = connect(&conn, "", password, true, 1).await.map_err(|e| err_text(&e))?;
@@ -490,6 +504,9 @@ pub async fn open_connection(id: String, database: Option<String>, state: State<
     let database = database.unwrap_or_default();
     if conn.engine == Engine::Mongo {
         return mongo::open_info(&state, &conn, &database).await;
+    }
+    if conn.engine == Engine::Redis {
+        return redis::open_info(&state, &conn).await;
     }
     let open = state.get(&conn, &database).await.map_err(|e| err_text(&e))?;
     let pool = &open.pool;
@@ -531,7 +548,7 @@ pub async fn open_connection(id: String, database: Option<String>, state: State<
                 OpenInfo { server: open.server.clone(), databases: dbs.clone(), database: cur.clone(), schemas: dbs, default_schema: cur }
             }
             Engine::Sqlite => OpenInfo { server: open.server.clone(), databases: vec![], database: String::new(), schemas: vec!["main".into()], default_schema: "main".into() },
-            Engine::Mongo => unreachable!("MongoDB returned above"),
+            Engine::Mongo | Engine::Redis => unreachable!("MongoDB and Redis returned above"),
         })
     }
     .await;
@@ -578,6 +595,10 @@ pub async fn load_schema(id: String, database: Option<String>, schema: String, s
     if conn.engine == Engine::Mongo {
         return mongo::collections(&state, &conn, &schema).await;
     }
+    // Redis: the tree reads keys with redis_scan
+    if conn.engine == Engine::Redis {
+        return Ok(SchemaObjects { tables: vec![], functions: vec![] });
+    }
     check_schema(&conn, &schema)?;
     let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
     schema_objects(&open.pool, conn.engine, &schema).await
@@ -605,7 +626,7 @@ async fn schema_objects(pool: &Pool, engine: Engine, s: &str) -> Result<SchemaOb
             .await,
             catalog(pool, "select cast(ROUTINE_NAME as char) from information_schema.ROUTINES where ROUTINE_SCHEMA = ? order by ROUTINE_NAME", &[s]).await,
         ),
-        Engine::Mongo => return Err("MongoDB lists collections in mongo.rs".into()),
+        Engine::Mongo | Engine::Redis => return Err("MongoDB and Redis list their own trees".into()),
         Engine::Sqlite => (
             catalog(
                 pool,
@@ -705,7 +726,7 @@ pub async fn table_columns(
 ) -> Result<Vec<ColumnBrief>, String> {
     let conn = conns::find(&id)?;
     // MongoDB: no autocomplete of fields (documents have no declared columns)
-    if conn.engine == Engine::Mongo {
+    if matches!(conn.engine, Engine::Mongo | Engine::Redis) {
         return Ok(vec![]);
     }
     check_schema(&conn, &schema)?;
@@ -733,7 +754,7 @@ pub async fn table_columns(
             .await
         }
         Engine::Sqlite => catalog(&open.pool, "select name, lower(type), cast(pk > 0 as text) from pragma_table_info(?, ?) order by cid", &[t, s]).await,
-        Engine::Mongo => Ok(vec![]),
+        Engine::Mongo | Engine::Redis => Ok(vec![]),
     }
     .map_err(|e| err_text(&e))?;
     Ok(rows.iter().map(|r| ColumnBrief { name: col(r, 0), ty: col(r, 1), primary: truthy(&col(r, 2)) }).collect())
@@ -752,6 +773,9 @@ pub async fn table_info(
     // MongoDB: a collection's indexes (schema is its database)
     if conn.engine == Engine::Mongo {
         return mongo::indexes(&state, &conn, &schema, &table).await;
+    }
+    if conn.engine == Engine::Redis {
+        return Ok(TableInfo { columns: vec![], indexes: vec![], foreign_keys: vec![] });
     }
     check_schema(&conn, &schema)?;
     let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
@@ -865,7 +889,7 @@ async fn table_catalog(pool: &Pool, engine: Engine, s: &str, t: &str) -> Result<
                 }
                 (cols.iter().map(|r| (col(r, 0), col(r, 1).to_lowercase(), col(r, 2) == "0", r.get(3).cloned().flatten())).collect(), idx, fks)
             }
-            Engine::Mongo => return Err(sqlx::Error::Configuration("MongoDB indexes are read in mongo.rs".into())),
+            Engine::Mongo | Engine::Redis => return Err(sqlx::Error::Configuration("MongoDB indexes are read in mongo.rs".into())),
         })
     }
     .await;
@@ -935,6 +959,9 @@ pub enum RunOutcome {
         /// the connection is gone: Reconnect
         lost: bool,
         ms: u64,
+        /// Redis: a command that does what was meant (HGETALL for a hash read with LRANGE); the app offers it
+        #[serde(skip_serializing_if = "Option::is_none")]
+        fix: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
     Cancelled { ms: u64, timeout: bool },
@@ -966,7 +993,7 @@ async fn execute(open: &Open, schema: Option<&str>, sql: &str, cap: usize, token
         Engine::Mysql => Some("select cast(connection_id() as char)".to_string()),
         // TODO: SQLite has no server to ask; a cancelled run stops at the worker's next row step
         // (sqlite3_interrupt through the raw handle would stop a long single step too).
-        Engine::Sqlite | Engine::Mongo => None,
+        Engine::Sqlite | Engine::Mongo | Engine::Redis => None,
     };
     let (res, pid) = on_pool!(&open.pool, p => {
         let mut pc = p.acquire().await?;
@@ -1081,11 +1108,11 @@ fn run_error(e: &sqlx::Error, engine: Engine, sql: &str, conn: &Conn, ms: u64) -
             message: err_text(e),
             hint: Some(format!("{where_} stopped answering while the query ran.")),
             lost: true,
-            ms,
+            ms, fix: None,
         };
     }
     let sqlx::Error::Database(db) = e else {
-        return RunOutcome::Error { title: "The query did not run".into(), says: None, message: err_text(e), hint: None, lost: false, ms };
+        return RunOutcome::Error { title: "The query did not run".into(), says: None, message: err_text(e), hint: None, lost: false, ms, fix: None };
     };
     let mut hint = None;
     let says = match engine {
@@ -1107,9 +1134,9 @@ fn run_error(e: &sqlx::Error, engine: Engine, sql: &str, conn: &Conn, ms: u64) -
         }),
         Engine::Mysql => db.try_downcast_ref::<MySqlDatabaseError>().map(|my| format!("ERROR {} ({}): {}", my.number(), my.code().unwrap_or("HY000"), my.message())),
         Engine::Sqlite => Some(format!("Error: {}", db.message())),
-        Engine::Mongo => None,
+        Engine::Mongo | Engine::Redis => None,
     };
-    RunOutcome::Error { title: capitalise(db.message().lines().next().unwrap_or("")), says, message: db.message().to_string(), hint, lost: false, ms }
+    RunOutcome::Error { title: capitalise(db.message().lines().next().unwrap_or("")), says, message: db.message().to_string(), hint, lost: false, ms, fix: None }
 }
 
 #[tauri::command]
@@ -1124,6 +1151,10 @@ pub async fn run_query(
     // MongoDB: mongosh text, its own guard kinds and runner
     if conn.engine == Engine::Mongo {
         return mongo::run(req, conn, &state, &settings, &guard_state, &store).await;
+    }
+    // Redis: redis-cli text, its own guard kinds and runner
+    if conn.engine == Engine::Redis {
+        return redis::run(req, conn, &state, &settings, &guard_state, &store).await;
     }
     let c = guard::classify(&req.sql, conn.engine);
     if let Some(ask) = guard::check(&c, &conn, req.approval, &guard_state).await? {
@@ -1250,6 +1281,9 @@ pub async fn apply_edits(
     if req.statements.is_empty() {
         return Err("Nothing to save.".into());
     }
+    if conn.engine == Engine::Redis {
+        return Err("Editing values in the grid is not available for Redis yet.".into());
+    }
     if conn.engine == Engine::Mongo {
         return Err("Editing documents in the grid is not available for MongoDB yet.".into());
     }
@@ -1285,7 +1319,7 @@ pub async fn apply_edits(
             message: "Nothing was saved: the transaction was rolled back.".into(),
             hint: Some(if n == 0 { "The row may have been changed or deleted since it was read. Refresh, then edit again.".into() } else { "Its key does not pick out a single row.".into() }),
             lost: false,
-            ms,
+            ms, fix: None,
         },
         Ok((Applied::Failed { index, err }, _)) => failed(&err, &req.statements[index]),
         Ok((Applied::TimedOut, _)) => RunOutcome::Cancelled { ms, timeout: true },
@@ -1363,6 +1397,7 @@ pub fn start_heartbeat(app: AppHandle) {
                 }
             }
             mongo::heartbeat(&app, global).await;
+            redis::heartbeat(&app, global).await;
         }
     });
 }
@@ -1404,6 +1439,8 @@ mod tests {
             read_pref: None,
             direct: false,
             server_check: None,
+            key_sep: None,
+            scan_count: None,
             last_opened: None,
             created_at: None,
         }

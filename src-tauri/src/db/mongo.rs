@@ -178,13 +178,13 @@ fn lost(e: &MError) -> bool {
 fn run_error(e: &MError, conn: &Conn, ms: u64) -> RunOutcome {
     if lost(e) {
         let what = if matches!(e.kind.as_ref(), ErrorKind::ServerSelection { .. }) { format!("No server answered for {}", conn.name) } else { format!("Lost the connection to {}", conn.name) };
-        return RunOutcome::Error { title: what, says: None, message: err_text(e), hint: Some("Nothing was changed.".into()), lost: true, ms };
+        return RunOutcome::Error { title: what, says: None, message: err_text(e), hint: Some("Nothing was changed.".into()), lost: true, ms, fix: None };
     }
     let msg = match e.kind.as_ref() {
         ErrorKind::Command(c) => c.message.clone(),
         _ => err_text(e),
     };
-    RunOutcome::Error { title: capitalise(msg.lines().next().unwrap_or("")), says: says(e), message: msg, hint: None, lost: false, ms }
+    RunOutcome::Error { title: capitalise(msg.lines().next().unwrap_or("")), says: says(e), message: msg, hint: None, lost: false, ms, fix: None }
 }
 
 /// mongosh's way of printing a value, on one line: { status: 1, created_at: -1 }
@@ -885,7 +885,7 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
                 message: e.message.clone(),
                 hint: Some(format!("It is read before it is sent, so nothing went to {}.", conn.name)),
                 lost: false,
-                ms: t.elapsed().as_millis() as u64,
+                ms: t.elapsed().as_millis() as u64, fix: None,
             })
         }
     };
@@ -943,8 +943,8 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
             }
             out
         }
-        Got::NoConn(msg) => RunOutcome::Error { title: format!("Could not open {}", conn.name), says: None, message: msg, hint: None, lost: true, ms },
-        Got::Refused(msg) => RunOutcome::Error { title: msg.clone(), says: None, message: msg, hint: Some(format!("Nothing was sent to {}.", conn.name)), lost: false, ms },
+        Got::NoConn(msg) => RunOutcome::Error { title: format!("Could not open {}", conn.name), says: None, message: msg, hint: None, lost: true, ms, fix: None },
+        Got::Refused(msg) => RunOutcome::Error { title: msg.clone(), says: None, message: msg, hint: Some(format!("Nothing was sent to {}.", conn.name)), lost: false, ms, fix: None },
         Got::Done(out, server) => {
             let docs = out.docs;
             RunOutcome::Done {
@@ -1008,7 +1008,7 @@ pub async fn mongo_find(req: FindRequest, state: State<'_, DbState>, settings: S
                     message: e.message.clone(),
                     hint: Some(format!("ypacapy reads it before sending, so nothing went to {}.", conn.name)),
                     lost: false,
-                    ms: t.elapsed().as_millis() as u64,
+                    ms: t.elapsed().as_millis() as u64, fix: None,
                 })
             }
         }
@@ -1051,7 +1051,7 @@ pub async fn mongo_find(req: FindRequest, state: State<'_, DbState>, settings: S
         Ok(Err(e)) => {
             if let ErrorKind::Custom(c) = e.kind.as_ref() {
                 if let Some(s) = c.downcast_ref::<String>() {
-                    return Ok(RunOutcome::Error { title: format!("Could not open {}", conn.name), says: None, message: s.clone(), hint: None, lost: true, ms });
+                    return Ok(RunOutcome::Error { title: format!("Could not open {}", conn.name), says: None, message: s.clone(), hint: None, lost: true, ms, fix: None });
                 }
             }
             if lost(&e) {

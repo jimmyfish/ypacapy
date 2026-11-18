@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ypacapy preview, Redis</title>
+<meta name="description" content="Design preview of a Redis connection in ypacapy: redis-cli commands, replies as a table or as redis-cli prints them, keys read with SCAN, and the write guard on Redis commands.">
+<link rel="stylesheet" href="./app.css">
+<link rel="stylesheet" href="./preview.css">
+<script src="./themes.js"></script>
+</head>
+<body>
+<!-- icons: Lucide v1.75.0 (ISC), inlined from lucide-react's icon nodes -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plug-zap" viewBox="0 0 24 24"><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="m2 22 3-3"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m18 3-4 4h6l-4 4"/></symbol>
+  <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
+  <symbol id="i-list-tree" viewBox="0 0 24 24"><path d="M8 5h13"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="M3 10a2 2 0 0 0 2 2h3"/><path d="M3 5v12a2 2 0 0 0 2 2h3"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M17 3a2 2 0 0 1 2 2v15a1 1 0 0 1-1.496.868l-4.512-2.578a2 2 0 0 0-1.984 0l-4.512 2.578A1 1 0 0 1 5 20V5a2 2 0 0 1 2-2z"/></symbol>
+  <symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></symbol>
+  <symbol id="i-hard-drive" viewBox="0 0 24 24"><path d="M10 16h.01"/><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M21.946 12.013H2.054"/><path d="M6 16h.01"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-settings-2" viewBox="0 0 24 24"><path d="M14 17H5"/><path d="M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+  <symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+  <symbol id="i-ellipsis-vertical" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></symbol>
+  <symbol id="i-shredder" viewBox="0 0 24 24"><path d="M4 13V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v5"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 22v-5"/><path d="M14 19v-2"/><path d="M18 20v-3"/><path d="M2 13h20"/><path d="M6 20v-3"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-square-function" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 17c2 0 2.8-1 2.8-2.8V10c0-2 1-3.3 3.2-3"/><path d="M9 11.2h5.7"/></symbol>
+  <symbol id="i-table-2" viewBox="0 0 24 24"><path d="M3 9h18"/><path d="M9 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></symbol>
+  <symbol id="i-square-code" viewBox="0 0 24 24"><path d="m10 9-3 3 3 3"/><path d="m14 15 3-3-3-3"/><rect x="3" y="3" width="18" height="18" rx="2"/></symbol>
+  <symbol id="i-panel-left-close" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></symbol>
+  <symbol id="i-columns-2" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></symbol>
+  <symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></symbol>
+  <symbol id="i-circle-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></symbol>
+  <symbol id="i-key-round" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><path d="m2 21 9.6-9.6"/><path d="m7.5 15.5 2.3 2.3a1 1 0 0 1 0 1.4l-2.1 2.1a1 1 0 0 1-1.4 0L4 19"/><circle cx="15.5" cy="7.5" r="5.5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-folder-open" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M9 20h6"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><path d="M12 19h8"/><path d="m4 17 6-6-6-6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-lock-open" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M9 20h6"/></symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></symbol>
+  <symbol id="i-calendar-clock" viewBox="0 0 24 24"><path d="M16 14v2.2l1.6 1"/><path d="M16 2v3"/><path d="M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338"/><path d="M3 9h5.859"/><path d="M8 2v3"/><circle cx="16" cy="16" r="6"/></symbol>
+  <symbol id="i-toggle-left" viewBox="0 0 24 24"><circle cx="9" cy="12" r="3"/><rect width="20" height="14" x="2" y="5" rx="7"/></symbol>
+  <symbol id="i-braces" viewBox="0 0 24 24"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></symbol>
+  <symbol id="i-arrow-up-down" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-columns-3" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></symbol>
+  <symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+  <symbol id="i-shield-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5 5a1 1 0 0 0-1 1v7c0 5 3.5 7.5 7.67 8.94a1 1 0 0 0 .67.01c2.35-.82 4.48-1.97 5.9-3.71"/><path d="M9.309 3.652A12.252 12.252 0 0 0 11.24 2.28a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1v7a9.784 9.784 0 0 1-.08 1.264"/></symbol>
+  <symbol id="i-fingerprint" viewBox="0 0 24 24"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-wand-sparkles" viewBox="0 0 24 24"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></symbol>
+  <symbol id="i-file-plus" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 15h6"/><path d="M12 18v-6"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol>
+  <symbol id="i-folder-input" viewBox="0 0 24 24"><path d="M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1"/><path d="M2 13h10"/><path d="m9 16 3-3-3-3"/></symbol>
+  <symbol id="i-folder-minus" viewBox="0 0 24 24"><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-folder-plus" viewBox="0 0 24 24"><path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></symbol>
+  <symbol id="i-pin-off" viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M15 9.34V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H7.89"/><path d="m2 2 20 20"/><path d="M9 9v1.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h11"/></symbol>
+  <symbol id="i-circle-arrow-down" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="m8 12 4 4 4-4"/></symbol>
+  <symbol id="i-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol>
+  <symbol id="i-triangle-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-external-link" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-github" viewBox="0 0 24 24"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></symbol>
+  <symbol id="i-circle-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="12" r="10"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M11 20a10 10 0 0010-10 25.9 25.9 0 00-1.04-7.281 1 1 0 00-1.755-.325C15.833 5.5 13 5.5 9.8 6.1A7 7 0 0011 20"/><path d="M2 21a5 5 0 012.911-4.544C7.613 15.212 8.351 15.24 11 13"/></symbol>
+  <symbol id="i-brackets" viewBox="0 0 24 24"><path d="M16 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-3"/><path d="M8 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h3"/></symbol>
+  <symbol id="i-id-card" viewBox="0 0 24 24"><path d="M13 19a4 4 0 00-8 0"/><path d="M16 10h2"/><path d="M16 14h2"/><circle cx="9" cy="12" r="3"/><rect x="2" y="5" width="20" height="14" rx="2"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+  <symbol id="i-table-properties" viewBox="0 0 24 24"><path d="M15 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></symbol>
+  <symbol id="i-file-check" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="m9 15 2 2 4-4"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></symbol>
+</svg>
+
+<header class="pv-bar">
+  <strong>ypacapy preview · redis</strong>
+  <nav class="pv-screens" aria-label="Screens">
+    <a class="btn btn--quiet" href="./home.html" style="min-height:var(--control)">Home</a>
+    <a class="btn btn--quiet" href="./index.html" style="min-height:var(--control)">Query</a>
+    <a class="btn btn--quiet" href="./table.html" style="min-height:var(--control)">Table</a>
+    <a class="btn btn--quiet" href="./mongo.html" style="min-height:var(--control)">MongoDB</a>
+    <a class="btn btn--quiet" href="./collection.html" style="min-height:var(--control)">Collection</a>
+    <a class="btn btn--quiet" href="./redis.html" style="min-height:var(--control)" aria-current="page">Redis</a>
+    <a class="btn btn--quiet" href="./key.html" style="min-height:var(--control)">Key</a>
+    <a class="btn btn--quiet" href="./settings.html" style="min-height:var(--control)">Settings</a>
+    <a class="btn btn--quiet" href="./connect.html" style="min-height:var(--control)">New connection</a>
+    <a class="btn btn--quiet" href="./updates.html" style="min-height:var(--control)">Updates</a>
+    <a class="btn btn--quiet" href="./about.html" style="min-height:var(--control)">About</a>
+  </nav>
+  <div class="pv-states" role="group" aria-label="States">
+    <button type="button" data-show="results" aria-pressed="true">Sorted set reply</button>
+    <button type="button" data-show="hgetall" aria-pressed="false">Hash reply</button>
+    <button type="button" data-show="raw" aria-pressed="false">Raw view</button>
+    <button type="button" data-show="messages" aria-pressed="false">Messages</button>
+    <button type="button" data-show="running" aria-pressed="false">Running</button>
+    <button type="button" data-show="nil" aria-pressed="false">(nil)</button>
+    <button type="button" data-show="error" aria-pressed="false">WRONGTYPE</button>
+    <button type="button" data-show="lost" aria-pressed="false">Connection lost</button>
+    <button type="button" data-show="guard-confirm" aria-pressed="false">Low: DEL</button>
+    <button type="button" data-show="guard-pass" aria-pressed="false">Strict: passphrase</button>
+    <button type="button" data-show="written" aria-pressed="false">Write result</button>
+    <button type="button" data-show="keys" aria-pressed="false">KEYS, not run</button>
+    <button type="button" data-show="guard-keys" aria-pressed="false">Low: KEYS</button>
+    <button type="button" data-show="row-menu" aria-pressed="false">Key menu</button>
+    <button type="button" data-show="info" aria-pressed="false">Info</button>
+    <button type="button" data-show="info-loading" aria-pressed="false">Info, reading</button>
+    <button type="button" data-show="tree-empty" aria-pressed="false">Filter, no match</button>
+    <button type="button" data-show="expiring" aria-pressed="false">Expiring only</button>
+    <button type="button" data-show="history" aria-pressed="false">History</button>
+  </div>
+  <div class="pv-fonts">
+    <label>shop_prod colour <select data-tabc><option value="5">Turquoise</option><option value="2">Emerald</option><option value="7">Sunflower</option><option value="3">Carrot</option><option value="6" selected>Alizarin (red)</option><option value="1">River</option><option value="8">Asphalt</option><option value="4">Amethyst</option></select></label>
+  </div>
+  <div class="pv-theme" role="group" aria-label="Density" style="margin-left:0">
+    <button type="button" data-density-set="" aria-pressed="true">Default</button>
+    <button type="button" data-density-set="compact" aria-pressed="false">Compact</button>
+  </div>
+  <div class="pv-theme" role="group" aria-label="Mac appearance" style="margin-left:0">
+    <button type="button" data-os-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-os-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<div class="pv-stage">
+<div class="app">
+  <!-- title strip: the native macOS traffic lights sit in the empty 84px on the left (not drawn here) -->
+  <!-- a connection tab carries its colour (--fg/--bg) on the tab itself; the tile inside inherits it, so tab, ring and
+       tile are always one colour. The tile shows the engine glyph, as on the Home cards. -->
+  <div class="app-strip" data-tauri-drag-region>
+    <nav class="ptabs" aria-label="Connections">
+      <button type="button" class="ptab" data-href="./home.html"><svg aria-hidden="true" class="ico"><use href="#i-house"/></svg>Home</button>
+      <span class="ptab-sep" aria-hidden="true"></span>
+      <div class="ptab ptab--project" style="--fg: var(--proj-6-fg); --bg: var(--proj-6-bg)">
+        <button type="button" class="ptab-main" data-href="./index.html"><span class="proj-tile proj-tile--sm"><svg class="engine-ico" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M4.2 3C5.4 1.9 7.6 1.5 9.6 1.9C12.4 2.5 14 4.5 13.7 7.4C13.5 9.2 12.6 10.4 11.3 10.7L11.5 13.2C11.5 14 10.7 14.5 10 14L9.1 13.3V11C7.8 11.1 6.6 10.8 5.7 10.1C5.4 11.2 4.8 12.2 3.8 12.5C3 12.7 2.4 11.9 2.8 11.2C3.4 10.1 3.3 8.8 2.9 7.6C2.4 5.9 2.8 4.2 4.2 3Z" style="fill:light-dark(#336791, #4c82b5);stroke:light-dark(#ffffff, #e6eef5)" stroke-width="0.8" stroke-linejoin="round"/><path d="M9.6 4.5C10.8 5.3 11.3 6.8 10.8 8.4" style="stroke:light-dark(#ffffff, #e6eef5)" stroke-width="0.8" stroke-linecap="round"/><circle cx="7.6" cy="5.4" r="0.8" style="fill:light-dark(#ffffff, #e6eef5)"/></svg></span>shop_prod</button>
+        <button type="button" class="icon-btn ptab-close" aria-label="Close shop_prod"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="ptab ptab--project" style="--fg: var(--proj-3-fg); --bg: var(--proj-3-bg)" aria-current="page">
+        <button type="button" class="ptab-main" data-href="./redis.html"><span class="proj-tile proj-tile--sm"><svg class="engine-ico" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M8 1.8L14.2 4.4L8 7L1.8 4.4Z" style="fill:light-dark(#d82c20, #ff5a4e)"/><path d="M1.8 7.4L8 10L14.2 7.4V8.8L8 11.4L1.8 8.8Z" style="fill:light-dark(#a41e11, #e8443a)"/><path d="M1.8 10.6L8 13.2L14.2 10.6V12L8 14.6L1.8 12Z" style="fill:light-dark(#a41e11, #e8443a)"/></svg></span>cache_prod</button>
+        <button type="button" class="icon-btn ptab-close" aria-label="Close cache_prod"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button>
+      </div>
+    </nav>
+    <div class="strip-end">
+      <button type="button" class="icon-btn strip-settings" title="Settings  ⌘," aria-label="Settings" data-href="./settings.html"><svg aria-hidden="true" class="ico"><use href="#i-settings-2"/></svg></button>
+    </div>
+  </div>
+  <nav class="rail" aria-label="Sections">
+    <div class="rail-mark" aria-hidden="true"><svg aria-hidden="true" class="ico"><use href="#i-database"/></svg></div>
+    <button type="button" class="rail-item" data-rail="schema" aria-label="Schema" title="Schema" aria-current="page"><svg aria-hidden="true" class="ico ico-lg"><use href="#i-list-tree"/></svg></button>
+    <button type="button" class="rail-item" data-rail="history" aria-label="History" title="History"><svg aria-hidden="true" class="ico ico-lg"><use href="#i-history"/></svg></button>
+    <button type="button" class="rail-item" data-rail="saved" aria-label="Saved queries" title="Saved queries"><svg aria-hidden="true" class="ico ico-lg"><use href="#i-bookmark"/></svg></button>
+  </nav>
+  <div class="panel">
+    <aside class="sidebar" data-side="schema">
+      <div class="side-resize" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" title="Drag to resize, drag past the edge to hide"></div>
+      <div class="side-head"><h2>Keys</h2></div>
+      <div class="side-tools">
+        <div class="search"><svg aria-hidden="true" class="ico"><use href="#i-search"/></svg><input class="field" id="tree-filter" placeholder="Filter keys" aria-label="Filter keys" aria-describedby="tree-filter-h" autocomplete="off" spellcheck="false"></div>
+        <button type="button" class="icon-btn icon-btn--outline ttl-only" id="ttl-only" aria-pressed="false" title="Show only keys that expire" aria-label="Expiring keys only"><svg aria-hidden="true" class="ico"><use href="#i-timer"/></svg></button>
+        <button type="button" class="icon-btn icon-btn--outline" title="Scan again from the start" aria-label="Scan keys again"><svg aria-hidden="true" class="ico"><use href="#i-refresh-cw"/></svg></button>
+      </div>
+      <p class="sr-only" id="tree-filter-h">Narrows the keys read so far. Enter scans the database for keys that match.</p>
+      <div class="tree" id="tree">
+        <div class="row collection" data-path="db0"><button type="button" class="row-main" data-group="db0" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><span class="name">db0</span><span class="count">(1,204,331)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for db0" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="db0/cart"><button type="button" class="row-main" data-group="db0/cart" aria-expanded="false"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-right"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">cart:</span><span class="count">(3)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for cart:" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="db0/cart/cart:9921" data-key="cart:9921"><button type="button" class="row-main" title="cart:9921"><span class="rtype" style="--fg: var(--proj-4-fg); --bg: var(--proj-4-bg)" title="hash">HASH</span><span class="name">9921</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for cart:9921" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="db0/cart/cart:9930" data-key="cart:9930"><button type="button" class="row-main" title="cart:9930"><span class="rtype" style="--fg: var(--proj-4-fg); --bg: var(--proj-4-bg)" title="hash">HASH</span><span class="name">9930</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for cart:9930" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="db0/cart/cart:9934" data-key="cart:9934"><button type="button" class="row-main" title="cart:9934"><span class="rtype" style="--fg: var(--proj-4-fg); --bg: var(--proj-4-bg)" title="hash">HASH</span><span class="name">9934</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for cart:9934" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="db0/events"><button type="button" class="row-main" data-group="db0/events" aria-expanded="false"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-right"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">events:</span><span class="count">(1)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for events:" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="db0/events/events:orders" data-key="events:orders" data-state="stream"><button type="button" class="row-main" data-href="./key.html?show=stream" title="events:orders"><span class="rtype" style="--fg: var(--proj-5-fg); --bg: var(--proj-5-bg)" title="stream">STREAM</span><span class="name">orders</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for events:orders" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="db0/leaderboard"><button type="button" class="row-main" data-group="db0/leaderboard" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">leaderboard:</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for leaderboard:" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="db0/leaderboard/leaderboard:daily" data-key="leaderboard:daily" data-ttl><button type="button" class="row-main" title="leaderboard:daily"><span class="rtype" style="--fg: var(--proj-7-fg); --bg: var(--proj-7-bg)" title="zset">ZSET</span><span class="name">daily</span><span class="rttl" title="Expires in 14 h, as of the last scan at 10:02"><span class="visually-hidden">Expires in 14 h</span><svg aria-hidden="true" class="ico"><use href="#i-timer"/></svg></span></button><button type="button" class="icon-btn row-more" aria-label="More actions for leaderboard:daily" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="db0/leaderboard/leaderboard:weekly" data-key="leaderboard:weekly" data-ttl data-state="zset"><button type="button" class="row-main" data-href="./key.html?show=zset" title="leaderboard:weekly"><span class="rtype" style="--fg: var(--proj-7-fg); --bg: var(--proj-7-bg)" title="zset">ZSET</span><span class="name">weekly</span><span class="rttl" title="Expires in 3 days, as of the last scan at 10:02"><span class="visually-hidden">Expires in 3 days</span><svg aria-hidden="true" class="ico"><use href="#i-timer"/></svg></span></button><button type="button" class="icon-btn row-more" aria-label="More actions for leaderboard:weekly" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="db0/queue"><button type="button" class="row-main" data-group="db0/queue" aria-expanded="false"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-right"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">queue:</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for queue:" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="db0/queue/queue:emails" data-key="queue:emails" data-state="list"><button type="button" class="row-main" data-href="./key.html?show=list" title="queue:emails"><span class="rtype" style="--fg: var(--proj-2-fg); --bg: var(--proj-2-bg)" title="list">LIST</span><span class="name">emails</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for queue:emails" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="db0/queue/queue:webhooks" data-key="queue:webhooks"><button type="button" class="row-main" title="queue:webhooks"><span class="rtype" style="--fg: var(--proj-2-fg); --bg: var(--proj-2-bg)" title="list">LIST</span><span class="name">webhooks</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for queue:webhooks" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="db0/rate"><button type="button" class="row-main" data-group="db0/rate" aria-expanded="false"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-right"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">rate:</span><span class="count">(3)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for rate:" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="db0/rate/rate:ip:10.0.4.12" data-key="rate:ip:10.0.4.12" data-ttl><button type="button" class="row-main" title="rate:ip:10.0.4.12"><span class="rtype" style="--fg: var(--proj-1-fg); --bg: var(--proj-1-bg)" title="string">STR</span><span class="name">ip:10.0.4.12</span><span class="rttl" title="Expires in 48 s, as of the last scan at 10:02"><span class="visually-hidden">Expires in 48 s</span><svg aria-hidden="true" class="ico"><use href="#i-timer"/></svg></span></button><button type="button" class="icon-btn row-more" aria-label="More actions for rate:ip:10.0.4.12" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="db0/rate/rate:ip:10.0.9.31" data-key="rate:ip:10.0.9.31" data-ttl><button type="button" class="row-main" title="rate:ip:10.0.9.31"><span class="rtype" style="--fg: var(--proj-1-fg); --bg: var(--proj-1-bg)" title="string">STR</span><span class="name">ip:10.0.9.31</span><span class="rttl" title="Expires in 12 s, as of the last scan at 10:02"><span class="visually-hidden">Expires in 12 s</span><svg aria-hidden="true" class="ico"><use href="#i-timer"/></svg></span></button><button type="button" class="icon-btn row-more" aria-label="More actions for rate:ip:10.0.9.31" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="db0/rate/rate:ip:172.16.2.40" data-key="rate:ip:172.16.2.40" data-ttl><button type="button" class="row-main" title="rate:ip:172.16.2.40"><span class="rtype" style="--fg: var(--proj-1-fg); --bg: var(--proj-1-bg)" title="string">STR</span><span class="name">ip:172.16.2.40</span><span class="rttl" title="Expires in 55 s, as of the last scan at 10:02"><span class="visually-hidden">Expires in 55 s</span><svg aria-hidden="true" class="ico"><use href="#i-timer"/></svg></span></button><button type="button" class="icon-btn row-more" aria-label="More actions for rate:ip:172.16.2.40" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="db0/session"><button type="button" class="row-main" data-group="db0/session" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">session:</span><span class="count">(3)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for session:" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="db0/session/session:7f3a91c2" data-key="session:7f3a91c2" data-ttl data-state="string"><button type="button" class="row-main" data-href="./key.html?show=string" title="session:7f3a91c2"><span class="rtype" style="--fg: var(--proj-1-fg); --bg: var(--proj-1-bg)" title="string">STR</span><span class="name">7f3a91c2</span><span class="rttl" title="Expires in 23 min, as of the last scan at 10:02"><span class="visually-hidden">Expires in 23 min</span><svg aria-hidden="true" class="ico"><use href="#i-timer"/></svg></span></button><button type="button" class="icon-btn row-more" aria-label="More actions for session:7f3a91c2" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="db0/session/session:8b04de17" data-key="session:8b04de17" data-ttl><button type="button" class="row-main" title="session:8b04de17"><span class="rtype" style="--fg: var(--proj-1-fg); --bg: var(--proj-1-bg)" title="string">STR</span><span class="name">8b04de17</span><span class="rttl" title="Expires in 41 min, as of the last scan at 10:02"><span class="visually-hidden">Expires in 41 min</span><svg aria-hidden="true" class="ico"><use href="#i-timer"/></svg></span></button><button type="button" class="icon-btn row-more" aria-label="More actions for session:8b04de17" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="db0/session/session:c1e6f09a" data-key="session:c1e6f09a" data-ttl><button type="button" class="row-main" title="session:c1e6f09a"><span class="rtype" style="--fg: var(--proj-1-fg); --bg: var(--proj-1-bg)" title="string">STR</span><span class="name">c1e6f09a</span><span class="rttl" title="Expires in 1 h 52 min, as of the last scan at 10:02"><span class="visually-hidden">Expires in 1 h 52 min</span><svg aria-hidden="true" class="ico"><use href="#i-timer"/></svg></span></button><button type="button" class="icon-btn row-more" aria-label="More actions for session:c1e6f09a" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="db0/tags"><button type="button" class="row-main" data-group="db0/tags" aria-expanded="false"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-right"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">tags:</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for tags:" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="db0/tags/tags:new" data-key="tags:new"><button type="button" class="row-main" title="tags:new"><span class="rtype" style="--fg: var(--proj-3-fg); --bg: var(--proj-3-bg)" title="set">SET</span><span class="name">new</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for tags:new" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" hidden style="--indent:40px" data-path="db0/tags/tags:sale" data-key="tags:sale" data-state="set"><button type="button" class="row-main" data-href="./key.html?show=set" title="tags:sale"><span class="rtype" style="--fg: var(--proj-3-fg); --bg: var(--proj-3-bg)" title="set">SET</span><span class="name">sale</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for tags:sale" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:16px" data-path="db0/user"><button type="button" class="row-main" data-group="db0/user" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><svg aria-hidden="true" class="ico folder"><use href="#i-folder"/></svg><span class="name">user:</span><span class="count">(4)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for user:" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="db0/user/user:3100" data-key="user:3100"><button type="button" class="row-main" title="user:3100"><span class="rtype" style="--fg: var(--proj-4-fg); --bg: var(--proj-4-bg)" title="hash">HASH</span><span class="name">3100</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for user:3100" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="db0/user/user:3107" data-key="user:3107" data-state="hash"><button type="button" class="row-main" data-href="./key.html?show=hash" title="user:3107"><span class="rtype" style="--fg: var(--proj-4-fg); --bg: var(--proj-4-bg)" title="hash">HASH</span><span class="name">3107</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for user:3107" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="db0/user/user:3114" data-key="user:3114"><button type="button" class="row-main" title="user:3114"><span class="rtype" style="--fg: var(--proj-4-fg); --bg: var(--proj-4-bg)" title="hash">HASH</span><span class="name">3114</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for user:3114" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:40px" data-path="db0/user/user:3121" data-key="user:3121"><button type="button" class="row-main" title="user:3121"><span class="rtype" style="--fg: var(--proj-4-fg); --bg: var(--proj-4-bg)" title="hash">HASH</span><span class="name">3121</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for user:3121" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px" data-path="db0/feature_flags" data-key="feature_flags"><button type="button" class="row-main" title="feature_flags"><span class="rtype" style="--fg: var(--proj-4-fg); --bg: var(--proj-4-bg)" title="hash">HASH</span><span class="name">feature_flags</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for feature_flags" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px" data-path="db0/maintenance" data-key="maintenance"><button type="button" class="row-main" title="maintenance"><span class="rtype" style="--fg: var(--proj-1-fg); --bg: var(--proj-1-bg)" title="string">STR</span><span class="name">maintenance</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for maintenance" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="empty" id="tree-empty" hidden><strong>Nothing matches <span id="tree-empty-q"></span></strong><span>Searches the keys read so far. Press Enter to scan db0 for keys that match.</span><button type="button" class="link" id="tree-clear">Clear the filter</button></div>
+        <div class="menu row-menu" id="row-menu" role="menu" aria-label="Key actions" hidden>
+          <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-key"/></svg>Open key</button>
+          <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg>New command on this key</button>
+          <button type="button" role="menuitem"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg>Copy name</button>
+          <button type="button" role="menuitem" data-info><svg aria-hidden="true" class="ico"><use href="#i-info"/></svg>Info</button>
+          <hr>
+          <button type="button" role="menuitem" class="danger"><svg aria-hidden="true" class="ico"><use href="#i-shredder"/></svg>Delete key</button>
+        </div>
+      </div>
+      <!-- what the scan has read, pinned at the sidebar's foot whatever the tree's length -->
+      <div class="side-foot"><div class="scan-more"><span id="scan-n" data-all="22 of 1,204,331 keys read" data-ttl="8 of the 22 keys read expire">22 of 1,204,331 keys read</span><button type="button" class="link" title="SCAN from where the last call stopped">Scan more</button></div></div>
+    </aside>
+    <aside class="sidebar" data-side="history" hidden>
+      <div class="side-head"><h2>History</h2><button type="button" class="btn btn--quiet" id="hist-clear">Clear</button></div>
+      <div class="side-tools"><div class="search"><svg aria-hidden="true" class="ico"><use href="#i-search"/></svg><input class="field" placeholder="Search cache_prod history" aria-label="Search cache_prod history" autocomplete="off" spellcheck="false"></div></div>
+      <div class="tree" id="hist-list">
+        <div class="day">Today</div>
+        <div class="row"><button type="button" class="row-main" title="cache_prod / db0&#10;ZRANGE leaderboard:weekly 0 9 REV WITHSCORES"><span class="name hq">ZRANGE leaderboard:weekly 0 9 REV WITHSCORES</span><span class="htime">10:02</span><span class="hstatus rows">20</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="cache_prod / db0&#10;LRANGE user:3107 0 -1"><span class="name hq">LRANGE user:3107 0 -1</span><span class="htime">09:58</span><span class="hstatus fail">error</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="cache_prod / db0&#10;HGETALL user:3107"><span class="name hq">HGETALL user:3107</span><span class="htime">09:57</span><span class="hstatus rows">24</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="cache_prod / db0&#10;TTL session:7f3a91c2"><span class="name hq">TTL session:7f3a91c2</span><span class="htime">09:50</span><span class="hstatus rows">1</span></button></div>
+        <div class="day">Yesterday</div>
+        <div class="row"><button type="button" class="row-main" title="cache_prod / db0&#10;DEL cart:9811 cart:9812"><span class="name hq">DEL cart:9811 cart:9812</span><span class="htime">17:20</span><span class="hstatus rows">2</span></button></div>
+        <div class="row"><button type="button" class="row-main" title="cache_prod / db0&#10;INFO memory"><span class="name hq">INFO memory</span><span class="htime">16:02</span><span class="hstatus rows">1</span></button></div>
+      </div>
+    </aside>
+    <aside class="sidebar" data-side="saved" hidden>
+      <div class="side-head"><h2>Saved queries</h2></div>
+      <div class="side-tools"><div class="search"><svg aria-hidden="true" class="ico"><use href="#i-search"/></svg><input class="field" placeholder="Search saved queries" aria-label="Search saved queries" autocomplete="off" spellcheck="false"></div>
+        <button type="button" class="icon-btn icon-btn--filled" title="New folder" aria-label="New folder"><svg aria-hidden="true" class="ico"><use href="#i-plus"/></svg></button></div>
+      <div class="tree">
+        <div class="row collection"><button type="button" class="row-main" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><span class="name">Reports</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Reports" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px" aria-current="page"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Refunds by customer</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Refunds by customer" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Daily revenue</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Daily revenue" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row collection"><button type="button" class="row-main" aria-expanded="true"><svg aria-hidden="true" class="ico caret"><use href="#i-chevron-down"/></svg><span class="name">Ops</span><span class="count">(2)</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Ops" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Stuck shipments</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Stuck shipments" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+        <div class="row" style="--indent:24px"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Long-running queries</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Long-running queries" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
+      </div>
+    </aside>
+    <main class="work">
+      <div class="tabsbar">
+        <button type="button" class="icon-btn side-toggle" aria-label="Hide sidebar" title="Hide sidebar  ⌘\"><svg aria-hidden="true" class="ico"><use href="#i-panel-left-close"/></svg></button>
+        <div class="tabs">
+          <div class="tab" data-tab="key" data-pinned><button type="button" class="tab-main" data-href="./key.html"><svg aria-hidden="true" class="ico"><use href="#i-key"/></svg><span class="name">user:3107</span></button><button type="button" class="icon-btn close" aria-label="Close user:3107"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin user:3107" title="Pinned: kept with cache_prod. Click to unpin"><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
+          <div class="tab" data-tab="q1" aria-current="page"><button type="button" class="tab-main"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg><span class="name">Query 1</span></button><button type="button" class="icon-btn close" aria-label="Close Query 1"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin Query 1" title="Pinned: kept with cache_prod. Click to unpin"><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
+          <div class="tab" data-tab="q2"><button type="button" class="tab-main"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg><span class="name">Query 2</span><span class="dirty" role="img" aria-label="Unsaved changes"></span></button><button type="button" class="icon-btn close" aria-label="Close Query 2"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin Query 2" title="Pinned: kept with cache_prod. Click to unpin"><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
+          <div class="tab" data-tab="q3"><button type="button" class="tab-main"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg><span class="name">Query 3</span></button><button type="button" class="icon-btn close" aria-label="Close Query 3"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin Query 3" title="Pinned: kept with cache_prod. Click to unpin"><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
+          <div class="tab" data-tab="q4"><button type="button" class="tab-main"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg><span class="name">Query 4</span></button><button type="button" class="icon-btn close" aria-label="Close Query 4"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin Query 4" title="Pinned: kept with cache_prod. Click to unpin"><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
+          <div class="tab" data-tab="q5"><button type="button" class="tab-main"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg><span class="name">Query 5</span></button><button type="button" class="icon-btn close" aria-label="Close Query 5"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin Query 5" title="Pinned: kept with cache_prod. Click to unpin"><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
+          <button type="button" class="icon-btn tab-add" aria-label="New query tab"><svg aria-hidden="true" class="ico"><use href="#i-plus"/></svg></button>
+        </div>
+        <div class="menu-anchor env-group guard">
+          <button type="button" class="env-picker" id="guard-btn" data-menu="guard-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Security level for cache_prod: Low" title="Security level for cache_prod"><svg aria-hidden="true" class="ico guard-ico"><use href="#i-shield"/></svg><span class="env-name" id="guard-name">Low</span><svg aria-hidden="true" class="ico"><use href="#i-chevron-down"/></svg></button>
+          <div class="menu guard-menu" id="guard-menu" role="menu" aria-label="Security level for cache_prod" hidden>
+            <p class="menu-note">Security level for cache_prod</p>
+            <button type="button" role="menuitemradio" aria-checked="false" data-guard="none" data-icon="shield-off"><svg aria-hidden="true" class="ico"><use href="#i-shield-off"/></svg><span class="gm-text"><span>None</span><small>Every command runs</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+            <button type="button" role="menuitemradio" aria-checked="true" data-guard="low" data-icon="shield"><svg aria-hidden="true" class="ico"><use href="#i-shield"/></svg><span class="gm-text"><span>Low</span><small>Confirm the picked commands</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+            <button type="button" role="menuitemradio" aria-checked="false" data-guard="strict" data-icon="lock"><svg aria-hidden="true" class="ico"><use href="#i-lock"/></svg><span class="gm-text"><span>Strict</span><small>Passphrase for the picked commands</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
+          </div>
+        </div>
+      </div>
+      <div class="work-body">
+        <div class="req-pane" id="req-pane">
+          <div class="request-line">
+            <div class="url-field"><div class="ctx"><span class="e e-redis">REDIS</span><strong>cache_prod</strong><span class="sep">/</span><span class="ctx-db" title="The connection's database. Change it in Edit connection.">db0</span></div></div>
+            <button type="button" class="btn btn--save" id="save" title="Save  ⌘S"><svg aria-hidden="true" class="ico save-ico"><use href="#i-circle-check"/></svg><span class="save-label">Save</span></button>
+          <button type="button" class="btn btn--primary btn--run" id="run" title="Run  ⌘↵"><svg aria-hidden="true" class="ico run-ico"><use href="#i-play"/></svg><svg aria-hidden="true" class="ico run-spin"><use href="#i-loader-circle"/></svg><span>Run</span><span class="run-kbd" aria-hidden="true">⌘↵</span></button>
+          </div>
+          <div class="req-title"><button type="button" class="name" id="q-name">Weekly top ten</button><span class="path" id="q-path">Saved queries / Growth</span></div>
+          <div class="section">
+            <div class="editor">
+<pre class="code" id="code-q1" tabindex="0" aria-label="Command editor, Query 1"><span class="l"><span class="q-c"># This week's top ten</span></span><span class="l cur"><span class="q-k">ZRANGE</span> <span class="q-tb">leaderboard:weekly</span> <span class="q-n">0</span> <span class="q-n">9</span> <span class="q-f">REV</span> <span class="q-f">WITHSCORES</span></span></pre>
+<pre class="code" id="code-q2" tabindex="0" aria-label="Command editor, Query 2" hidden><span class="l cur"><span class="q-k">HGETALL</span> <span class="q-tb">user:3107</span></span></pre>
+<pre class="code" id="code-q3" tabindex="0" aria-label="Command editor, Query 3" hidden data-fixed="&lt;span class=&quot;l cur&quot;>&lt;span class=&quot;q-k&quot;>HGETALL&lt;/span> &lt;span class=&quot;q-tb&quot;>user:3107&lt;/span>&lt;/span>" data-orig="&lt;span class=&quot;l cur&quot;>&lt;span class=&quot;q-k&quot;>LRANGE&lt;/span> &lt;span class=&quot;q-tb&quot;>user:3107&lt;/span> &lt;span class=&quot;q-n&quot;>0&lt;/span> &lt;span class=&quot;q-n&quot;>-1&lt;/span>&lt;/span>"><span class="l cur"><span class="q-k">LRANGE</span> <span class="q-tb">user:3107</span> <span class="q-n">0</span> <span class="q-n">-1</span></span></pre>
+<pre class="code" id="code-q4" tabindex="0" aria-label="Command editor, Query 4" hidden><span class="l"><span class="q-c"># Carts nobody came back to</span></span><span class="l cur"><span class="q-k">DEL</span> <span class="q-tb">cart:9921</span> <span class="q-tb">cart:9930</span> <span class="q-tb">cart:9934</span></span></pre>
+<pre class="code" id="code-q5" tabindex="0" aria-label="Command editor, Query 5" hidden data-fixed="&lt;span class=&quot;l cur&quot;>&lt;span class=&quot;q-k&quot;>SCAN&lt;/span> &lt;span class=&quot;q-n&quot;>0&lt;/span> &lt;span class=&quot;q-f&quot;>MATCH&lt;/span> &lt;span class=&quot;q-tb&quot;>session:*&lt;/span> &lt;span class=&quot;q-f&quot;>COUNT&lt;/span> &lt;span class=&quot;q-n&quot;>1000&lt;/span>&lt;/span>" data-orig="&lt;span class=&quot;l cur&quot;>&lt;span class=&quot;q-k&quot;>KEYS&lt;/span> &lt;span class=&quot;q-tb&quot;>session:*&lt;/span>&lt;/span>"><span class="l cur"><span class="q-k">KEYS</span> <span class="q-tb">session:*</span></span></pre>
+            </div>
+          </div>
+        </div>
+        <div class="divider" role="separator" aria-orientation="horizontal" aria-label="Resize panes" tabindex="0"></div>
+        <section class="response" aria-label="Results">
+          <nav class="subtabs" aria-label="Results">
+            <button type="button" class="subtab" data-sub="results" aria-pressed="true">Results<span class="n" id="r-n">10</span></button>
+            <button type="button" class="subtab" data-sub="messages" aria-pressed="false">Messages</button>
+            <span class="push meta" id="r-meta"></span>
+          </nav>
+          <div class="res-tools"><span class="seg" role="group" aria-label="Show the reply as"><button type="button" aria-pressed="true" data-as="table">Table</button><button type="button" aria-pressed="false" data-as="raw">Raw</button></span><div class="res-actions"><div class="menu-anchor"><button type="button" class="icon-btn" title="Columns" aria-label="Go to a column" aria-haspopup="menu" aria-expanded="false" data-menu="q-cols"><svg aria-hidden="true" class="ico"><use href="#i-columns-3"/></svg></button><div class="menu cols-menu" id="q-cols" role="menu" aria-label="Go to a column" data-cols hidden></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Copy" aria-label="Copy rows" aria-haspopup="menu" aria-expanded="false" data-menu="q-copy"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg></button><div class="menu" id="q-copy" role="menu" aria-label="Copy as" hidden><p class="menu-note">Copy as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Export" aria-label="Export rows" aria-haspopup="menu" aria-expanded="false" data-menu="q-export"><svg aria-hidden="true" class="ico"><use href="#i-download"/></svg></button><div class="menu" id="q-export" role="menu" aria-label="Export as" hidden><p class="menu-note">Export as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div></div></div>
+          <div class="state" data-when="full" data-for="q1" data-as="table">
+            <div class="grid-wrap" tabindex="0" aria-label="Reply to Query 1">
+              <table class="grid"><thead><tr><th class="rownum" scope="col"><span class="visually-hidden">Row</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">member</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th><th scope="col" class="num" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-hash"/></svg><span class="col-name">score</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">double</span></th></tr></thead><tbody>
+<tr aria-selected="true"><td class="rownum">1</td><td>mei.tanaka</td><td class="num">4,820</td></tr>
+<tr><td class="rownum">2</td><td>a.lindqvist</td><td class="num">4,415</td></tr>
+<tr><td class="rownum">3</td><td>r.okonkwo</td><td class="num">3,980</td></tr>
+<tr><td class="rownum">4</td><td>k.nowak</td><td class="num">3,622</td></tr>
+<tr><td class="rownum">5</td><td>s.ferreira</td><td class="num">3,507</td></tr>
+<tr><td class="rownum">6</td><td>d.mensah</td><td class="num">3,110</td></tr>
+<tr><td class="rownum">7</td><td>l.bianchi</td><td class="num">2,984</td></tr>
+<tr><td class="rownum">8</td><td>t.nguyen</td><td class="num">2,870</td></tr>
+<tr><td class="rownum">9</td><td>n.kapoor</td><td class="num">2,641</td></tr>
+<tr><td class="rownum">10</td><td>j.moreau</td><td class="num">2,533</td></tr>
+              </tbody></table>
+            </div>
+            <div class="inspector" aria-live="polite">
+              <div class="ins-where"><span class="ins-col">member</span><span class="ins-type">string</span><span class="ins-row">row 1</span></div>
+              <div class="ins-value">mei.tanaka</div>
+              <button type="button" class="icon-btn ins-copy" title="Copy value" aria-label="Copy value"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg></button>
+            </div>
+          </div>
+          <div class="state" data-when="full" data-for="q1" data-as="raw" hidden>
+            <pre class="code docs raw" tabindex="0" aria-label="Reply to Query 1"><span class="l"><span class="idx"> 1)</span> <span class="j-str">"mei.tanaka"</span></span><span class="l"><span class="idx"> 2)</span> <span class="j-str">"4820"</span></span><span class="l"><span class="idx"> 3)</span> <span class="j-str">"a.lindqvist"</span></span><span class="l"><span class="idx"> 4)</span> <span class="j-str">"4415"</span></span><span class="l"><span class="idx"> 5)</span> <span class="j-str">"r.okonkwo"</span></span><span class="l"><span class="idx"> 6)</span> <span class="j-str">"3980"</span></span><span class="l"><span class="idx"> 7)</span> <span class="j-str">"k.nowak"</span></span><span class="l"><span class="idx"> 8)</span> <span class="j-str">"3622"</span></span><span class="l"><span class="idx"> 9)</span> <span class="j-str">"s.ferreira"</span></span><span class="l"><span class="idx">10)</span> <span class="j-str">"3507"</span></span><span class="l"><span class="idx">11)</span> <span class="j-str">"d.mensah"</span></span><span class="l"><span class="idx">12)</span> <span class="j-str">"3110"</span></span><span class="l"><span class="idx">13)</span> <span class="j-str">"l.bianchi"</span></span><span class="l"><span class="idx">14)</span> <span class="j-str">"2984"</span></span><span class="l"><span class="idx">15)</span> <span class="j-str">"t.nguyen"</span></span><span class="l"><span class="idx">16)</span> <span class="j-str">"2870"</span></span><span class="l"><span class="idx">17)</span> <span class="j-str">"n.kapoor"</span></span><span class="l"><span class="idx">18)</span> <span class="j-str">"2641"</span></span><span class="l"><span class="idx">19)</span> <span class="j-str">"j.moreau"</span></span><span class="l"><span class="idx">20)</span> <span class="j-str">"2533"</span></span></pre>
+          </div>
+          <div class="state" data-when="full" data-for="q2" data-as="table" hidden>
+            <div class="grid-wrap" tabindex="0" aria-label="Reply to Query 2">
+              <table class="grid"><thead><tr><th class="rownum" scope="col"><span class="visually-hidden">Row</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">field</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">value</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th></tr></thead><tbody>
+<tr aria-selected="true"><td class="rownum">1</td><td>email</td><td>mei.tanaka@example.org</td></tr>
+<tr><td class="rownum">2</td><td>full_name</td><td>Mei Tanaka</td></tr>
+<tr><td class="rownum">3</td><td>phone</td><td>+81 90 2231 7754</td></tr>
+<tr><td class="rownum">4</td><td>country</td><td>JP</td></tr>
+<tr><td class="rownum">5</td><td>city</td><td>Osaka</td></tr>
+<tr><td class="rownum">6</td><td>is_vip</td><td>1</td></tr>
+<tr><td class="rownum">7</td><td>lifetime_value</td><td>4820.00</td></tr>
+<tr><td class="rownum">8</td><td>orders_count</td><td>17</td></tr>
+<tr><td class="rownum">9</td><td>prefs</td><td class="json" data-full="{
+  &quot;lang&quot;: &quot;ja&quot;,
+  &quot;newsletter&quot;: true,
+  &quot;currency&quot;: &quot;JPY&quot;
+}">{ <span class="jk">"lang"</span>: <span class="js">"ja"</span>, <span class="jk">"newsletter"</span>: <span class="jn">true</span>, <span class="jk">"currency"</span>: <span class="js">"JPY"</span> }</td></tr>
+<tr><td class="rownum">10</td><td>last_order_id</td><td>10482</td></tr>
+<tr><td class="rownum">11</td><td>created_at</td><td>2024-03-11T08:21:00Z</td></tr>
+<tr><td class="rownum">12</td><td>last_seen_at</td><td>2026-11-18T09:52:14Z</td></tr>
+              </tbody></table>
+            </div>
+            <div class="inspector" aria-live="polite">
+              <div class="ins-where"><span class="ins-col">field</span><span class="ins-type">string</span><span class="ins-row">row 1</span></div>
+              <div class="ins-value">email</div>
+              <button type="button" class="icon-btn ins-copy" title="Copy value" aria-label="Copy value"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg></button>
+            </div>
+          </div>
+          <div class="state" data-when="full" data-for="q2" data-as="raw" hidden>
+            <pre class="code docs raw" tabindex="0" aria-label="Reply to Query 2"><span class="l"><span class="idx"> 1)</span> <span class="j-str">"email"</span></span><span class="l"><span class="idx"> 2)</span> <span class="j-str">"mei.tanaka@example.org"</span></span><span class="l"><span class="idx"> 3)</span> <span class="j-str">"full_name"</span></span><span class="l"><span class="idx"> 4)</span> <span class="j-str">"Mei Tanaka"</span></span><span class="l"><span class="idx"> 5)</span> <span class="j-str">"phone"</span></span><span class="l"><span class="idx"> 6)</span> <span class="j-str">"+81 90 2231 7754"</span></span><span class="l"><span class="idx"> 7)</span> <span class="j-str">"country"</span></span><span class="l"><span class="idx"> 8)</span> <span class="j-str">"JP"</span></span><span class="l"><span class="idx"> 9)</span> <span class="j-str">"city"</span></span><span class="l"><span class="idx">10)</span> <span class="j-str">"Osaka"</span></span><span class="l"><span class="idx">11)</span> <span class="j-str">"is_vip"</span></span><span class="l"><span class="idx">12)</span> <span class="j-str">"1"</span></span><span class="l"><span class="idx">13)</span> <span class="j-str">"lifetime_value"</span></span><span class="l"><span class="idx">14)</span> <span class="j-str">"4820.00"</span></span><span class="l"><span class="idx">15)</span> <span class="j-str">"orders_count"</span></span><span class="l"><span class="idx">16)</span> <span class="j-str">"17"</span></span><span class="l"><span class="idx">17)</span> <span class="j-str">"prefs"</span></span><span class="l"><span class="idx">18)</span> <span class="j-str">"{&quot;lang&quot;:&quot;ja&quot;,&quot;newsletter&quot;:true,&quot;currency&quot;:&quot;JPY&quot;}"</span></span><span class="l"><span class="idx">19)</span> <span class="j-str">"last_order_id"</span></span><span class="l"><span class="idx">20)</span> <span class="j-str">"10482"</span></span><span class="l"><span class="idx">21)</span> <span class="j-str">"created_at"</span></span><span class="l"><span class="idx">22)</span> <span class="j-str">"2024-03-11T08:21:00Z"</span></span><span class="l"><span class="idx">23)</span> <span class="j-str">"last_seen_at"</span></span><span class="l"><span class="idx">24)</span> <span class="j-str">"2026-11-18T09:52:14Z"</span></span></pre>
+          </div>
+          <div class="state" data-when="full" data-for="q3" data-as="table" hidden>
+            <div class="grid-wrap" tabindex="0" aria-label="Reply to Query 3">
+              <table class="grid"><thead><tr><th class="rownum" scope="col"><span class="visually-hidden">Row</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">field</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">value</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th></tr></thead><tbody>
+<tr aria-selected="true"><td class="rownum">1</td><td>email</td><td>mei.tanaka@example.org</td></tr>
+<tr><td class="rownum">2</td><td>full_name</td><td>Mei Tanaka</td></tr>
+<tr><td class="rownum">3</td><td>phone</td><td>+81 90 2231 7754</td></tr>
+<tr><td class="rownum">4</td><td>country</td><td>JP</td></tr>
+<tr><td class="rownum">5</td><td>city</td><td>Osaka</td></tr>
+<tr><td class="rownum">6</td><td>is_vip</td><td>1</td></tr>
+<tr><td class="rownum">7</td><td>lifetime_value</td><td>4820.00</td></tr>
+<tr><td class="rownum">8</td><td>orders_count</td><td>17</td></tr>
+<tr><td class="rownum">9</td><td>prefs</td><td class="json" data-full="{
+  &quot;lang&quot;: &quot;ja&quot;,
+  &quot;newsletter&quot;: true,
+  &quot;currency&quot;: &quot;JPY&quot;
+}">{ <span class="jk">"lang"</span>: <span class="js">"ja"</span>, <span class="jk">"newsletter"</span>: <span class="jn">true</span>, <span class="jk">"currency"</span>: <span class="js">"JPY"</span> }</td></tr>
+<tr><td class="rownum">10</td><td>last_order_id</td><td>10482</td></tr>
+<tr><td class="rownum">11</td><td>created_at</td><td>2024-03-11T08:21:00Z</td></tr>
+<tr><td class="rownum">12</td><td>last_seen_at</td><td>2026-11-18T09:52:14Z</td></tr>
+              </tbody></table>
+            </div>
+            <div class="inspector" aria-live="polite">
+              <div class="ins-where"><span class="ins-col">field</span><span class="ins-type">string</span><span class="ins-row">row 1</span></div>
+              <div class="ins-value">email</div>
+              <button type="button" class="icon-btn ins-copy" title="Copy value" aria-label="Copy value"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg></button>
+            </div>
+          </div>
+          <div class="state" data-when="full" data-for="q3" data-as="raw" hidden>
+            <pre class="code docs raw" tabindex="0" aria-label="Reply to Query 3"><span class="l"><span class="idx"> 1)</span> <span class="j-str">"email"</span></span><span class="l"><span class="idx"> 2)</span> <span class="j-str">"mei.tanaka@example.org"</span></span><span class="l"><span class="idx"> 3)</span> <span class="j-str">"full_name"</span></span><span class="l"><span class="idx"> 4)</span> <span class="j-str">"Mei Tanaka"</span></span><span class="l"><span class="idx"> 5)</span> <span class="j-str">"phone"</span></span><span class="l"><span class="idx"> 6)</span> <span class="j-str">"+81 90 2231 7754"</span></span><span class="l"><span class="idx"> 7)</span> <span class="j-str">"country"</span></span><span class="l"><span class="idx"> 8)</span> <span class="j-str">"JP"</span></span><span class="l"><span class="idx"> 9)</span> <span class="j-str">"city"</span></span><span class="l"><span class="idx">10)</span> <span class="j-str">"Osaka"</span></span><span class="l"><span class="idx">11)</span> <span class="j-str">"is_vip"</span></span><span class="l"><span class="idx">12)</span> <span class="j-str">"1"</span></span><span class="l"><span class="idx">13)</span> <span class="j-str">"lifetime_value"</span></span><span class="l"><span class="idx">14)</span> <span class="j-str">"4820.00"</span></span><span class="l"><span class="idx">15)</span> <span class="j-str">"orders_count"</span></span><span class="l"><span class="idx">16)</span> <span class="j-str">"17"</span></span><span class="l"><span class="idx">17)</span> <span class="j-str">"prefs"</span></span><span class="l"><span class="idx">18)</span> <span class="j-str">"{&quot;lang&quot;:&quot;ja&quot;,&quot;newsletter&quot;:true,&quot;currency&quot;:&quot;JPY&quot;}"</span></span><span class="l"><span class="idx">19)</span> <span class="j-str">"last_order_id"</span></span><span class="l"><span class="idx">20)</span> <span class="j-str">"10482"</span></span><span class="l"><span class="idx">21)</span> <span class="j-str">"created_at"</span></span><span class="l"><span class="idx">22)</span> <span class="j-str">"2024-03-11T08:21:00Z"</span></span><span class="l"><span class="idx">23)</span> <span class="j-str">"last_seen_at"</span></span><span class="l"><span class="idx">24)</span> <span class="j-str">"2026-11-18T09:52:14Z"</span></span></pre>
+          </div>
+          <div class="state" data-when="full" data-for="q5" data-as="table" hidden>
+            <div class="grid-wrap" tabindex="0" aria-label="Reply to Query 5">
+              <table class="grid"><thead><tr><th class="rownum" scope="col"><span class="visually-hidden">Row</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">key</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th></tr></thead><tbody>
+<tr aria-selected="true"><td class="rownum">1</td><td>session:7f3a91c2</td></tr>
+<tr><td class="rownum">2</td><td>session:8b04de17</td></tr>
+<tr><td class="rownum">3</td><td>session:c1e6f09a</td></tr>
+<tr><td class="rownum">4</td><td>session:0d5b72e4</td></tr>
+<tr><td class="rownum">5</td><td>session:e93a1f60</td></tr>
+<tr><td class="rownum">6</td><td>session:41c08b9d</td></tr>
+<tr><td class="rownum">7</td><td>session:b7720ae5</td></tr>
+<tr><td class="rownum">8</td><td>session:5fe3d014</td></tr>
+<tr><td class="rownum">9</td><td>session:9a61c7b2</td></tr>
+<tr><td class="rownum">10</td><td>session:2c84f5ee</td></tr>
+<tr><td class="rownum">11</td><td>session:f019d6a3</td></tr>
+<tr><td class="rownum">12</td><td>session:6e2b90c1</td></tr>
+              </tbody></table>
+            </div>
+            <div class="inspector" aria-live="polite">
+              <div class="ins-where"><span class="ins-col">key</span><span class="ins-type">string</span><span class="ins-row">row 1</span></div>
+              <div class="ins-value">session:7f3a91c2</div>
+              <button type="button" class="icon-btn ins-copy" title="Copy value" aria-label="Copy value"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg></button>
+            </div>
+          </div>
+          <div class="state" data-when="full" data-for="q5" data-as="raw" hidden>
+            <pre class="code docs raw" tabindex="0" aria-label="Reply to Query 5"><span class="l"><span class="idx"> 1)</span> <span class="j-str">"session:7f3a91c2"</span></span><span class="l"><span class="idx"> 2)</span> <span class="j-str">"session:8b04de17"</span></span><span class="l"><span class="idx"> 3)</span> <span class="j-str">"session:c1e6f09a"</span></span><span class="l"><span class="idx"> 4)</span> <span class="j-str">"session:0d5b72e4"</span></span><span class="l"><span class="idx"> 5)</span> <span class="j-str">"session:e93a1f60"</span></span><span class="l"><span class="idx"> 6)</span> <span class="j-str">"session:41c08b9d"</span></span><span class="l"><span class="idx"> 7)</span> <span class="j-str">"session:b7720ae5"</span></span><span class="l"><span class="idx"> 8)</span> <span class="j-str">"session:5fe3d014"</span></span><span class="l"><span class="idx"> 9)</span> <span class="j-str">"session:9a61c7b2"</span></span><span class="l"><span class="idx">10)</span> <span class="j-str">"session:2c84f5ee"</span></span><span class="l"><span class="idx">11)</span> <span class="j-str">"session:f019d6a3"</span></span><span class="l"><span class="idx">12)</span> <span class="j-str">"session:6e2b90c1"</span></span></pre>
+          </div>
+          <div class="state" data-when="idle" data-for="q4" hidden><div class="empty"><strong>Not run yet</strong><span>DEL removes keys on cache_prod, so Run asks first.</span></div></div>
+          <div class="state" data-when="idle" data-for="q5" hidden><div class="empty"><strong>Not run yet</strong><span>KEYS reads all 1,204,331 keys in db0, and cache_prod answers no one else until it is done. Run asks first.</span></div></div>
+          <div class="state" data-when="written" hidden><div class="empty write-res"><svg aria-hidden="true" class="ico ok-ico"><use href="#i-circle-check"/></svg><strong id="w-title">Deleted 3 keys</strong><pre class="db-says" id="w-raw">(integer) 3</pre></div></div>
+          <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Running on cache_prod</strong><span>Started 0.4&nbsp;s ago</span><button type="button" class="btn" id="cancel">Stop waiting</button><span class="muted">Redis cannot stop a command it started. ypacapy stops waiting and opens a new connection.</span></div></div>
+          <div class="state" data-when="empty" hidden><div class="empty"><strong>(nil)</strong><span>session:9a61c7b2 does not exist. It may have expired.</span></div></div>
+          <div class="state" data-when="error" hidden><div class="error-box">
+            <strong>user:3107 is a hash, and LRANGE reads lists</strong>
+            <span class="hint-line">Redis checked the key's type and read nothing. HGETALL reads a whole hash.</span>
+<pre class="db-says"><span class="bad">WRONGTYPE Operation against a key holding the wrong kind of value</span></pre>
+            <div class="actions"><button type="button" class="btn" id="q3-fix">Use HGETALL and run</button></div>
+          </div></div>
+          <div class="state" data-when="lost" hidden><div class="error-box">
+            <strong>cache_prod closed the connection</strong>
+            <span class="msg">Connection reset by peer (os error 54)</span>
+            <span class="hint-line">ElastiCache may be moving the primary to the replica. A read is safe to send again; ypacapy does not resend a write on its own.</span>
+            <div class="actions"><button type="button" class="btn" id="reconnect">Reconnect</button></div>
+          </div></div>
+          <div class="state" data-when="messages" hidden><pre class="code messages" aria-label="Messages"><span class="l">ZRANGE replied with 20 elements, 10 members and their scores, in 2 ms</span><span class="l">From cache_prod, db0 (Redis 7.1.0, primary cache-prod-0001-001)</span></pre></div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="backdrop" id="guard-confirm-dlg" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-label="Run this on cache_prod?">
+    <h2>Run this on cache_prod?</h2>
+    <form>
+      <p class="help">It changes data or structure on cache_prod:</p>
+      <div class="guard-kinds" data-kinds><code class="stmt">DEL</code></div>
+      <p class="guard-final" data-final><svg aria-hidden="true" class="ico"><use href="#i-shredder"/></svg><span>It cannot be undone. ypacapy keeps no copy of what it deletes or overwrites.</span></p>
+      <footer>
+        <button type="button" class="btn" data-guard-close>Cancel</button><button type="button" class="btn" data-use-scan hidden>Use SCAN instead</button>
+        <button type="submit" class="btn btn--danger"><svg aria-hidden="true" class="ico final-ico"><use href="#i-shredder"/></svg><span data-run-label>Run</span></button>
+      </footer>
+    </form>
+  </div>
+</div>
+<div class="backdrop" id="guard-pass-dlg" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-label="Enter the passphrase to run this">
+    <h2>Enter the passphrase to run this</h2>
+    <form>
+      <p class="help">It changes data or structure on cache_prod:</p>
+      <div class="guard-kinds" data-kinds><code class="stmt">DEL</code></div>
+      <p class="guard-final" data-final><svg aria-hidden="true" class="ico"><use href="#i-shredder"/></svg><span>It cannot be undone. ypacapy keeps no copy of what it deletes or overwrites.</span></p>
+      <label>Passphrase<input class="field" type="password" id="guard-pass-in" autocomplete="current-password"></label>
+      <p class="help err" role="alert" id="guard-pass-err" hidden>That passphrase is not right.</p>
+      <footer>
+        <button type="button" class="btn" id="guard-touch" hidden><svg aria-hidden="true" class="ico"><use href="#i-fingerprint"/></svg>Use Touch ID</button>
+        <button type="button" class="btn" data-guard-close>Cancel</button><button type="button" class="btn" data-use-scan hidden>Use SCAN instead</button>
+        <button type="submit" class="btn btn--danger"><svg aria-hidden="true" class="ico final-ico"><use href="#i-shredder"/></svg><span data-run-label>Run</span></button>
+      </footer>
+    </form>
+  </div>
+</div>
+<div class="backdrop" id="info-dlg" data-default="user:3107" hidden>
+  <div class="dialog info-dlg" role="dialog" aria-modal="true" aria-labelledby="info-title">
+    <h2 id="info-title"><span class="info-db">db0 · </span><span id="info-name">user:3107</span></h2>
+    <div class="info-body" data-info-state="ready">
+      <h3 class="cx-h">Key</h3>
+      <dl class="info-grid"><dt>Type</dt><dd>hash</dd><dt>Encoding</dt><dd>listpack<span class="info-note">Small hashes are packed</span></dd><dt>Length</dt><dd>12 fields</dd><dt>Expires</dt><dd>Never<span class="info-note">No TTL set</span></dd></dl>
+      <h3 class="cx-h">Memory</h3>
+      <dl class="info-grid"><dt>Size</dt><dd>~1.1 KB<span class="info-note">MEMORY USAGE, 5 samples</span></dd><dt>Idle</dt><dd>4 min<span class="info-note">Since the last read or write</span></dd></dl>
+    </div>
+    <div class="info-body" data-info-state="loading" hidden><div class="empty"><span class="spinner"></span><span>Reading <span data-info-name>user:3107</span></span></div></div>
+    <footer>
+      <span class="help info-when">Read with TYPE, OBJECT and MEMORY USAGE at 10:02</span>
+      <button type="button" class="btn" id="info-refresh"><svg aria-hidden="true" class="ico"><use href="#i-refresh-cw"/></svg>Refresh</button>
+      <button type="button" class="btn btn--primary" data-info-close>Close</button>
+    </footer>
+  </div>
+</div>
+</div>
+<script>
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const root = document.documentElement;
+  const q = new URLSearchParams(location.search);
+
+  // Theme: Auto/Light/Dark plus a colour scheme per appearance. The bar's Light/Dark stands in for the Mac's appearance.
+  const { SCHEMES, BUILTIN, DEFAULT_SCHEME, FAMILIES, findScheme, isDark, schemeTokens, schemeSwatch } = window.YpaThemes;
+  const DEF = { mode: "auto", light: DEFAULT_SCHEME.light, dark: DEFAULT_SCHEME.dark, os: "light", density: "" };
+  const st = Object.fromEntries(Object.entries(DEF).map(([k, v]) => [k, q.get(k) ?? v]));
+  // Fonts: the values Settings writes (voidHTTP's four, plus the table face and size)
+  const FONT = { "--font-ui": "fui", "--font-table": "ftable", "--font-mono": "fmono", "--font-size-ui": "sui", "--font-size-table": "stable", "--font-size-code": "scode" };
+  const fonts = {};
+
+  // every link between screens carries the theme, density and fonts, so a pick survives the jump
+  function writeUrl() {
+    const u = new URL(location);
+    for (const k of Object.keys(DEF)) st[k] !== DEF[k] ? u.searchParams.set(k, st[k]) : u.searchParams.delete(k);
+    for (const [prop, k] of Object.entries(FONT)) fonts[prop] ? u.searchParams.set(k, fonts[prop]) : u.searchParams.delete(k);
+    history.replaceState(null, "", u);
+    const carry = new URLSearchParams(u.search); carry.delete("show");
+    $$(".pv-screens a, [data-href], [data-close]").forEach((a) => {
+      const attr = a.tagName === "A" ? "href" : a.dataset.href ? "data-href" : "data-close";
+      const base = a.dataset.base || (a.dataset.base = a.getAttribute(attr));
+      const t = new URL(base, location.href); carry.forEach((v, k) => t.searchParams.set(k, v));
+      a.setAttribute(attr, t.href);
+    });
+  }
+
+  const opts = `<optgroup label="ypacapy">${Object.entries(BUILTIN).map(([id, b]) => `<option value="${id}">${b.name}</option>`).join("")}</optgroup>` +
+    FAMILIES.map((f) => `<optgroup label="${f}">${SCHEMES.filter((x) => x.family === f).map((x) => `<option value="${x.id}">${x.name}</option>`).join("")}</optgroup>`).join("");
+  $$("select[data-scheme]").forEach((sel) => { sel.innerHTML = opts; sel.addEventListener("change", () => { st[sel.dataset.scheme] = sel.value; apply(); }); });
+
+  let set = [];
+  function apply() {
+    const id = st[st.mode === "auto" ? st.os : st.mode];
+    set.forEach((k) => root.style.removeProperty(k)); set = [];
+    const sc = findScheme(id);
+    root.dataset.theme = sc ? (isDark(sc) ? "dark" : "light") : BUILTIN[id]?.dark ? "dark" : "light";
+    if (sc) Object.entries(schemeTokens(sc)).forEach(([k, v]) => { root.style.setProperty(k, v); set.push(k); });
+    if (st.density) root.dataset.density = st.density; else delete root.dataset.density;
+    // rows: both slots under Auto, one under Light or Dark
+    const auto = st.mode === "auto";
+    $$("[data-scheme-row]").forEach((row) => {
+      const slot = row.dataset.schemeRow;
+      row.hidden = !auto && slot !== st.mode;
+      if (row.hidden) return;
+      $("[data-scheme-label]", row).textContent = auto ? (slot === "light" ? "Light theme" : "Dark theme") : "Color scheme";
+      $("select", row).value = st[slot];
+      const [bg, ...dots] = schemeSwatch(st[slot]);
+      const d = $(".scheme-dots", row); d.style.background = bg; d.innerHTML = dots.map((c) => `<i style="background:${c}"></i>`).join("");
+    });
+    $$("[data-set-theme]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.setTheme === st.mode)));
+    $$("[data-os-set]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.osSet === st.os)));
+    $$("[data-density-set]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.densitySet === st.density)));
+    const compact = $("#set-compact"); if (compact) compact.checked = st.density === "compact";
+    writeUrl();
+  }
+  $$("[data-set-theme]").forEach((b) => b.addEventListener("click", () => { st.mode = b.dataset.setTheme; apply(); }));
+  $$("[data-os-set]").forEach((b) => b.addEventListener("click", () => { st.os = b.dataset.osSet; apply(); }));
+  $$("[data-density-set]").forEach((b) => b.addEventListener("click", () => { st.density = b.dataset.densitySet; apply(); }));
+  $("#set-compact")?.addEventListener("change", (e) => { st.density = e.target.checked ? "compact" : ""; apply(); });
+
+  // a font named in Settings gets its kind of fallback; the bar's selects carry whole stacks
+  const FALLBACK = { "--font-ui": "ui-sans-serif, system-ui, sans-serif", "--font-table": "ui-monospace, monospace", "--font-mono": "ui-monospace, monospace" };
+  function setFont(prop, v) {
+    fonts[prop] = v;
+    if (v) root.style.setProperty(prop, v); else root.style.removeProperty(prop);
+    $$(`select[data-font="${prop}"], select[data-size="${prop}"]`).forEach((s) => { s.value = [...s.options].some((o) => o.value === v) ? v : ""; });
+    writeUrl();
+  }
+  for (const [prop, k] of Object.entries(FONT)) if (q.get(k)) setFont(prop, q.get(k));
+  $$("select[data-font], select[data-size]").forEach((sel) => sel.addEventListener("change", () => setFont(sel.dataset.font || sel.dataset.size, sel.value)));
+  $$("input[data-font-name]").forEach((inp) => inp.addEventListener("input", () => {
+    const prop = inp.dataset.fontName, v = inp.value.trim();
+    setFont(prop, v ? `"${v}", ${FALLBACK[prop]}` : "");
+  }));
+  $("#set-reset")?.addEventListener("click", () => {
+    Object.assign(st, { mode: DEF.mode, light: DEF.light, dark: DEF.dark, density: "" });
+    Object.keys(FONT).forEach((p) => setFont(p, ""));
+    $$("input[data-font-name]").forEach((i) => { i.value = ""; });
+    $(".res-actions .menu button").forEach((b) => b.addEventListener("click", () => { const m = b.closest(".menu"); m.hidden = true; $(`[data-menu="${m.id}"]`).setAttribute("aria-expanded", "false"); }));
+  apply();
+  });
+
+  // Screens and states
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-href]"); if (t && !t.disabled) { location.href = t.dataset.href; return; }
+    const b = e.target.closest("[data-close]"); if (b && e.target === b) location.href = b.dataset.close;
+  });
+  document.addEventListener("keydown", (e) => {
+    const b = $("[data-close]"); if (e.key === "Escape" && b && !$(".menu:not([hidden])")) location.href = b.dataset.close;
+    if (e.metaKey && e.key === ",") { e.preventDefault(); location.href = $(".strip-settings").dataset.href; }
+  });
+  const shows = $$("[data-show]");
+  window.pvShow = () => {};
+  function show(k) {
+    shows.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.show === k)));
+    window.pvShow(k);
+    const u = new URL(location); u.searchParams.set("show", k); history.replaceState(null, "", u);
+  }
+  shows.forEach((b) => b.addEventListener("click", () => show(b.dataset.show)));
+  // preview-only: the shop_prod colour picker in the bar recolours its title-strip tab and rides in the URL as ?tabc=
+  function tabColor(n) {
+    const tab = $(".ptab--project");
+    if (tab) { tab.style.setProperty("--fg", `var(--proj-${n}-fg)`); tab.style.setProperty("--bg", `var(--proj-${n}-bg)`); }
+  }
+  $$("select[data-tabc]").forEach((sel) => {
+    const n = q.get("tabc"); if (n) { sel.value = n; tabColor(n); }
+    sel.addEventListener("change", () => {
+      tabColor(sel.value);
+      const u = new URL(location); sel.value === "6" ? u.searchParams.delete("tabc") : u.searchParams.set("tabc", sel.value);
+      history.replaceState(null, "", u); writeUrl();
+    });
+  });
+  function pvStart() { if (!shows.length) return; const k = q.get("show"); show(shows.some((b) => b.dataset.show === k) ? k : shows[0].dataset.show); }
+
+  // ---------- the app itself (shipped behaviour) ----------
+  // Rail: Schema, History and Saved queries swap the sidebar; the tabs bar toggle hides it
+  {
+    const panel = $(".panel");
+    $$(".rail-item[data-rail]").forEach((r) => r.addEventListener("click", () => {
+      $$(".rail-item[data-rail]").forEach((x) => x.toggleAttribute("aria-current", x === r) || x.removeAttribute("aria-current"));
+      r.setAttribute("aria-current", "page");
+      $$("[data-side]").forEach((s) => { s.hidden = s.dataset.side !== r.dataset.rail; });
+      panel?.classList.remove("no-side");
+    }));
+    const tgl = $(".side-toggle");
+    tgl?.addEventListener("click", () => {
+      const off = panel.classList.toggle("no-side");
+      tgl.setAttribute("aria-label", off ? "Show sidebar" : "Hide sidebar");
+      tgl.title = off ? "Show sidebar  ⌘\\" : "Hide sidebar  ⌘\\";
+    });
+  }
+  // Schema tree: groups open and close; the filter narrows by name and says when nothing matches
+  {
+    const rows = $$('#tree .row[data-path]');
+    const shown = (row) => { const parts = row.dataset.path.split("/"); for (let i = 1; i < parts.length; i++) { const g = rows.find((r) => r.dataset.path === parts.slice(0, i).join("/")); if (g && $(".row-main", g).getAttribute("aria-expanded") === "false") return false; } return true; };
+    const layout = (filter = "") => {
+      let any = false;
+      rows.forEach((r) => {
+        const leaf = !$(".row-main", r).hasAttribute("aria-expanded");
+        const hit = !filter || !leaf || $(".name", r).textContent.toLowerCase().includes(filter);
+        r.hidden = filter ? !(leaf && hit) && !(!leaf && rows.some((x) => x.dataset.path.startsWith(r.dataset.path + "/") && !$(".row-main", x).hasAttribute("aria-expanded") && $(".name", x).textContent.toLowerCase().includes(filter))) : !shown(r);
+        if (leaf && !r.hidden) any = true;
+      });
+      const empty = $("#tree-empty"); if (empty) { empty.hidden = !filter || any; $("#tree-empty-q").textContent = `"${filter}"`; }
+    };
+    $$("#tree [data-group]").forEach((g) => g.addEventListener("click", () => {
+      const open = g.getAttribute("aria-expanded") !== "true";
+      g.setAttribute("aria-expanded", String(open));
+      $("use", g).setAttribute("href", open ? "#i-chevron-down" : "#i-chevron-right");
+      layout($("#tree-filter").value.trim().toLowerCase());
+    }));
+    const f = $("#tree-filter");
+    f?.addEventListener("input", () => layout(f.value.trim().toLowerCase()));
+    $("#tree-clear")?.addEventListener("click", () => { f.value = ""; layout(); f.focus(); });
+  }
+  function fillCols(m) {
+    const wrap = $(".grid-wrap[tabindex]").find((w) => w.offsetParent !== null); if (!wrap) return;
+    const heads = $("thead th", wrap).filter((h) => !h.classList.contains("rownum"));
+    m.innerHTML = `<p class="menu-note">${heads.length} columns</p>` + heads.map((h, i) => `<button type="button" role="menuitem" data-col="${i + 1}"><span>${$(".col-name", h).textContent}</span><span class="col-t">${$(".col-type", h).textContent}</span></button>`).join("");
+    $("[data-col]", m).forEach((b) => b.addEventListener("click", () => {
+      const cell = $(`tbody tr td:nth-child(${+b.dataset.col + 1})`, wrap);
+      heads[+b.dataset.col - 1].scrollIntoView({ block: "nearest", inline: "center" });
+      if (cell) cell.click();
+      m.hidden = true; $(`[data-menu="${m.id}"]`).setAttribute("aria-expanded", "false"); wrap.focus();
+    }));
+  }
+  // Security level pickers in dialogs: the menu sets the hidden select; the select's value and disabled options draw the button and menu
+  $$("[data-level-pick]").forEach((wrap) => {
+    const sel = $("select", wrap), btn = $(".level-btn", wrap), menu = $(".menu", wrap);
+    const draw = () => {
+      const v = sel.value, item = $(`[data-pick="${v}"]`, menu);
+      $(".env-name", btn).textContent = $(".gm-text > span", item).textContent;
+      $(".guard-ico use", btn).setAttribute("href", `#i-${item.dataset.icon}`);
+      btn.dataset.level = v;
+      btn.setAttribute("aria-label", `Security level: ${$(".env-name", btn).textContent}`);
+      $$("[data-pick]", menu).forEach((b) => {
+        const opt = $(`option[value="${b.dataset.pick}"]`, sel), small = $("small", b);
+        b.setAttribute("aria-checked", String(b.dataset.pick === v));
+        b.disabled = opt.disabled;
+        small.textContent = opt.disabled && b.dataset.pick === "strict" ? "Set a passphrase in Settings first" : small.dataset.desc;
+      });
+    };
+    sel.addEventListener("change", draw);
+    $$("[data-pick]", menu).forEach((b) => b.addEventListener("click", () => {
+      menu.hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus();
+      if (sel.value === b.dataset.pick) return;
+      sel.value = b.dataset.pick; sel.dispatchEvent(new Event("change"));
+    }));
+    draw();
+  });
+  // Menus: the row "…" menu and Run's menu; Escape or a click elsewhere closes them
+  {
+    const rowMenu = $("#row-menu");
+    const closeAll = () => {
+      $$(".menu:not([hidden])").forEach((m) => { m.hidden = true; });
+      $$(".row.menu-open").forEach((r) => r.classList.remove("menu-open"));
+      $$('[aria-haspopup="menu"][aria-expanded="true"]').forEach((b) => b.setAttribute("aria-expanded", "false"));
+    };
+    $$(".row-more").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const row = b.closest(".row"), open = !row.classList.contains("menu-open");
+      closeAll(); if (!open || !rowMenu) return;
+      row.append(rowMenu); rowMenu.hidden = false; row.classList.add("menu-open"); b.setAttribute("aria-expanded", "true");
+      rowMenu.querySelector("button").focus();
+    }));
+    $$("[data-menu]").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const m = $(`#${b.dataset.menu}`), open = m.hidden;
+      if (open && m.hasAttribute("data-cols")) fillCols(m);
+      closeAll(); if (!open) return;
+      m.hidden = false; b.setAttribute("aria-expanded", "true"); m.querySelector("button").focus();
+    }));
+    // Right-click on a tree row opens the same menu as its "…"
+    $$(".row").forEach((row) => row.addEventListener("contextmenu", (e) => {
+      const b = $(".row-more", row); if (!b) return;
+      e.preventDefault(); closeAll(); b.click();
+    }));
+    document.addEventListener("mousedown", (e) => { if (!e.target.closest(".menu, .row-more, [data-menu]")) closeAll(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
+  }
+  // Right-click on a result cell: copy its value, or its row in the Copy button's formats. Opens at the pointer.
+  const cellMenu = document.createElement("div");
+  cellMenu.className = "menu ctx-menu"; cellMenu.id = "cell-menu"; cellMenu.hidden = true;
+  cellMenu.setAttribute("role", "menu"); cellMenu.setAttribute("aria-label", "Cell");
+  cellMenu.innerHTML = `<button type="button" role="menuitem" data-ctx="value">Copy value<kbd>⌘C</kbd></button><hr><p class="menu-note">Copy row as</p>${["Plain text", "JSON", "Markdown table", "CSV"].map((f) => `<button type="button" role="menuitem">${f}</button>`).join("")}`;
+  document.body.append(cellMenu);
+  $$("button", cellMenu).forEach((b) => b.addEventListener("click", () => { cellMenu.hidden = true; }));
+  const openCellMenu = (x, y, isNull) => {
+    $$(".menu:not([hidden])").forEach((m) => { m.hidden = true; });
+    $('[data-ctx="value"]', cellMenu).disabled = isNull;
+    cellMenu.hidden = false;
+    const r = cellMenu.getBoundingClientRect();
+    cellMenu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
+    cellMenu.style.top = `${y + r.height > innerHeight - 8 ? Math.max(8, y - r.height) : y}px`;
+    $("button:not(:disabled)", cellMenu).focus();
+  };
+  // Grid: a cell is the unit. Click or arrow to a cell; the inspector under the grid shows its column, type, row and full value.
+  // A head sorts the rows already on screen (no new query); the row numbers keep the order the database returned.
+  $$(".grid-wrap[tabindex]").forEach((wrap) => {
+    const ins = wrap.parentElement.querySelector(".inspector");
+    const heads = () => $$("thead th", wrap);
+    let cur = null;
+    const pick = (td, scroll = true) => {
+      if (!td || td.classList.contains("rownum")) return;
+      $$("td.cell-sel", wrap).forEach((x) => x.classList.remove("cell-sel"));
+      $$('tbody tr[aria-selected="true"]', wrap).forEach((r) => r.removeAttribute("aria-selected"));
+      td.classList.add("cell-sel"); td.parentElement.setAttribute("aria-selected", "true"); cur = td;
+      if (ins) {
+        const th = heads()[td.cellIndex];
+        $(".ins-col", ins).textContent = $(".col-name", th).textContent;
+        $(".ins-type", ins).textContent = $(".col-type", th).textContent;
+        $(".ins-row", ins).textContent = `row ${$(".rownum", td.parentElement).textContent}`;
+        // MongoDB: a missing field is not null; the document has no such field
+        const v = $(".ins-value", ins), isNull = td.classList.contains("null"), isMissing = td.classList.contains("missing");
+        v.textContent = isMissing ? "missing, this document has no such field" : isNull ? "null, no value" : td.dataset.full ?? td.textContent;
+        v.classList.toggle("is-null", isNull || isMissing);
+      }
+      if (scroll) td.scrollIntoView({ block: "nearest", inline: "nearest" });
+    };
+    wrap.addEventListener("click", (e) => {
+      const td = e.target.closest("tbody td"); if (!td) return;
+      pick(td.classList.contains("rownum") ? td.nextElementSibling : td);
+    });
+    wrap.addEventListener("contextmenu", (e) => {
+      let td = e.target.closest("tbody td"); if (!td) return;
+      e.preventDefault();
+      if (td.classList.contains("rownum")) td = td.nextElementSibling;
+      pick(td, false);
+      openCellMenu(e.clientX, e.clientY, td.classList.contains("null") || td.classList.contains("missing"));
+    });
+    wrap.addEventListener("keydown", (e) => {
+      const d = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
+      if (!d || !cur) return;
+      e.preventDefault();
+      const rows = $$("tbody tr", wrap), row = rows[Math.max(0, Math.min(rows.length - 1, rows.indexOf(cur.parentElement) + d[0]))];
+      pick(row.cells[Math.max(1, Math.min(row.cells.length - 1, cur.cellIndex + d[1]))]);
+    });
+    ins && $(".ins-copy", ins).addEventListener("click", () => { navigator.clipboard?.writeText($(".ins-value", ins).textContent).catch(() => {}); });
+    $$("thead .th-btn", wrap).forEach((b) => b.addEventListener("click", () => {
+      const th = b.closest("th"), i = th.cellIndex, dir = th.getAttribute("aria-sort") === "ascending" ? "descending" : "ascending";
+      heads().forEach((h) => { if (h.hasAttribute("aria-sort")) { h.setAttribute("aria-sort", "none"); const u = $(".sort-ico use", h); if (u) u.setAttribute("href", "#i-arrow-up-down"); } });
+      th.setAttribute("aria-sort", dir); $(".sort-ico use", th).setAttribute("href", dir === "ascending" ? "#i-arrow-up" : "#i-arrow-down");
+      const key = (tr) => {
+        const td = tr.cells[i]; if (td.classList.contains("null") || td.classList.contains("missing")) return null;
+        const v = td.dataset.full ?? td.textContent, n = Number(v.replace(/,/g, ""));
+        return th.classList.contains("num") && !Number.isNaN(n) ? n : v;
+      };
+      const tb = $("tbody", wrap);
+      $$("tr", tb).sort((x, y) => { const p = key(x), q = key(y); if (p === null) return 1; if (q === null) return -1; const r = p < q ? -1 : p > q ? 1 : 0; return dir === "ascending" ? r : -r; }).forEach((r) => tb.append(r));
+    }));
+    const start = $('tbody tr[aria-selected="true"] td:not(.rownum)', wrap); if (start) pick(start, false);
+  });
+  // The divider between query and results, by pointer and arrow keys
+  {
+    const d = $(".divider"), top = $("#req-pane");
+    if (d && top) {
+      let ratio = 1;
+      const setR = (r) => { ratio = Math.max(0.3, Math.min(3, r)); top.style.flexGrow = String(ratio); };
+      d.addEventListener("pointerdown", (e) => {
+        d.setPointerCapture(e.pointerId);
+        const body = d.parentElement.getBoundingClientRect();
+        const move = (ev) => { const y = ev.clientY - body.top; setR((y / (body.height - y)) * 1.1); };
+        const up = () => { d.removeEventListener("pointermove", move); d.removeEventListener("pointerup", up); };
+        d.addEventListener("pointermove", move); d.addEventListener("pointerup", up);
+      });
+      d.addEventListener("keydown", (e) => { if (e.key === "ArrowUp") setR(ratio * 0.9); if (e.key === "ArrowDown") setR(ratio * 1.1); });
+    }
+  }
+
+  apply();
+  // many tabs: the row scrolls sideways with no scrollbar; the edge with tabs past it fades, and a mouse wheel scrolls the row
+  $$(".tabs").forEach((el) => {
+    const edges = () => { el.dataset.fadeStart = String(el.scrollLeft > 1); el.dataset.fadeEnd = String(el.scrollLeft + el.clientWidth < el.scrollWidth - 1); };
+    new ResizeObserver(edges).observe(el);
+    el.addEventListener("scroll", edges, { passive: true });
+    el.addEventListener("wheel", (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) el.scrollLeft += e.deltaY; }, { passive: true });
+    edges();
+  });
+  // Tabs: right-click for Pin tab / Unpin tab and Close tab. A pinned tab joins the pinned ones at the left, keeps its
+  // width, and shows a pin where its close button was (click the pin to unpin). It stays open: Close and ⌘W skip it.
+  // In the app a pinned tab is kept with its connection, across a restart and a reconnect.
+  {
+    const tabsEl = $(".tabs");
+    if (tabsEl) {
+      const icon = (n) => `<svg aria-hidden="true" class="ico"><use href="#i-${n}"/></svg>`;
+      const menu = document.createElement("div");
+      menu.className = "menu ctx-menu"; menu.id = "tab-menu"; menu.hidden = true;
+      menu.setAttribute("role", "menu"); menu.setAttribute("aria-label", "Tab");
+      menu.innerHTML = `<button type="button" role="menuitem" data-tm="pin"></button><hr><button type="button" role="menuitem" data-tm="close">${icon("x")}Close tab<kbd>⌘W</kbd></button><p class="menu-note" data-tm-note hidden>Unpin the tab to close it</p>`;
+      document.body.append(menu);
+      let cur = null;
+      const pinned = () => $$(".tab[data-pinned]", tabsEl);
+      const setPinned = (t, on) => {
+        t.toggleAttribute("data-pinned", on);
+        const last = pinned().filter((x) => x !== t).pop();
+        last ? last.after(t) : tabsEl.prepend(t);
+        t.scrollIntoView({ block: "nearest", inline: "nearest" });
+      };
+      $$(".tab .pin", tabsEl).forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); setPinned(b.closest(".tab"), false); }));
+      $$(".tab", tabsEl).forEach((t) => t.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        $$(".menu:not([hidden])").forEach((m) => { m.hidden = true; });
+        cur = t;
+        const on = t.hasAttribute("data-pinned");
+        $('[data-tm="pin"]', menu).innerHTML = on ? `${icon("pin-off")}Unpin tab` : `${icon("pin")}Pin tab`;
+        $('[data-tm="close"]', menu).disabled = on;
+        $("[data-tm-note]", menu).hidden = !on;
+        menu.hidden = false;
+        const r = menu.getBoundingClientRect();
+        menu.style.left = `${Math.max(8, Math.min(e.clientX, innerWidth - r.width - 8))}px`;
+        menu.style.top = `${e.clientY + r.height > innerHeight - 8 ? Math.max(8, e.clientY - r.height) : e.clientY}px`;
+        $("button", menu).focus();
+      }));
+      $('[data-tm="pin"]', menu).addEventListener("click", () => { menu.hidden = true; if (cur) setPinned(cur, !cur.hasAttribute("data-pinned")); });
+      $('[data-tm="close"]', menu).addEventListener("click", () => { menu.hidden = true; if (cur && !cur.hasAttribute("data-pinned")) cur.hidden = true; });
+    }
+  }
+  // Security level of the open connection: None, Low or Strict; lowering from Strict asks for the passphrase first (in the app)
+  {
+    const btn = $("#guard-btn");
+    if (btn) {
+      const LABEL = { none: "None", low: "Low", strict: "Strict" };
+      const setLevel = (lvl) => {
+        $$("[data-guard]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.guard === lvl)));
+        btn.dataset.level = lvl;
+        $("#guard-name").textContent = LABEL[lvl];
+        $(".guard-ico use", btn).setAttribute("href", `#i-${$(`[data-guard="${lvl}"]`).dataset.icon}`);
+        btn.setAttribute("aria-label", `Security level for shop_prod: ${LABEL[lvl]}`);
+      };
+      $$("[data-guard]").forEach((b) => b.addEventListener("click", () => { setLevel(b.dataset.guard); $("#guard-menu").hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); }));
+      setLevel("low");
+    }
+  }
+
+// Redis tree: Expiring only keeps the keys that have a TTL, out of the keys read so far, with their folders opened.
+  // The TTLs came with the scan (one TTL per key, pipelined with TYPE); toggling sends nothing.
+  // It runs after the shared tree layout (filter typing, folder clicks), so the two filters combine.
+  {
+    const btn = $("#ttl-only"), filter = $("#tree-filter"), rows = $$("#tree .row[data-path]"), n = $("#scan-n");
+    const on = () => btn.getAttribute("aria-pressed") === "true";
+    const apply = () => {
+      n.textContent = on() ? n.dataset.ttl : n.dataset.all;
+      // folders show open while the mode opens them, and go back to their own state after
+      $$("#tree [data-group]").forEach((g) => { $("use", g).setAttribute("href", on() || g.getAttribute("aria-expanded") === "true" ? "#i-chevron-down" : "#i-chevron-right"); });
+      if (!on()) return;
+      const q = filter.value.trim().toLowerCase();
+      const hit = (r) => r.hasAttribute("data-ttl") && (!q || $(".name", r).textContent.toLowerCase().includes(q));
+      rows.forEach((r) => {
+        const leaf = !$(".row-main", r).hasAttribute("aria-expanded");
+        r.hidden = leaf ? !hit(r) : !rows.some((x) => x.dataset.path.startsWith(r.dataset.path + "/") && hit(x));
+      });
+      $("#tree-empty").hidden = rows.some((r) => r.hasAttribute("data-ttl") && !r.hidden);
+    };
+    window.rTtlOnly = (v) => {
+      btn.setAttribute("aria-pressed", String(v));
+      btn.title = v ? "Show every key" : "Show only keys that expire";
+      filter.dispatchEvent(new Event("input"));
+    };
+    btn.addEventListener("click", () => window.rTtlOnly(!on()));
+    filter.addEventListener("input", apply);
+    $$("#tree [data-group]").forEach((g) => g.addEventListener("click", apply));
+  }
+  // Redis console: Query 1 to 5 are tabs on this page; user:3107 opens the key tab.
+  // Replies show as Table (one row per element, or per pair for WITHSCORES and HGETALL) or Raw (as redis-cli prints them);
+  // the pick is kept across tabs.
+  const run = $("#run");
+  let tab = "q1", state = "full", sub = "results", as = "table", q3Fixed = false, q5Scan = false;
+  const NAMES = { q1: ["Weekly top ten", "Saved queries / Growth"], q2: ["Query 2", "Not saved"], q3: ["Query 3", "Not saved"], q4: ["Stale carts", "Saved queries / Ops"], q5: ["Query 5", "Not saved"] };
+  const MS = { q1: "2 ms", q2: "1 ms", q3: "1 ms", q4: "1 ms", q5: "3 ms" };
+  const NOTE = { q5: () => (q5Scan ? "SCAN, cursor 917504" : "KEYS, 1.9 s") };
+  const restState = (t) => (t === "q3" && !q3Fixed ? "error" : t === "q4" || t === "q5" ? "idle" : "full");
+  const count = (t) => $$(`.state[data-for="${t}"][data-as="table"] tbody tr`).length;
+  function render() {
+    $$(".tab[data-tab]").forEach((t) => t.toggleAttribute("aria-current", t.dataset.tab === tab) && t.setAttribute("aria-current", "page"));
+    ["q1", "q2", "q3", "q4", "q5"].forEach((q) => { $(`#code-${q}`).hidden = tab !== q; });
+    $("#q-name").textContent = NAMES[tab][0]; $("#q-path").textContent = NAMES[tab][1];
+    { const saved = tab === "q1" || tab === "q4", sv = $("#save"); sv.disabled = saved; sv.dataset.saved = String(saved); $(".save-label", sv).textContent = saved ? "Saved" : "Save"; sv.title = saved ? "No changes since the last save" : "Save  ⌘S"; }
+    $$(".subtab[data-sub]").forEach((s) => s.setAttribute("aria-pressed", String(s.dataset.sub === sub)));
+    $$(".response .state").forEach((s) => {
+      const w = s.dataset.when;
+      s.hidden = sub === "messages" ? w !== "messages" : !(w === state && (!s.dataset.for || s.dataset.for === tab) && (!s.dataset.as || s.dataset.as === as));
+    });
+    $$(".seg [data-as]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.as === as)));
+    $(".res-tools").hidden = sub === "messages" || state !== "full";
+    const busy = state === "loading";
+    run.toggleAttribute("aria-busy", busy); run.disabled = busy;
+    const meta = { full: ["ok", "OK", MS[tab], NOTE[tab]?.()], written: ["ok", "OK", MS[tab]], empty: ["ok", "(nil)", "1 ms"], error: ["fail", "WRONGTYPE", "1 ms"], lost: ["fail", "Connection lost", "0.2 s"], loading: ["dim", "Running", ""], idle: ["dim", "Not run", ""] }[state];
+    $("#r-meta").innerHTML = `<span class="${meta[0]}">${meta[1]}</span>${meta[2] ? `<span class="dim">${meta[2]}</span>` : ""}${meta[3] ? `<span class="dim">${meta[3]}</span>` : ""}`;
+    $("#r-n").textContent = state === "full" ? String(count(tab)) : "";
+    $("#r-n").hidden = !$("#r-n").textContent;
+  }
+  $$(".tab[data-tab] .tab-main:not([data-href])").forEach((b) => b.addEventListener("click", () => { tab = b.closest(".tab").dataset.tab; state = restState(tab); render(); }));
+  $$(".subtab[data-sub]").forEach((s) => s.addEventListener("click", () => { sub = s.dataset.sub; render(); }));
+  $$(".seg [data-as]").forEach((b) => b.addEventListener("click", () => { as = b.dataset.as; render(); }));
+
+  // Write guard: DEL (Query 4) writes; KEYS (Query 5) is a read that holds the server, so it is on the list too and the
+  // ask offers SCAN instead. At Low Run asks to confirm, at Strict for the passphrase. Everything else runs.
+  const level = () => $("#guard-btn").dataset.level;
+  const setLevel = (lvl) => $(`[data-guard="${lvl}"]`).click();
+  const KINDS = { q4: ["DEL", "It removes keys on cache_prod:", false], q5: ["KEYS", "It reads all 1,204,331 keys in db0, and cache_prod answers no one else until it is done:", true] };
+  function ask(t) {
+    const dlg = $(level() === "strict" ? "#guard-pass-dlg" : "#guard-confirm-dlg");
+    $("[data-kinds]", dlg).innerHTML = `<code class="stmt">${KINDS[t][0]}</code>`;
+    $(".help", dlg).textContent = KINDS[t][1];
+    $("[data-use-scan]", dlg).hidden = !KINDS[t][2];
+    $("[data-run-label]", dlg).textContent = KINDS[t][2] ? "Run KEYS" : "Run";
+    // DEL cannot be undone; KEYS is a read, so it does not say so
+    dlg.dataset.final = String(!KINDS[t][2]);
+    dlg.hidden = false; $("input, button[type=submit]", dlg).focus();
+  }
+  let timer;
+  function runQuery(confirmed = false) {
+    if (state === "loading") return;
+    if (KINDS[tab] && !(tab === "q5" && q5Scan) && !confirmed && level() !== "none") { ask(tab); return; }
+    sub = "results"; state = "loading"; render();
+    timer = setTimeout(() => {
+      state = tab === "q3" && !q3Fixed ? "error" : tab === "q4" ? "written" : "full";
+      render();
+    }, 700);
+  }
+  run.addEventListener("click", () => runQuery());
+  $("#cancel").addEventListener("click", () => { clearTimeout(timer); state = restState(tab); render(); });
+  $("#reconnect").addEventListener("click", () => runQuery());
+  document.addEventListener("keydown", (e) => { if (e.metaKey && e.key === "Enter") { e.preventDefault(); runQuery(); } });
+  // Query 3: take the hint, read the hash with HGETALL, run again
+  const swap = (id, fixed) => { const el = $(`#code-${id}`); el.innerHTML = fixed ? el.dataset.fixed : el.dataset.orig; };
+  $("#q3-fix").addEventListener("click", () => { swap("q3", true); q3Fixed = true; runQuery(); });
+  // Query 5: Use SCAN instead rewrites KEYS to the first SCAN step, which needs no ask
+  $$("[data-use-scan]").forEach((b) => b.addEventListener("click", () => { b.closest(".backdrop").hidden = true; swap("q5", true); q5Scan = true; runQuery(); }));
+  $$("[data-guard-close]").forEach((b) => b.addEventListener("click", () => { b.closest(".backdrop").hidden = true; }));
+  $$("#guard-confirm-dlg form, #guard-pass-dlg form").forEach((f) => f.addEventListener("submit", (e) => { e.preventDefault(); f.closest(".backdrop").hidden = true; runQuery(true); }));
+
+  window.pvShow = (k) => {
+    clearTimeout(timer); sub = k === "messages" ? "messages" : "results";
+    $(`.rail-item[data-rail="${k === "history" ? "history" : "schema"}"]`).click();
+    $$("#guard-confirm-dlg, #guard-pass-dlg").forEach((d) => { d.hidden = true; });
+    setLevel(k === "guard-pass" ? "strict" : "low");
+    q3Fixed = false; swap("q3", false); q5Scan = false; swap("q5", false);
+    tab = { hgetall: "q2", raw: "q2", error: "q3", "guard-confirm": "q4", "guard-pass": "q4", written: "q4", keys: "q5", "guard-keys": "q5" }[k] || "q1";
+    as = k === "raw" ? "raw" : "table";
+    state = { running: "loading", nil: "empty", lost: "lost", written: "written" }[k] || restState(tab);
+    render();
+    if (["guard-confirm", "guard-pass", "guard-keys"].includes(k)) ask(tab);
+    $("#tree-filter").value = k === "tree-empty" ? "order:*" : ""; window.rTtlOnly(k === "expiring");
+    const at = (el, dx, dy) => { const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.left + dx, clientY: r.top + dy })); };
+    window.mInfo(k);
+    if (k === "row-menu") setTimeout(() => { const row = $$(".row").find((r) => r.dataset.key === "user:3107"); if (row) at(row, 60, 10); });
+  };
+  // Info: a collection's "…" menu opens it. The app reads $collStats once on open and on Refresh; the preview shows
+  // a short "reading" state, then the sample numbers.
+  {
+    const dlg = $("#info-dlg"), DEF = dlg.dataset.default || "orders";
+    let timer;
+    const show = (st) => $$("[data-info-state]", dlg).forEach((b) => { b.hidden = b.dataset.infoState !== st; });
+    const read = () => { clearTimeout(timer); show("loading"); $("#info-refresh").disabled = true; timer = setTimeout(() => { show("ready"); $("#info-refresh").disabled = false; }, 600); };
+    const open = (name, loading) => {
+      $("#info-name").textContent = name; $$("[data-info-name]", dlg).forEach((x) => { x.textContent = name; });
+      dlg.hidden = false;
+      if (loading) { clearTimeout(timer); show("loading"); $("#info-refresh").disabled = true; } else read();
+      $("[data-info-close]", dlg).focus();
+    };
+    const close = () => { clearTimeout(timer); dlg.hidden = true; };
+    $("[data-info]")?.addEventListener("click", (e) => {
+      const row = e.target.closest(".row"), m = $("#row-menu");
+      m.hidden = true; row?.classList.remove("menu-open");
+      open(row ? $(".name", row).textContent : DEF);
+    });
+    $("#info-refresh").addEventListener("click", read);
+    $("[data-info-close]", dlg).addEventListener("click", close);
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) close(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !dlg.hidden) close(); });
+    // preview states: Info open on orders, ready or still reading
+    window.mInfo = (k) => {
+      close();
+      if (k === "info") { open(DEF); clearTimeout(timer); show("ready"); $("#info-refresh").disabled = false; }
+      if (k === "info-loading") open(DEF, true);
+    };
+  }
+pvStart();
+</script>
+</body>
+</html>

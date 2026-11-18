@@ -61,6 +61,7 @@ export {
   ShieldCheck,
   ShieldOff,
   Shredder,
+  Timer,
   SquareCode,
   SquareFunction,
   Table2,

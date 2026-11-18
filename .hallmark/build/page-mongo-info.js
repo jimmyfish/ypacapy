@@ -1,7 +1,7 @@
   // Info: a collection's "…" menu opens it. The app reads $collStats once on open and on Refresh; the preview shows
   // a short "reading" state, then the sample numbers.
   {
-    const dlg = $("#info-dlg");
+    const dlg = $("#info-dlg"), DEF = dlg.dataset.default || "orders";
     let timer;
     const show = (st) => $$("[data-info-state]", dlg).forEach((b) => { b.hidden = b.dataset.infoState !== st; });
     const read = () => { clearTimeout(timer); show("loading"); $("#info-refresh").disabled = true; timer = setTimeout(() => { show("ready"); $("#info-refresh").disabled = false; }, 600); };
@@ -15,7 +15,7 @@
     $("[data-info]")?.addEventListener("click", (e) => {
       const row = e.target.closest(".row"), m = $("#row-menu");
       m.hidden = true; row?.classList.remove("menu-open");
-      open(row ? $(".name", row).textContent : "orders");
+      open(row ? $(".name", row).textContent : DEF);
     });
     $("#info-refresh").addEventListener("click", read);
     $("[data-info-close]", dlg).addEventListener("click", close);
@@ -24,7 +24,7 @@
     // preview states: Info open on orders, ready or still reading
     window.mInfo = (k) => {
       close();
-      if (k === "info") { open("orders"); clearTimeout(timer); show("ready"); $("#info-refresh").disabled = false; }
-      if (k === "info-loading") open("orders", true);
+      if (k === "info") { open(DEF); clearTimeout(timer); show("ready"); $("#info-refresh").disabled = false; }
+      if (k === "info-loading") open(DEF, true);
     };
   }

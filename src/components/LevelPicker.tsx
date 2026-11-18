@@ -9,7 +9,7 @@ export const LEVEL_ICON: Record<SecurityLevel, typeof Shield> = { none: ShieldOf
  * The three security levels as menu items: icon, name, what it does, a tick on the picked one.
  * `off` greys a level out; a string there replaces its description with the reason.
  */
-export function LevelItems({ value, off, onPick }: { value: SecurityLevel; off?: (l: SecurityLevel) => boolean | string; onPick: (l: SecurityLevel) => void }) {
+export function LevelItems({ value, off, onPick, commands }: { value: SecurityLevel; off?: (l: SecurityLevel) => boolean | string; onPick: (l: SecurityLevel) => void; commands?: boolean }) {
   return (
     <>
       {LEVELS.map(([l, text, desc]) => {
@@ -20,7 +20,8 @@ export function LevelItems({ value, off, onPick }: { value: SecurityLevel; off?:
             <I {...ico} />
             <span className="gm-text">
               <span>{text}</span>
-              <small>{typeof why === "string" ? why : desc}</small>
+              {/* Redis has commands, not statements */}
+              <small>{typeof why === "string" ? why : commands ? desc.replace("statement", "command") : desc}</small>
             </span>
             <Check {...icoC("tick")} />
           </button>
@@ -31,7 +32,7 @@ export function LevelItems({ value, off, onPick }: { value: SecurityLevel; off?:
 }
 
 /** A dialog field for a security level that opens the tab bar's level menu. */
-export function LevelSelect({ id, value, off, onChange }: { id: string; value: SecurityLevel; off?: (l: SecurityLevel) => boolean | string; onChange: (l: SecurityLevel) => void }) {
+export function LevelSelect({ id, value, off, onChange, commands }: { id: string; value: SecurityLevel; off?: (l: SecurityLevel) => boolean | string; onChange: (l: SecurityLevel) => void; commands?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useDismiss(open, () => setOpen(false));
   const [, label] = LEVELS.find(([l]) => l === value) ?? LEVELS[0];
@@ -56,6 +57,7 @@ export function LevelSelect({ id, value, off, onChange }: { id: string; value: S
       {open && (
         <div className="menu guard-menu" role="menu" aria-label="Security level">
           <LevelItems
+            commands={commands}
             value={value}
             off={off}
             onPick={(l) => {

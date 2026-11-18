@@ -34,11 +34,13 @@
   // confirm, at Strict for the passphrase. Everything else is a read and runs.
   const level = () => $("#guard-btn").dataset.level;
   const setLevel = (lvl) => $(`[data-guard="${lvl}"]`).click();
-  const KINDS = { q4: ["deleteMany", "It changes data on events_prod:"], q5: ["$merge", "It writes to daily_revenue on events_prod:"] };
+  // [what, why it asks, cannot be undone]: deleteMany deletes; $merge with whenMatched: "replace" overwrites
+  const KINDS = { q4: ["deleteMany", "It changes data on events_prod:", true], q5: ["$merge", "It writes to daily_revenue on events_prod:", true] };
   function ask(t) {
     const dlg = $(level() === "strict" ? "#guard-pass-dlg" : "#guard-confirm-dlg");
     $("[data-kinds]", dlg).innerHTML = `<code class="stmt">${KINDS[t][0]}</code>`;
     $(".help", dlg).textContent = KINDS[t][1];
+    dlg.dataset.final = String(KINDS[t][2]);
     dlg.hidden = false; $("input, button[type=submit]", dlg).focus();
   }
   let timer;

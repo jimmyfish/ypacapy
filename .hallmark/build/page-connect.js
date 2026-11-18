@@ -21,20 +21,22 @@
   let urlOnly = false;
   const showFor = (sel, on) => document.querySelectorAll(`[data-for="${sel}"]`).forEach((el) => (el.hidden = !on));
   function layout() {
-    const e = f("c-engine").value, lite = e === "sqlite", mongo = e === "mongo";
+    const e = f("c-engine").value, lite = e === "sqlite", mongo = e === "mongo", redis = e === "redis";
     showFor("sqlite", lite); showFor("server", !lite); showFor("fields", !lite && !urlOnly);
-    showFor("sql-server", !lite && !mongo); showFor("sql", !mongo); showFor("mongo", mongo); showFor("mongo-fields", mongo && !urlOnly);
+    showFor("sql-server", !lite && !mongo && !redis); showFor("sql", !mongo && !redis); showFor("mongo", mongo); showFor("mongo-fields", mongo && !urlOnly);
+    showFor("redis", redis); showFor("no-redis", !redis); showFor("redis-fields", redis && !urlOnly);
+    f("c-db").placeholder = redis ? "0" : "";
     // MongoDB: an SRV name has no port; the SSL tab is TLS
     const srv = mongo && f("c-srv").checked;
     [f("c-port"), $('label[for="c-port"]')].forEach((el) => { el.hidden = srv; });
     // no port: Host takes the whole row, so User stays on its own line
     f("c-host").classList.toggle("cx-full", srv);
-    f("t-ssl").textContent = mongo ? "TLS" : "SSL";
+    f("t-ssl").textContent = mongo || redis ? "TLS" : "SSL";
     f("c-url-h").textContent = urlOnly ? "Paste the whole URL. The password goes in the field above it." : "Editing the URL fills in the settings above.";
   }
   function setEngine(v) {
     f("c-engine").value = v;
-    if (v !== "sqlite") f("c-port").value = { mysql: "3306", mongo: "27017" }[v] || "5432";
+    if (v !== "sqlite") f("c-port").value = { mysql: "3306", mongo: "27017", redis: "6379" }[v] || "5432";
     f("c-engine").closest(".cx-driver").querySelector("use").setAttribute("href", v === "sqlite" ? "#i-hard-drive" : "#i-server");
     layout(); toUrl();
   }
@@ -55,8 +57,14 @@
     const qs = [["authSource", f("c-authdb").value], ["replicaSet", f("c-rs").value], ["readPreference", f("c-readpref").value === "primary" ? "" : f("c-readpref").value]].filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join("&");
     return `mongodb${srv ? "+srv" : ""}://${u ? u + "@" : ""}${h}${p && !srv && !h.includes(",") ? ":" + p : ""}/${d}${qs ? "?" + qs : ""}`;
   }
+  // Redis: redis:// or rediss:// (TLS on); the database is the number after the slash
+  const redisUrl = () => {
+    const u = f("c-user").value, h = f("c-host").value, p = f("c-port").value, d = f("c-db").value;
+    return `redis${f("c-rtls").value === "off" ? "" : "s"}://${u ? u + "@" : ""}${h}${p ? ":" + p : ""}${d ? "/" + d : ""}`;
+  };
   function toUrl() {
     const e = f("c-engine").value;
+    if (e === "redis") { f("c-url").value = redisUrl(); return; }
     if (e === "sqlite") { f("c-url").value = "sqlite:" + (f("c-file").value || ""); return; }
     if (e === "mongo") { f("c-url").value = mongoUrl(); return; }
     const u = f("c-user").value, h = f("c-host").value, p = f("c-port").value, d = f("c-db").value;
@@ -79,6 +87,14 @@
       if (mg[3]) { f("c-pass").value = decodeURIComponent(mg[3]); toUrl(); }
       return;
     }
+    const rd = v.match(/^redis(s)?:\/\/(?:([^@/:]*)(?::([^@]*))?@)?([^:/?]*)(?::(\d+))?(?:\/(\d*))?/);
+    if (rd) {
+      if (f("c-engine").value !== "redis") { f("c-engine").value = "redis"; layout(); }
+      f("c-rtls").value = rd[1] ? (f("c-rtls").value === "off" ? "on" : f("c-rtls").value) : "off";
+      f("c-user").value = rd[2] || ""; f("c-host").value = rd[4] || ""; f("c-port").value = rd[5] || "6379"; f("c-db").value = rd[6] || "0";
+      if (rd[3]) { f("c-pass").value = decodeURIComponent(rd[3]); toUrl(); }
+      return;
+    }
     const m = v.match(/^(postgres(?:ql)?|mysql):\/\/(?:([^@/:]*)(?::([^@]*))?@)?([^:/?]*)(?::(\d+))?(?:\/([^?]*))?/);
     if (!m) return;
     const eng = m[1] === "mysql" ? "mysql" : "postgres";
@@ -87,7 +103,7 @@
     if (m[3]) { f("c-pass").value = decodeURIComponent(m[3]); toUrl(); }
   }
   ["c-host", "c-port", "c-user", "c-db", "c-file", "c-authdb", "c-rs"].forEach((id) => f(id).addEventListener("input", toUrl));
-  ["c-srv", "c-readpref"].forEach((id) => f(id).addEventListener("change", () => { layout(); toUrl(); }));
+  ["c-srv", "c-readpref", "c-rtls"].forEach((id) => f(id).addEventListener("change", () => { layout(); toUrl(); }));
   f("c-url").addEventListener("input", fromUrl);
   f("c-url").addEventListener("change", fromUrl);
 
@@ -105,11 +121,11 @@
     test.removeAttribute("aria-busy"); test.disabled = false; line.className = "test-line"; line.hidden = !kind && !text; line.title = "";
     test.textContent = kind === "testing" ? "Stop test" : "Test connection";
     test.toggleAttribute("data-stop", kind === "testing");
-    const mongo = f("c-engine").value === "mongo";
+    const mongo = f("c-engine").value === "mongo", redis = f("c-engine").value === "redis";
     if (kind === "stopped") { line.textContent = "Stopped the test. Nothing was saved."; return; }
-    if (kind === "testing") { test.setAttribute("aria-busy", "true"); line.innerHTML = `<span class="spinner"></span>Connecting to ${mongo ? f("c-host").value : "localhost:5432"}`; }
-    else if (kind === "ok") { line.classList.add("ok"); line.innerHTML = '<svg aria-hidden="true" class="ico"><use href="#i-circle-check"/></svg>' + (mongo ? "Connected to MongoDB 7.0.14, replica set atlas-x1y2z-shard-0 (3 hosts), in 112&nbsp;ms" : "Connected to PostgreSQL 16.4 in 14&nbsp;ms"); }
-    else if (kind === "fail") { line.classList.add("fail"); line.innerHTML = '<svg aria-hidden="true" class="ico"><use href="#i-circle-alert"/></svg>' + (mongo ? "AuthenticationFailed: user ops was not found in auth database admin, or the password is wrong" : 'password authentication failed for user "ops"'); line.title = line.textContent; }
+    if (kind === "testing") { test.setAttribute("aria-busy", "true"); line.innerHTML = `<span class="spinner"></span>Connecting to ${mongo ? f("c-host").value : redis ? `${f("c-host").value}:${f("c-port").value}` : "localhost:5432"}`; }
+    else if (kind === "ok") { line.classList.add("ok"); line.innerHTML = '<svg aria-hidden="true" class="ico"><use href="#i-circle-check"/></svg>' + (mongo ? "Connected to MongoDB 7.0.14, replica set atlas-x1y2z-shard-0 (3 hosts), in 112&nbsp;ms" : redis ? "Connected to Redis 7.1.0, a primary with 1 replica, in 9&nbsp;ms. db0 holds 1,204,331 keys" : "Connected to PostgreSQL 16.4 in 14&nbsp;ms"); }
+    else if (kind === "fail") { line.classList.add("fail"); line.innerHTML = '<svg aria-hidden="true" class="ico"><use href="#i-circle-alert"/></svg>' + (mongo ? "AuthenticationFailed: user ops was not found in auth database admin, or the password is wrong" : redis ? "WRONGPASS invalid username-password pair or user is disabled." : 'password authentication failed for user "ops"'); line.title = line.textContent; }
     else { line.textContent = text || ""; line.title = line.textContent; }
   }
   let testTimer;
@@ -174,7 +190,7 @@
 
   const renderLevel = () => {
     const lvl = f("c-level").value;
-    $("[data-level-desc]").textContent = LEVEL_DESC[lvl];
+    $("[data-level-desc]").textContent = LEVEL_DESC[lvl].replace("statements", f("c-engine").value === "redis" ? "commands" : "statements");
     $$("[data-when-strict]").forEach((r) => { r.hidden = lvl !== "strict"; });
     $("[data-when-guarded]").hidden = lvl === "none";
     // Strict locks the list behind the passphrase; Low leaves it open
@@ -219,27 +235,28 @@
   drawGroup();
 
   window.pvShow = (k) => {
-    const mongo = k.startsWith("mongo");
-    setType(k === "url-only" || k === "mongo-url" ? "url" : "default");
+    const mongo = k.startsWith("mongo"), redis = k.startsWith("redis");
+    setType(k === "url-only" || k === "mongo-url" || k === "redis-url" ? "url" : "default");
     // MongoDB states: an Atlas SRV host, or a plain host and port
     f("c-srv").checked = mongo && k !== "mongo-host";
-    f("c-host").value = !mongo ? "localhost" : k === "mongo-host" ? "localhost" : "events-prod.x1y2z.mongodb.net";
-    f("c-db").value = mongo ? "events" : "shop"; f("c-user").value = "ops";
+    f("c-host").value = redis ? "cache-prod.k3j9qa.ng.0001.apse3.cache.amazonaws.com" : !mongo ? "localhost" : k === "mongo-host" ? "localhost" : "events-prod.x1y2z.mongodb.net";
+    f("c-db").value = mongo ? "events" : redis ? "0" : "shop"; f("c-user").value = "ops"; f("c-rtls").value = "on";
     f("c-authdb").value = mongo ? "admin" : ""; f("c-rs").value = ""; f("c-readpref").value = k === "mongo-advanced" ? "secondaryPreferred" : "primary";
-    setEngine(["mysql", "sqlite"].includes(k) ? k : mongo ? "mongo" : "postgres");
-    selectTab({ options: "options", "level-menu": "options", "options-low": "options", "options-strict": "options", "options-nopass": "options", ssl: "ssl", advanced: "advanced", "mongo-options": "options", "mongo-tls": "ssl", "mongo-advanced": "advanced" }[k] || "general");
-    f("c-level").value = k === "options-low" || k === "mongo-options" ? "low" : k === "options-strict" ? "strict" : "none";
+    setEngine(["mysql", "sqlite"].includes(k) ? k : mongo ? "mongo" : redis ? "redis" : "postgres");
+    selectTab({ options: "options", "level-menu": "options", "options-low": "options", "options-strict": "options", "options-nopass": "options", ssl: "ssl", advanced: "advanced", "mongo-options": "options", "mongo-tls": "ssl", "mongo-advanced": "advanced", "redis-options": "options", "redis-tls": "ssl", "redis-advanced": "advanced" }[k] || "general");
+    f("c-level").value = k === "options-low" || k === "mongo-options" || k === "redis-options" ? "low" : k === "options-strict" ? "strict" : "none";
     closeSub();
     passSet = k !== "options-nopass"; unlocked = false; renderPass(); renderLock();
-    name.value = k === "name-missing" ? "" : k === "sqlite" ? "analytics" : mongo ? (k === "mongo-host" ? "events_dev" : "events_prod") : "shop_prod";
+    name.value = k === "name-missing" ? "" : k === "sqlite" ? "analytics" : mongo ? (k === "mongo-host" ? "events_dev" : "events_prod") : redis ? "cache_prod" : "shop_prod";
     if (k === "name-missing") validate(); else { name.removeAttribute("aria-invalid"); help.classList.remove("err"); help.textContent = ""; }
     f("c-file").value = k === "sqlite" ? "~/data/analytics.sqlite" : "";
-    f("c-pass").value = ["testing", "test-ok", "test-failed", "url-only", "mongo-url", "mongo-test-ok", "mongo-test-failed"].includes(k) ? "correct-horse" : "";
+    f("c-pass").value = ["testing", "test-ok", "test-failed", "url-only", "mongo-url", "mongo-test-ok", "mongo-test-failed", "redis-url", "redis-test-ok", "redis-test-failed"].includes(k) ? "correct-horse" : "";
     toUrl();
     if (k === "url-only") f("c-url").value = "postgresql://ops@loophealth-staging.cwxkeicsyqw8.ap-southeast-3.rds.amazonaws.com:5432/postgres?sslmode=require";
+    if (k === "redis-url") { f("c-url").value = "rediss://ops@cache-prod.k3j9qa.ng.0001.apse3.cache.amazonaws.com:6379/0"; fromUrl(); }
     if (k === "mongo-url") { f("c-url").value = "mongodb+srv://ops@events-prod.x1y2z.mongodb.net/events?authSource=admin&readPreference=secondaryPreferred"; fromUrl(); }
     clearTimeout(testTimer);
-    setLine({ testing: "testing", "test-stopped": "stopped", "test-ok": "ok", "test-failed": "fail", "mongo-test-ok": "ok", "mongo-test-failed": "fail" }[k] || "");
+    setLine({ testing: "testing", "test-stopped": "stopped", "test-ok": "ok", "test-failed": "fail", "mongo-test-ok": "ok", "mongo-test-failed": "fail", "redis-test-ok": "ok", "redis-test-failed": "fail" }[k] || "");
     // New connection here (a group's menu or its New connection card): Group starts with that group
     f("c-group").value = k === "group-menu" ? "Production" : q.get("group") || "";
     naming(false); drawGroup();

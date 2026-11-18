@@ -17,12 +17,14 @@ function address(c: Conn): [string, string] {
   const db = c.database ? ` / ${c.database}` : "";
   // MongoDB: an SRV name or a seed list has no single port to show
   if (c.engine === "mongo" && (c.srv || c.host?.includes(","))) return [c.host || "localhost", db];
-  const port = c.port ?? (c.engine === "mysql" ? 3306 : c.engine === "mongo" ? 27017 : 5432);
+  const port = c.port ?? (c.engine === "mysql" ? 3306 : c.engine === "mongo" ? 27017 : c.engine === "redis" ? 6379 : 5432);
+  // Redis: the database is a number, shown as db0
+  if (c.engine === "redis") return [c.host || "localhost", `:${port} / db${c.database?.trim() || "0"}`];
   return [c.host || "localhost", `:${port}${db}`];
 }
 
 /** what the search looks through: name, address, engine (its label and the short names people type) and group */
-const ENGINE_WORDS = { postgres: "postgresql postgres pg", mysql: "mysql mariadb", sqlite: "sqlite", mongo: "mongodb mongo" } as const;
+const ENGINE_WORDS = { postgres: "postgresql postgres pg", mysql: "mysql mariadb", sqlite: "sqlite", mongo: "mongodb mongo", redis: "redis valkey cache" } as const;
 const haystack = (c: Conn) => {
   const [head, tail] = address(c);
   return `${c.name} ${head}${tail} ${c.user ?? ""} ${ENGINE_WORDS[c.engine]} ${c.group ?? ""}`.toLowerCase();
@@ -192,6 +194,7 @@ export function Home() {
           ? "ypacapy forgets the connection and its query history. Saved queries are kept. The database file stays where it is."
           : "ypacapy removes the connection, its keychain password and its query history from this Mac. Saved queries stay. The database is not touched.",
       confirmLabel: "Remove",
+      final: true,
       onConfirm: () => void st.deleteConn(c.id),
     });
 

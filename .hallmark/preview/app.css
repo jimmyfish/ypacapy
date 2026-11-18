@@ -141,7 +141,7 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 32px; 
 .work { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .tabsbar { display: flex; align-items: center; gap: var(--space-2xs); height: 42px; padding: 0 var(--space-sm); box-shadow: inset 0 -1px 0 var(--color-rule); background: var(--color-paper); flex-shrink: 0; }
 .tabs { display: flex; align-items: flex-end; gap: var(--space-2xs); height: 100%; min-width: 0; padding: 0 var(--space-sm); overflow-x: auto; overflow-y: hidden; }
-.tab { position: relative; display: flex; align-items: center; height: 34px; max-width: 240px; flex-shrink: 0; padding-right: var(--space-2xs); border: 1px solid transparent; border-bottom: none; border-radius: 10px 10px 0 0; color: var(--color-muted); }
+.tab { position: relative; display: flex; align-items: center; height: 34px; max-width: 240px; flex-shrink: 0; padding-right: var(--space-xs); border: 1px solid transparent; border-bottom: none; border-radius: 10px 10px 0 0; color: var(--color-muted); }
 /* the active tab: a rounded top whose sides flare into the strip's baseline (no 90° corner) */
 .tab[aria-current="page"] {
   background: var(--color-paper); border-color: var(--color-rule); color: var(--color-ink);
@@ -163,16 +163,22 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 32px; 
 .tab:not([aria-current="page"]) + .tab:not([aria-current="page"])::before {
   content: ""; position: absolute; left: -3px; top: 50%; width: 1px; height: 16px; transform: translateY(-50%); background: var(--color-rule);
 }
-.tab-main { flex: 1 1 auto; display: flex; align-items: center; gap: var(--space-xs); min-width: 0; height: 100%; padding: 0 var(--space-2xs) 0 var(--space-sm); border: none; background: none; color: inherit; }
+.tab-main { flex: 1 1 auto; display: flex; align-items: center; gap: var(--space-xs); min-width: 0; height: 100%; padding: 0 var(--space-xs) 0 var(--space-sm); border: none; background: none; color: inherit; }
 .tab[aria-current="page"] .tab-main .name { font-weight: 600; }
 .tab-main .m { width: auto; }
 .tab-main:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
 .tab .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab .dirty { width: 6px; height: 6px; border-radius: 50%; background: var(--color-accent); flex-shrink: 0; }
 .tab .dirty { margin-left: var(--space-2xs); }
-/* close is always visible on every tab; the unsaved dot sits beside it, never replaced by it */
-.tab .close { display: inline-grid; min-width: 20px; min-height: 20px; border-radius: 6px; color: var(--color-muted); }
-.tab .close:hover { color: var(--color-ink); background: var(--color-paper-2); }
+/* the close button: a round 22px button with a 14px ×, 8px from the name (or the unsaved dot) and 8px from the
+   tab's edge; its hover is a soft round wash. An inactive tab shows it only while hovered (the space stays, so
+   nothing moves); the active tab always shows it, and the unsaved dot always shows */
+/* no padding: the browser's default button padding would push the × off the circle's centre */
+.tab .close, .tab .pin { width: 22px; height: 22px; min-width: 22px; min-height: 22px; padding: 0; border-radius: 50%; color: var(--color-muted); place-items: center; }
+.tab .close { display: inline-grid; }
+.tab .close .ico { width: 14px; height: 14px; }
+.tab .close:hover { color: var(--color-ink); background: color-mix(in srgb, var(--color-ink) 10%, transparent); }
+.tab:not([aria-current="page"]):not(:hover) .close:not(:focus-visible) { visibility: hidden; }
 .tab-add { align-self: flex-end; margin: 0 0 2.5px var(--space-2xs); flex-shrink: 0; } /* on the tab icons' centre line, 18.5px up from the foot: 16px + 2.5px */
 /* many tabs: they shrink to 140px (names ellipsized; the active one keeps its width), then the row scrolls
  * sideways with no scrollbar. The picked tab scrolls into view, and a mouse wheel scrolls the row (TabsBar). */
@@ -1408,3 +1414,75 @@ body.cards-dragging .group-drop-new { display: flex; }
   background: var(--color-ink); color: var(--color-paper); box-shadow: 0 8px 24px var(--color-shadow);
 }
 .toast[hidden] { display: none; }
+
+/* An ask before something that cannot be undone: a red line with the shredder, and the shredder on the danger button */
+.guard-final { display: flex; align-items: flex-start; gap: var(--space-2xs); margin: var(--space-xs) 0 0; color: var(--color-error); font-weight: 500; }
+.guard-final .ico { flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px; }
+.btn--danger .final-ico { margin-right: var(--space-3xs); }
+[data-final="false"] .guard-final, [data-final="false"] .final-ico { display: none; }
+
+/* Redis: engine colour, key type badges in the tree and the key head, the tree's scan line, the key tab's head */
+.e-redis { color: var(--e-redis, var(--tag-alizarin)); }
+.rtype { display: inline-block; flex-shrink: 0; box-sizing: border-box; min-width: 46px; margin-right: var(--space-xs); padding: 1px var(--space-3xs); border-radius: 4px; background: var(--bg); color: var(--fg); font: 700 10px/1.5 var(--font-ui); letter-spacing: 0.04em; text-align: center; }
+.scan-more { display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-2xs) var(--space-sm); color: var(--color-muted); font-size: var(--text-sm); }
+/* Redis: the scan line, pinned under the tree */
+.side-foot { flex-shrink: 0; padding: var(--space-2xs) var(--space-xs); border-top: 1px solid var(--color-rule); }
+.scan-more .link { margin-left: auto; }
+/* a key with a TTL: a timer at the row's end, the time left on hover. Expiring only is the same timer, pressed. */
+.rttl { display: inline-flex; flex-shrink: 0; margin-left: auto; padding-left: var(--space-2xs); color: var(--color-warn); }
+.rttl .ico { width: 13px; height: 13px; }
+.ttl-only[aria-pressed="true"] { color: var(--color-warn); border-color: var(--color-warn); background: var(--color-paper-2); }
+/* above the value pane, so the expiry popover covers it */
+.rk-bar { position: relative; z-index: var(--z-sticky-nav); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-xs) var(--space-md); padding: var(--space-md) var(--space-md) var(--space-xs); }
+.rk-id { display: flex; align-items: center; gap: var(--space-2xs); min-width: 0; }
+.rk-id .rtype { margin-right: var(--space-3xs); }
+/* base.css caps an h2 at 30ch and balances it: a key name is one line, as wide as the head allows */
+.rk-name { display: flex; min-width: 0; max-width: none; margin: 0; font: 600 var(--text-lg)/1.3 var(--font-mono); white-space: nowrap; text-wrap: nowrap; }
+.rk-name .rk-head { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.rk-name .rk-tail { flex-shrink: 0; }
+.rk-bar .mq-actions { grid-column: 2; grid-row: 1; }
+.rk-meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs) var(--space-md); margin: 0; color: var(--color-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.rk-meta > span { display: inline-flex; align-items: center; gap: var(--space-3xs); }
+.rk-meta .ico { width: 14px; height: 14px; }
+.rk-meta .has-ttl { color: var(--color-warn); }
+.rk-meta .rk-db { margin-left: auto; }
+.rk-bar .mq-row { grid-column: 1 / -1; }
+.rk-bar .mq-row[hidden], .rk-match-h[hidden] { display: none; }
+.rk-match-h { grid-column: 1 / -1; margin: 0; }
+.raw .idx { color: var(--color-muted); }
+.str-val .l { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* a long query name gives way before the rest of the line */
+.req-title .name { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.req-title .path { flex-shrink: 0; }
+/* Redis editing, as a table's: changed cells green, a deleted field red and struck through, the bar of changes */
+.edit-bar { display: flex; align-items: center; gap: var(--space-2xs); }
+.res-tools .muted + .edit-bar { margin-left: auto; }
+.edit-bar .btn { min-height: 28px; padding-block: 0; }
+.edit-n { margin-right: var(--space-2xs); color: var(--color-ok); font: 600 var(--text-sm) var(--font-ui); font-variant-numeric: tabular-nums; }
+.grid td.cell-edit, .grid tbody tr:hover td.cell-edit { background: color-mix(in srgb, var(--color-ok) 18%, var(--color-paper)); }
+.grid td.cell-edit.cell-sel { background: color-mix(in srgb, var(--color-ok) 26%, var(--color-paper)); }
+.grid tr.row-edit .rownum { color: var(--color-ok); font-weight: 600; }
+.grid tr.row-del td, .grid tbody tr.row-del:hover td { background: color-mix(in srgb, var(--color-error) 14%, var(--color-paper)); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--color-error) 70%, transparent); }
+.grid tr.row-del .rownum { color: var(--color-error); text-decoration: none; }
+.grid-foot .grid-add { margin-right: auto; min-height: 28px; }
+.grid-foot .edit-what { margin-right: auto; color: var(--color-muted); font-size: var(--text-sm); }
+.res-tools .seg + .btn--quiet { margin-left: var(--space-xs); }
+.str-edit { flex: 1; min-height: 0; margin: 0; padding: var(--space-sm) var(--space-md); border: 0; border-top: 1px solid var(--color-rule); outline: none; resize: none; background: var(--color-paper); color: var(--color-ink); font: var(--text-code)/1.6 var(--font-mono); white-space: pre; tab-size: 2; }
+.str-edit:focus { box-shadow: inset 0 0 0 2px var(--color-focus); }
+.str-note { margin: 0; padding: var(--space-2xs) var(--space-md) var(--space-xs); }
+/* the expiry in the head is a button: the timer, the time left, a pencil on hover */
+.rk-ttl-anchor { position: relative; }
+.rk-ttl-btn { display: inline-flex; align-items: center; gap: var(--space-3xs); margin: -2px -6px; padding: 2px 6px; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.rk-ttl-btn:hover, .rk-ttl-btn[aria-expanded="true"] { background: var(--color-paper-2); color: var(--color-ink); }
+.rk-meta .has-ttl .rk-ttl-btn, .rk-ttl-btn.has-ttl { color: var(--color-warn); }
+.rk-ttl-btn .rk-ttl-pen { width: 12px; height: 12px; opacity: 0; }
+.rk-ttl-btn:hover .rk-ttl-pen, .rk-ttl-btn:focus-visible .rk-ttl-pen { opacity: 1; }
+.ttl-pop { left: -6px; right: auto; width: 340px; }
+.ttl-pop .upd-title code { font: 600 var(--text-sm) var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ttl-pop .check { position: static; display: flex; align-items: center; gap: var(--space-2xs); margin: 0; padding: 0; }
+.ttl-pop .check input { position: static; flex: 0 0 16px; width: 16px; height: 16px; margin: 0; accent-color: var(--color-accent); }
+.ttl-in { display: flex; align-items: center; gap: var(--space-xs); }
+.ttl-in #ttl-n { width: 64px; text-align: right; }
+.ttl-in .select-wrap { flex: 1; }
+.ttl-actions { display: flex; justify-content: flex-end; gap: var(--space-xs); }
+.rk-del { color: var(--color-error); }

@@ -6,6 +6,7 @@ import { TabsBar } from "./components/TabsBar";
 import { QueryPane } from "./components/QueryPane";
 import { TablePane } from "./components/TablePane";
 import { CollectionPane } from "./components/CollectionPane";
+import { KeyPane } from "./components/KeyPane";
 import { Modals } from "./components/Modals";
 import { Home } from "./components/Home";
 import { ConnTile } from "./components/ConnTile";
@@ -171,6 +172,8 @@ function ConnWork() {
       </div>
     );
   if (tab.kind === "query") return <QueryPane key={tab.id} tab={tab} />;
+  // Redis: a key, read for its type
+  if (tab.kind === "key") return <KeyPane key={tab.id} tab={tab} />;
   // MongoDB: a collection gets the query bar, not a where clause
   return conn?.engine === "mongo" ? <CollectionPane key={tab.id} tab={tab} /> : <TablePane key={tab.id} tab={tab} />;
 }

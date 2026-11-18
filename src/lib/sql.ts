@@ -143,7 +143,7 @@ export function statementAt(src: string, cursor: number): string {
 }
 
 /** MongoDB never reaches the SQL formatter (its Format is lib/bson-free: mongosh is formatted as typed) */
-const DIALECT: Record<Engine, SqlLanguage> = { postgres: "postgresql", mysql: "mysql", sqlite: "sqlite", mongo: "sql" };
+const DIALECT: Record<Engine, SqlLanguage> = { postgres: "postgresql", mysql: "mysql", sqlite: "sqlite", mongo: "sql", redis: "sql" };
 
 /**
  * Formats SQL in the dialect of the connection, one clause per line with its keyword beside it:
@@ -179,5 +179,5 @@ export function tableSelect(engine: Engine, schema: string, table: string, where
   return `select * from ${from}${w ? `\nwhere ${w}` : ""}\nlimit ${limit}${offset ? ` offset ${offset}` : ""}`;
 }
 
-export const ENGINE_LABEL: Record<Engine, string> = { postgres: "PG", mysql: "MYSQL", sqlite: "SQLITE", mongo: "MDB" };
-export const ENGINE_NAME: Record<Engine, string> = { postgres: "PostgreSQL", mysql: "MySQL", sqlite: "SQLite", mongo: "MongoDB" };
+export const ENGINE_LABEL: Record<Engine, string> = { postgres: "PG", mysql: "MYSQL", sqlite: "SQLITE", mongo: "MDB", redis: "REDIS" };
+export const ENGINE_NAME: Record<Engine, string> = { postgres: "PostgreSQL", mysql: "MySQL", sqlite: "SQLite", mongo: "MongoDB", redis: "Redis" };

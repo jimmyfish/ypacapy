@@ -139,13 +139,13 @@
     form.addEventListener("reset", () => { m.hidden = true; });
   });
   renderPass();
-  // Updates: one status row per updater state; a dev build has the launch check off and locked
+  // Updates: one onsen hero per updater state; a dev build has the launch check off and locked
   const updState = (st) => {
     $$("[data-upd-st]").forEach((r) => { r.hidden = r.dataset.updSt !== st; });
     const dev = st === "dev", auto = $("#set-auto-update");
     auto.disabled = dev; auto.checked = !dev;
     $("[data-upd-auto]").setAttribute("aria-disabled", String(dev));
-    $("[data-auto-desc]").textContent = dev ? "Off in dev builds, so an update never replaces this build" : "Look for a new version when ypacapy opens";
+    $("[data-auto-desc]").textContent = dev ? "Off in dev builds, so nothing overwrites this one" : "Peek for a new version every time ypacapy opens";
   };
   updState("current");
   window.pvShow = (k) => {

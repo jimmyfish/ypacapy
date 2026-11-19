@@ -8,10 +8,11 @@ import { duration } from "../lib/time";
 import { returnsRows, sourceOf, statements, targetOf, type EditTarget } from "../lib/edit";
 import { api, errText } from "../lib/api";
 import type { QueryTab, ResultSet, RunOutcome, RunState } from "../types";
-import { ResultGrid, ShellText, type GridEdit } from "./ResultGrid";
+import { ResultGrid, type GridEdit } from "./ResultGrid";
 import { SqlEditor, type Completer } from "./SqlEditor";
 import { useDismiss } from "./useDismiss";
-import { ChevronDown, CircleCheck, LoaderCircle, Play, WandSparkles, ico, icoC } from "./Icon";
+import { Braces, ChevronDown, CircleCheck, LoaderCircle, Play, Table2, WandSparkles, ico, icoC } from "./Icon";
+import { DocCards } from "./DocCards";
 
 /** The connection's database and schema pickers, inside the query line's filled field. */
 function CtxSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
@@ -239,7 +240,8 @@ function QueryResults({ tab }: { tab: QueryTab }) {
   const redis = conn?.engine === "redis";
   // MongoDB: documents become columns and rows here (lib/bson.ts); shown as a table or as mongosh prints them.
   // Redis: a reply as a table, or as redis-cli prints it (raw)
-  const [as, setAs] = useState<"table" | "json" | "raw">("table");
+  // MongoDB opens on JSON (documents); Redis and SQL on the table
+  const [as, setAs] = useState<"table" | "json" | "raw">(mongo ? "json" : "table");
   const raw = o?.kind === "done" ? o.sets : [];
   const sets = useMemo(() => raw.map((x) => (x.docs ? docsToSet(x.docs, x.truncated) : x)), [raw]);
   const shownIdx = Math.min(setIdx ?? sets.length - 1, sets.length - 1);
@@ -249,15 +251,29 @@ function QueryResults({ tab }: { tab: QueryTab }) {
   const target = useEditTarget(tab, mongo || redis ? undefined : shown, shownIdx);
   // no grid editing on MongoDB documents or Redis replies yet
   const edit: GridEdit | undefined = conn && session && shown && !mongo && !redis ? { target, connId: conn.id, connName: conn.name, database: session.database, key: `${tab.id}:${shownIdx}`, onSaved: (rs) => st.replaceSet(tab.id, shownIdx, rs) } : undefined;
-  const asSeg = (mongo || redis) && (
-    <span className="seg" role="group" aria-label={redis ? "Show the reply as" : "Show documents as"}>
+  const asSeg = redis ? (
+    <span className="seg" role="group" aria-label="Show the reply as">
       <button type="button" aria-pressed={as === "table"} onClick={() => setAs("table")}>
         Table
       </button>
-      <button type="button" aria-pressed={as !== "table"} onClick={() => setAs(redis ? "raw" : "json")}>
-        {redis ? "Raw" : "JSON"}
+      <button type="button" aria-pressed={as !== "table"} onClick={() => setAs("raw")}>
+        Raw
       </button>
     </span>
+  ) : (
+    mongo && (
+      // JSON first and on the left: the results are documents
+      <span className="seg seg--lead" role="group" aria-label="Show documents as">
+        <button type="button" aria-pressed={as !== "table"} onClick={() => setAs("json")}>
+          <Braces {...ico} />
+          JSON
+        </button>
+        <button type="button" aria-pressed={as === "table"} onClick={() => setAs("table")}>
+          <Table2 {...ico} />
+          Table
+        </button>
+      </span>
+    )
   );
   // Redis: the reply was nil (the key does not exist)
   const nil = redis && shown?.raw === "(nil)";
@@ -397,20 +413,10 @@ function QueryResults({ tab }: { tab: QueryTab }) {
     body = (
       <div className="state">
         <div className="res-tools">
-          {shown.truncated ? <span className="muted">First {shown.rows.length} documents; the rest were left unread</span> : <span className="muted">{shown.rows.length} documents</span>}
           {asSeg}
+          {shown.truncated ? <span className="muted">First {shown.rows.length} documents; the rest were left unread</span> : <span className="muted">{shown.rows.length} documents</span>}
         </div>
-        <pre className="code docs" tabIndex={0} aria-label={`Documents of ${tab.title}`}>
-          {(shown.docs ?? []).map((d, i) =>
-            shellPretty(d)
-              .split("\n")
-              .map((line, j) => (
-                <span key={`${i}:${j}`} className={`l${j === 0 && i ? " doc-start" : ""}`}>
-                  <ShellText s={line} />
-                </span>
-              )),
-          )}
-        </pre>
+        <DocCards docs={shown.docs ?? []} label={`Documents of ${tab.title}`} />
       </div>
     );
   else if (o.kind === "done" && shown)
@@ -424,6 +430,7 @@ function QueryResults({ tab }: { tab: QueryTab }) {
           lead={
             sets.length > 1 ? (
               <>
+                {mongo && asSeg}
                 <div className="seg" role="group" aria-label="Result set">
                   {sets.map((_, i) => (
                     <button key={i} type="button" aria-pressed={shown === sets[i]} onClick={() => setSetIdx(i)}>
@@ -435,8 +442,9 @@ function QueryResults({ tab }: { tab: QueryTab }) {
               </>
             ) : shown.truncated ? (
               <>
+                {mongo && asSeg}
                 <span className="muted">First {shown.rows.length} rows; the rest were left unread</span>
-                {asSeg}
+                {redis && asSeg}
               </>
             ) : (
               asSeg || undefined

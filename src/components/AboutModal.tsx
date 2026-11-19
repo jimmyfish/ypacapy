@@ -69,10 +69,10 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
             <i />
             <img src="/app-icon.png" alt="" />
           </div>
-          <h2 className="about-name" id="about-name" title="Reads the same both ways">
+          <h2 className="about-name" id="about-name" title="Try reading it backwards">
             ypa<span>capy</span>
           </h2>
-          <p className="about-tag">A database client for PostgreSQL, MySQL, SQLite, MongoDB and Redis. Connections, history and passwords stay on this Mac.</p>
+          <p className="about-tag">A hot spring for your databases.</p>
           {shown && (
             <div className="about-verline">
               {DEV_BUILD && <span className="build-tag">dev</span>}
@@ -95,7 +95,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
               Report an issue
             </button>
           </nav>
-          <p className="about-foot">ypacapy, capy in a mirror. Reads the same both ways.</p>
+          <p className="about-foot">ypacapy is a capy and its reflection in the onsen. Same both ways, calm both ways.</p>
         </div>
       </div>
     </div>
@@ -213,9 +213,9 @@ function UpdateCard() {
       <>
         <div className="about-upd-row">
           <p className="about-upd-text">
-            <strong>ypacapy {st.version} is available</strong>
+            <strong>ypacapy {st.version} is out</strong>
             <span className="sub">
-              You have {st.current}
+              You're on {st.current}
               {date ? ` · released ${date}` : ""}
             </span>
           </p>
@@ -242,7 +242,7 @@ function UpdateCard() {
           Downloading {st.version}
           {pct !== undefined ? ` · ${pct}%` : "…"}
           <span className="sub">
-            {st.total ? `${mb(st.received)} of ${mb(st.total)} MB` : `${mb(st.received)} MB`} · you can keep working
+            {st.total ? `${mb(st.received)} of ${mb(st.total)} MB` : `${mb(st.received)} MB`} · go on, keep working
           </span>
         </p>
       </div>
@@ -252,7 +252,7 @@ function UpdateCard() {
     body = (
       <div className="about-upd-row">
         <p className="about-upd-text">
-          Installing {st.version}…<span className="sub">Downloaded and verified</span>
+          Installing {st.version}…<span className="sub">Downloaded, signature checks out</span>
         </p>
       </div>
     );
@@ -261,7 +261,7 @@ function UpdateCard() {
     body = (
       <div className="about-upd-row">
         <p className="about-upd-text">
-          <strong>{st.version} is installed</strong>
+          <strong>{st.version} is in</strong>
           <span className="sub">Restart ypacapy to commit it.</span>
         </p>
         <button type="button" className="btn btn--primary" onClick={() => void u.restart()}>
@@ -296,7 +296,7 @@ function UpdateCard() {
     body = (
       <div className="about-upd-row">
         <p className="about-upd-text">
-          You're on the latest version.
+          You're on the latest. Back to soaking.
           {u.checkedAt && <span className="sub">Checked {ago(u.checkedAt)}</span>}
         </p>
         {checkAgain}
@@ -308,7 +308,7 @@ function UpdateCard() {
     body = (
       <div className="about-upd-row">
         <p className="about-upd-text">
-          Looking for a new version…<span className="sub">github.com/jimmyfish/ypacapy</span>
+          Asking GitHub what's new…<span className="sub">github.com/jimmyfish/ypacapy</span>
         </p>
         {checkAgain}
       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
@@ -15,7 +15,7 @@ import { ColorPicker, EnginePicker } from "./Picker";
 import { ago, ttlLeft, when } from "../lib/time";
 import { CONN_COLOR_COUNT } from "../lib/connColors";
 import { useUpdates } from "../updates";
-import { RELEASES_URL } from "../lib/updater";
+import { RELEASES_URL, mb, releaseDate } from "../lib/updater";
 import { DEV_BUILD } from "../build";
 import { AboutModal } from "./AboutModal";
 import { AuthDialog, PassphraseDialog, type PassKind } from "./AuthDialog";
@@ -28,6 +28,7 @@ import {
   Fingerprint,
   FolderOpen,
   KeyRound,
+  LoaderCircle,
   Lock,
   LockOpen,
   PlugZap,
@@ -419,7 +420,9 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
       >
         {!warnOnly && (
           <p className="help">
-            {m.ask.unreadable
+            {m.write
+              ? m.write.help
+              : m.ask.unreadable
               ? `ypacapy could not read what this ${m.ask.ops ? "command" : "SQL"} does, so it asks first.`
               : keysOnly
                 ? `It reads every key in the database, and ${m.connName} answers no one else until it is done:`
@@ -435,6 +438,8 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
             ))}
           </div>
         )}
+        {/* a write ypacapy built: the exact command it sends */}
+        {m.write && <pre className="db-says guard-cmd">{m.write.cmd}</pre>}
         {warns.map((w) => (
           <p key={w.kind} className="guard-warn">
             <TriangleAlert {...ico} />
@@ -469,9 +474,10 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
               {m.alt.label}
             </button>
           )}
-          <button type="submit" className="btn btn--danger" autoFocus={!verify}>
+          {/* an insert loses nothing: the plain primary button */}
+          <button type="submit" className={`btn ${m.write?.safe && !m.ask.final ? "btn--primary" : "btn--danger"}`} autoFocus={!verify}>
             {m.ask.final && <Shredder {...ico} />}
-            {keysOnly ? "Run KEYS" : "Run"}
+            {m.write ? m.write.label : keysOnly ? "Run KEYS" : "Run"}
           </button>
         </footer>
       </form>
@@ -2021,125 +2027,144 @@ const releaseLink = (label: string) => (
   </button>
 );
 
-/** Settings > Updates (voidHTTP's UpdatesPane): the running version and what the updater knows, the launch check, release notes. */
+/**
+ * Settings > Updates (voidHTTP's UpdatesPane), drawn as an onsen (preview .hallmark/preview/settings.html, Updates):
+ * the capy soaking in the middle as in About, the version under it, the updater's state as a pill, one line of detail,
+ * the action below. Then the launch check and release notes. A dev build never checks, so an update never replaces it.
+ */
 function UpdatesPane() {
   const auto = useStore((s) => s.settings.autoUpdateCheck !== false);
   const setSettings = useStore((s) => s.setSettings);
   const u = useUpdates();
   const st = u.state;
+  const onsen = useRef<HTMLDivElement>(null);
 
-  // a dev build never checks, so an update never replaces it
-  if (DEV_BUILD) {
-    const where = [DEV_BUILD.describe, DEV_BUILD.branch && `on branch ${DEV_BUILD.branch}`].filter(Boolean).join(" ");
-    return (
-      <div className="set-pane">
-        <h3>Updates</h3>
-        <div className="set-list">
-          <SetItem label={`ypacapy ${u.version}`} desc={`${where ? `${where} · ` : ""}updates are off in dev builds`}>
-            {releaseLink("Get the release")}
-          </SetItem>
-          <div className="set-item" aria-disabled="true">
-            <div className="set-text">
-              <label htmlFor="set-auto-update">Check automatically</label>
-              <span className="desc">Off in dev builds, so an update never replaces this build</span>
-            </div>
-            <div className="set-ctl">
-              <input id="set-auto-update" className="switch" type="checkbox" role="switch" checked={false} disabled readOnly />
-            </div>
-          </div>
-          <SetItem label="Release notes" desc="What changed in each version">
-            {releaseLink("Open on GitHub")}
-          </SetItem>
-        </div>
-      </div>
-    );
-  }
+  // a click on the capy drops it back into the water, as in About
+  const ping = () => {
+    const el = onsen.current;
+    if (!el) return;
+    el.classList.remove("ping");
+    void el.offsetWidth;
+    el.classList.add("ping");
+  };
 
-  const pct = st.kind === "downloading" && st.total ? Math.floor((st.received / st.total) * 100) : undefined;
-  let status: ReactNode;
-  let action: ReactNode = (
+  const checkAgain = (
     <button type="button" className="btn" disabled={st.kind === "checking"} onClick={() => void u.check()}>
-      {st.kind === "checking" ? "Checking…" : "Check for updates"}
+      <RefreshCw {...ico} />
+      Check again
     </button>
   );
-  if (st.kind === "checking") status = "Checking…";
-  else if (st.kind === "current")
-    status = (
-      <span className="set-status ok">
-        <CircleCheck {...ico} />
-        Up to date{u.checkedAt ? ` · checked ${ago(u.checkedAt)}` : ""}
-      </span>
-    );
-  else if (st.kind === "available") {
-    status = (
-      <span className="set-status new">
-        <CircleArrowDown {...ico} />
-        {st.version} is available
-      </span>
-    );
+  const spin = <LoaderCircle {...ico} className="ico upd-spin" />;
+
+  let pill: [string, ReactNode, ReactNode];
+  let sub: string;
+  let action: ReactNode = checkAgain;
+  let progress: number | undefined;
+  if (DEV_BUILD) {
+    pill = ["dev", null, "dev build"];
+    sub = DEV_BUILD.branch ? `Branch ${DEV_BUILD.branch} · updates are off here` : "Updates are off here";
+    action = releaseLink("Get the release");
+  } else if (st.kind === "checking") {
+    pill = ["busy", spin, "Checking"];
+    sub = "Asking GitHub what's new…";
+  } else if (st.kind === "current") {
+    pill = ["ok", <CircleCheck {...ico} />, "Up to date"];
+    sub = `Nothing newer out there.${u.checkedAt ? ` Checked ${ago(u.checkedAt)}.` : ""}`;
+  } else if (st.kind === "available") {
+    const date = releaseDate(st.date);
+    pill = ["new", <CircleArrowDown {...ico} />, `${st.version} is out`];
+    sub = date ? `Released ${date}. Grab it whenever.` : "Grab it whenever.";
     action = (
       <button type="button" className="btn btn--primary" onClick={() => void u.install()}>
+        <CircleArrowDown {...ico} />
         Install update
       </button>
     );
-  } else if (st.kind === "downloading" || st.kind === "installing") {
-    status = st.kind === "installing" ? `Installing ${st.version}…` : `Downloading ${st.version}${pct !== undefined ? ` · ${pct}%` : "…"}`;
+  } else if (st.kind === "downloading") {
+    const pct = st.total ? Math.floor((st.received / st.total) * 100) : undefined;
+    pill = ["busy", spin, `Downloading ${st.version}${pct !== undefined ? ` · ${pct}%` : "…"}`];
+    sub = `${st.total ? `${mb(st.received)} of ${mb(st.total)} MB` : `${mb(st.received)} MB`} · go on, keep working`;
     action = null;
+    progress = pct ?? 0;
+  } else if (st.kind === "installing") {
+    pill = ["busy", spin, `Installing ${st.version}`];
+    sub = "Downloaded, signature checks out";
+    action = null;
+    progress = 100;
   } else if (st.kind === "ready") {
-    status = (
-      <span className="set-status ok">
-        <CircleCheck {...ico} />
-        {st.version} is installed · restart to finish
-      </span>
-    );
+    pill = ["ok", <CircleCheck {...ico} />, `${st.version} is in`];
+    sub = "Restart ypacapy to commit it.";
     action = (
       <button type="button" className="btn btn--primary" onClick={() => void u.restart()}>
+        <RefreshCw {...ico} />
         Restart now
       </button>
     );
   } else if (st.kind === "error") {
-    status = (
-      <span className="set-status bad" title={st.message}>
-        <TriangleAlert {...ico} />
-        {u.failed === "install" ? `Couldn't install ${u.target ?? "the update"}` : "Couldn't check for updates"}
-      </span>
-    );
-    if (u.failed === "install")
+    const install = u.failed === "install";
+    pill = ["bad", <TriangleAlert {...ico} />, install ? `Couldn't install ${u.target ?? "the update"}` : "Couldn't check for updates"];
+    sub = st.message;
+    if (install)
       action = (
         <button type="button" className="btn" onClick={() => void u.install()}>
           Try again
         </button>
       );
-  } else status = "Not checked yet";
+  } else {
+    pill = ["", null, "Not checked yet"];
+    sub = "Hit the button to take a look.";
+  }
 
   return (
     <div className="set-pane">
       <h3>Updates</h3>
-      <div className="set-list">
-        <div className="set-item">
-          <div className="set-text">
-            <span className="set-label">ypacapy {u.version}</span>
-            <span className="desc">{status}</span>
-          </div>
-          <div className="set-ctl">{action}</div>
+      <div className="upd-hero" aria-live="polite">
+        <div className="about-onsen upd-onsen ping" ref={onsen} aria-hidden="true" onClick={ping}>
+          <span className="steam">
+            <b />
+            <b />
+            <b />
+          </span>
+          <i />
+          <i />
+          <i />
+          <img src="/app-icon.png" alt="" />
         </div>
-        <div className="set-item">
+        <div className="upd-hero-name">
+          ypa<span>capy</span> <code>{DEV_BUILD?.describe || u.version}</code>
+        </div>
+        <span className={`upd-pill ${pill[0]}`}>
+          {pill[1]}
+          {pill[2]}
+        </span>
+        <p className="upd-hero-sub" title={sub}>
+          {sub}
+        </p>
+        {progress !== undefined && <i className="upd-hero-prog" style={{ "--p": `${progress}%` } as CSSProperties} />}
+        {action && <div className="upd-hero-ctl">{action}</div>}
+      </div>
+      <div className="set-list">
+        <div className="set-item" aria-disabled={DEV_BUILD ? "true" : undefined}>
           <div className="set-text">
             <label htmlFor="set-auto-update">Check automatically</label>
-            <span className="desc">Look for a new version when ypacapy opens</span>
+            <span className="desc">{DEV_BUILD ? "Off in dev builds, so nothing overwrites this one" : "Peek for a new version every time ypacapy opens"}</span>
           </div>
           <div className="set-ctl">
-            <input
-              id="set-auto-update"
-              className="switch"
-              type="checkbox"
-              role="switch"
-              checked={auto}
-              onChange={(e) => void setSettings({ autoUpdateCheck: e.target.checked ? undefined : false })}
-            />
+            {DEV_BUILD ? (
+              <input id="set-auto-update" className="switch" type="checkbox" role="switch" checked={false} disabled readOnly />
+            ) : (
+              <input
+                id="set-auto-update"
+                className="switch"
+                type="checkbox"
+                role="switch"
+                checked={auto}
+                onChange={(e) => void setSettings({ autoUpdateCheck: e.target.checked ? undefined : false })}
+              />
+            )}
           </div>
         </div>
-        <SetItem label="Release notes" desc="What changed in each version">
+        <SetItem label="Release notes" desc="What's new, version by version">
           {releaseLink("Open on GitHub")}
         </SetItem>
       </div>

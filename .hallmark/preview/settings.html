@@ -101,6 +101,10 @@
   <symbol id="i-file-code" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 12.5 8 15l2 2.5"/><path d="m14 12.5 2 2.5-2 2.5"/></symbol>
   <symbol id="i-file-down" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></symbol>
   <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+  <symbol id="i-chevrons-up-down" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></symbol>
+  <symbol id="i-chevrons-down-up" viewBox="0 0 24 24"><path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/></symbol>
+  <symbol id="i-circle-plus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></symbol>
+  <symbol id="i-copy-plus" viewBox="0 0 24 24"><line x1="15" x2="15" y1="12" y2="18"/><line x1="12" x2="18" y1="15" y2="15"/><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
 </svg>
 
 <header class="pv-bar">
@@ -140,7 +144,12 @@
     <button type="button" data-show="pass-reset" aria-pressed="false">Forgot passphrase</button>
     <button type="button" data-show="data" aria-pressed="false">Data on this Mac</button>
     <button type="button" data-show="updates" aria-pressed="false">Updates</button>
+    <button type="button" data-show="upd-idle" aria-pressed="false">Not checked yet</button>
+    <button type="button" data-show="upd-checking" aria-pressed="false">Checking</button>
     <button type="button" data-show="upd-available" aria-pressed="false">Update available</button>
+    <button type="button" data-show="upd-downloading" aria-pressed="false">Downloading</button>
+    <button type="button" data-show="upd-installing" aria-pressed="false">Installing</button>
+    <button type="button" data-show="upd-ready" aria-pressed="false">Ready to restart</button>
     <button type="button" data-show="upd-error" aria-pressed="false">Check failed</button>
     <button type="button" data-show="upd-dev" aria-pressed="false">Dev build</button>
   </div>
@@ -671,29 +680,74 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
 
       <div class="set-pane" data-pane="updates" hidden>
         <h3>Updates</h3>
+          <div class="upd-hero" data-upd-st="current" aria-live="polite" hidden>
+            <div class="about-onsen ping upd-onsen" aria-hidden="true"><span class="steam"><b></b><b></b><b></b></span><i></i><i></i><i></i><img src="../../public/app-icon.png" alt=""></div>
+            <div class="upd-hero-name">ypa<span>capy</span> <code>0.0.1</code></div>
+            <span class="upd-pill ok"><svg aria-hidden="true" class="ico"><use href="#i-circle-check"/></svg>Up to date</span>
+            <p class="upd-hero-sub" title="Nothing newer out there. Checked just now.">Nothing newer out there. Checked just now.</p>
+            <div class="upd-hero-ctl"><button type="button" class="btn"><svg aria-hidden="true" class="ico"><use href="#i-refresh-cw"/></svg>Check again</button></div>
+          </div>
+          <div class="upd-hero" data-upd-st="idle" aria-live="polite" hidden>
+            <div class="about-onsen ping upd-onsen" aria-hidden="true"><span class="steam"><b></b><b></b><b></b></span><i></i><i></i><i></i><img src="../../public/app-icon.png" alt=""></div>
+            <div class="upd-hero-name">ypa<span>capy</span> <code>0.0.1</code></div>
+            <span class="upd-pill ">Not checked yet</span>
+            <p class="upd-hero-sub" title="Hit the button to take a look.">Hit the button to take a look.</p>
+            <div class="upd-hero-ctl"><button type="button" class="btn"><svg aria-hidden="true" class="ico"><use href="#i-refresh-cw"/></svg>Check again</button></div>
+          </div>
+          <div class="upd-hero" data-upd-st="checking" aria-live="polite" hidden>
+            <div class="about-onsen ping upd-onsen" aria-hidden="true"><span class="steam"><b></b><b></b><b></b></span><i></i><i></i><i></i><img src="../../public/app-icon.png" alt=""></div>
+            <div class="upd-hero-name">ypa<span>capy</span> <code>0.0.1</code></div>
+            <span class="upd-pill busy"><svg aria-hidden="true" class="ico upd-spin"><use href="#i-loader-circle"/></svg>Checking</span>
+            <p class="upd-hero-sub" title="Asking GitHub what's new…">Asking GitHub what's new…</p>
+            <div class="upd-hero-ctl"><button type="button" class="btn" disabled><svg aria-hidden="true" class="ico"><use href="#i-refresh-cw"/></svg>Check again</button></div>
+          </div>
+          <div class="upd-hero" data-upd-st="available" aria-live="polite" hidden>
+            <div class="about-onsen ping upd-onsen" aria-hidden="true"><span class="steam"><b></b><b></b><b></b></span><i></i><i></i><i></i><img src="../../public/app-icon.png" alt=""></div>
+            <div class="upd-hero-name">ypa<span>capy</span> <code>0.0.1</code></div>
+            <span class="upd-pill new"><svg aria-hidden="true" class="ico"><use href="#i-circle-arrow-down"/></svg>0.0.2 is out</span>
+            <p class="upd-hero-sub" title="Released 20 Nov 2026. Grab it whenever.">Released 20 Nov 2026. Grab it whenever.</p>
+            <div class="upd-hero-ctl"><button type="button" class="btn btn--primary" data-href="./updates.html?show=downloading"><svg aria-hidden="true" class="ico"><use href="#i-circle-arrow-down"/></svg>Install update</button></div>
+          </div>
+          <div class="upd-hero" data-upd-st="downloading" aria-live="polite" hidden>
+            <div class="about-onsen ping upd-onsen" aria-hidden="true"><span class="steam"><b></b><b></b><b></b></span><i></i><i></i><i></i><img src="../../public/app-icon.png" alt=""></div>
+            <div class="upd-hero-name">ypa<span>capy</span> <code>0.0.1</code></div>
+            <span class="upd-pill busy"><svg aria-hidden="true" class="ico upd-spin"><use href="#i-loader-circle"/></svg>Downloading 0.0.2 · 42%</span>
+            <p class="upd-hero-sub" title="4.1 of 9.8 MB · go on, keep working">4.1 of 9.8 MB · go on, keep working</p><i class="upd-hero-prog" style="--p:42%"></i>
+          </div>
+          <div class="upd-hero" data-upd-st="installing" aria-live="polite" hidden>
+            <div class="about-onsen ping upd-onsen" aria-hidden="true"><span class="steam"><b></b><b></b><b></b></span><i></i><i></i><i></i><img src="../../public/app-icon.png" alt=""></div>
+            <div class="upd-hero-name">ypa<span>capy</span> <code>0.0.1</code></div>
+            <span class="upd-pill busy"><svg aria-hidden="true" class="ico upd-spin"><use href="#i-loader-circle"/></svg>Installing 0.0.2</span>
+            <p class="upd-hero-sub" title="Downloaded, signature checks out">Downloaded, signature checks out</p><i class="upd-hero-prog" style="--p:100%"></i>
+          </div>
+          <div class="upd-hero" data-upd-st="ready" aria-live="polite" hidden>
+            <div class="about-onsen ping upd-onsen" aria-hidden="true"><span class="steam"><b></b><b></b><b></b></span><i></i><i></i><i></i><img src="../../public/app-icon.png" alt=""></div>
+            <div class="upd-hero-name">ypa<span>capy</span> <code>0.0.1</code></div>
+            <span class="upd-pill ok"><svg aria-hidden="true" class="ico"><use href="#i-circle-check"/></svg>0.0.2 is in</span>
+            <p class="upd-hero-sub" title="Restart ypacapy to commit it.">Restart ypacapy to commit it.</p>
+            <div class="upd-hero-ctl"><button type="button" class="btn btn--primary"><svg aria-hidden="true" class="ico"><use href="#i-refresh-cw"/></svg>Restart now</button></div>
+          </div>
+          <div class="upd-hero" data-upd-st="error" aria-live="polite" hidden>
+            <div class="about-onsen ping upd-onsen" aria-hidden="true"><span class="steam"><b></b><b></b><b></b></span><i></i><i></i><i></i><img src="../../public/app-icon.png" alt=""></div>
+            <div class="upd-hero-name">ypa<span>capy</span> <code>0.0.1</code></div>
+            <span class="upd-pill bad"><svg aria-hidden="true" class="ico"><use href="#i-triangle-alert"/></svg>Couldn't check for updates</span>
+            <p class="upd-hero-sub" title="error sending request for url (https://github.com/jimmyfish/ypacapy/releases/latest/download/latest.json)">error sending request for url (https://github.com/jimmyfish/ypacapy/releases/latest/download/latest.json)</p>
+            <div class="upd-hero-ctl"><button type="button" class="btn"><svg aria-hidden="true" class="ico"><use href="#i-refresh-cw"/></svg>Check again</button></div>
+          </div>
+          <div class="upd-hero" data-upd-st="dev" aria-live="polite" hidden>
+            <div class="about-onsen ping upd-onsen" aria-hidden="true"><span class="steam"><b></b><b></b><b></b></span><i></i><i></i><i></i><img src="../../public/app-icon.png" alt=""></div>
+            <div class="upd-hero-name">ypa<span>capy</span> <code>v0.0.1-4-g1a19d06+</code></div>
+            <span class="upd-pill dev">dev build</span>
+            <p class="upd-hero-sub" title="Branch v0.0.1 · updates are off here">Branch v0.0.1 · updates are off here</p>
+            <div class="upd-hero-ctl"><button type="button" class="upd-link" title="https://github.com/jimmyfish/ypacapy/releases">Get the release<svg aria-hidden="true" class="ico"><use href="#i-external-link"/></svg></button></div>
+          </div>
         <div class="set-list">
-              <div class="set-item" data-upd-st="current" hidden>
-                <div class="set-text"><span class="set-label">ypacapy 0.0.1</span><span class="desc"><span class="set-status ok"><svg aria-hidden="true" class="ico"><use href="#i-circle-check"/></svg>Up to date · checked just now</span></span></div>
-                <div class="set-ctl"><button type="button" class="btn">Check for updates</button></div>
-              </div>
-              <div class="set-item" data-upd-st="available" hidden>
-                <div class="set-text"><span class="set-label">ypacapy 0.0.1</span><span class="desc"><span class="set-status new"><svg aria-hidden="true" class="ico"><use href="#i-circle-arrow-down"/></svg>0.0.2 is available</span></span></div>
-                <div class="set-ctl"><button type="button" class="btn btn--primary" data-href="./updates.html?show=downloading">Install update</button></div>
-              </div>
-              <div class="set-item" data-upd-st="error" hidden>
-                <div class="set-text"><span class="set-label">ypacapy 0.0.1</span><span class="desc"><span class="set-status bad" title="error sending request for url (https://github.com/jimmyfish/ypacapy/releases/latest/download/latest.json)"><svg aria-hidden="true" class="ico"><use href="#i-triangle-alert"/></svg>Couldn't check for updates</span></span></div>
-                <div class="set-ctl"><button type="button" class="btn">Check for updates</button></div>
-              </div>
-              <div class="set-item" data-upd-st="dev" hidden>
-                <div class="set-text"><span class="set-label">ypacapy 0.0.1</span><span class="desc">v0.0.1-4-g1a19d06+ on branch v0.0.1 · updates are off in dev builds</span></div>
-                <div class="set-ctl"><button type="button" class="upd-link" title="https://github.com/jimmyfish/ypacapy/releases">Get the release<svg aria-hidden="true" class="ico"><use href="#i-external-link"/></svg></button></div>
-              </div>
               <div class="set-item" data-upd-auto>
-                <div class="set-text"><label for="set-auto-update">Check automatically</label><span class="desc" data-auto-desc>Look for a new version when ypacapy opens</span></div>
+                <div class="set-text"><label for="set-auto-update">Check automatically</label><span class="desc" data-auto-desc>Peek for a new version every time ypacapy opens</span></div>
                 <div class="set-ctl"><input id="set-auto-update" class="switch" type="checkbox" role="switch" checked></div>
               </div>
               <div class="set-item">
-                <div class="set-text"><span class="set-label">Release notes</span><span class="desc">What changed in each version</span></div>
+                <div class="set-text"><span class="set-label">Release notes</span><span class="desc">What's new, version by version</span></div>
                 <div class="set-ctl"><button type="button" class="upd-link" title="https://github.com/jimmyfish/ypacapy/releases">Open on GitHub<svg aria-hidden="true" class="ico"><use href="#i-external-link"/></svg></button></div>
               </div>
         </div>
@@ -1376,13 +1430,13 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
     form.addEventListener("reset", () => { m.hidden = true; });
   });
   renderPass();
-  // Updates: one status row per updater state; a dev build has the launch check off and locked
+  // Updates: one onsen hero per updater state; a dev build has the launch check off and locked
   const updState = (st) => {
     $$("[data-upd-st]").forEach((r) => { r.hidden = r.dataset.updSt !== st; });
     const dev = st === "dev", auto = $("#set-auto-update");
     auto.disabled = dev; auto.checked = !dev;
     $("[data-upd-auto]").setAttribute("aria-disabled", String(dev));
-    $("[data-auto-desc]").textContent = dev ? "Off in dev builds, so an update never replaces this build" : "Look for a new version when ypacapy opens";
+    $("[data-auto-desc]").textContent = dev ? "Off in dev builds, so nothing overwrites this one" : "Peek for a new version every time ypacapy opens";
   };
   updState("current");
   window.pvShow = (k) => {

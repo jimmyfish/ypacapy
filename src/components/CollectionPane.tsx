@@ -1,13 +1,14 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_ROW_LIMIT, useCurrent, useStore } from "../store";
 import { estimate } from "../lib/cells";
-import { docsToSet, fieldsOf, shellPretty } from "../lib/bson";
+import { docsToSet, fieldsOf } from "../lib/bson";
 import { duration } from "../lib/time";
 import type { TableTab } from "../types";
 import { ErrorState, RunGroup } from "./QueryPane";
-import { ResultGrid, ShellText } from "./ResultGrid";
+import { ResultGrid } from "./ResultGrid";
+import { DocCards } from "./DocCards";
 import { mongoColl } from "./Sidebar";
-import { ChevronLeft, ChevronRight, Key, Link, SquareCode, ico } from "./Icon";
+import { Braces, ChevronLeft, ChevronRight, Key, Link, SquareCode, Table2, ico, icoC } from "./Icon";
 
 /** a query bar box that grows with its text, one line to eight, then scrolls */
 function Box({ id, label, value, placeholder, invalid, onChange, className = "" }: { id: string; label: string; value: string; placeholder: string; invalid?: boolean; onChange: (v: string) => void; className?: string }) {
@@ -48,7 +49,10 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
   const set = useMemo(() => (raw?.docs ? docsToSet(raw.docs, raw.truncated) : undefined), [raw]);
   const fields = useMemo(() => (set?.docs ? fieldsOf(set.docs) : []), [set]);
   const est = session?.tree[tab.schema]?.data?.tables.find((t) => t.name === tab.table)?.estimate;
-  const as = tab.as ?? "table";
+  // JSON first: a MongoDB collection holds documents
+  const as = tab.as ?? "json";
+  // Project, Sort, Skip and Limit start folded under Options; the count says how many are set while folded
+  const [optsOpen, setOptsOpen] = useState(false);
 
   // ⌘↵ reads the documents again, from any box
   useEffect(() => {
@@ -66,6 +70,8 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
   const put = (patch: Partial<TableTab>) => st.updateTab(tab.id, patch);
   // which box Rust could not read, from its title ("The sort is not valid")
   const bad = o?.kind === "error" && !o.lost ? /^The (filter|project|sort) is not valid/.exec(o.title)?.[1] : undefined;
+  // a box Rust could not read opens the options, so its red outline shows
+  const showOpts = optsOpen || bad === "project" || bad === "sort";
   const docs = set?.docs ?? [];
   const n = docs.length;
   const from = tab.offset + 1;
@@ -87,13 +93,16 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
     setTimeout(() => void useStore.getState().readTable(tab.id, { offset: 0 }), 0);
   };
 
+  const optsSet = [tab.project?.trim(), tab.sort?.trim(), tab.offset > 0, tab.limit && Number(tab.limit) !== rowLimit].filter(Boolean).length;
   const seg = (
-    <span className="seg" role="group" aria-label="Show documents as">
-      <button type="button" aria-pressed={as === "table"} onClick={() => put({ as: "table" })}>
-        Table
-      </button>
+    <span className="seg seg--lead" role="group" aria-label="Show documents as">
       <button type="button" aria-pressed={as === "json"} onClick={() => put({ as: "json" })}>
+        <Braces {...ico} />
         JSON
+      </button>
+      <button type="button" aria-pressed={as === "table"} onClick={() => put({ as: "table" })}>
+        <Table2 {...ico} />
+        Table
       </button>
     </span>
   );
@@ -143,25 +152,15 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
     docsBody =
       as === "table" ? (
         <div className="state">
-          <ResultGrid set={set} label={`Documents of ${tab.table}`} exportName={tab.table} lead={<>{lead}{seg}</>} foot={foot} />
+          <ResultGrid set={set} label={`Documents of ${tab.table}`} exportName={tab.table} lead={<>{seg}{lead}</>} foot={foot} />
         </div>
       ) : (
         <div className="state">
           <div className="res-tools">
-            {lead}
             {seg}
+            {lead}
           </div>
-          <pre className="code docs" tabIndex={0} aria-label={`Documents of ${tab.table}`}>
-            {docs.map((d, i) =>
-              shellPretty(d)
-                .split("\n")
-                .map((line, j) => (
-                  <span key={`${i}:${j}`} className={`l${j === 0 && i ? " doc-start" : ""}`}>
-                    <ShellText s={line} />
-                  </span>
-                )),
-            )}
-          </pre>
+          <DocCards docs={docs} label={`Documents of ${tab.table}`} edit={{ tabId: tab.id, collection: tab.table, projected: !!tab.project?.trim() }} />
           {foot}
         </div>
       );
@@ -297,6 +296,15 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
           <Box id={`mq-f-${tab.id}`} label="filter" className="mq-filter" placeholder="{ field: value }" value={tab.where} invalid={bad === "filter"} onChange={(v) => put({ where: v })} />
         </div>
         <div className="mq-actions">
+          <button type="button" className="btn btn--quiet mq-more" aria-expanded={showOpts} aria-controls={`mq-opts-${tab.id} mq-paging-${tab.id}`} title="Project, sort, skip and limit" onClick={() => setOptsOpen(!showOpts)}>
+            <ChevronRight {...icoC("mq-more-ico")} />
+            Options
+            {!showOpts && optsSet > 0 && (
+              <span className="mq-set" title={`${optsSet} option${optsSet > 1 ? "s" : ""} set`}>
+                {optsSet}
+              </span>
+            )}
+          </button>
           <button type="button" className="btn btn--quiet" title="Back to the empty filter" onClick={reset}>
             Reset
           </button>
@@ -306,11 +314,11 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
           </button>
           <RunGroup busy={busy} disabled={session.status !== "open"} onRun={() => read()} kbd="⌘↵" />
         </div>
-        <div className="mq-row mq-opts">
+        <div className="mq-row mq-opts" id={`mq-opts-${tab.id}`} hidden={!showOpts}>
           <Box id={`mq-p-${tab.id}`} label="project" placeholder="{ field: 0 }" value={tab.project ?? ""} invalid={bad === "project"} onChange={(v) => put({ project: v })} />
           <Box id={`mq-s-${tab.id}`} label="sort" placeholder="{ field: -1 }" value={tab.sort ?? ""} invalid={bad === "sort"} onChange={(v) => put({ sort: v })} />
         </div>
-        <div className="mq-paging">
+        <div className="mq-paging" id={`mq-paging-${tab.id}`} hidden={!showOpts}>
           <label className="mq-field mq-num">
             <span className="mq-k">skip</span>
             <input

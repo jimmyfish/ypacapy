@@ -14,6 +14,11 @@ export {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  // MongoDB JSON view: expand / collapse all, add a field, duplicate a document
+  ChevronsDownUp,
+  ChevronsUpDown,
+  CirclePlus,
+  CopyPlus,
   CircleAlert,
   CircleArrowDown,
   CircleCheck,

@@ -19,7 +19,15 @@ export type Modal =
   | { kind: "prompt"; title: string; label: string; initial: string; onSubmit: (v: string) => void }
   | { kind: "saveQuery"; tabId: string }
   /** the passphrase or confirm ask before a run; with title and message, the passphrase before lowering Strict */
-  | { kind: "guard"; ask: Ask; connName: string; onApprove: (a: Approval) => void; alt?: { label: string; run: () => void } }
+  | {
+      kind: "guard";
+      ask: Ask;
+      connName: string;
+      onApprove: (a: Approval) => void;
+      alt?: { label: string; run: () => void };
+      /** a write ypacapy built (a document edited in the JSON view): what it does, the command itself, the button's word */
+      write?: { help: string; cmd: string; label: string; safe?: boolean };
+    }
   /** lowering a Strict connection from the tabs bar: the passphrase or Touch ID (AuthDialog); submit rejects with the reason */
   | { kind: "lower"; connName: string; engine: Engine; to: SecurityLevel; touch: boolean; submit: (a: Approval) => Promise<void> }
   /** MongoDB: a collection's sizes and shape, read with $collStats when it opens */
@@ -104,6 +112,12 @@ interface State {
   run(tabId: string, opts?: { sql?: string; approval?: Approval; discard?: boolean }): Promise<void>;
   cancel(tabId: string): void;
   readTable(tabId: string, opts?: { offset?: number; approval?: Approval; discard?: boolean }): Promise<void>;
+  /**
+   * MongoDB, a collection tab: one write built from the JSON view (updateOne, deleteOne or insertOne on a document),
+   * run as the console runs mongosh, so the write guard asks first. On success the page is read again. Resolves to
+   * the error to show on the document, or null when it was written; undefined when the ask was cancelled.
+   */
+  writeDoc(tabId: string, cmd: string, what: { help: string; label: string; safe?: boolean }, approval?: Approval): Promise<string | null | undefined>;
   loadTableInfo(tabId: string): Promise<void>;
   saveTab(tabId: string, name?: string, folder?: string): Promise<void>;
 
@@ -936,6 +950,47 @@ export const useStore = create<State>()((set, get) => {
       }
       dropEdits(tabId);
       patchTab(tabId, { run: { status: "done", runId, outcome: out, sql } });
+    },
+
+    async writeDoc(tabId, cmd, what, approval) {
+      const hit = sessionOfTab(tabId);
+      if (!hit) return "The tab is gone";
+      const [connId, , tab] = hit;
+      if (tab.kind !== "table") return "Not a collection";
+      const conn = get().conns.find((c) => c.id === connId);
+      if (!conn) return "The connection is gone";
+      const out = await api.runQuery({ runId: uid(), connId, database: tab.schema, sql: cmd, addLimit: false, approval, history: true }).catch(failed);
+      if (out.kind === "ask")
+        return new Promise((resolve) => {
+          let approved = false;
+          get().openModal({
+            kind: "guard",
+            ask: out,
+            connName: conn.name,
+            write: { ...what, cmd },
+            onApprove: (a) => {
+              approved = true;
+              void get().writeDoc(tabId, cmd, what, a).then(resolve);
+            },
+          });
+          // the ask closes before onApprove runs; closed and not approved is a Cancel: the document stays in edit
+          const off = useStore.subscribe((st) => {
+            if (st.modal?.kind === "guard") return;
+            off();
+            setTimeout(() => !approved && resolve(undefined), 0);
+          });
+        });
+      if (out.kind === "error") {
+        if (out.lost) patchSession(connId, () => ({ tree: {}, columns: {} }));
+        return [out.title, out.message].filter(Boolean).join(". ");
+      }
+      if (out.kind === "cancelled") return out.timeout ? "Stopped by the statement timeout" : "Cancelled";
+      if (get().side === "history") void get().loadHistory();
+      // an insert lands where the server puts it, often not on this page: say it happened
+      if (/\.insertOne\(/.test(cmd)) get().showToast(out.messages[0] ?? "Inserted 1 document");
+      const now = sessionOfTab(tabId)?.[2];
+      void get().readTable(tabId, { offset: now?.kind === "table" ? now.offset : 0, discard: true });
+      return null;
     },
 
     async loadTableInfo(tabId) {

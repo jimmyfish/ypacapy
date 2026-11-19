@@ -18,7 +18,7 @@ const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "hous
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus", "pin", "pin-off",
   "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check", "timer",
-  "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down", "arrow-right"];
+  "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down", "arrow-right", "chevrons-up-down", "chevrons-down-up", "circle-plus", "copy-plus"];
 // Lucide 1.x renamed fingerprint; the old name is what the pages use
 const RENAMED = { fingerprint: "fingerprint-pattern" };
 // Lucide 1.x has no brand icons: GitHub's mark as lucide-react 0.460.0 drew it (ISC), the same as src/components/Icon.tsx
@@ -1116,23 +1116,41 @@ const schemeRow = (slot) => `
                 <div class="set-text"><label for="set-scheme-${slot}" data-scheme-label></label></div>
                 <div class="set-ctl"><span class="scheme-dots" aria-hidden="true"></span><span class="select-wrap"><select id="set-scheme-${slot}" class="field set-scheme" data-scheme="${slot}"></select>${ic("chevron-down", "select-chev")}</span></div>
               </div>`;
-// Settings > Updates (voidHTTP's UpdatesPane): the running version and what the updater knows, the launch check, release notes.
-// Each status row is one state of the same row; the preview bar picks which one shows.
+// Settings > Updates (voidHTTP's UpdatesPane), drawn as an onsen: the capy soaking in the middle as in About, the version
+// under it, the updater's state as a pill, one line of detail, the action below. Then the launch check and release notes.
+// Each hero is one updater state; the preview bar picks which one shows.
 const REL = "https://github.com/jimmyfish/ypacapy/releases";
 const relLink = (label) => `<button type="button" class="upd-link" title="${REL}">${label}${ic("external-link")}</button>`;
-const updRow = (st, desc, ctl) => `
-              <div class="set-item" data-upd-st="${st}" hidden>
-                <div class="set-text"><span class="set-label">ypacapy 0.0.1</span><span class="desc">${desc}</span></div>
-                <div class="set-ctl">${ctl}</div>
-              </div>`;
+const U_ERR = "error sending request for url (https://github.com/jimmyfish/ypacapy/releases/latest/download/latest.json)";
+const checkBtn = (dis) => `<button type="button" class="btn"${dis ? " disabled" : ""}>${ic("refresh-cw")}Check again</button>`;
+const UPD = [
+  { st: "current", pill: ["ok", "circle-check", "Up to date"], sub: "Nothing newer out there. Checked just now.", ctl: checkBtn() },
+  { st: "idle", pill: ["", "", "Not checked yet"], sub: "Hit the button to take a look.", ctl: checkBtn() },
+  { st: "checking", pill: ["busy", "loader-circle", "Checking"], sub: "Asking GitHub what's new…", ctl: checkBtn(true) },
+  { st: "available", pill: ["new", "circle-arrow-down", "0.0.2 is out"], sub: "Released 20 Nov 2026. Grab it whenever.",
+    ctl: `<button type="button" class="btn btn--primary" data-href="./updates.html?show=downloading">${ic("circle-arrow-down")}Install update</button>` },
+  { st: "downloading", pill: ["busy", "loader-circle", "Downloading 0.0.2 · 42%"], sub: "4.1 of 9.8 MB · go on, keep working", prog: 42 },
+  { st: "installing", pill: ["busy", "loader-circle", "Installing 0.0.2"], sub: "Downloaded, signature checks out", prog: 100 },
+  { st: "ready", pill: ["ok", "circle-check", "0.0.2 is in"], sub: "Restart ypacapy to commit it.", ctl: `<button type="button" class="btn btn--primary">${ic("refresh-cw")}Restart now</button>` },
+  { st: "error", pill: ["bad", "triangle-alert", "Couldn't check for updates"], sub: U_ERR, ctl: checkBtn() },
+  { st: "dev", pill: ["dev", "", "dev build"], sub: "Branch v0.0.1 · updates are off here", ctl: relLink("Get the release"), ver: "v0.0.1-4-g1a19d06+" },
+];
+const updHero = (u) => `
+          <div class="upd-hero" data-upd-st="${u.st}" aria-live="polite" hidden>
+            <div class="about-onsen ping upd-onsen" aria-hidden="true"><span class="steam"><b></b><b></b><b></b></span><i></i><i></i><i></i><img src="../../public/app-icon.png" alt=""></div>
+            <div class="upd-hero-name">ypa<span>capy</span> <code>${u.ver ?? "0.0.1"}</code></div>
+            <span class="upd-pill ${u.pill[0]}">${u.pill[1] ? ic(u.pill[1], u.pill[1] === "loader-circle" ? "upd-spin" : "") : ""}${u.pill[2]}</span>
+            <p class="upd-hero-sub" title="${u.sub}">${u.sub}</p>${u.prog !== undefined ? `<i class="upd-hero-prog" style="--p:${u.prog}%"></i>` : ""}${u.ctl ? `
+            <div class="upd-hero-ctl">${u.ctl}</div>` : ""}
+          </div>`;
 const updatesPane = () => `
       <div class="set-pane" data-pane="updates" hidden>
-        <h3>Updates</h3>
-        <div class="set-list">${updRow("current", `<span class="set-status ok">${ic("circle-check")}Up to date · checked just now</span>`, '<button type="button" class="btn">Check for updates</button>')}${updRow("available", `<span class="set-status new">${ic("circle-arrow-down")}0.0.2 is available</span>`, '<button type="button" class="btn btn--primary" data-href="./updates.html?show=downloading">Install update</button>')}${updRow("error", `<span class="set-status bad" title="error sending request for url (https://github.com/jimmyfish/ypacapy/releases/latest/download/latest.json)">${ic("triangle-alert")}Couldn't check for updates</span>`, '<button type="button" class="btn">Check for updates</button>')}${updRow("dev", "v0.0.1-4-g1a19d06+ on branch v0.0.1 · updates are off in dev builds", relLink("Get the release"))}
+        <h3>Updates</h3>${UPD.map(updHero).join("")}
+        <div class="set-list">
               <div class="set-item" data-upd-auto>
-                <div class="set-text"><label for="set-auto-update">Check automatically</label><span class="desc" data-auto-desc>Look for a new version when ypacapy opens</span></div>
+                <div class="set-text"><label for="set-auto-update">Check automatically</label><span class="desc" data-auto-desc>Peek for a new version every time ypacapy opens</span></div>
                 <div class="set-ctl">${sw("set-auto-update", true)}</div>
-              </div>${setItem("Release notes", "What changed in each version", relLink("Open on GitHub"))}
+              </div>${setItem("Release notes", "What's new, version by version", relLink("Open on GitHub"))}
         </div>
       </div>`;
 // Settings, opened from a connection tab: that connection's own settings come first, in their own group above the
@@ -1169,7 +1187,7 @@ const connQueriesPane = () => `
 pages["settings.html"] = page({
   title: "ypacapy preview, settings",
   desc: "Design preview of ypacapy Settings: theme and color scheme per appearance, compact mode, three fonts, query defaults and where data lives.",
-  barHtml: bar("settings", [["conn-security", "Connection: Security"], ["conn-strict", "Connection: Strict"], ["lower-ask", "Lower from Strict"], ["lower-low", "Lower to Low, Touch ID"], ["lower-wrong", "Lower, wrong passphrase"], ["unlock-ask", "Unlock protection"], ["conn-queries", "Connection: Queries"], ["home", "Opened from Home"], ["appearance", "Appearance"], ["queries", "Queries"], ["security", "Security"], ["pass-set", "Passphrase set"], ["pass-new", "Set passphrase"], ["pass-new-differ", "Set, they differ"], ["pass-change", "Change passphrase"], ["pass-disable", "Disable passphrase"], ["pass-disable-wrong", "Disable, wrong passphrase"], ["pass-reset", "Forgot passphrase"], ["data", "Data on this Mac"], ["updates", "Updates"], ["upd-available", "Update available"], ["upd-error", "Check failed"], ["upd-dev", "Dev build"]]),
+  barHtml: bar("settings", [["conn-security", "Connection: Security"], ["conn-strict", "Connection: Strict"], ["lower-ask", "Lower from Strict"], ["lower-low", "Lower to Low, Touch ID"], ["lower-wrong", "Lower, wrong passphrase"], ["unlock-ask", "Unlock protection"], ["conn-queries", "Connection: Queries"], ["home", "Opened from Home"], ["appearance", "Appearance"], ["queries", "Queries"], ["security", "Security"], ["pass-set", "Passphrase set"], ["pass-new", "Set passphrase"], ["pass-new-differ", "Set, they differ"], ["pass-change", "Change passphrase"], ["pass-disable", "Disable passphrase"], ["pass-disable-wrong", "Disable, wrong passphrase"], ["pass-reset", "Forgot passphrase"], ["data", "Data on this Mac"], ["updates", "Updates"], ["upd-idle", "Not checked yet"], ["upd-checking", "Checking"], ["upd-available", "Update available"], ["upd-downloading", "Downloading"], ["upd-installing", "Installing"], ["upd-ready", "Ready to restart"], ["upd-error", "Check failed"], ["upd-dev", "Dev build"]]),
   body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: `
 <div class="backdrop" data-close="./index.html">
   <div class="dialog wide" role="dialog" aria-modal="true" aria-label="Settings">
@@ -1398,17 +1416,17 @@ const aboutCard = (st, line, body) => `
             </div>
           </div>`;
 const ABOUT_CARDS = [
-  aboutCard("checking", qline(SQL_CHECK, qwait("running")), updRowA('Looking for a new version…<span class="sub">github.com/jimmyfish/ypacapy</span>', checkAgain(true))),
-  aboutCard("current", qline(SQL_CHECK, qst("redir", "0 rows")), updRowA('You\'re on the latest version.<span class="sub">Checked just now</span>', checkAgain())),
-  aboutCard("available", qline(SQL_CHECK, qst("", "1 row")), updRowA('<strong>ypacapy 0.0.2 is available</strong><span class="sub">You have 0.0.1 · released 20 Nov 2026</span>') + `
+  aboutCard("checking", qline(SQL_CHECK, qwait("running")), updRowA('Asking GitHub what\'s new…<span class="sub">github.com/jimmyfish/ypacapy</span>', checkAgain(true))),
+  aboutCard("current", qline(SQL_CHECK, qst("redir", "0 rows")), updRowA('You\'re on the latest. Back to soaking.<span class="sub">Checked just now</span>', checkAgain())),
+  aboutCard("available", qline(SQL_CHECK, qst("", "1 row")), updRowA('<strong>ypacapy 0.0.2 is out</strong><span class="sub">You\'re on 0.0.1 · released 20 Nov 2026</span>') + `
               <div class="about-notes"><ul class="upd-notes">${ABOUT_NOTES.slice(0, 3).map((l) => `<li>${l}</li>`).join("")}</ul><ul class="upd-notes" data-more hidden>${ABOUT_NOTES.slice(3).map((l) => `<li>${l}</li>`).join("")}</ul><button type="button" class="upd-link about-notes-more" aria-expanded="false" data-more-btn>Show all ${ABOUT_NOTES.length} changes${ic("chevron-down")}</button></div>` +
     updRowA("", `<button type="button" class="upd-link" title="${REL}/tag/v0.0.2">Release notes${ic("external-link")}</button><button type="button" class="btn btn--primary" data-about-go="downloading">${ic("circle-arrow-down")}Install update</button>`).replace('<p class="about-upd-text"></p>', "")),
-  aboutCard("downloading", qline(SQL_INSTALL, qst("busy", "42%"), 42), updRowA('Downloading 0.0.2 · 42%<span class="sub">4.1 of 9.8 MB · you can keep working</span>')),
-  aboutCard("installing", qline(SQL_INSTALL, qwait("verifying"), 100), updRowA('Installing 0.0.2…<span class="sub">Downloaded and verified</span>')),
-  aboutCard("ready", qline(SQL_INSTALL, qst("busy", "awaiting commit")), updRowA('<strong>0.0.2 is installed</strong><span class="sub">Restart ypacapy to commit it.</span>', `<button type="button" class="btn btn--primary">${ic("refresh-cw")}Restart now</button>`)),
+  aboutCard("downloading", qline(SQL_INSTALL, qst("busy", "42%"), 42), updRowA('Downloading 0.0.2 · 42%<span class="sub">4.1 of 9.8 MB · go on, keep working</span>')),
+  aboutCard("installing", qline(SQL_INSTALL, qwait("verifying"), 100), updRowA('Installing 0.0.2…<span class="sub">Downloaded, signature checks out</span>')),
+  aboutCard("ready", qline(SQL_INSTALL, qst("busy", "awaiting commit")), updRowA('<strong>0.0.2 is in</strong><span class="sub">Restart ypacapy to commit it.</span>', `<button type="button" class="btn btn--primary">${ic("refresh-cw")}Restart now</button>`)),
   aboutCard("failed", qline(SQL_INSTALL, qst("fail", "rolled back")), `
               <p class="upd-err">the signature of the downloaded update does not match the public key</p>` +
-    updRowA('ypacapy 0.0.1 is unchanged.', `<button type="button" class="upd-link" title="${REL}/latest">Download from GitHub${ic("external-link")}</button><button type="button" class="btn" data-about-go="downloading">Try again</button>`)),
+    updRowA('Nothing changed. You\'re still on 0.0.1.', `<button type="button" class="upd-link" title="${REL}/latest">Download from GitHub${ic("external-link")}</button><button type="button" class="btn" data-about-go="downloading">Try again</button>`)),
   // a dev build: where it comes from, as a one-row result, in place of the update card
   `
           <div class="about-res" data-about="dev" aria-label="Build" hidden>${qline(`${K("select")} * ${K("from")} ${TB("build")}`, qst("", "1 row"))}
@@ -1429,8 +1447,8 @@ pages["about.html"] = page({
         <i></i><i></i><i></i>
         <img src="../../public/app-icon.png" alt="">
       </div>
-      <h2 class="about-name" id="about-name" title="Reads the same both ways">ypa<span>capy</span></h2>
-      <p class="about-tag">A database client for PostgreSQL, MySQL, SQLite, MongoDB and Redis. Connections, history and passwords stay on this Mac.</p>
+      <h2 class="about-name" id="about-name" title="Try reading it backwards">ypa<span>capy</span></h2>
+      <p class="about-tag">A hot spring for your databases.</p>
       <div class="about-verline"><span class="build-tag" data-about-dev hidden>dev</span><button type="button" class="about-ver" title="Copy version"><span data-ver>v0.0.1</span>${ic("copy")}</button></div>
     </header>
     <div class="about-body">${ABOUT_CARDS}
@@ -1438,7 +1456,7 @@ pages["about.html"] = page({
         <button type="button" class="btn btn--quiet" title="https://github.com/jimmyfish/ypacapy">${ic("github")}GitHub</button>
         <button type="button" class="btn btn--quiet" title="https://github.com/jimmyfish/ypacapy/issues/new">${ic("circle-dot")}Report an issue</button>
       </nav>
-      <p class="about-foot">ypacapy, capy in a mirror. Reads the same both ways.</p>
+      <p class="about-foot">ypacapy is a capy and its reflection in the onsen. Same both ways, calm both ways.</p>
     </div>
   </div>
 </div>` }),
@@ -1519,6 +1537,59 @@ ${docs.map((d, i) => tr(i + 1, cols.map((x) => mcell(d[x.k])), i === sel)).join(
 // the JSON view: each document as mongosh prints it, one after another
 const mdocs = (label, docs) => `
             <pre class="code docs" tabindex="0" aria-label="${label}">${docs.map((d, i) => shellVal(d, "", true).split("\n").map((l, j) => `<span class="l${j === 0 && i ? " doc-start" : ""}">${l}</span>`).join("")).join("")}</pre>`;
+// The JSON view, as Compass shows it: a card per document, a line per field. Objects and arrays fold (closed at first);
+// a closed one says what it is and how big, with a faint peek at what is inside. On a collection tab a card is
+// editable: the pencil or a double-click on a value opens it, values and names are edited in place, a field can be
+// added or removed, and Update sends one updateOne on its _id with only what changed. Delete flags the card and sends
+// deleteOne. Duplicate puts an editable copy under the card, without its _id (the server makes a new one), and Insert
+// sends it as one insertOne. Both go through the write guard, as any write does. _id never changes. Query results are read-only.
+const BTYPE = { objectId: "ObjectId", date: "Date", decimal128: "Decimal128", int32: "Int32", double: "Double", bool: "Boolean", string: "String", null: "Null", object: "Object", array: "Array" };
+const jvLeaf = (v, t) => {
+  const ed = (x, cls = "") => `<span class="jv-ed${cls}">${esc(x)}</span>`;
+  const fn = (name, x) => `<span class="q-f">${name}</span><span class="j-p">(</span><span class="j-str">'${ed(x)}'</span><span class="j-p">)</span>`;
+  if (t === "null") return '<span class="j-null jv-ed">null</span>';
+  if (t === "objectId") return fn("ObjectId", v.$oid);
+  if (t === "date") return fn("ISODate", isoOf(v.$date));
+  if (t === "decimal128") return fn("Decimal128", String(v.$dec));
+  if (t === "int32" || t === "double") return ed(v, " j-num");
+  if (t === "bool") return ed(v, " j-bool");
+  if (t === "string") return `<span class="j-str">'${ed(v)}'</span>`;
+  return `<span class="j-p">${t === "array" ? "[]" : "{}"}</span>`;
+};
+// a closed object: Object, its field names; a closed array: Array (n), its first values
+const jvPeek = (v, t) => t === "array"
+  ? `<span class="jv-kind">Array (${v.length})</span><span class="jv-peek">${v.map((x) => (x && typeof x === "object" && !x.$oid && !x.$date && x.$dec === undefined ? `{ ${Object.keys(x).join(", ")} }` : plain(shellVal(x)))).map(esc).join(", ")}</span>`
+  : `<span class="jv-kind">Object</span><span class="jv-peek">${esc(Object.keys(v).filter((k) => v[k] !== undefined).join(", "))}</span>`;
+const jvTypes = (t) => `<select class="jv-type" aria-label="Type">${Object.values(BTYPE).map((x) => `<option${x === BTYPE[t] ? " selected" : ""}>${x}</option>`).join("")}</select>`;
+const jvNode = (k, v, depth, idx, ro) => {
+  const t = bsonType(v), fold = (t === "object" && Object.values(v).some((x) => x !== undefined)) || (t === "array" && v.length > 0);
+  const kids = !fold ? "" : t === "array" ? v.map((x, i) => jvNode(i, x, depth + 1, true, ro)).join("") : Object.entries(v).filter(([, x]) => x !== undefined).map(([kk, x]) => jvNode(kk, x, depth + 1, false, ro)).join("");
+  const lock = ro || k === "_id";
+  const tools = ro ? "" : `<span class="jv-tools">${lock ? `<span class="jv-lock" title="_id can't change">${ic("lock")}_id is fixed</span>` : `${jvTypes(t)}<button type="button" class="icon-btn jv-undo" title="Undo this change" aria-label="Undo this change">${ic("undo-2")}</button><button type="button" class="icon-btn jv-rm" title="Remove this field" aria-label="Remove ${esc(k)}">${ic("shredder")}</button>`}</span>`;
+  return `<div class="jv-node"><div class="jv-row${lock ? " jv-ro" : ""}" style="--d:${depth}" data-t="${t}">${fold ? `<button type="button" class="jv-caret" aria-expanded="false" aria-label="Show ${esc(k)}">${ic("chevron-right")}</button>` : '<span class="jv-caret-sp"></span>'}<span class="jv-k${idx ? " jv-idx" : ""}">${esc(k)}</span><span class="j-p">:</span><span class="jv-v">${fold ? jvPeek(v, t) : jvLeaf(v, t)}</span>${tools}</div>${fold ? `<div class="jv-kids" hidden>${kids}</div>` : ""}</div>`;
+};
+const jvDoc = (d, i, edit) => `
+              <article class="jv-doc" aria-label="Document ${i + 1}" data-id="${d._id?.$oid ?? esc(d._id)}" data-copy="${esc(plain(shellVal(d, "", true)))}">
+                <div class="jv-acts" role="toolbar" aria-label="Document ${i + 1}">
+                  <button type="button" class="icon-btn" data-jv="fold" title="Expand all" aria-label="Expand all">${ic("chevrons-up-down")}</button>${edit ? `
+                  <button type="button" class="icon-btn" data-jv="edit" title="Edit document" aria-label="Edit document">${ic("pencil")}</button>
+                  <button type="button" class="icon-btn" data-jv="dup" title="Duplicate document" aria-label="Duplicate document">${ic("copy-plus")}</button>` : ""}
+                  <button type="button" class="icon-btn" data-jv="copy" title="Copy document" aria-label="Copy document">${ic("copy")}</button>${edit ? `
+                  <button type="button" class="icon-btn jv-danger" data-jv="del" title="Delete document" aria-label="Delete document">${ic("shredder")}</button>` : ""}
+                </div>
+                <div class="jv-body">${Object.entries(d).filter(([, v]) => v !== undefined).map(([k, v]) => jvNode(k, v, 0, false, !edit)).join("")}</div>${edit ? `
+                <button type="button" class="btn btn--quiet jv-add">${ic("circle-plus")}Add field</button>
+                <div class="jv-foot">
+                  <span class="jv-msg" aria-live="polite"></span>
+                  <button type="button" class="btn" data-jv="cancel">Cancel</button>
+                  <button type="button" class="btn btn--primary" data-jv="update" data-mode-only="edit">Update</button>
+                  <button type="button" class="btn btn--danger" data-jv="delete" data-mode-only="del">${ic("shredder")}Delete</button>
+                  <button type="button" class="btn btn--primary" data-jv="insert" data-mode-only="new">Insert</button>
+                </div>` : ""}
+              </article>`;
+const jdocs = (label, docs, edit = false) => `
+            <div class="jv-list" tabindex="0" aria-label="${label}"${edit ? " data-edit" : ""}>${docs.map((d, i) => jvDoc(d, i, edit)).join("")}
+            </div>`;
 
 // sample: orders, as a collection holds them. Old orders carry a legacy_id from the SQL days (an int, a few a string);
 // shipped_at is missing until an order ships and null on a refund that was shipped first; meta is null or missing too.
@@ -1659,9 +1730,15 @@ const MTABS = [["orders", "braces", "orders", "./collection.html"], ["q1", "squa
 const mtabs = (active, local) => tabsbar(active, local, { tabs: MTABS, pinned: ["orders"], conn: MCONN });
 const MFORMATS = ["mongosh", "Extended JSON", "CSV", "Markdown table"];
 // Table or JSON: the same documents, as a grid of top-level fields or as mongosh prints them
-const asSeg = `<span class="seg" role="group" aria-label="Show documents as"><button type="button" aria-pressed="true" data-as="table">Table</button><button type="button" aria-pressed="false" data-as="json">JSON</button></span>`;
+// JSON first and pressed: a MongoDB result is documents. The switch leads the toolbar, on the left.
+const asSeg = `<span class="seg seg--lead" role="group" aria-label="Show documents as"><button type="button" aria-pressed="true" data-as="json">${ic("braces")}JSON</button><button type="button" aria-pressed="false" data-as="table">${ic("table-2")}Table</button></span>`;
 const mresActions = (id) => resActions(id).replace(/<p class="menu-note">(Copy|Export) as<\/p>.*?<\/div>/g, (m, k) => `<p class="menu-note">${k} as</p>${MFORMATS.map((x) => `<button type="button" role="menuitem">${x}</button>`).join("")}</div>`);
 const mguardDialogs = guardDialogs.replace(/shop_prod/g, MCONN).replace(/<div class="guard-kinds"><code class="stmt">DELETE<\/code><\/div>/g, '<div class="guard-kinds" data-kinds><code class="stmt">deleteMany</code></div>');
+// the collection's guard: the kind, then the exact command ypacapy will send
+// the passphrase ask names its kind by id; it gets the same slot, so Low and Strict show the same command
+const cguardDialogs = mguardDialogs
+  .replace('<div class="guard-kinds"><code class="stmt" id="guard-pass-kind">DELETE</code></div>', '<div class="guard-kinds" data-kinds><code class="stmt" id="guard-pass-kind">deleteOne</code></div>')
+  .replace(/(<div class="guard-kinds" data-kinds>.*?<\/div>)/g, '$1<pre class="db-says guard-cmd" data-cmd></pre>');
 const mongoWork = `${mtabs("q1", ["q1", "q2", "q3", "q4", "q5"])}
       <div class="work-body">
         <div class="req-pane" id="req-pane">
@@ -1689,17 +1766,17 @@ ${mq("q5", 5, MQ5)}
             <span class="push meta" id="r-meta"></span>
           </nav>
           <div class="res-tools">${asSeg}${mresActions("q")}</div>
-          <div class="state" data-when="full" data-for="q1" data-as="table">${mgrid("q1", "Results of Query 1", QADOCS, 2)}
+          <div class="state" data-when="full" data-for="q1" data-as="table" hidden>${mgrid("q1", "Results of Query 1", QADOCS, 2)}
           </div>
-          <div class="state" data-when="full" data-for="q1" data-as="json" hidden>${mdocs("Documents of Query 1", QADOCS)}
+          <div class="state" data-when="full" data-for="q1" data-as="json">${jdocs("Documents of Query 1", QADOCS)}
           </div>
           <div class="state" data-when="full" data-for="q2" data-as="table" hidden>${mgrid("q2", "Results of Query 2", Q2DOCS, 0)}
           </div>
-          <div class="state" data-when="full" data-for="q2" data-as="json" hidden>${mdocs("Documents of Query 2", Q2DOCS)}
+          <div class="state" data-when="full" data-for="q2" data-as="json" hidden>${jdocs("Documents of Query 2", Q2DOCS)}
           </div>
           <div class="state" data-when="full" data-for="q3" data-as="table" hidden>${mgrid("q3", "Results of Query 3", MDOCS.filter((d) => /paid|shipped/.test(d.status)), 0)}
           </div>
-          <div class="state" data-when="full" data-for="q3" data-as="json" hidden>${mdocs("Documents of Query 3", MDOCS.filter((d) => /paid|shipped/.test(d.status)))}
+          <div class="state" data-when="full" data-for="q3" data-as="json" hidden>${jdocs("Documents of Query 3", MDOCS.filter((d) => /paid|shipped/.test(d.status)))}
           </div>
           <div class="state" data-when="idle" data-for="q4" hidden><div class="empty"><strong>Not run yet</strong><span>deleteMany changes data on ${MCONN}, so Run asks first.</span></div></div>
           <div class="state" data-when="idle" data-for="q5" hidden><div class="empty"><strong>Not run yet</strong><span>It ends in $merge, so it writes to daily_revenue. Run asks first.</span></div></div>
@@ -1725,9 +1802,9 @@ code: 2, codeName: 'BadValue'</pre>
 pages["mongo.html"] = page({
   title: "ypacapy preview, MongoDB",
   desc: "Design preview of a MongoDB connection in ypacapy: mongosh queries, documents as a table or as JSON, and the write guard on MongoDB's write methods.",
-  barHtml: bar("mongo", [["results", "Aggregate"], ["find", "Find, nested fields"], ["json", "JSON view"], ["messages", "Messages"], ["running", "Running"], ["empty", "No documents"], ["error", "Server error"], ["lost", "No primary"], ["guard-confirm", "Low: deleteMany"], ["guard-merge", "Low: $merge"], ["guard-pass", "Strict: passphrase"], ["written", "Write result"], ["row-menu", "Sidebar menu"], ["info", "Info"], ["info-loading", "Info, reading"], ["history", "History"]]),
+  barHtml: bar("mongo", [["results", "Aggregate"], ["find", "Find, nested fields"], ["table", "Table view"], ["messages", "Messages"], ["running", "Running"], ["empty", "No documents"], ["error", "Server error"], ["lost", "No primary"], ["guard-confirm", "Low: deleteMany"], ["guard-merge", "Low: $merge"], ["guard-pass", "Strict: passphrase"], ["written", "Write result"], ["row-menu", "Sidebar menu"], ["info", "Info"], ["info-loading", "Info, reading"], ["history", "History"]]),
   body: app({ current: MCONN, conns: MCONNS, side: mongoSide("") + mongoHistory + savedSide, work: mongoWork, overlay: mguardDialogs + mInfoDlg }),
-  script: js("page-mongo.js") + js("page-mongo-info.js"),
+  script: js("page-mongo.js") + js("page-jv.js") + js("page-mongo-info.js"),
 });
 
 // Collection tab: documents under the query bar, the fields seen on this page, indexes. Sizes and the validator are in Info.
@@ -1763,25 +1840,27 @@ ${MFIELDS.map(([p, t, n]) => `              <tr><td class="fpath">${fieldPath(p)
             </tbody></table></div>
           </div>`;
 const DEFAULT_FILTER = '{ status: { $in: ["paid", "shipped", "refunded"] } }';
-// Compass-style query bar, in ypacapy's controls: a labelled text box per part of find(). Filter, Project and Sort are
+// Compass-style query bar, in ypacapy's controls. Only the filter shows at first; Options opens Project, Sort, Skip
+// and Limit, and while it is closed a count says how many of them are set (Limit counts when it is not 20).
+// The controls: a labelled text box per part of find(). Filter, Project and Sort are
 // textareas: Enter adds a line, ⌘↵ runs, and the box grows with its text up to 8 lines, then scrolls.
 const mqField = (id, label, ph, value, cls = "", extra = "") => `<label class="mq-field${cls ? " " + cls : ""}"><span class="mq-k">${label}</span><textarea class="mq-in" id="${id}" rows="1" placeholder="${esc(ph)}" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"${extra}>${esc(value)}</textarea></label>`;
 pages["collection.html"] = page({
   title: "ypacapy preview, collection",
   desc: "Design preview of a MongoDB collection in ypacapy: its documents under a query bar, the fields seen on the page, its indexes, and its Info.",
-  barHtml: bar("collection", [["docs", "Documents"], ["multiline", "Multi-line filter and sort"], ["json", "JSON view"], ["fields", "Fields"], ["indexes", "Indexes"], ["no-match", "Filter matches nothing"], ["bad-filter", "Filter not valid"], ["loading", "Loading"], ["info", "Info"], ["info-loading", "Info, reading"]]),
-  body: app({ current: MCONN, conns: MCONNS, side: mongoSide("orders") + mongoHistory + savedSide, overlay: mInfoDlg, work: `${mtabs("orders", ["orders"])}
+  barHtml: bar("collection", [["docs", "Documents"], ["open", "Nested fields open"], ["edit", "Editing a document"], ["guard-update", "Low: updateOne"], ["guard-update-pass", "Strict: updateOne"], ["duplicate", "Duplicate a document"], ["guard-insert", "Low: insertOne"], ["delete", "Delete a document"], ["guard-delete", "Low: deleteOne"], ["guard-delete-pass", "Strict: deleteOne"], ["table", "Table view"], ["multiline", "Multi-line filter and sort"], ["fields", "Fields"], ["indexes", "Indexes"], ["no-match", "Filter matches nothing"], ["bad-filter", "Filter not valid"], ["loading", "Loading"], ["info", "Info"], ["info-loading", "Info, reading"]]),
+  body: app({ current: MCONN, conns: MCONNS, side: mongoSide("orders") + mongoHistory + savedSide, overlay: mInfoDlg + cguardDialogs, work: `${mtabs("orders", ["orders"])}
       <div class="work-body">
         <div class="mq-bar" role="group" aria-label="Query for orders">
           <div class="mq-row">
             ${mqField("where", "filter", "{ field: value }", DEFAULT_FILTER, "mq-filter", ' aria-describedby="where-err"')}
           </div>
-          <div class="mq-actions"><button type="button" class="btn btn--quiet" id="mq-reset" title="Back to the empty filter">Reset</button><button type="button" class="btn btn--quiet" data-href="./mongo.html?show=find" title="Open this query as db.orders.find(…) in a new query tab">${ic("square-code")}Open as a query</button>${runGroup}</div>
-          <div class="mq-row mq-opts">
+          <div class="mq-actions"><button type="button" class="btn btn--quiet mq-more" id="mq-more" aria-expanded="false" aria-controls="mq-opts mq-paging" title="Project, sort, skip and limit">${ic("chevron-right", "mq-more-ico")}Options<span class="mq-set" id="mq-set" title="Options set" hidden></span></button><button type="button" class="btn btn--quiet" id="mq-reset" title="Back to the empty filter">Reset</button><button type="button" class="btn btn--quiet" data-href="./mongo.html?show=find" title="Open this query as db.orders.find(…) in a new query tab">${ic("square-code")}Open as a query</button>${runGroup}</div>
+          <div class="mq-row mq-opts" id="mq-opts" hidden>
             ${mqField("proj", "project", "{ field: 0 }", "")}
             ${mqField("sort", "sort", "{ field: -1 }", "")}
           </div>
-          <div class="mq-paging">
+          <div class="mq-paging" id="mq-paging" hidden>
             <label class="mq-field mq-num"><span class="mq-k">skip</span><input class="mq-in" id="skip" inputmode="numeric" placeholder="0" spellcheck="false" autocomplete="off"></label>
             <label class="mq-field mq-num"><span class="mq-k">limit</span><input class="mq-in" id="limit" inputmode="numeric" value="20" spellcheck="false" autocomplete="off"></label>
           </div>
@@ -1795,9 +1874,9 @@ pages["collection.html"] = page({
             <span class="push meta"><span class="dim" id="t-ms">7&nbsp;ms</span></span>
           </nav>
           <div class="state" data-when="full" data-view-of="docs">
-            <div class="res-tools"><span class="muted">Documents 1 to 20, in stored order</span>${asSeg}${mresActions("t")}</div>
-            <div class="as-pane" data-as="table">${mgrid("t", "Documents of orders", MDOCS, 0)}</div>
-            <div class="as-pane" data-as="json" hidden>${mdocs("Documents of orders", MDOCS)}</div>
+            <div class="res-tools">${asSeg}<span class="muted" id="t-range">Documents 1 to 20, in stored order</span>${mresActions("t")}</div>
+            <div class="as-pane" data-as="json">${jdocs("Documents of orders", MDOCS, true)}</div>
+            <div class="as-pane" data-as="table" hidden>${mgrid("t", "Documents of orders", MDOCS, 0)}</div>
             <div class="grid-foot"><span>1 to 20</span><button type="button" class="icon-btn" aria-label="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page">${ic("chevron-right")}</button></div>
           </div>
           <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Reading orders</strong><span>${MCONN}, events.orders</span></div></div>
@@ -1811,7 +1890,7 @@ pages["collection.html"] = page({
           </div></div>${mstructure}
         </section>
       </div>` }),
-  script: js("page-collection.js") + js("page-mongo-info.js"),
+  script: js("page-collection.js") + js("page-jv.js") + js("page-mongo-info.js"),
 });
 
 // ---------- Redis: the command console and a key tab ----------
@@ -1972,7 +2051,7 @@ ${rq("q5", 5, RQ5, true, ` data-fixed="${esc(rqLines("SCAN 0 MATCH session:* COU
             <span class="push meta" id="r-meta"></span>
           </nav>
           <div class="res-tools">${rasSeg}${rresActions("q")}</div>
-          <div class="state" data-when="full" data-for="q1" data-as="table">${rgrid("Reply to Query 1", [["member", "string"], ["score", "double", true]], Q1ROWS, 0)}
+          <div class="state" data-when="full" data-for="q1" data-as="table" hidden>${rgrid("Reply to Query 1", [["member", "string"], ["score", "double", true]], Q1ROWS, 0)}
           </div>
           <div class="state" data-when="full" data-for="q1" data-as="raw" hidden>${rawReply("Reply to Query 1", Q1RAW)}
           </div>

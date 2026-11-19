@@ -1,7 +1,7 @@
   // MongoDB console: Query 1 to 5 are tabs on this page; orders opens the collection screen.
-  // Results show as Table (top-level fields) or JSON (documents as mongosh prints them); the pick is kept across tabs.
+  // Results show as JSON (the default: documents, as cards that fold) or Table (top-level fields); the pick is kept across tabs.
   const run = $("#run");
-  let tab = "q1", state = "full", sub = "results", as = "table", q3Fixed = false;
+  let tab = "q1", state = "full", sub = "results", as = "json", q3Fixed = false;
   const NAMES = { q1: ["Refunds by customer", "Saved queries / Reports"], q2: ["Query 2", "Not saved"], q3: ["Query 3", "Not saved"], q4: ["Old carts", "Saved queries / Ops"], q5: ["Daily revenue", "Saved queries / Reports"] };
   const MS = { q1: "41 ms", q2: "12 ms", q3: "9 ms", q4: "86 ms", q5: "1.2 s" };
   const LIMIT = { q1: "limit 500 added", q2: "limit 50", q3: "limit 500 added" };
@@ -18,6 +18,8 @@
       s.hidden = sub === "messages" ? w !== "messages" : !(w === state && (!s.dataset.for || s.dataset.for === tab) && (!s.dataset.as || s.dataset.as === as));
     });
     $$(".seg [data-as]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.as === as)));
+    // "Go to a column" only means something in Table
+    $$('.res-actions [data-menu$="-cols"]').forEach((b) => { b.closest(".menu-anchor").hidden = as !== "table"; });
     $(".res-tools").hidden = sub === "messages" || state !== "full";
     const busy = state === "loading";
     run.toggleAttribute("aria-busy", busy); run.disabled = busy;
@@ -71,8 +73,8 @@
     $$("#guard-confirm-dlg, #guard-pass-dlg").forEach((d) => { d.hidden = true; });
     setLevel(k === "guard-pass" ? "strict" : "low");
     q3Fixed = false; inn.textContent = "$inn";
-    tab = { find: "q2", json: "q2", error: "q3", "guard-confirm": "q4", "guard-pass": "q4", written: "q4", "guard-merge": "q5" }[k] || "q1";
-    as = k === "json" ? "json" : "table";
+    tab = { find: "q2", table: "q2", error: "q3", "guard-confirm": "q4", "guard-pass": "q4", written: "q4", "guard-merge": "q5" }[k] || "q1";
+    as = k === "table" ? "table" : "json";
     state = { running: "loading", empty: "empty", lost: "lost", written: "written" }[k] || restState(tab);
     if (k === "written") { $("#w-title").textContent = "Deleted 312 documents from carts"; $("#w-raw").textContent = "{ acknowledged: true, deletedCount: 312 }"; }
     render();

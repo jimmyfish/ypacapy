@@ -516,7 +516,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
       showToast(`Saved ${n} change${n === 1 ? "" : "s"}`);
       wrap.current?.focus();
     } else if (out.kind === "cancelled") {
-      setSaveErr({ kind: "error", title: "Stopped by the statement timeout", says: null, message: "Nothing was saved: the transaction was rolled back.", hint: null, lost: false, ms: out.ms });
+      setSaveErr({ kind: "error", title: "Stopped by the statement timeout", says: null, message: "The transaction was rolled back, so nothing was saved.", hint: null, lost: false, ms: out.ms });
     } else setSaveErr(out);
   };
 
@@ -690,8 +690,8 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
               {saving && <span className="spinner" />}
               Save
             </button>
-            <button type="button" className="btn" disabled={saving} title="Drop the changes" onClick={revertAll}>
-              Revert
+            <button type="button" className="btn" disabled={saving} title="Discard the changes" onClick={revertAll}>
+              Discard
             </button>
           </div>
         )}

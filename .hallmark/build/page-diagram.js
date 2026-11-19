@@ -167,13 +167,13 @@
     let firstOpen = false;
     function count() {
       const n = boxesOf().filter((c) => c.checked).length;
-      $("#ep-n").textContent = `${n} of ${ALL.length} ticked`;
+      $("#ep-n").textContent = `${n} of ${ALL.length} picked`;
       $("#ep-show").textContent = n ? `Show diagram (${n})` : "Show diagram";
       $("#ep-show").disabled = !n;
       $("#ep-linked").disabled = !n;
       const q = filter.value.trim();
-      $("#ep-all").textContent = q ? "Select shown" : "Select all";
-      $("#ep-none").textContent = q ? "Unselect shown" : "Unselect all";
+      $("#ep-all").textContent = q ? "Pick shown" : "Pick all";
+      $("#ep-none").textContent = q ? "Clear shown" : "Clear all";
     }
     function runFilter() {
       const q = filter.value.trim().toLowerCase();
@@ -181,7 +181,7 @@
       $("#ep-empty").hidden = shown().length > 0; $("#ep-empty-q").textContent = filter.value.trim();
       count();
     }
-    /** Opens the picker ticked with `ticked`; `first`: nothing drawn yet, so Cancel leaves the tab empty. */
+    /** Opens the picker ticked with `picked`; `first`: nothing drawn yet, so Cancel leaves the tab empty. */
     function openPicker(ticked, first = false, q = "") {
       firstOpen = first;
       boxesOf().forEach((c) => { c.checked = ticked.includes(c.value); });
@@ -357,7 +357,7 @@
     function openImage(f = "png") {
       closeMenu(); setFmt(f);
       const n = model.tables.length;
-      $("#ei-what").textContent = `The whole diagram as drawn: ${n} ${n === 1 ? "table" : "tables"}, ${{ all: "all columns", keys: "key columns", none: "table names only" }[detail]}. Twice its size for sharp text.`;
+      $("#ei-what").textContent = `The whole diagram as drawn: ${n} ${n === 1 ? "table" : "tables"}, ${{ all: "all columns", keys: "key columns", none: "table names only" }[detail]}. Exported at twice its size so the text stays sharp.`;
       imgDlg.hidden = false; $(`[data-fmt="${f}"]`, imgDlg).focus();
     }
     $$("[data-fmt]", imgDlg).forEach((b) => b.addEventListener("click", () => setFmt(b.dataset.fmt)));

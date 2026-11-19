@@ -302,7 +302,7 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
           </button>
           <button type="button" className="btn btn--quiet" title={`Open this query as ${mongoColl(tab.table)}.find(…) in a new query tab`} onClick={console_}>
             <SquareCode {...ico} />
-            Open in console
+            Open as a query
           </button>
           <RunGroup busy={busy} disabled={session.status !== "open"} onRun={() => read()} kbd="⌘↵" />
         </div>
@@ -350,7 +350,7 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
           <button type="button" className="subtab" aria-pressed={view === "rows"} onClick={() => setView("rows")}>
             Documents
             {est !== null && est !== undefined && (
-              <span className="n" title="Estimate from collection metadata, not a count">
+              <span className="n" title="Estimated from collection metadata">
                 {estimate(est)}
               </span>
             )}

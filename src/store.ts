@@ -4,9 +4,10 @@ import { tableSelect } from "./lib/sql";
 import { editCount, type Edits } from "./lib/edit";
 import { positionsOf, withLinked } from "./lib/diagram";
 import { diagramCanSave, diagramChanged, diagramKey, diagramLayoutOf, diagramModelOf, diagramViews, mergeDiagram } from "./lib/diagramTab";
-import type { Approval, Ask, ColumnsEntry, Conn, DiagramTab, HistoryEntry, KeyTab, SavedDiagram, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
+import type { Approval, Ask, ColumnsEntry, Conn, DiagramTab, Engine, HistoryEntry, KeyTab, SavedDiagram, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
 
-export type SettingsSection = "appearance" | "queries" | "security" | "data" | "updates";
+/** conn-*: the open connection's own settings, shown only when Settings opens from its tab */
+export type SettingsSection = "conn-security" | "conn-queries" | "appearance" | "queries" | "security" | "data" | "updates";
 export type SideView = "schema" | "history" | "saved";
 
 export type Modal =
@@ -18,7 +19,9 @@ export type Modal =
   | { kind: "prompt"; title: string; label: string; initial: string; onSubmit: (v: string) => void }
   | { kind: "saveQuery"; tabId: string }
   /** the passphrase or confirm ask before a run; with title and message, the passphrase before lowering Strict */
-  | { kind: "guard"; ask: Ask; connName: string; title?: string; message?: string; onApprove: (a: Approval) => void; alt?: { label: string; run: () => void } }
+  | { kind: "guard"; ask: Ask; connName: string; onApprove: (a: Approval) => void; alt?: { label: string; run: () => void } }
+  /** lowering a Strict connection from the tabs bar: the passphrase or Touch ID (AuthDialog); submit rejects with the reason */
+  | { kind: "lower"; connName: string; engine: Engine; to: SecurityLevel; touch: boolean; submit: (a: Approval) => Promise<void> }
   /** MongoDB: a collection's sizes and shape, read with $collStats when it opens */
   | { kind: "collInfo"; connId: string; database: string; collection: string }
   /** Redis: a key's type, encoding, length, TTL and memory, read when it opens */
@@ -49,7 +52,8 @@ interface State {
   replaceSet(tabId: string, index: number, set: ResultSet): void;
 
   init(): Promise<void>;
-  setSettings(patch: Partial<Settings>): Promise<void>;
+  /** with an approval (a passphrase ask), a failure is thrown back to the ask instead of a toast */
+  setSettings(patch: Partial<Settings>, approval?: Approval): Promise<void>;
   openModal(m: Modal | null): void;
   showToast(msg: string): void;
   setSide(v: SideView): void;
@@ -329,15 +333,16 @@ export const useStore = create<State>()((set, get) => {
       void get().loadHistory();
     },
 
-    async setSettings(patch) {
+    async setSettings(patch, approval) {
       const prev = get().settings;
       const next = { ...prev, ...patch };
       for (const k of Object.keys(next) as (keyof Settings)[]) if (next[k] === undefined) delete next[k];
       set({ settings: next });
       try {
-        await api.saveSettings(next);
+        await api.saveSettings(next, approval);
       } catch (e) {
         set({ settings: prev });
+        if (approval) throw e;
         get().showToast(errText(e));
       }
     },
@@ -510,23 +515,24 @@ export const useStore = create<State>()((set, get) => {
       const id = get().currentId;
       const conn = get().conns.find((c) => c.id === id);
       if (!id || !conn || conn.level === level) return;
-      // lowering from Strict needs the passphrase first, or Touch ID when the connection allows it
-      const ask = (error: string | null) =>
-        get().openModal({
-          kind: "guard",
-          ask: { kind: "ask", kinds: [], level: "strict", touchId: !!conn.touchId && get().pass.touchIdAvailable, unreadable: false, error },
+      // lowering from Strict needs the passphrase first, or Touch ID when the connection allows it; a wrong one stays in the ask
+      if (conn.level === "strict" && get().pass.set && !approval)
+        return get().openModal({
+          kind: "lower",
           connName: conn.name,
-          title: `Lower ${conn.name} from Strict?`,
-          message: `Enter the passphrase to change it to ${level === "low" ? "Low" : "None"}.`,
-          onApprove: (a) => void get().setLevel(level, a),
+          engine: conn.engine,
+          to: level,
+          touch: !!conn.touchId && get().pass.touchIdAvailable,
+          submit: async (a) => {
+            await api.setLevel(id, level, a);
+            await get().refreshConns();
+          },
         });
-      if (conn.level === "strict" && get().pass.set && !approval) return ask(null);
       try {
         await api.setLevel(id, level, approval);
         await get().refreshConns();
       } catch (e) {
-        if (approval) ask(errText(e));
-        else get().showToast(errText(e));
+        get().showToast(errText(e));
       }
     },
 

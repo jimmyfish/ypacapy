@@ -100,6 +100,7 @@
   <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
   <symbol id="i-file-code" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 12.5 8 15l2 2.5"/><path d="m14 12.5 2 2.5-2 2.5"/></symbol>
   <symbol id="i-file-down" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
 </svg>
 
 <header class="pv-bar">
@@ -264,9 +265,9 @@
       <div class="tabsbar">
         <button type="button" class="icon-btn side-toggle" aria-label="Hide sidebar" title="Hide sidebar  ⌘\"><svg aria-hidden="true" class="ico"><use href="#i-panel-left-close"/></svg></button>
         <div class="tabs">
-          <div class="tab" data-tab="orders" data-pinned><button type="button" class="tab-main" data-href="./table.html"><svg aria-hidden="true" class="ico"><use href="#i-table-2"/></svg><span class="name">orders</span></button><button type="button" class="icon-btn close" aria-label="Close orders"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin orders" title="Pinned: kept with shop_prod. Click to unpin"><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
-          <div class="tab" data-tab="q1"><button type="button" class="tab-main" data-href="./index.html"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg><span class="name">Query 1</span></button><button type="button" class="icon-btn close" aria-label="Close Query 1"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin Query 1" title="Pinned: kept with shop_prod. Click to unpin"><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
-          <div class="tab" data-tab="erd" data-unpinnable aria-current="page"><button type="button" class="tab-main"><svg aria-hidden="true" class="ico"><use href="#i-network"/></svg><span class="name">public</span></button><button type="button" class="icon-btn close" aria-label="Close public"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin public" title="Pinned: kept with shop_prod. Click to unpin"><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
+          <div class="tab" data-tab="orders" data-pinned><button type="button" class="tab-main" data-href="./table.html"><svg aria-hidden="true" class="ico"><use href="#i-table-2"/></svg><span class="name">orders</span></button><button type="button" class="icon-btn close" aria-label="Close orders"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin orders" title="Pinned to shop_prod. Click to unpin."><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
+          <div class="tab" data-tab="q1"><button type="button" class="tab-main" data-href="./index.html"><svg aria-hidden="true" class="ico"><use href="#i-square-code"/></svg><span class="name">Query 1</span></button><button type="button" class="icon-btn close" aria-label="Close Query 1"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin Query 1" title="Pinned to shop_prod. Click to unpin."><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
+          <div class="tab" data-tab="erd" data-unpinnable aria-current="page"><button type="button" class="tab-main"><svg aria-hidden="true" class="ico"><use href="#i-network"/></svg><span class="name">public</span></button><button type="button" class="icon-btn close" aria-label="Close public"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button><button type="button" class="icon-btn pin" aria-label="Unpin public" title="Pinned to shop_prod. Click to unpin."><svg aria-hidden="true" class="ico"><use href="#i-pin"/></svg></button></div>
           <button type="button" class="icon-btn tab-add" aria-label="New query tab"><svg aria-hidden="true" class="ico"><use href="#i-plus"/></svg></button>
         </div>
         <div class="menu-anchor env-group guard">
@@ -294,13 +295,13 @@
             </div>
           </div>
           <button type="button" class="btn btn--quiet erd-save" id="erd-save" title="Save the tables and layout with shop_prod  ⌘S" disabled><svg aria-hidden="true" class="ico"><use href="#i-save"/></svg><span>Save</span></button>
-          <button type="button" class="icon-btn" id="erd-refresh" aria-label="Read the catalog again" title="Read the catalog again"><svg aria-hidden="true" class="ico"><use href="#i-refresh-cw"/></svg></button>
+          <button type="button" class="icon-btn" id="erd-refresh" aria-label="Refresh from the catalog" title="Refresh from the catalog"><svg aria-hidden="true" class="ico"><use href="#i-refresh-cw"/></svg></button>
           <span class="sep" aria-hidden="true"></span>
           <button type="button" class="icon-btn" id="erd-out" aria-label="Zoom out" title="Zoom out  −"><svg aria-hidden="true" class="ico"><use href="#i-zoom-out"/></svg></button>
           <button type="button" class="icon-btn" id="erd-in" aria-label="Zoom in" title="Zoom in  +"><svg aria-hidden="true" class="ico"><use href="#i-zoom-in"/></svg></button>
           <button type="button" class="btn btn--quiet erd-zoom" id="erd-actual" title="Actual size  0" aria-label="Zoom 100%, actual size">100%</button>
           <button type="button" class="icon-btn" id="erd-fit" aria-label="Fit the diagram" title="Fit the diagram"><svg aria-hidden="true" class="ico"><use href="#i-maximize"/></svg></button>
-          <button type="button" class="icon-btn" id="erd-reset" aria-label="Reset layout: arrange every table afresh (Save keeps it)" title="Reset layout: arrange every table afresh (Save keeps it)"><svg aria-hidden="true" class="ico"><use href="#i-undo-2"/></svg></button>
+          <button type="button" class="icon-btn" id="erd-reset" aria-label="Arrange every table again. Save to keep the new layout." title="Arrange every table again. Save to keep the new layout."><svg aria-hidden="true" class="ico"><use href="#i-undo-2"/></svg></button>
           <span class="sep" aria-hidden="true"></span>
           <span class="ctx-select"><select id="erd-detail" aria-label="Columns shown"><option>All columns</option><option>Key columns</option><option>Table names</option></select><svg aria-hidden="true" class="ico"><use href="#i-chevron-down"/></svg></span>
           <span class="push erd-status" id="erd-status" aria-live="polite"></span>
@@ -310,7 +311,7 @@
           <p class="erd-foot">Drag a table to move it. Drag the background or scroll to pan, ⌘ scroll or pinch to zoom. Double-click a table to open its rows. Save keeps the picked tables and this layout with shop_prod; Show diagram brings them back, after a restart too. Tables ticked after a save are placed to the right of the saved ones.</p>
         </div>
         <div class="erd-state" data-erd="loading" hidden><div class="empty"><span class="spinner"></span><strong>Reading the catalog of public</strong><span>Tables, columns and foreign keys. No row is read.</span></div></div>
-        <div class="erd-state" data-erd="none" hidden><div class="empty"><strong>No tables picked</strong><span>Pick the tables of public to draw. Only those are read from the catalog.</span><button type="button" class="btn btn--primary" id="erd-pick-empty"><svg aria-hidden="true" class="ico"><use href="#i-list-checks"/></svg>Choose tables</button></div></div>
+        <div class="erd-state" data-erd="none" hidden><div class="empty"><strong>No tables picked</strong><span>Pick the tables of public to draw. Only those are read from the catalog.</span><button type="button" class="btn btn--primary" id="erd-pick-empty"><svg aria-hidden="true" class="ico"><use href="#i-list-checks"/></svg>Pick tables</button></div></div>
         <div class="erd-state" data-erd="error" hidden><div class="empty"><strong>Could not read the catalog of audit</strong><span class="erd-err">permission denied for schema audit</span><span>Ask for USAGE on the schema, then refresh.</span></div></div>
       </div>
       <div class="menu ctx-menu" id="erd-menu" role="menu" aria-label="Table" hidden>
@@ -328,12 +329,12 @@
   <div class="dialog erd-pick" role="dialog" aria-modal="true" aria-labelledby="ep-title">
     <h2 id="ep-title">Tables to draw</h2>
     <form>
-      <p class="help">Tables of <strong id="ep-schema">public</strong> on shop_prod. Only the tables you tick are read from the catalog and drawn.</p>
+      <p class="help">Tables of <strong id="ep-schema">public</strong> on shop_prod. Only the tables you pick are read from the catalog and drawn.</p>
       <div class="search"><svg aria-hidden="true" class="ico"><use href="#i-search"/></svg><input class="field" id="ep-filter" type="search" placeholder="Filter tables" aria-label="Filter tables" autocomplete="off" spellcheck="false"></div>
       <div class="ep-tools">
-        <button type="button" class="btn btn--quiet" id="ep-all">Select all</button>
-        <button type="button" class="btn btn--quiet" id="ep-none">Unselect all</button>
-        <button type="button" class="btn btn--quiet" id="ep-linked" title="Tick every table one foreign key away from a ticked one (reads the schema's foreign keys)"><svg aria-hidden="true" class="ico"><use href="#i-link"/></svg><svg aria-hidden="true" class="ico ep-spin"><use href="#i-loader-circle"/></svg><span>Add linked tables</span></button>
+        <button type="button" class="btn btn--quiet" id="ep-all">Pick all</button>
+        <button type="button" class="btn btn--quiet" id="ep-none">Clear all</button>
+        <button type="button" class="btn btn--quiet" id="ep-linked" title="Pick every table one foreign key away from a picked one (reads the schema's foreign keys)"><svg aria-hidden="true" class="ico"><use href="#i-link"/></svg><svg aria-hidden="true" class="ico ep-spin"><use href="#i-loader-circle"/></svg><span>Add linked tables</span></button>
       </div>
       <div class="ep-list" id="ep-list" role="group" aria-label="Tables of public">
           <label class="check ep-row"><input type="checkbox" value="orders"><span class="ep-name">orders</span><span class="ep-est" title="Estimate from table statistics">~12k</span></label>
@@ -1482,13 +1483,13 @@ const TYPE_ICON = (t) => (/^objectId/.test(t) ? "id-card" : /^object/.test(t) ? 
     let firstOpen = false;
     function count() {
       const n = boxesOf().filter((c) => c.checked).length;
-      $("#ep-n").textContent = `${n} of ${ALL.length} ticked`;
+      $("#ep-n").textContent = `${n} of ${ALL.length} picked`;
       $("#ep-show").textContent = n ? `Show diagram (${n})` : "Show diagram";
       $("#ep-show").disabled = !n;
       $("#ep-linked").disabled = !n;
       const q = filter.value.trim();
-      $("#ep-all").textContent = q ? "Select shown" : "Select all";
-      $("#ep-none").textContent = q ? "Unselect shown" : "Unselect all";
+      $("#ep-all").textContent = q ? "Pick shown" : "Pick all";
+      $("#ep-none").textContent = q ? "Clear shown" : "Clear all";
     }
     function runFilter() {
       const q = filter.value.trim().toLowerCase();
@@ -1496,7 +1497,7 @@ const TYPE_ICON = (t) => (/^objectId/.test(t) ? "id-card" : /^object/.test(t) ? 
       $("#ep-empty").hidden = shown().length > 0; $("#ep-empty-q").textContent = filter.value.trim();
       count();
     }
-    /** Opens the picker ticked with `ticked`; `first`: nothing drawn yet, so Cancel leaves the tab empty. */
+    /** Opens the picker ticked with `picked`; `first`: nothing drawn yet, so Cancel leaves the tab empty. */
     function openPicker(ticked, first = false, q = "") {
       firstOpen = first;
       boxesOf().forEach((c) => { c.checked = ticked.includes(c.value); });
@@ -1672,7 +1673,7 @@ const TYPE_ICON = (t) => (/^objectId/.test(t) ? "id-card" : /^object/.test(t) ? 
     function openImage(f = "png") {
       closeMenu(); setFmt(f);
       const n = model.tables.length;
-      $("#ei-what").textContent = `The whole diagram as drawn: ${n} ${n === 1 ? "table" : "tables"}, ${{ all: "all columns", keys: "key columns", none: "table names only" }[detail]}. Twice its size for sharp text.`;
+      $("#ei-what").textContent = `The whole diagram as drawn: ${n} ${n === 1 ? "table" : "tables"}, ${{ all: "all columns", keys: "key columns", none: "table names only" }[detail]}. Exported at twice its size so the text stays sharp.`;
       imgDlg.hidden = false; $(`[data-fmt="${f}"]`, imgDlg).focus();
     }
     $$("[data-fmt]", imgDlg).forEach((b) => b.addEventListener("click", () => setFmt(b.dataset.fmt)));

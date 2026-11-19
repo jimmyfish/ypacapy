@@ -53,6 +53,12 @@ export interface Conn {
   connectTimeout?: number;
   /** missing = Settings > Queries > Connection heartbeat */
   heartbeat?: boolean;
+  /** missing = Settings > Queries > Keep query history */
+  keepHistory?: boolean;
+  /** SQL: warn before a query that can return more than 100 rows; missing = Settings > Security > Warnings */
+  warnBigLimit?: boolean;
+  /** SQL: warn before an UPDATE without WHERE; missing = Settings > Security > Warnings */
+  warnUpdateAll?: boolean;
   /** MongoDB: the database the user is defined in; missing = admin */
   authSource?: string;
   /** MongoDB: host is a DNS seed list name (mongodb+srv), no port */
@@ -95,6 +101,9 @@ export interface Settings {
   keepHistory?: boolean;
   heartbeat?: boolean;
   heartbeatEvery?: number;
+  /** Warnings for every SQL connection that does not set its own; missing = on */
+  warnBigLimit?: boolean;
+  warnUpdateAll?: boolean;
   /** security level for new connections; missing = DEFAULT_LEVEL */
   defaultLevel?: SecurityLevel;
   /** ms: when the passphrase was last reset with macOS authentication (Forgot passphrase), shown in Security */
@@ -315,7 +324,12 @@ export interface Ask {
   ops?: string[];
   /** something asked about deletes or overwrites: the ask says it cannot be undone */
   final?: boolean;
+  /** the connection's warnings for this run; they ask whatever the security level */
+  warnings?: Warning[];
 }
+
+/** guard::Warning. bigLimit: more than 100 rows; limit is the query's LIMIT or the row limit ypacapy adds (added), null when nothing bounds it. */
+export type Warning = { kind: "bigLimit"; limit: number | null; added: boolean } | { kind: "updateAll" };
 
 export type RunOutcome =
   | {

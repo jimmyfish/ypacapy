@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ypacapy preview, new connection</title>
-<meta name="description" content="Design preview of adding a PostgreSQL, MySQL, SQLite, MongoDB or Redis connection in ypacapy, with its password kept in the macOS keychain.">
+<meta name="description" content="Design preview of adding a PostgreSQL, MySQL, SQLite, MongoDB or Redis connection in ypacapy, with its password kept in the macOS login keychain.">
 <link rel="stylesheet" href="./app.css">
 <link rel="stylesheet" href="./preview.css">
 <script src="./themes.js"></script>
@@ -100,6 +100,7 @@
   <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
   <symbol id="i-file-code" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 12.5 8 15l2 2.5"/><path d="m14 12.5 2 2.5-2 2.5"/></symbol>
   <symbol id="i-file-down" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
 </svg>
 
 <header class="pv-bar">
@@ -184,7 +185,7 @@
       </div>
     </nav>
     <div class="strip-end">
-      <button type="button" class="icon-btn strip-settings" title="Settings  ⌘," aria-label="Settings" data-href="./settings.html"><svg aria-hidden="true" class="ico"><use href="#i-settings-2"/></svg></button>
+      <button type="button" class="icon-btn strip-settings" title="Settings  ⌘," aria-label="Settings" data-href="./settings.html?show=home"><svg aria-hidden="true" class="ico"><use href="#i-settings-2"/></svg></button>
     </div>
   </div>
   <div class="home"><div class="home-inner"><div class="home-head"><div><h1>Connections</h1><p class="muted">Everything stays on this Mac, in ~/.config/ypacapy.</p></div></div></div></div>
@@ -211,7 +212,7 @@
 
       <div class="cx-panel" role="tabpanel" id="p-general" aria-labelledby="t-general">
         <div class="cx-grid">
-          <label for="c-engine">Driver</label><span class="cx-full cx-driver"><svg aria-hidden="true" class="ico drv-ico"><use href="#i-server"/></svg><span class="select-wrap"><select class="field" id="c-engine"><option value="postgres" selected>PostgreSQL</option><option value="mysql">MySQL</option><option value="sqlite">SQLite</option><option value="mongo">MongoDB</option><option value="redis">Redis</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></span>
+          <label for="c-engine">Engine</label><span class="cx-full cx-driver"><svg aria-hidden="true" class="ico drv-ico"><use href="#i-server"/></svg><span class="select-wrap"><select class="field" id="c-engine"><option value="postgres" selected>PostgreSQL</option><option value="mysql">MySQL</option><option value="sqlite">SQLite</option><option value="mongo">MongoDB</option><option value="redis">Redis</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></span>
           <span class="cx-label" id="c-type-l" data-for="server">Connection type</span><span class="cx-full" data-for="server"><span class="seg seg--lg" role="group" aria-labelledby="c-type-l"><button type="button" aria-pressed="true" data-type="default">Default</button><button type="button" aria-pressed="false" data-type="url">URL only</button></span></span>
           <span data-for="fields" class="cx-sub"><label for="c-host">Host</label><input class="field mono" id="c-host" name="host" value="localhost" autocomplete="off" spellcheck="false"><label for="c-port">Port</label><input class="field mono cx-port" id="c-port" name="port" value="5432" inputmode="numeric" autocomplete="off">
           <label for="c-user">User</label><input class="field mono cx-full" id="c-user" name="user" value="ops" autocomplete="username" spellcheck="false"></span>
@@ -242,7 +243,7 @@
                 </div></div>
               </div>
               <div class="set-item set-item--sub" data-when-strict hidden>
-                <div class="set-text"><label for="c-touch">Open with Touch ID</label></div>
+                <div class="set-text"><label for="c-touch">Allow Touch ID</label></div>
                 <div class="set-ctl"><input id="c-touch" class="switch" type="checkbox" role="switch"></div>
               </div>
               <div class="set-item set-item--sub" data-when-strict hidden>
@@ -253,7 +254,7 @@
         <div data-when-guarded hidden>
         <div class="protect-head cx-protect-head">
           <h3 class="cx-h"><span data-for="sql">Statements to ask about</span><span data-for="mongo" hidden>Writes to ask about</span><span data-for="redis" hidden>Commands to ask about</span> <span class="cx-h-note">For this connection</span></h3>
-          <button type="button" class="btn btn--quiet" id="protect-toggle" data-when-strict hidden><svg aria-hidden="true" class="ico"><use href="#i-lock"/></svg><span>Change</span></button>
+          <button type="button" class="btn btn--quiet" id="protect-toggle" data-when-strict hidden><svg aria-hidden="true" class="ico"><use href="#i-lock"/></svg><span>Unlock</span></button>
         </div>
         <div class="set-list stmts" id="protect">
               <div class="set-item" data-for="sql">
@@ -386,7 +387,18 @@
               </div>
         </div>
         </div>
-        <h3 class="cx-h">Queries <span class="cx-h-note">Empty uses the value in Settings</span></h3>
+        <h3 class="cx-h" data-for="sql">Warnings <span class="cx-h-note">Ask even when the security level is None</span></h3>
+        <div class="set-list" data-for="sql">
+              <div class="set-item">
+                <div class="set-text"><label for="c-warn-limit">More than 100 rows</label><span class="desc">A select whose LIMIT, or the row limit ypacapy adds, is above 100</span></div>
+                <div class="set-ctl"><span class="select-wrap"><select id="c-warn-limit" class="field set-choice"><option value="app" selected>Use Settings (on)</option><option value="on">On</option><option value="off">Off</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><label for="c-warn-update"><code class="stmt">UPDATE</code> without <code class="stmt">WHERE</code></label><span class="desc">Changes every row of its table, even a table of one row</span></div>
+                <div class="set-ctl"><span class="select-wrap"><select id="c-warn-update" class="field set-choice"><option value="app" selected>Use Settings (on)</option><option value="on">On</option><option value="off">Off</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
+              </div>
+        </div>
+        <h3 class="cx-h">Queries <span class="cx-h-note">Empty uses Global</span></h3>
         <div class="set-list">
               <div class="set-item">
                 <div class="set-text"><label for="c-limit"><span data-for="no-redis">Row limit</span><span data-for="redis" hidden>Page size</span></label><span class="desc"><span data-for="sql">Added to a select that has no limit of its own</span><span data-for="mongo" hidden>Added to a find or aggregate that has no limit of its own</span><span data-for="redis" hidden>How many fields, items or members a key tab reads at a time</span></span></div>
@@ -397,8 +409,12 @@
                 <div class="set-ctl"><span class="unit-field"><input id="c-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span></div>
               </div>
               <div class="set-item">
-                <div class="set-text"><label for="c-beat">Connection heartbeat</label><span class="desc"><span data-for="sql">Keeps idle sessions open with select 1</span><span data-for="mongo" hidden>Keeps idle sessions open with a ping command</span><span data-for="redis" hidden>Keeps idle connections open with PING</span></span></div>
-                <div class="set-ctl"><span class="select-wrap"><select id="c-beat" class="field set-choice"><option value="app" selected>Use Settings (off)</option><option value="on">On</option><option value="off">Off</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
+                <div class="set-text"><label for="c-beat">Connection heartbeat</label><span class="desc"><span data-for="sql">Keeps idle connections open with select 1</span><span data-for="mongo" hidden>Keeps idle connections open with a ping command</span><span data-for="redis" hidden>Keeps idle connections open with PING</span></span></div>
+                <div class="set-ctl"><span class="select-wrap"><select id="c-beat" class="field set-choice"><option value="app" selected>Use Global (off)</option><option value="on">On</option><option value="off">Off</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
+              </div>
+              <div class="set-item">
+                <div class="set-text"><label for="c-hist">Keep query history</label><span class="desc">Off keeps this connection's runs out of History, e.g. for production</span></div>
+                <div class="set-ctl"><span class="select-wrap"><select id="c-hist" class="field set-choice"><option value="app" selected>Use Global (on)</option><option value="on">On</option><option value="off">Off</option></select><svg aria-hidden="true" class="ico select-chev"><use href="#i-chevron-down"/></svg></span></div>
               </div>
         </div>
       </div>
@@ -421,7 +437,7 @@
           <span class="help cx-full cx-under">On uses rediss://. ElastiCache with encryption in transit requires it.</span>
           <label for="c-rtlsca">CA file</label><span class="with-btn cx-full"><input class="field mono" id="c-rtlsca" placeholder="~/certs/ca.pem" autocomplete="off" spellcheck="false"><button type="button" class="btn"><svg aria-hidden="true" class="ico"><use href="#i-folder-open"/></svg>Choose</button></span>
           <label for="c-rtlscert">Client certificate</label><span class="with-btn cx-full"><input class="field mono" id="c-rtlscert" placeholder="~/certs/client.pem" autocomplete="off" spellcheck="false" aria-describedby="c-rtlscert-h"><button type="button" class="btn"><svg aria-hidden="true" class="ico"><use href="#i-folder-open"/></svg>Choose</button></span>
-          <span class="help cx-full cx-under" id="c-rtlscert-h">Only when the server asks for one: a file with the certificate and its key.</span>
+          <span class="help cx-full cx-under" id="c-rtlscert-h">A file with the certificate and its key. Needed only when the server asks for one.</span>
         </div>
         <p class="cx-none" data-for="sqlite" hidden>SQLite opens a file on this Mac. There is no network to secure.</p>
       </div>
@@ -464,38 +480,86 @@
     </div>
   </div>
   <div class="backdrop sub-backdrop" data-sub="new" hidden>
-    <div class="dialog" role="dialog" aria-modal="true" aria-label="Set passphrase">
-      <h2>Set passphrase</h2>
-      <form data-sub-form="new" novalidate><label>Passphrase<input class="field" id="p-new" type="password" autocomplete="new-password" required aria-required="true"></label><label>Type it again<input class="field" id="p-new2" type="password" autocomplete="new-password" required aria-required="true"></label><p class="help">It cannot be shown again. If you forget it, reset it with Touch ID or your login password.</p>
-        <p class="help err" data-sub-err role="alert"></p>
-        <footer><button type="button" class="btn" data-sub-cancel>Cancel</button><button type="submit" class="btn btn--primary">Set passphrase</button></footer>
+    <div class="dialog auth" role="dialog" aria-modal="true" aria-labelledby="auth-new-t" aria-describedby="auth-new-d">
+      <div class="auth-head">
+        <span class="auth-badge"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg></span>
+        <div class="auth-head-text"><h2 id="auth-new-t">Set passphrase</h2><p id="auth-new-d">One passphrase for the whole app. Strict connections ask for it.</p></div>
+      </div>
+      <p class="auth-note"><svg aria-hidden="true" class="ico"><use href="#i-info"/></svg><span>It cannot be shown again. If you forget it, reset it with Touch ID or your login password.</span></p>
+      <form data-sub-form="new" data-auth-pair novalidate>
+        <label class="auth-field" for="p-new">Passphrase
+          <span class="auth-input"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg><input class="field" id="p-new" type="password" autocomplete="new-password" required aria-required="true" spellcheck="false"><button type="button" class="auth-eye" aria-label="Show passphrase" aria-pressed="false" data-auth-eye><svg aria-hidden="true" class="ico"><use href="#i-eye"/></svg></button></span>
+        </label>
+        <label class="auth-field" for="p-new2">Type it again
+          <span class="auth-input"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg><input class="field" id="p-new2" type="password" autocomplete="new-password" required aria-required="true" spellcheck="false"><button type="button" class="auth-eye" aria-label="Show passphrase" aria-pressed="false" data-auth-eye><svg aria-hidden="true" class="ico"><use href="#i-eye"/></svg></button></span>
+        </label>
+        <p class="auth-match" data-auth-match hidden></p>
+        <p class="auth-caps" data-auth-caps hidden><svg aria-hidden="true" class="ico"><use href="#i-arrow-up"/></svg>Caps Lock is on</p>
+        <p class="auth-err" role="alert" data-auth-err><svg aria-hidden="true" class="ico"><use href="#i-circle-alert"/></svg><span data-sub-err></span></p>
+        <footer class="auth-actions"><button type="button" class="btn auth-btn" data-sub-cancel>Abort</button><button type="submit" class="btn auth-btn auth-btn--primary"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg>Set passphrase</button></footer>
       </form>
     </div>
   </div>
   <div class="backdrop sub-backdrop" data-sub="change" hidden>
-    <div class="dialog" role="dialog" aria-modal="true" aria-label="Change passphrase">
-      <h2>Change passphrase</h2>
-      <form data-sub-form="change" novalidate><label>Current passphrase<input class="field" id="p-cur" type="password" autocomplete="current-password" required aria-required="true"></label><label>New passphrase<input class="field" id="p-chg" type="password" autocomplete="new-password" required aria-required="true"></label><label>Type it again<input class="field" id="p-chg2" type="password" autocomplete="new-password" required aria-required="true"></label>
-        <p class="help err" data-sub-err role="alert"></p>
-        <footer><button type="button" class="btn" data-sub-cancel>Cancel</button><button type="submit" class="btn btn--primary">Change passphrase</button></footer>
+    <div class="dialog auth" role="dialog" aria-modal="true" aria-labelledby="auth-change-t" aria-describedby="auth-change-d">
+      <div class="auth-head">
+        <span class="auth-badge"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg></span>
+        <div class="auth-head-text"><h2 id="auth-change-t">Change passphrase</h2><p id="auth-change-d">Enter the current one, then the new one twice.</p></div>
+      </div>
+      <p class="auth-note"><svg aria-hidden="true" class="ico"><use href="#i-shield-check"/></svg><span>Connections keep their protection; the new passphrase opens them.</span></p>
+      <form data-sub-form="change" data-auth-pair novalidate>
+        <label class="auth-field" for="p-cur">Current passphrase
+          <span class="auth-input"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg><input class="field" id="p-cur" type="password" autocomplete="current-password" required aria-required="true" spellcheck="false"><button type="button" class="auth-eye" aria-label="Show passphrase" aria-pressed="false" data-auth-eye><svg aria-hidden="true" class="ico"><use href="#i-eye"/></svg></button></span>
+        </label>
+        <label class="auth-field" for="p-chg">New passphrase
+          <span class="auth-input"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg><input class="field" id="p-chg" type="password" autocomplete="new-password" required aria-required="true" spellcheck="false"><button type="button" class="auth-eye" aria-label="Show passphrase" aria-pressed="false" data-auth-eye><svg aria-hidden="true" class="ico"><use href="#i-eye"/></svg></button></span>
+        </label>
+        <label class="auth-field" for="p-chg2">Type it again
+          <span class="auth-input"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg><input class="field" id="p-chg2" type="password" autocomplete="new-password" required aria-required="true" spellcheck="false"><button type="button" class="auth-eye" aria-label="Show passphrase" aria-pressed="false" data-auth-eye><svg aria-hidden="true" class="ico"><use href="#i-eye"/></svg></button></span>
+        </label>
+        <p class="auth-match" data-auth-match hidden></p>
+        <p class="auth-caps" data-auth-caps hidden><svg aria-hidden="true" class="ico"><use href="#i-arrow-up"/></svg>Caps Lock is on</p>
+        <p class="auth-err" role="alert" data-auth-err><svg aria-hidden="true" class="ico"><use href="#i-circle-alert"/></svg><span data-sub-err></span></p>
+        <footer class="auth-actions"><button type="button" class="btn auth-btn" data-sub-cancel>Abort</button><button type="submit" class="btn auth-btn auth-btn--primary"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg>Change passphrase</button></footer>
       </form>
     </div>
   </div>
   <div class="backdrop sub-backdrop" data-sub="disable" hidden>
-    <div class="dialog" role="dialog" aria-modal="true" aria-label="Disable passphrase">
-      <h2>Disable passphrase</h2>
-      <form data-sub-form="disable" novalidate><label>Current passphrase<input class="field" id="p-cur2" type="password" autocomplete="current-password" required aria-required="true"></label><p class="help">This turns off passphrase protection on every connection, and Open with Touch ID. Write guards stay as they are.</p>
-        <p class="help err" data-sub-err role="alert"></p>
-        <footer><button type="button" class="btn" data-sub-cancel>Cancel</button><button type="submit" class="btn btn--danger">Disable passphrase</button></footer>
+    <div class="dialog auth" role="dialog" aria-modal="true" aria-labelledby="auth-disable-t" aria-describedby="auth-disable-d">
+      <div class="auth-head">
+        <span class="auth-badge auth-badge--danger"><svg aria-hidden="true" class="ico"><use href="#i-shield-off"/></svg></span>
+        <div class="auth-head-text"><h2 id="auth-disable-t">Disable passphrase</h2><p id="auth-disable-d">Enter the current passphrase to turn it off for the whole app.</p></div>
+      </div>
+      <ul class="auth-scope auth-effects"><li class="auth-effect--off"><svg aria-hidden="true" class="ico"><use href="#i-lock-open"/></svg><span><strong>Strict connections</strong> ask to confirm, as Low does</span></li><li class="auth-effect--off"><svg aria-hidden="true" class="ico"><use href="#i-fingerprint"/></svg><span><strong>Allow Touch ID</strong> turns off on every connection</span></li><li class="auth-effect--keep"><svg aria-hidden="true" class="ico"><use href="#i-shield-check"/></svg><span><strong>Security levels and warnings</strong> stay as they are</span></li></ul>
+      <p class="auth-note"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg><span>You can set a new one any time, here in Security.</span></p>
+      <form data-sub-form="disable" novalidate>
+        <label class="auth-field" for="p-cur2">Current passphrase
+          <span class="auth-input"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg><input class="field" id="p-cur2" type="password" autocomplete="current-password" required aria-required="true" spellcheck="false"><button type="button" class="auth-eye" aria-label="Show passphrase" aria-pressed="false" data-auth-eye><svg aria-hidden="true" class="ico"><use href="#i-eye"/></svg></button></span>
+        </label>
+        <p class="auth-caps" data-auth-caps hidden><svg aria-hidden="true" class="ico"><use href="#i-arrow-up"/></svg>Caps Lock is on</p>
+        <p class="auth-err" role="alert" data-auth-err><svg aria-hidden="true" class="ico"><use href="#i-circle-alert"/></svg><span data-sub-err></span></p>
+        <footer class="auth-actions"><button type="button" class="btn auth-btn" data-sub-cancel>Abort</button><button type="submit" class="btn auth-btn auth-btn--danger"><svg aria-hidden="true" class="ico"><use href="#i-shield-off"/></svg>Disable passphrase</button></footer>
       </form>
     </div>
   </div>
   <div class="backdrop sub-backdrop" data-sub="reset" hidden>
-    <div class="dialog" role="dialog" aria-modal="true" aria-label="Reset passphrase">
-      <h2>Reset passphrase</h2>
-      <form data-sub-form="reset" novalidate><label>New passphrase<input class="field" id="p-rst" type="password" autocomplete="new-password" required aria-required="true"></label><label>Type it again<input class="field" id="p-rst2" type="password" autocomplete="new-password" required aria-required="true"></label><p class="help">The old passphrase cannot be shown, only replaced. macOS asks for Touch ID or your login password first. Connections keep their protection.</p>
-        <p class="help err" data-sub-err role="alert"></p>
-        <footer><button type="button" class="btn" data-sub-cancel>Cancel</button><button type="submit" class="btn btn--primary">Reset passphrase</button></footer>
+    <div class="dialog auth" role="dialog" aria-modal="true" aria-labelledby="auth-reset-t" aria-describedby="auth-reset-d">
+      <div class="auth-head">
+        <span class="auth-badge auth-badge--warn"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg></span>
+        <div class="auth-head-text"><h2 id="auth-reset-t">Reset passphrase</h2><p id="auth-reset-d">The old passphrase can only be replaced.</p></div>
+      </div>
+      <p class="auth-note"><svg aria-hidden="true" class="ico"><use href="#i-fingerprint"/></svg><span>macOS asks for Touch ID or your login password first. Connections keep their protection.</span></p>
+      <form data-sub-form="reset" data-auth-pair novalidate>
+        <label class="auth-field" for="p-rst">New passphrase
+          <span class="auth-input"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg><input class="field" id="p-rst" type="password" autocomplete="new-password" required aria-required="true" spellcheck="false"><button type="button" class="auth-eye" aria-label="Show passphrase" aria-pressed="false" data-auth-eye><svg aria-hidden="true" class="ico"><use href="#i-eye"/></svg></button></span>
+        </label>
+        <label class="auth-field" for="p-rst2">Type it again
+          <span class="auth-input"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg><input class="field" id="p-rst2" type="password" autocomplete="new-password" required aria-required="true" spellcheck="false"><button type="button" class="auth-eye" aria-label="Show passphrase" aria-pressed="false" data-auth-eye><svg aria-hidden="true" class="ico"><use href="#i-eye"/></svg></button></span>
+        </label>
+        <p class="auth-match" data-auth-match hidden></p>
+        <p class="auth-caps" data-auth-caps hidden><svg aria-hidden="true" class="ico"><use href="#i-arrow-up"/></svg>Caps Lock is on</p>
+        <p class="auth-err" role="alert" data-auth-err><svg aria-hidden="true" class="ico"><use href="#i-circle-alert"/></svg><span data-sub-err></span></p>
+        <footer class="auth-actions"><button type="button" class="btn auth-btn" data-sub-cancel>Abort</button><button type="submit" class="btn auth-btn auth-btn--primary"><svg aria-hidden="true" class="ico"><use href="#i-key-round"/></svg>Reset passphrase</button></footer>
       </form>
     </div>
   </div>
@@ -1063,7 +1127,7 @@
     $$("#protect .switch").forEach((sw) => { sw.disabled = f("c-level").value === "strict" && !unlocked; });
     const t = f("protect-toggle");
     $("use", t).setAttribute("href", unlocked ? "#i-lock-open" : "#i-lock");
-    $("span", t).textContent = unlocked ? "Lock" : "Change";
+    $("span", t).textContent = unlocked ? "Lock" : "Unlock";
   };
   f("protect-toggle").addEventListener("click", () => {
     if (unlocked) { unlocked = false; renderLock(); return; }

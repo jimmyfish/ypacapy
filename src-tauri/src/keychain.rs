@@ -93,7 +93,7 @@ pub fn clear_passphrase() -> Result<(), String> {
 
 /// Whether `pass` is the passphrase. Err when none is set or the stored record is unreadable.
 pub fn check_passphrase(pass: &str) -> Result<bool, String> {
-    let rec = get_string(PASSPHRASE)?.ok_or("No passphrase is set")?;
+    let rec = get_string(PASSPHRASE)?.ok_or("No passphrase is set. Use Set passphrase.")?;
     let parts: Vec<&str> = rec.split('$').collect();
     let [kind, iter, salt, hash] = parts[..] else { return Err("The stored passphrase is unreadable".into()) };
     let (Ok(iter), Some(salt), Some(hash)) = (iter.parse::<u32>(), unhex(salt), unhex(hash)) else {

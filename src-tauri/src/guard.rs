@@ -9,7 +9,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
-use sqlparser::ast::{SetExpr, Statement, Visit, Visitor};
+use sqlparser::ast::{Expr, LimitClause, Query, SetExpr, Statement, Value, Visit, Visitor};
 use sqlparser::dialect::{Dialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::keywords::Keyword;
 use sqlparser::parser::Parser;
@@ -49,6 +49,13 @@ pub struct Classified {
     pub limitable: bool,
     /// Byte offset where the statement text ends (before a trailing semicolon and comments).
     pub end: usize,
+    /// Each query in the run with a LIMIT, OFFSET or FETCH of its own: the rows it may return, None when that
+    /// is not a plain number (LIMIT ALL, OFFSET without LIMIT, a parameter, FETCH … PERCENT).
+    pub limits: Vec<Option<u64>>,
+    /// Queries in the run with no LIMIT, OFFSET or FETCH of their own (the row limit may be added to one).
+    pub unlimited: usize,
+    /// An UPDATE in the run, nested ones too, has no WHERE: it changes every row it reaches.
+    pub update_all: bool,
 }
 
 impl Classified {
@@ -78,7 +85,13 @@ pub fn classify(sql: &str, engine: Engine) -> Classified {
         Ok(stmts) => {
             c.count = stmts.len();
             for s in &stmts {
-                classify_stmt(s, &mut c.kinds);
+                classify_stmt(s, &mut c.kinds, &mut c.update_all);
+                if let Statement::Query(q) = s {
+                    match limit_of(q) {
+                        Some(l) => c.limits.push(l),
+                        None => c.unlimited += 1,
+                    }
+                }
             }
             if let Some(Statement::Query(q)) = stmts.last() {
                 c.last_is_query = true;
@@ -91,16 +104,40 @@ pub fn classify(sql: &str, engine: Engine) -> Classified {
     c
 }
 
-fn classify_stmt(s: &Statement, out: &mut BTreeSet<usize>) {
+/// The rows a top-level query may return, by its own LIMIT, OFFSET or FETCH; None when it has none of them.
+fn limit_of(q: &Query) -> Option<Option<u64>> {
+    let n = |e: &Expr| match e {
+        Expr::Value(v) => match &v.value {
+            Value::Number(s, _) => s.parse::<u64>().ok(),
+            _ => None,
+        },
+        _ => None,
+    };
+    match (&q.limit_clause, &q.fetch) {
+        (Some(LimitClause::LimitOffset { limit, .. }), _) => Some(limit.as_ref().and_then(n)),
+        (Some(LimitClause::OffsetCommaLimit { limit, .. }), _) => Some(n(limit)),
+        // FETCH FIRST ROW ONLY is one row
+        (None, Some(f)) if !f.percent => Some(f.quantity.as_ref().map_or(Some(1), n)),
+        (None, Some(_)) => Some(None),
+        (None, None) => None,
+    }
+}
+
+fn classify_stmt(s: &Statement, out: &mut BTreeSet<usize>, update_all: &mut bool) {
     // EXPLAIN without ANALYZE only plans: the statement under it does not run
     if matches!(s, Statement::Explain { analyze: false, .. } | Statement::ExplainTable { .. }) {
         return;
     }
-    struct V<'a>(&'a mut BTreeSet<usize>);
+    struct V<'a>(&'a mut BTreeSet<usize>, &'a mut bool);
     impl Visitor for V<'_> {
         type Break = ();
         fn pre_visit_statement(&mut self, s: &Statement) -> ControlFlow<()> {
             kind_of(s, self.0);
+            if let Statement::Update(u) = s {
+                if u.selection.is_none() {
+                    *self.1 = true;
+                }
+            }
             ControlFlow::Continue(())
         }
         fn pre_visit_query(&mut self, q: &sqlparser::ast::Query) -> ControlFlow<()> {
@@ -113,7 +150,7 @@ fn classify_stmt(s: &Statement, out: &mut BTreeSet<usize>) {
             ControlFlow::Continue(())
         }
     }
-    let _ = s.visit(&mut V(out));
+    let _ = s.visit(&mut V(out, update_all));
 }
 
 fn kind_of(s: &Statement, out: &mut BTreeSet<usize>) {
@@ -193,6 +230,10 @@ fn classify_tokens(sql: &str, d: &dyn Dialect, c: &mut Classified) {
             }
             Keyword::UPDATE => {
                 c.kinds.insert(UPDATE);
+                // unparsed: no WHERE anywhere in the statement counts as every row
+                if !words.contains(&Keyword::WHERE) {
+                    c.update_all = true;
+                }
             }
             Keyword::DELETE => {
                 c.kinds.insert(DELETE);
@@ -237,6 +278,9 @@ fn classify_tokens(sql: &str, d: &dyn Dialect, c: &mut Classified) {
                             // FOR UPDATE / FOR NO KEY UPDATE lock rows, they do not change them
                             Keyword::UPDATE if !matches!(prev, Keyword::FOR | Keyword::KEY) => {
                                 c.kinds.insert(UPDATE);
+                                if !words[i..].contains(&Keyword::WHERE) {
+                                    c.update_all = true;
+                                }
                             }
                             _ => {}
                         }
@@ -333,6 +377,70 @@ pub struct Ask {
     /// something asked about deletes or overwrites: the ask says it cannot be undone
     #[serde(rename = "final")]
     pub final_: bool,
+    /// The connection's warnings that apply to this run. They ask whatever the security level; only the
+    /// connection's own switches turn them off.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<Warning>,
+}
+
+/// A run that may do more than was meant. SQL only (PostgreSQL, MySQL, SQLite).
+#[derive(Serialize, Debug, Clone, PartialEq)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum Warning {
+    /// A query can return more than BIG_LIMIT rows. limit: its LIMIT, or the row limit ypacapy adds (added);
+    /// None when nothing bounds it (LIMIT ALL, OFFSET only, a parameter, or no limit and none added).
+    BigLimit { limit: Option<u64>, added: bool },
+    /// An UPDATE without WHERE: every row of its table changes.
+    UpdateAll,
+}
+
+/// More rows than this asks first. Fixed: a row limit raised in Settings or on the connection still warns.
+pub const BIG_LIMIT: u64 = 100;
+
+/// The connection's warnings for a classified run. `console`: typed in a query tab (table tabs read a page
+/// at a time and never warn about size). `added`: the row limit ypacapy adds to this run's one query, if it does.
+pub fn warnings(c: &Classified, conn: &Conn, settings: &crate::settings::SettingsState, console: bool, added: Option<u64>) -> Vec<Warning> {
+    let mut out = vec![];
+    if console && conn.warns_big_limit(settings) {
+        // each query's bound: its own, else the added row limit, else none; the biggest one, unbounded first
+        let own = c.limits.iter().map(|&l| (l, false));
+        let rest = (c.unlimited > 0).then_some((added, added.is_some()));
+        let big = own.chain(rest).filter(|(l, _)| l.is_none_or(|n| n > BIG_LIMIT)).max_by_key(|(l, _)| l.unwrap_or(u64::MAX));
+        if let Some((limit, added)) = big {
+            out.push(Warning::BigLimit { limit, added });
+        }
+    }
+    if c.update_all && conn.warns_update_all(settings) {
+        out.push(Warning::UpdateAll);
+    }
+    out
+}
+
+/// check() plus the connection's warnings, for the SQL console. The guard asks as before, with the warnings
+/// added to its ask. When it would not ask (None, statements it leaves alone, Strict still unlocked), the
+/// warnings still ask to confirm; any approval answers them.
+pub async fn check_sql(c: &Classified, conn: &Conn, settings: &crate::settings::SettingsState, console: bool, added: Option<u64>, approval: Option<Approval>, guard: &GuardState) -> Result<Option<Ask>, String> {
+    let warns = warnings(c, conn, settings, console, added);
+    let approved = approval.is_some();
+    if let Some(mut ask) = check(c, conn, approval, guard).await? {
+        ask.warnings = warns;
+        return Ok(Some(ask));
+    }
+    if warns.is_empty() || approved {
+        return Ok(None);
+    }
+    // no kinds: nothing the security level asks about; the warnings say what this ask is for
+    let update_all = warns.contains(&Warning::UpdateAll);
+    Ok(Some(Ask {
+        kinds: vec![],
+        ops: None,
+        level: SecurityLevel::Low,
+        touch_id: false,
+        unreadable: false,
+        error: None,
+        final_: update_all,
+        warnings: warns,
+    }))
 }
 
 /// Whether the kinds asked about delete or overwrite. Redis decides by command (ops), the others by kind.
@@ -373,12 +481,12 @@ pub async fn check_kinds(writes: Vec<&'static str>, unreadable: bool, ops: Optio
     if !strict {
         return Ok(match approval {
             Some(_) => None,
-            None => Some(Ask { kinds: asked, ops, level: SecurityLevel::Low, touch_id: false, unreadable: c.unreadable, error: None, final_ }),
+            None => Some(Ask { kinds: asked, ops, level: SecurityLevel::Low, touch_id: false, unreadable: c.unreadable, error: None, final_, warnings: vec![] }),
         });
     }
     let touch = conn.touch_id;
     let window = conn.unlock_window.unwrap_or(0);
-    let ask = |error: Option<String>| Ask { kinds: asked.clone(), ops: ops.clone(), level: SecurityLevel::Strict, touch_id: touch, unreadable: c.unreadable, error, final_ };
+    let ask = |error: Option<String>| Ask { kinds: asked.clone(), ops: ops.clone(), level: SecurityLevel::Strict, touch_id: touch, unreadable: c.unreadable, error, final_, warnings: vec![] };
     if guard.unlocked(&conn.id) {
         return Ok(None);
     }
@@ -391,7 +499,7 @@ pub async fn check_kinds(writes: Vec<&'static str>, unreadable: bool, ops: Optio
                 Ok(Some(ask(Some("That passphrase is not right.".into()))))
             }
         }
-        Some(Approval::TouchId) if touch => match touchid::authenticate("run a statement that changes data".into()).await {
+        Some(Approval::TouchId) if touch => match touchid::authenticate("run a write".into()).await {
             Ok(()) => {
                 guard.note_unlock(&conn.id, window);
                 Ok(None)
@@ -408,6 +516,14 @@ pub async fn approve_lowering(conn: &Conn, approval: Option<Approval>) -> Result
         Some(Approval::TouchId) if conn.touch_id => touchid::authenticate("lower the security level".into()).await,
         Some(Approval::Passphrase { passphrase }) => verify(passphrase).await,
         _ => Err("Enter the passphrase to lower the security level.".into()),
+    }
+}
+
+/// Lowering the default level for new connections from Strict: the passphrase.
+pub async fn approve_default_lowering(approval: Option<Approval>) -> Result<(), String> {
+    match approval {
+        Some(Approval::Passphrase { passphrase }) => verify(passphrase).await,
+        _ => Err("Enter the passphrase to lower the default security level.".into()),
     }
 }
 
@@ -467,7 +583,7 @@ pub async fn reset_passphrase(new: String, guard: State<'_, GuardState>) -> Resu
     if !tokio::task::spawn_blocking(crate::keychain::has_passphrase).await.map_err(|e| e.to_string())?? {
         return Err("No passphrase is set. Use Set passphrase.".into());
     }
-    touchid::authenticate_owner("reset the ypacapy passphrase".into()).await?;
+    touchid::authenticate_owner("reset the passphrase".into()).await?;
     tokio::task::spawn_blocking(move || crate::keychain::set_passphrase(&new)).await.map_err(|e| e.to_string())??;
     guard.reset();
     Ok(())
@@ -479,7 +595,7 @@ pub async fn reset_passphrase(new: String, guard: State<'_, GuardState>) -> Resu
 pub async fn unlock_protect(conn_id: String, passphrase: Option<String>, touch_id: bool, guard: State<'_, GuardState>) -> Result<(), String> {
     let allows_touch = crate::conns::find(&conn_id).map(|c| c.touch_id).unwrap_or(false);
     if touch_id && allows_touch {
-        touchid::authenticate("change what the write guard protects".into()).await?;
+        touchid::authenticate("change a Strict connection's settings".into()).await?;
     } else {
         verify(passphrase.unwrap_or_default()).await?;
     }
@@ -575,6 +691,57 @@ mod tests {
 
     fn kinds(sql: &str, e: Engine) -> Vec<&'static str> {
         classify(sql, e).names()
+    }
+
+    fn warned(sql: &str, e: Engine, skip_limit: bool, skip_update: bool) -> Vec<Warning> {
+        let mut conn: Conn = toml::from_str("id = \"x\"\nname = \"x\"\nengine = \"sqlite\"\n").unwrap();
+        conn.warn_big_limit = skip_limit.then_some(false);
+        conn.warn_update_all = skip_update.then_some(false);
+        let c = classify(sql, e);
+        // as run_query: the row limit (100) is added to one query without a limit of its own
+        warnings(&c, &conn, &crate::settings::SettingsState::default(), true, c.limitable.then_some(100))
+    }
+
+    #[test]
+    fn big_limits_warn_above_100() {
+        let big = |l: Option<u64>| vec![Warning::BigLimit { limit: l, added: false }];
+        assert!(warned("select * from orders", Engine::Postgres, false, false).is_empty());
+        assert!(warned("select * from orders limit 100", Engine::Postgres, false, false).is_empty());
+        assert_eq!(warned("select * from orders limit 5000", Engine::Postgres, false, false), big(Some(5000)));
+        assert_eq!(warned("select * from orders limit 10, 500", Engine::Mysql, false, false), big(Some(500)));
+        assert_eq!(warned("select * from orders fetch first 1000 rows only", Engine::Postgres, false, false), big(Some(1000)));
+        assert_eq!(warned("select * from orders offset 10", Engine::Postgres, false, false), big(None));
+        assert_eq!(warned("select 1 limit 5; select * from orders limit 300", Engine::Postgres, false, false), big(Some(300)));
+        // a subquery's LIMIT does not bound what comes back
+        assert!(warned("select * from (select * from orders limit 5000) o limit 10", Engine::Postgres, false, false).is_empty());
+        assert!(warned("select * from orders limit 5000", Engine::Postgres, true, false).is_empty());
+        // a raised row limit still warns: 500 added is more than 100
+        let conn: Conn = toml::from_str("id = \"x\"\nname = \"x\"\nengine = \"sqlite\"\n").unwrap();
+        let c = classify("select * from orders", Engine::Postgres);
+        let app = crate::settings::SettingsState::default();
+        assert_eq!(warnings(&c, &conn, &app, true, Some(500)), vec![Warning::BigLimit { limit: Some(500), added: true }]);
+        // nothing added (two statements): nothing bounds the second
+        assert_eq!(warned("select 1 limit 1; select * from orders", Engine::Postgres, false, false), big(None));
+        // table tabs never warn about size
+        assert!(warnings(&classify("select * from orders limit 500", Engine::Postgres), &conn, &app, false, None).is_empty());
+        // Settings off: a connection that follows it does not warn, one set to On still does
+        let off = crate::settings::SettingsState(std::sync::RwLock::new(serde_json::json!({ "warnBigLimit": false, "warnUpdateAll": false })));
+        assert!(warnings(&c, &conn, &off, true, Some(500)).is_empty());
+        let on = Conn { warn_big_limit: Some(true), ..toml::from_str("id = \"x\"\nname = \"x\"\nengine = \"sqlite\"\n").unwrap() };
+        assert_eq!(warnings(&c, &on, &off, true, Some(500)).len(), 1);
+    }
+
+    #[test]
+    fn update_without_where_warns() {
+        let all = vec![Warning::UpdateAll];
+        assert_eq!(warned("update orders set paid = true", Engine::Postgres, false, false), all);
+        assert!(warned("update orders set paid = true where id = 1", Engine::Postgres, false, false).is_empty());
+        assert_eq!(warned("with x as (update orders set paid = true returning id) select * from x", Engine::Postgres, false, false), all);
+        // unparsed text: no WHERE token anywhere
+        assert_eq!(warned("update orders set paid = true some nonsense ((", Engine::Postgres, false, false), all);
+        assert!(warned("update orders set paid = true where id = 1 some nonsense ((", Engine::Postgres, false, false).is_empty());
+        assert!(warned("update orders set paid = true", Engine::Postgres, false, true).is_empty());
+        assert!(warned("delete from orders", Engine::Postgres, false, false).is_empty());
     }
 
     #[test]

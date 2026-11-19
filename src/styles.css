@@ -377,6 +377,13 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 .vars li button[aria-current="true"] { background: var(--color-accent-soft); color: var(--color-link); font-weight: 600; }
 .vars li.group { display: flex; align-items: center; justify-content: space-between; min-height: 28px; padding: var(--space-sm) var(--space-2xs) var(--space-2xs) var(--space-sm); color: var(--color-muted); font-size: var(--text-sm); font-weight: 600; }
 .vars li.group .icon-btn { min-width: 26px; min-height: 26px; border-radius: 6px; }
+/* Settings: one height floor, so a short pane does not shrink the window; Connection and Global group heads */
+.vars.settings { min-height: min(560px, calc(100vh - 160px)); }
+.vars.settings li.group:first-child { padding-top: 0; }
+.vars.settings li.group .cx-h-note { font-weight: 400; }
+/* Settings › Connection: sub-heads between lists, as in the Connect dialog's Options */
+.set-pane .set-list + .cx-h, .set-pane .set-list + .cx-protect-head { margin-top: var(--space-md); }
+.conn-pane .unit-field .field { padding-right: 48px; }
 
 @media (prefers-reduced-motion: reduce) {
   .spinner { animation: none; border-color: var(--color-accent); }
@@ -1476,6 +1483,87 @@ body.cards-dragging .group-drop-new { display: flex; }
 /* An ask before something that cannot be undone: a red line with the shredder, and the shredder on the danger button */
 .guard-final { display: flex; align-items: flex-start; gap: var(--space-2xs); margin: var(--space-xs) 0 0; color: var(--color-error); font-weight: 500; }
 .guard-final .ico { flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px; }
+/* The passphrase asks of a Strict connection (Lower from Strict, Unlock its protection): a tinted badge, what is
+   about to change, the passphrase with its key, and Touch ID under an "or" rule */
+.dialog.auth { width: 460px; padding: var(--space-lg); box-shadow: 0 24px 64px -24px var(--color-shadow); }
+.auth-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-sm); align-items: start; margin-bottom: var(--space-md); }
+.auth-head h2 { margin: 0 0 2px; font-size: var(--text-lg); line-height: 1.3; }
+.auth-head p { margin: 0; color: var(--color-muted); font-size: var(--text-sm); }
+.auth-badge { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--color-accent-soft); color: var(--color-link); }
+.auth-badge .ico { width: 20px; height: 20px; }
+.auth-badge--warn { background: color-mix(in srgb, var(--color-warn) 16%, transparent); color: var(--color-warn); }
+.auth-badge--danger { background: color-mix(in srgb, var(--color-error) 14%, transparent); color: var(--color-error); }
+/* Disable passphrase: what turns off (red) and what stays (green) */
+.auth-effects li { align-items: flex-start; line-height: 1.4; }
+.auth-effects li .ico { margin-top: 2px; flex-shrink: 0; }
+.auth-effects strong { font-weight: 600; }
+.auth-effects .auth-effect--off .ico { color: var(--color-error); }
+.auth-effects .auth-effect--keep .ico { color: var(--color-ok); }
+.auth-shift { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; gap: var(--space-2xs); margin-bottom: var(--space-xs); }
+.auth-level { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2xs); align-items: start; padding: var(--space-xs) var(--space-sm); border: 1px solid var(--color-rule); border-radius: var(--radius-control); background: var(--color-paper-2); }
+.auth-level > .ico { width: 16px; height: 16px; margin-top: 2px; color: var(--color-muted); }
+.auth-level-text { display: grid; gap: 1px; min-width: 0; }
+.auth-level strong { font-size: var(--text-sm); font-weight: 600; color: var(--color-ink); }
+.auth-level small { font-size: var(--text-xs, 11px); color: var(--color-muted); line-height: 1.35; }
+.auth-level--from strong { color: var(--color-muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--color-muted) 60%, transparent); }
+.auth-level--to { border-color: color-mix(in srgb, var(--color-warn) 45%, var(--color-rule)); background: color-mix(in srgb, var(--color-warn) 8%, var(--color-paper)); }
+.auth-level--to > .ico { color: var(--color-warn); }
+.auth-arrow { display: grid; place-items: center; color: var(--color-muted); }
+.auth-arrow .ico { width: 16px; height: 16px; }
+.auth-note { display: flex; align-items: center; gap: var(--space-2xs); margin: 0 0 var(--space-md); color: var(--color-muted); font-size: var(--text-sm); }
+.auth-note > .ico { width: 14px; height: 14px; flex-shrink: 0; align-self: flex-start; margin-top: 3px; }
+.auth-scope { display: grid; gap: 1px; margin: 0 0 var(--space-xs); padding: 0; list-style: none; border: 1px solid var(--color-rule); border-radius: var(--radius-control); overflow: hidden; background: var(--color-rule); }
+.auth-scope li { display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); background: var(--color-paper-2); font-size: var(--text-sm); color: var(--color-ink); }
+.auth-scope .ico { width: 15px; height: 15px; color: var(--color-link); }
+.dialog .auth-field { margin-bottom: var(--space-xs); font-weight: 500; }
+/* the passphrase: a taller, softer well; the key lights up and a ring shows while it has focus */
+.auth-input { position: relative; display: block; }
+.auth-input > .ico { position: absolute; left: 12px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); color: var(--color-muted); pointer-events: none; transition: color 0.15s; }
+.dialog.auth .auth-input .field { width: 100%; height: 40px; padding: 0 40px 0 38px; border-radius: 10px; background: var(--color-paper-2); border-color: var(--color-rule); font-size: var(--text-md); letter-spacing: 0.02em; transition: border-color 0.15s, box-shadow 0.15s, background 0.15s; }
+.dialog.auth .auth-input .field[type="password"]:not(:placeholder-shown) { letter-spacing: 0.18em; }
+.dialog.auth .auth-input .field:focus { outline: none; background: var(--color-paper); border-color: var(--color-focus); box-shadow: 0 0 0 3px var(--color-accent-soft); }
+.auth-input:focus-within > .ico { color: var(--color-link); }
+.dialog.auth .auth-input .field[aria-invalid="true"] { border-color: var(--color-error); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 16%, transparent); }
+.auth-input:has(.field[aria-invalid="true"]) > .ico { color: var(--color-error); }
+.auth-eye { position: absolute; right: 6px; top: 50%; display: grid; place-items: center; width: 28px; height: 28px; transform: translateY(-50%); border: none; border-radius: 7px; background: none; color: var(--color-muted); cursor: pointer; }
+.auth-eye:hover { background: var(--color-paper-3); color: var(--color-ink); }
+.auth-eye .ico { width: 16px; height: 16px; }
+.dialog form > .auth-field + .auth-field { margin-top: var(--space-2xs); }
+.dialog .auth-match { display: flex; align-items: center; gap: 4px; margin: 0 0 var(--space-xs); font-size: var(--text-sm); }
+.auth-match .ico { width: 14px; height: 14px; }
+.dialog .auth-match--ok { color: var(--color-ok); }
+.dialog .auth-match--bad { color: var(--color-error); }
+.dialog .auth-caps { display: flex; align-items: center; gap: 4px; margin: 0 0 var(--space-xs); color: var(--color-warn); font-size: var(--text-sm); }
+.auth-caps .ico { width: 13px; height: 13px; }
+.dialog .auth-err { display: flex; align-items: center; gap: var(--space-2xs); margin: 0 0 var(--space-xs); color: var(--color-error); font-size: var(--text-sm); }
+.auth-err .ico { width: 14px; height: 14px; }
+.auth-or { display: flex; align-items: center; gap: var(--space-xs); margin: var(--space-xs) 0; color: var(--color-muted); font-size: var(--text-xs, 11px); text-transform: uppercase; letter-spacing: 0.06em; }
+.auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--color-rule); }
+/* buttons: equal halves, 38px, rounded; the action is filled, Touch ID a soft tint; a press sinks a little */
+.dialog.auth .auth-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2xs); height: 38px; padding: 0 var(--space-md); border-radius: 10px; font-weight: 600; transition: background 0.15s, border-color 0.15s, filter 0.15s, transform 0.08s; }
+.dialog.auth .auth-btn .ico { width: 16px; height: 16px; }
+.dialog.auth .auth-btn:active { transform: translateY(1px) scale(0.99); }
+.dialog.auth .auth-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-accent-soft); }
+.dialog.auth .auth-btn--danger { background: var(--color-error); border-color: var(--color-error); color: #fff; }
+.dialog.auth .auth-btn--primary { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-ink); }
+.dialog.auth .auth-btn--danger:hover, .dialog.auth .auth-btn--primary:hover { filter: brightness(1.08); }
+.dialog.auth .auth-btn--danger:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 25%, transparent); }
+.dialog.auth .auth-touch-btn { width: 100%; background: var(--color-accent-soft); border-color: transparent; color: var(--color-link); }
+.dialog.auth .auth-touch-btn:hover { border-color: color-mix(in srgb, var(--color-link) 35%, transparent); }
+.dialog.auth .auth-touch-btn .ico { width: 18px; height: 18px; }
+/* busy: the action keeps full colour with a turning loader in place of its icon, so it reads as working, not off */
+.dialog.auth .auth-btn[aria-busy="true"] { opacity: 1; cursor: progress; }
+.dialog.auth .auth-btn .ico.spin { animation: spin 0.7s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .dialog.auth .auth-btn .ico.spin { animation: none; } }
+.dialog.auth .auth-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-xs); margin-top: var(--space-md); }
+.auth-shake { animation: auth-shake 0.32s ease; }
+@keyframes auth-shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+@media (prefers-reduced-motion: reduce) { .auth-shake { animation: none; } }
+
+/* a connection's warning (more than 100 rows, UPDATE without WHERE): asks at any security level */
+.guard-warn { display: flex; align-items: flex-start; gap: var(--space-2xs); margin: 0 0 var(--space-xs); color: var(--color-ink); }
+.guard-warn > .ico { flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px; color: var(--color-warn); }
+.dialog .guard-warn-off { margin-top: var(--space-sm); }
 .btn--danger > .ico { margin-right: var(--space-3xs); }
 
 /* Redis: key type badges in the tree and the key head, the tree's scan line and TTL marks, the key tab's head */

@@ -42,7 +42,7 @@
   $("#q2-fix").addEventListener("click", () => { const c = $("#q2-col"); c.textContent = "total"; c.classList.remove("q-err"); runQuery(); });
 
   $$("[data-guard-close]").forEach((b) => b.addEventListener("click", () => { b.closest(".backdrop").hidden = true; }));
-  $$("#guard-confirm-dlg form, #guard-pass-dlg form").forEach((f) => f.addEventListener("submit", (e) => { e.preventDefault(); f.closest(".backdrop").hidden = true; }));
+  $$("#guard-confirm-dlg form, #guard-pass-dlg form, #guard-warn-dlg form").forEach((f) => f.addEventListener("submit", (e) => { e.preventDefault(); f.closest(".backdrop").hidden = true; }));
   // History: Clear asks first and empties only this connection's list
   const hcDlg = $("#hist-clear-dlg");
   function histEmpty(none) { $("#hist-list").hidden = none; $("#hist-none").hidden = !none; $("#hist-clear").disabled = none; }
@@ -58,14 +58,19 @@
     tab = k.startsWith("ac-") ? "q5" : { "sql-error": "q2", wide: "q3", long: "q4" }[k] || "q1";
     if (k === "sql-error") { const c = $("#q2-col"); c.textContent = "totl"; c.classList.add("q-err"); }
     // the guard's two asks
-    const dlg = { "guard-confirm": "guard-confirm-dlg", "guard-pass": "guard-pass-dlg", "guard-pass-touch": "guard-pass-dlg", "guard-pass-wrong": "guard-pass-dlg" }[k];
-    // Use Touch ID only when Settings > Security > Open with Touch ID is on
+    const dlg = { "guard-confirm": "guard-confirm-dlg", "guard-pass": "guard-pass-dlg", "guard-pass-touch": "guard-pass-dlg", "guard-pass-wrong": "guard-pass-dlg", "warn-limit": "guard-warn-dlg", "warn-update": "guard-warn-dlg", "warn-update-strict": "guard-pass-dlg" }[k];
+    // the connection's warnings: they ask at any security level; at Strict the passphrase ask carries them
+    $$("#guard-warn-dlg [data-warn]").forEach((w) => { w.hidden = w.dataset.warn !== (k === "warn-update" ? "update" : "limit"); });
+    const strictWarn = k === "warn-update-strict";
+    $("#guard-pass-warn").hidden = !strictWarn;
+    $("#guard-pass-kind").textContent = strictWarn ? "UPDATE" : "DELETE";
+    // Use Touch ID only when Settings > Security > Allow Touch ID is on
     $("#guard-touch").hidden = k !== "guard-pass-touch";
-    $$("#guard-confirm-dlg, #guard-pass-dlg").forEach((d) => { d.hidden = d.id !== dlg; });
+    $$("#guard-confirm-dlg, #guard-pass-dlg, #guard-warn-dlg").forEach((d) => { d.hidden = d.id !== dlg; });
     const pin = $("#guard-pass-in"), wrong = k === "guard-pass-wrong";
     pin.value = wrong ? "hunter2" : ""; wrong ? pin.setAttribute("aria-invalid", "true") : pin.removeAttribute("aria-invalid");
     $("#guard-pass-err").hidden = !wrong;
-    state = { history: "full", "history-clear": "full", "history-none": "full", "level-menu": "full", "guard-confirm": "full", "guard-pass": "full", "guard-pass-touch": "full", "guard-pass-wrong": "full", "cell-menu": "full", "row-menu": "full", results: "full", running: "loading", empty: "empty", "sql-error": "error", lost: "lost", wide: "full", long: "full" }[k] ?? "full";
+    state = { history: "full", "history-clear": "full", "history-none": "full", "level-menu": "full", "guard-confirm": "full", "guard-pass": "full", "guard-pass-touch": "full", "guard-pass-wrong": "full", "warn-limit": "full", "warn-update": "full", "warn-update-strict": "full", "cell-menu": "full", "row-menu": "full", results: "full", running: "loading", empty: "empty", "sql-error": "error", lost: "lost", wide: "full", long: "full" }[k] ?? "full";
     render();
     if (k.startsWith("ac-")) window.acShow(k);
     // the two right-click menus, opened as a right-click would

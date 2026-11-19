@@ -286,7 +286,7 @@ export function TablePane({ tab }: { tab: TableTab }) {
           items={[
             { label: "Run", kbd: "⌘↵", run: () => void st.readTable(tab.id) },
             { label: "Open as a query", run: () => st.newQueryTab(tableSelect(conn.engine, tab.schema, tab.table, tab.where, limit, tab.offset) + "\n", tab.table) },
-            { label: "Reload columns and indexes", run: () => void st.loadTableInfo(tab.id) },
+            { label: "Refresh columns and indexes", run: () => void st.loadTableInfo(tab.id) },
           ]}
         />
       </div>

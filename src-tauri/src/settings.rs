@@ -51,11 +51,19 @@ pub fn load_settings(state: State<SettingsState>) -> Result<Value, String> {
     Ok(v)
 }
 
+/// Saves settings.toml. Lowering Settings > Security > Default security level from Strict needs the passphrase,
+/// as lowering a connection does (there is no connection here, so no Touch ID).
 #[tauri::command]
-pub fn save_settings(state: State<SettingsState>, settings: Value) -> Result<(), String> {
+pub async fn save_settings(state: State<'_, SettingsState>, settings: Value, approval: Option<crate::guard::Approval>) -> Result<(), String> {
     let settings = strip_nulls(settings);
     if !settings.is_object() {
         return Err("Settings must be a table".into());
+    }
+    let strict = |v: &Value| v.get("defaultLevel").and_then(|l| l.as_str()) == Some("strict");
+    let old = state.0.read().map_err(|e| e.to_string())?.clone();
+    let lowers = strict(&old) && !strict(&settings);
+    if lowers && tokio::task::spawn_blocking(crate::keychain::has_passphrase).await.map_err(|e| e.to_string())?? {
+        crate::guard::approve_default_lowering(approval).await?;
     }
     let text = toml::to_string_pretty(&settings).map_err(|e| format!("Could not write settings: {e}"))?;
     let path = config_dir()?.join("settings.toml");

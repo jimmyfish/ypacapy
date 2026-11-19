@@ -4,6 +4,20 @@ All notable changes to ypacapy are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Added
+
+- **Warnings per connection.** A SQL query that can return more than 100 rows (its own LIMIT, the row limit ypacapy adds, or nothing limiting it), and an `UPDATE` without `WHERE`, ask before they run. They ask at every security level, None included; at Strict the passphrase ask carries them. Settings › Security › Warnings sets them for every connection (on by default); a connection can follow that or pick On or Off. The warnings are not behind the passphrase, Strict included. Table tabs do not warn about size.
+- **Keep query history per connection.** Use Settings, On or Off, so a production connection can keep its runs out of History.
+- **Connection settings in Settings.** Opened from a connection tab, Settings starts with that connection's own Security (level, what it asks about, warnings) and Queries (row limit, timeout, history, heartbeat), above the app-wide ones under Global. Opened from Home, only Global shows.
+
+### Changed
+
+- **Clearer wording across the app.** One name per thing (Cancelled, Discard, Refresh, Pick tables, Engine, Open as a query, Use Global, Allow Touch ID, Unlock), no colon reveals or "X, not Y" lines, and engine-neutral messages where they fit. The About tagline now says what ypacapy is and what stays on this Mac.
+- **Settings keeps a minimum height,** so a short pane does not shrink the window.
+- **New passphrase asks for Strict connections.** Lowering from Strict (tabs bar, Settings, the connection dialog) shows the level it leaves and the one it goes to and what that means for writes; Change shows what it unlocks. Both have a show/hide passphrase field, a Caps Lock hint, Touch ID when the connection allows it, and Abort beside the action. Picking None or Low on a locked Strict connection asks right there instead of needing Change first.
+- **Lowering the default security level from Strict asks for the passphrase.** Settings › Security › Default security level for new connections now uses the same ask as lowering a connection.
+- **Passphrase dialogs redesigned.** Set, Change, Reset and Disable passphrase share the same look: a badge, what the action does (Disable lists what turns off and what stays), show/hide on every field, a Caps Lock hint, "They match" / "They differ" while typing the new one twice, and Abort beside the action. While the app checks, the action (or Use Touch ID) shows a turning loader instead of only greying out.
+
 ## [0.1.0] - 2026-11-19
 
 ### Added

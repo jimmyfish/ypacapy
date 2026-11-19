@@ -4,7 +4,7 @@
   // Editing: a hash's values in the grid, a string in a text box, the expiry from the head, Delete key. Every write
   // goes through the write guard; Save writes the changes at once.
   const K = window.RKEYS, refresh = $("#rk-refresh"), match = $("#rk-match");
-  // the command that reads the whole key, for Open in console
+  // the command that reads the whole key, for Open as a query
   const READ = { hash: "hgetall", string: "", list: "", set: "", zset: "results", stream: "" };
   const LONG = "keycloak:admintoken:956094608cdf70355f7bf11b25e7f5c76ab73be8100df140b81690d17d537f6c";
   let key = "hash", state = "full", strAs = "json", edit = false, long = false;

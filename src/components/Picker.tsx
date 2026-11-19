@@ -260,7 +260,7 @@ export function EnginePicker({
       id={id}
       value={value}
       options={options}
-      label="Driver"
+      label="Engine"
       className="picker--engine"
       onChange={onChange}
     />

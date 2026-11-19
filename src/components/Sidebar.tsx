@@ -239,7 +239,7 @@ function SchemaSide() {
                           <Kind {...icoC("kind")} />
                           <span className="name">{it.name}</span>
                           {it.est !== undefined && it.est !== null && (
-                            <span className="count est" title={mongo ? "Estimate from collection metadata, not a count" : "Estimate from table statistics"}>
+                            <span className="count est" title={mongo ? "Estimated from collection metadata" : "Estimate from table statistics"}>
                               {estimate(it.est)}
                             </span>
                           )}
@@ -610,7 +610,7 @@ function HistorySide() {
                   {h.database && h.database !== picked && <span className="hdb">{h.database}</span>}
                   <span className="name hq">{h.sql.replace(/\s+/g, " ").trim()}</span>
                   <span className="htime">{clockOf(h.startedAt)}</span>
-                  <span className={`hstatus ${h.status === "ok" ? "rows" : "fail"}`}>{h.status === "ok" ? (h.rows ?? "ok") : h.status === "error" ? "error" : "stopped"}</span>
+                  <span className={`hstatus ${h.status === "ok" ? "rows" : "fail"}`}>{h.status === "ok" ? (h.rows ?? "ok") : h.status === "error" ? "error" : "cancelled"}</span>
                 </button>
               </div>
             ))}

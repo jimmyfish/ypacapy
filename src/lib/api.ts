@@ -4,7 +4,8 @@ import type { Approval, CollInfo, ColumnBrief, Conn, HistoryEntry, KeyInfo, KeyP
 /** Every Tauri command, typed. Rust errors arrive as strings. */
 export const api = {
   loadSettings: () => invoke<Settings>("load_settings"),
-  saveSettings: (settings: Settings) => invoke<void>("save_settings", { settings }),
+  /** approval: lowering the default security level from Strict (guard::approve_default_lowering) */
+  saveSettings: (settings: Settings, approval?: Approval) => invoke<void>("save_settings", { settings, approval }),
   listConnections: () => invoke<Conn[]>("list_connections"),
   saveConnection: (conn: Conn, password: string | null) => invoke<Conn>("save_connection", { conn, password }),
   deleteConnection: (id: string) => invoke<void>("delete_connection", { id }),

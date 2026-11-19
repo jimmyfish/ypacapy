@@ -352,7 +352,7 @@ export function DiagramPane({ tab }: { tab: DiagramTab }) {
       {!tab.picking && (
         <button type="button" className="btn btn--primary" onClick={() => st.updateTab(tab.id, { picking: true })}>
           <ListChecks {...ico} />
-          Choose tables
+          Pick tables
         </button>
       )}
     </div>
@@ -368,7 +368,7 @@ export function DiagramPane({ tab }: { tab: DiagramTab }) {
       <span>They were dropped or renamed. Pick the tables to draw again.</span>
       <button type="button" className="btn btn--primary" onClick={() => st.updateTab(tab.id, { picking: true })}>
         <ListChecks {...ico} />
-        Choose tables
+        Pick tables
       </button>
     </div>
   ) : (
@@ -487,7 +487,7 @@ export function DiagramPane({ tab }: { tab: DiagramTab }) {
           <Save {...ico} />
           <span>{ready && !canSave && saved ? "Saved" : "Save"}</span>
         </button>
-        <button type="button" className="icon-btn" aria-label="Read the catalog again" title="Read the catalog again" disabled={!tab.tables.length || tab.loading} onClick={() => void st.readDiagram(tab.id, { reload: true })}>
+        <button type="button" className="icon-btn" aria-label="Refresh" title="Refresh from the catalog" disabled={!tab.tables.length || tab.loading} onClick={() => void st.readDiagram(tab.id, { reload: true })}>
           {tab.loading ? <LoaderCircle {...icoC("spin")} /> : <RefreshCw {...ico} />}
         </button>
         <span className="sep" aria-hidden />
@@ -503,7 +503,7 @@ export function DiagramPane({ tab }: { tab: DiagramTab }) {
         <button type="button" className="icon-btn" aria-label="Fit the diagram" title="Fit the diagram" disabled={!ready} onClick={fit}>
           <Maximize {...ico} />
         </button>
-        <button type="button" className="icon-btn" aria-label="Reset layout" title="Reset layout: arrange every table afresh (Save keeps it)" disabled={!ready || !canReset} onClick={() => st.updateTab(tab.id, { moves: {}, auto: true, view: undefined })}>
+        <button type="button" className="icon-btn" aria-label="Reset layout" title="Arrange every table again. Save to keep the new layout." disabled={!ready || !canReset} onClick={() => st.updateTab(tab.id, { moves: {}, auto: true, view: undefined })}>
           <Undo2 {...ico} />
         </button>
         <span className="sep" aria-hidden />
@@ -652,7 +652,7 @@ function Picker({ tab, connId, allTables, loadingTree }: { tab: DiagramTab; conn
           }}
         >
           <p className="help">
-            Tables of <strong>{tab.schema}</strong>. Only the tables you tick are read from the catalog and drawn.
+            Tables of <strong>{tab.schema}</strong>. Only the tables you pick are read from the catalog and drawn.
           </p>
           <div className="search">
             <Search {...ico} />
@@ -660,12 +660,12 @@ function Picker({ tab, connId, allTables, loadingTree }: { tab: DiagramTab; conn
           </div>
           <div className="ep-tools">
             <button type="button" className="btn btn--quiet" onClick={() => set(new Set([...ticked, ...shown.map((t) => t.name)]))}>
-              {filtering ? "Select shown" : "Select all"}
+              {filtering ? "Pick shown" : "Pick all"}
             </button>
             <button type="button" className="btn btn--quiet" onClick={() => set(new Set([...ticked].filter((x) => !shown.some((t) => t.name === x))))}>
-              {filtering ? "Unselect shown" : "Unselect all"}
+              {filtering ? "Clear shown" : "Clear all"}
             </button>
-            <button type="button" className="btn btn--quiet" disabled={!n || linking} aria-busy={linking || undefined} title="Tick every table one foreign key away from a ticked one (reads the schema's foreign keys)" onClick={() => void addLinked()}>
+            <button type="button" className="btn btn--quiet" disabled={!n || linking} aria-busy={linking || undefined} title="Pick every table one foreign key away from a ticked one (reads the schema's foreign keys)" onClick={() => void addLinked()}>
               {linking ? <LoaderCircle {...icoC("spin")} /> : <Link {...ico} />}
               Add linked tables
             </button>
@@ -703,7 +703,7 @@ function Picker({ tab, connId, allTables, loadingTree }: { tab: DiagramTab; conn
           </div>
           <footer>
             <span className="ep-n" aria-live="polite">
-              {n} of {names.length} ticked
+              {n} of {names.length} picked
             </span>
             <button type="button" className="btn" onClick={cancel}>
               Cancel
@@ -753,7 +753,7 @@ function ImageDialog({ model, layout, detail, name, onClose }: { model: DiagramM
           }}
         >
           <p className="help">
-            The whole diagram as drawn: {n} {n === 1 ? "table" : "tables"}, {{ all: "all columns", keys: "key columns", none: "table names only" }[detail]}. Twice its size for sharp text.
+            The whole diagram as drawn: {n} {n === 1 ? "table" : "tables"}, {{ all: "all columns", keys: "key columns", none: "table names only" }[detail]}. Exported at twice its size so the text stays sharp.
           </p>
           <div className="seg ei-format" role="radiogroup" aria-label="Format">
             {(["png", "jpg"] as const).map((f) => (

@@ -339,7 +339,7 @@ fn table(c: &Cmd, v: &Value) -> (Vec<ColMeta>, Vec<Vec<Option<String>>>, Option<
     // SCAN family: [cursor, [items]]
     if matches!(n, "SCAN" | "HSCAN" | "SSCAN" | "ZSCAN") && a.len() == 2 {
         let cursor = cell(&a[0]).unwrap_or_default();
-        let note = Some(if cursor == "0" { "Cursor 0: the scan is done".to_string() } else { format!("Next cursor {cursor}. Run again with it for the next batch") });
+        let note = Some(if cursor == "0" { "Cursor 0, so the scan is done".to_string() } else { format!("Next cursor {cursor}. Run again with it for the next batch") });
         let list = items(&a[1]).cloned().unwrap_or_default();
         let (cols, rows) = match n {
             "HSCAN" if !c.has("NOVALUES") => pairs(&list, "field", ("value", "string")),
@@ -745,7 +745,7 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
                 title: "ypacapy could not read the command".into(),
                 says: Some(e.says(&req.sql)),
                 message: e.message.clone(),
-                hint: Some(format!("It is read before it is sent, so nothing went to {}.", conn.name)),
+                hint: Some(format!("ypacapy reads it before sending, so nothing was sent to {}.", conn.name)),
                 lost: false,
                 ms: ms(&t),
                 fix: None,
@@ -881,7 +881,7 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
             }
         }
     };
-    if req.history && settings.bool("keepHistory", true) {
+    if req.history && conn.keeps_history(&settings) {
         let (status, rows, error) = match &outcome {
             RunOutcome::Done { sets, affected, .. } => ("ok", affected.map(|a| a as i64).or(sets.last().map(|s| s.rows.len() as i64)), None),
             RunOutcome::Error { title, .. } => ("error", None, Some(title.clone())),

@@ -138,7 +138,7 @@ export function RunMeta({ run, extra }: { run: RunState; extra?: ReactNode }) {
       </span>
     );
   if (!o) return <span className="push meta">{extra}</span>;
-  const [cls, text] = o.kind === "done" ? ["ok", "OK"] : o.kind === "error" ? ["fail", o.lost ? "Disconnected" : "Error"] : ["dim", "Stopped"];
+  const [cls, text] = o.kind === "done" ? ["ok", "OK"] : o.kind === "error" ? ["fail", o.lost ? "Disconnected" : "Error"] : ["dim", o.kind === "cancelled" && o.timeout ? "Timed out" : "Cancelled"];
   return (
     <span className="push meta">
       <span className={cls}>{text}</span>

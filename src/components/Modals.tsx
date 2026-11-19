@@ -7,7 +7,7 @@ import { api, errText } from "../lib/api";
 import { highlightInline } from "../lib/sql";
 import { systemFonts } from "../lib/fonts";
 import { BUILTIN, DEFAULT_SCHEME, FAMILIES, SCHEMES, schemeSwatch, type BuiltinId } from "../lib/themes";
-import { DEFAULT_LEVEL, LEVELS, MONGO_KINDS, REDIS_KINDS, STATEMENTS, type Approval, type Conn, type Engine, type MongoTls, type ReadPref, type SecurityLevel, type Settings, type SslMode } from "../types";
+import { DEFAULT_LEVEL, LEVELS, MONGO_KINDS, REDIS_KINDS, STATEMENTS, type Approval, type Conn, type Engine, type MongoTls, type ReadPref, type SecurityLevel, type Settings, type SslMode, type Warning } from "../types";
 import { Select } from "./Select";
 import { LevelSelect } from "./LevelPicker";
 import { GroupSelect } from "./GroupPicker";
@@ -18,6 +18,7 @@ import { useUpdates } from "../updates";
 import { RELEASES_URL } from "../lib/updater";
 import { DEV_BUILD } from "../build";
 import { AboutModal } from "./AboutModal";
+import { AuthDialog, PassphraseDialog, type PassKind } from "./AuthDialog";
 import type { CollInfo, KeyInfo } from "../types";
 import {
   CircleAlert,
@@ -82,6 +83,8 @@ export function Modals() {
       return <SettingsModal section={modal.section} onClose={close} />;
     case "guard":
       return <GuardModal m={modal} onClose={close} />;
+    case "lower":
+      return <AuthDialog kind="lower" connName={modal.connName} engine={modal.engine} to={modal.to} touch={modal.touch} submit={modal.submit} onClose={close} />;
     case "about":
       return <AboutModal onClose={close} />;
     case "collInfo":
@@ -260,7 +263,7 @@ function CollInfoModal({ m, onClose }: { m: Extract<Modal, { kind: "collInfo" }>
         ) : info?.kind === "view" ? (
           <div className="info-body">
             <h3 className="cx-h">Collection</h3>
-            <dl className="info-grid">{row("Type", "View", "No storage of its own: it reads another collection")}</dl>
+            <dl className="info-grid">{row("Type", "View", "Reads another collection and stores nothing of its own")}</dl>
           </div>
         ) : info ? (
           <div className="info-body" aria-busy={busy || undefined}>
@@ -401,8 +404,11 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
   };
   // Redis KEYS is a read: the ask says why it asks, and offers SCAN
   const keysOnly = !!m.ask.ops?.length && m.ask.ops.every((o) => o === "KEYS");
+  // the connection's warnings (SQL): they ask at any security level; alone, nothing the level asks about is in the run
+  const warns = m.ask.warnings ?? [];
+  const warnOnly = warns.length > 0 && !m.ask.kinds.length && !m.ask.unreadable;
   return (
-    <Shell title={m.title ?? (verify ? "Enter the passphrase to run this" : "Run this on " + m.connName + "?")} onClose={onClose}>
+    <Shell title={verify ? "Enter the passphrase to run this" : "Run this on " + m.connName + "?"} onClose={onClose}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -411,14 +417,15 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
           } else approve({ kind: "confirm" });
         }}
       >
-        <p className="help">
-          {m.message ??
-            (m.ask.unreadable
+        {!warnOnly && (
+          <p className="help">
+            {m.ask.unreadable
               ? `ypacapy could not read what this ${m.ask.ops ? "command" : "SQL"} does, so it asks first.`
               : keysOnly
                 ? `It reads every key in the database, and ${m.connName} answers no one else until it is done:`
-                : `It changes data or structure on ${m.connName}:`)}
-        </p>
+                : `It changes data or structure on ${m.connName}:`}
+          </p>
+        )}
         {m.ask.kinds.length > 0 && (
           <div className="guard-kinds">
             {(m.ask.ops?.length ? m.ask.ops : m.ask.kinds).map((k) => (
@@ -428,6 +435,12 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
             ))}
           </div>
         )}
+        {warns.map((w) => (
+          <p key={w.kind} className="guard-warn">
+            <TriangleAlert {...ico} />
+            <span>{warnText(w)}</span>
+          </p>
+        ))}
         {verify && (
           <label>
             Passphrase
@@ -440,6 +453,7 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
             {m.ask.error}
           </p>
         )}
+        {warns.length > 0 && <p className="help guard-warn-off">Turn {warns.length > 1 ? "these warnings" : "this warning"} off in Settings › Connection › Security.</p>}
         <footer>
           {verify && m.ask.touchId && (
             <button type="button" className="btn" onClick={() => approve({ kind: "touchId" })}>
@@ -457,11 +471,27 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
           )}
           <button type="submit" className="btn btn--danger" autoFocus={!verify}>
             {m.ask.final && <Shredder {...ico} />}
-            {m.title ? "Lower it" : keysOnly ? "Run KEYS" : "Run"}
+            {keysOnly ? "Run KEYS" : "Run"}
           </button>
         </footer>
       </form>
     </Shell>
+  );
+}
+
+/** guard::Warning in words. BIG_LIMIT in Rust is 100. */
+function warnText(w: Warning): ReactNode {
+  if (w.kind === "updateAll")
+    return (
+      <>
+        This <code className="stmt">UPDATE</code> has no <code className="stmt">WHERE</code>, so it changes every row of its table.
+      </>
+    );
+  if (w.limit === null) return "Nothing limits how many rows it returns, so more than 100 can come back.";
+  return (
+    <>
+      It can return up to <strong>{w.limit.toLocaleString()}</strong> rows{w.added ? ", the row limit ypacapy adds" : ""}, more than 100.
+    </>
   );
 }
 
@@ -647,6 +677,9 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
   const [appName, setAppName] = useState(conn?.appName ?? "");
   const [connectTimeout, setConnectTimeout] = useState(conn?.connectTimeout ? String(conn.connectTimeout) : "");
   const [heartbeat, setHeartbeat] = useState<"app" | "on" | "off">(conn?.heartbeat === undefined ? "app" : conn.heartbeat ? "on" : "off");
+  const [keepHistory, setKeepHistory] = useState<Tri>(tri(conn?.keepHistory));
+  // SQL: the warnings that ask at any security level; a new connection follows Settings
+  const [warn, setWarn] = useState<Warn>({ limit: tri(conn?.warnBigLimit), update: tri(conn?.warnUpdateAll) });
   // MongoDB
   const [srv, setSrv] = useState(!!conn?.srv);
   const [authSource, setAuthSource] = useState(conn?.authSource ?? "");
@@ -726,6 +759,9 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
     rowLimit: optNum(rowLimit),
     statementTimeout: optNum(stmtTimeout),
     heartbeat: lite || heartbeat === "app" ? undefined : heartbeat === "on",
+    keepHistory: fromTri(keepHistory),
+    warnBigLimit: mongo || redis ? undefined : fromTri(warn.limit),
+    warnUpdateAll: mongo || redis ? undefined : fromTri(warn.update),
     ...(lite
       ? { file: file.trim() }
       : {
@@ -881,7 +917,7 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
 
           <div className="cx-panel" role="tabpanel" id="cp-general" aria-labelledby="ct-general" hidden={tab !== "general"}>
             <div className="cx-grid">
-              <label htmlFor="c-engine">Driver</label>
+              <label htmlFor="c-engine">Engine</label>
               <span className="cx-full cx-driver">
                 <EnginePicker id="c-engine" value={engine} onChange={(e) => (pickEngine(e), setUrlDraft(null))} />
               </span>
@@ -974,9 +1010,11 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
               lockable={conn?.level === "strict" && passSet}
               mongo={mongo}
               redis={redis}
+              warn={mongo || redis ? undefined : warn}
+              onWarn={setWarn}
             />
             <h3 className="cx-h">
-              Queries <span className="cx-h-note">Empty uses the value in Settings</span>
+              Queries <span className="cx-h-note">Empty uses Global</span>
             </h3>
             <div className="set-list">
               <SetItem
@@ -994,14 +1032,21 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
                 <OptUnit id="c-timeout" unit="s" placeholder={String(settings.statementTimeout ?? 30)} value={stmtTimeout} onChange={setStmtTimeout} />
               </SetItem>
               {!lite && (
-                <SetItem label="Connection heartbeat" desc={redis ? "Keeps idle connections open with PING" : mongo ? "Keeps idle sessions open with a ping command" : "Keeps idle sessions open with select 1"} htmlFor="c-beat">
+                <SetItem label="Connection heartbeat" desc={redis ? "Keeps idle connections open with PING" : mongo ? "Keeps idle connections open with a ping command" : "Keeps idle connections open with select 1"} htmlFor="c-beat">
                   <Select id="c-beat" className="field set-choice" value={heartbeat} onChange={(e) => setHeartbeat(e.target.value as "app" | "on" | "off")}>
-                    <option value="app">Use Settings ({settings.heartbeat ? "on" : "off"})</option>
+                    <option value="app">Use Global ({settings.heartbeat ? "on" : "off"})</option>
                     <option value="on">On</option>
                     <option value="off">Off</option>
                   </Select>
                 </SetItem>
               )}
+              <SetItem label="Keep query history" desc="Off keeps this connection's runs out of History" htmlFor="c-hist">
+                <Select id="c-hist" className="field set-choice" value={keepHistory} onChange={(e) => setKeepHistory(e.target.value as Tri)}>
+                  <option value="app">Use Global ({settings.keepHistory !== false ? "on" : "off"})</option>
+                  <option value="on">On</option>
+                  <option value="off">Off</option>
+                </Select>
+              </SetItem>
             </div>
           </div>
 
@@ -1038,7 +1083,7 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
                   </button>
                 </span>
                 <span className="help cx-full cx-under" id="c-tlscert-h">
-                  Only when the server asks for one: a file with the certificate and its key.
+                  A file with the certificate and its key. Needed only when the server asks for one.
                 </span>
               </div>
             ) : mongo ? (
@@ -1193,8 +1238,15 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
 const UI_FONTS = ["SF Pro", "Helvetica Neue", "Avenir Next", "Inter", "Georgia"];
 const MONO_FONTS = ["SF Mono", "Menlo", "Monaco", "Courier New", "JetBrains Mono"];
 
+// Opened from a connection tab, Settings starts with that connection's own settings, in a group above the app-wide
+// ones (Global). Opened from Home there is no connection: only Global shows, without its heading.
 function SettingsModal({ section: initial, onClose }: { section?: SettingsSection; onClose: () => void }) {
-  const [section, setSection] = useState<SettingsSection>(initial ?? "appearance");
+  const conn = useStore((s) => (s.view === "conn" && s.currentId ? s.conns.find((c) => c.id === s.currentId) : undefined));
+  const [section, setSection] = useState<SettingsSection>(initial ?? (conn ? "conn-security" : "appearance"));
+  const connItems: [SettingsSection, string, ReactNode][] = [
+    ["conn-security", "Security", <ShieldCheck {...ico} key="cs" />],
+    ["conn-queries", "Queries", <Terminal {...ico} key="cq" />],
+  ];
   const items: [SettingsSection, string, ReactNode][] = [
     ["appearance", "Appearance", <Type {...ico} key="a" />],
     ["queries", "Queries", <Terminal {...ico} key="q" />],
@@ -1202,32 +1254,230 @@ function SettingsModal({ section: initial, onClose }: { section?: SettingsSectio
     ["data", "Data on this Mac", <Lock {...ico} key="d" />],
     ["updates", "Updates", <CircleArrowDown {...ico} key="u" />],
   ];
+  const navItem = ([k, label, icon]: [SettingsSection, string, ReactNode]) => (
+    <li key={k}>
+      <button type="button" aria-current={section === k} onClick={() => setSection(k)}>
+        {icon}
+        {label}
+      </button>
+    </li>
+  );
   return (
     <Shell title="Settings" onClose={onClose} wide>
       <div className="vars settings">
         <ul>
-          {items.map(([k, label, icon]) => (
-            <li key={k}>
-              <button type="button" aria-current={section === k} onClick={() => setSection(k)}>
-                {icon}
-                {label}
-              </button>
+          {conn && (
+            <li className="group">
+              <span>Connection</span>
+              <span className="cx-h-note">{conn.name}</span>
             </li>
-          ))}
+          )}
+          {conn && connItems.map(navItem)}
+          {conn && <li className="group">Global</li>}
+          {items.map(navItem)}
         </ul>
-        {section === "appearance" ? (
-          <AppearancePane />
+        {section === "conn-security" && conn ? (
+          <ConnSecurityPane key={conn.id} conn={conn} />
+        ) : section === "conn-queries" && conn ? (
+          <ConnQueriesPane key={conn.id} conn={conn} />
         ) : section === "queries" ? (
           <QueriesPane />
         ) : section === "security" ? (
           <SecurityPane />
         ) : section === "updates" ? (
           <UpdatesPane />
-        ) : (
+        ) : section === "data" ? (
           <DataPane />
+        ) : (
+          <AppearancePane />
         )}
       </div>
     </Shell>
+  );
+}
+
+type Tri = "app" | "on" | "off";
+/** A per-connection switch that may follow Settings: missing = "app" (Use Settings). */
+const tri = (b?: boolean): Tri => (b === undefined ? "app" : b ? "on" : "off");
+const fromTri = (t: Tri) => (t === "app" ? undefined : t === "on");
+
+/** Settings › Connection: saves the open connection as its fields change, one save after another. */
+function useConnSave(id: string) {
+  const chain = useRef(Promise.resolve());
+  const [err, setErr] = useState("");
+  const save = (patch: Partial<Conn>, opts: { done?: () => void; failed?: () => void } = {}) => {
+    chain.current = chain.current.then(async () => {
+      const st = useStore.getState();
+      const cur = st.conns.find((c) => c.id === id);
+      if (!cur) return;
+      try {
+        // null keeps the keychain password as it is
+        await api.saveConnection({ ...cur, ...patch }, null);
+        await st.refreshConns();
+        setErr("");
+        opts.done?.();
+      } catch (e) {
+        setErr(errText(e));
+        opts.failed?.();
+      }
+    });
+  };
+  return [save, err] as const;
+}
+
+/** Settings › Connection › Security: the level, what it asks about, and the warnings (SQL). */
+function ConnSecurityPane({ conn }: { conn: Conn }) {
+  const passSet = useStore((st) => st.pass.set);
+  const [save, err] = useConnSave(conn.id);
+  const mongo = conn.engine === "mongo";
+  const redis = conn.engine === "redis";
+  const [level, setLevel] = useState(conn.level);
+  const [protection, setProtection] = useState<Protection>({ touchId: !!conn.touchId, window: conn.unlockWindow ?? 0, list: conn.protect ?? kindsOf(conn.engine) });
+  const [warn, setWarn] = useState<Warn>({ limit: tri(conn.warnBigLimit), update: tri(conn.warnUpdateAll) });
+  // a Strict connection stays open for lowering only while this pane is open
+  useEffect(() => () => void api.lockProtect().catch(() => {}), []);
+  // a save that failed (Strict still locked) puts back what is saved
+  const revert = () => {
+    const c = useStore.getState().conns.find((x) => x.id === conn.id);
+    if (!c) return;
+    setLevel(c.level);
+    setProtection({ touchId: !!c.touchId, window: c.unlockWindow ?? 0, list: c.protect ?? kindsOf(c.engine) });
+    setWarn({ limit: tri(c.warnBigLimit), update: tri(c.warnUpdateAll) });
+  };
+  // Touch ID and the unlock window mean something only under Strict
+  const strictOnly = (l: SecurityLevel, p: Protection) => ({ touchId: (l === "strict" && p.touchId) || undefined, unlockWindow: l === "strict" && p.window ? p.window : undefined });
+  return (
+    <div className="set-pane conn-pane">
+      <SecuritySection
+        title={
+          <>
+            Security <span className="cx-h-note">{conn.name} only</span>
+          </>
+        }
+        connId={conn.id}
+        level={level}
+        onLevel={(l) => {
+          setLevel(l);
+          save({ level: l, ...strictOnly(l, protection) }, { failed: revert });
+        }}
+        value={protection}
+        onChange={(p) => {
+          setProtection(p);
+          save({ protect: storedList(p.list, conn.engine), ...strictOnly(level, p) }, { failed: revert });
+        }}
+        lockable={conn.level === "strict" && passSet}
+        mongo={mongo}
+        redis={redis}
+        follow="Global"
+        warn={mongo || redis ? undefined : warn}
+        onWarn={(w) => {
+          setWarn(w);
+          save({ warnBigLimit: fromTri(w.limit), warnUpdateAll: fromTri(w.update) }, { failed: revert });
+        }}
+      />
+      {err && (
+        <p className="help err" role="alert">
+          {err}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Settings › Connection › Queries: the values that follow Global › Queries while empty. */
+function ConnQueriesPane({ conn }: { conn: Conn }) {
+  const settings = useStore((s) => s.settings);
+  const [save, err] = useConnSave(conn.id);
+  const lite = conn.engine === "sqlite";
+  const mongo = conn.engine === "mongo";
+  const redis = conn.engine === "redis";
+  const [rowLimit, setRowLimit] = useState(conn.rowLimit ? String(conn.rowLimit) : "");
+  const [stmtTimeout, setStmtTimeout] = useState(conn.statementTimeout ? String(conn.statementTimeout) : "");
+  const [keepHistory, setKeepHistory] = useState<Tri>(tri(conn.keepHistory));
+  const [heartbeat, setHeartbeat] = useState<Tri>(tri(conn.heartbeat));
+  // the two numbers save once typing pauses, and when the pane closes
+  const nums = useRef({ rowLimit, stmtTimeout });
+  nums.current = { rowLimit, stmtTimeout };
+  const savedNums = useRef(nums.current);
+  const flush = useRef(() => {});
+  flush.current = () => {
+    const n = nums.current;
+    if (n.rowLimit === savedNums.current.rowLimit && n.stmtTimeout === savedNums.current.stmtTimeout) return;
+    savedNums.current = n;
+    save({ rowLimit: optNum(n.rowLimit), statementTimeout: optNum(n.stmtTimeout) });
+  };
+  useEffect(() => {
+    const t = setTimeout(() => flush.current(), 500);
+    return () => clearTimeout(t);
+  }, [rowLimit, stmtTimeout]);
+  useEffect(() => () => flush.current(), []);
+  return (
+    <div className="set-pane conn-pane">
+      <h3>
+        Queries <span className="cx-h-note">{conn.name} only · empty uses Global</span>
+      </h3>
+      <div className="set-list">
+        <SetItem
+          label={redis ? "Page size" : "Row limit"}
+          desc={redis ? "How many fields, items or members a key tab reads at a time" : mongo ? "Added to a find or aggregate that has no limit of its own" : "Added to a select that has no limit of its own"}
+          htmlFor="cn-limit"
+        >
+          <OptUnit id="cn-limit" unit="rows" placeholder={String(settings.rowLimit ?? DEFAULT_ROW_LIMIT)} value={rowLimit} onChange={setRowLimit} />
+        </SetItem>
+        <SetItem label={redis ? "Command timeout" : "Statement timeout"} desc={redis ? "ypacapy stops waiting; Redis has no way to stop a command it started" : "0 lets a statement run as long as it takes"} htmlFor="cn-timeout">
+          <OptUnit id="cn-timeout" unit="s" placeholder={String(settings.statementTimeout ?? 30)} value={stmtTimeout} onChange={setStmtTimeout} />
+        </SetItem>
+        <SetItem label="Keep query history" desc="Off keeps this connection's runs out of History" htmlFor="cn-hist">
+          <Select
+            id="cn-hist"
+            className="field set-choice"
+            value={keepHistory}
+            onChange={(e) => {
+              const v = e.target.value as Tri;
+              setKeepHistory(v);
+              save({ keepHistory: fromTri(v) }, { failed: () => setKeepHistory(tri(conn.keepHistory)) });
+            }}
+          >
+            <option value="app">Use Global ({settings.keepHistory !== false ? "on" : "off"})</option>
+            <option value="on">On</option>
+            <option value="off">Off</option>
+          </Select>
+        </SetItem>
+        {!lite && (
+          <SetItem label="Connection heartbeat" desc={redis ? "Keeps idle connections open with PING" : mongo ? "Keeps idle connections open with a ping command" : "Keeps idle connections open with select 1"} htmlFor="cn-beat">
+            <Select
+              id="cn-beat"
+              className="field set-choice"
+              value={heartbeat}
+              onChange={(e) => {
+                const v = e.target.value as Tri;
+                setHeartbeat(v);
+                // the heartbeat is read when the connection opens: a live one reconnects to pick it up
+                save(
+                  { heartbeat: fromTri(v) },
+                  {
+                    done: () => {
+                      const st = useStore.getState();
+                      if (st.sessions[conn.id]) void st.reconnect(conn.id);
+                    },
+                    failed: () => setHeartbeat(tri(conn.heartbeat)),
+                  },
+                );
+              }}
+            >
+              <option value="app">Use Global ({settings.heartbeat ? "on" : "off"})</option>
+              <option value="on">On</option>
+              <option value="off">Off</option>
+            </Select>
+          </SetItem>
+        )}
+      </div>
+      {err && (
+        <p className="help err" role="alert">
+          {err}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -1410,7 +1660,7 @@ function QueriesPane() {
         <SetItem label="Keep query history" htmlFor="set-hist">
           <input id="set-hist" className="switch" type="checkbox" role="switch" checked={s.keepHistory !== false} onChange={(e) => void set({ keepHistory: e.target.checked ? undefined : false })} />
         </SetItem>
-        <SetItem label="Connection heartbeat" desc="Sends select 1 on every open connection, for servers that drop idle ones" htmlFor="set-beat">
+        <SetItem label="Connection heartbeat" desc="Keeps idle connections open, for servers that drop them" htmlFor="set-beat">
           <input id="set-beat" className="switch" type="checkbox" role="switch" checked={s.heartbeat === true} onChange={(e) => void set({ heartbeat: e.target.checked || undefined })} />
         </SetItem>
         {s.heartbeat && (
@@ -1423,20 +1673,22 @@ function QueriesPane() {
   );
 }
 
-type SubKind = "unlock" | "new" | "change" | "disable" | "reset";
+type SubKind = PassKind;
 
 function SecurityPane() {
   const s = useStore((st) => st.settings);
   const set = useStore((st) => st.setSettings);
   const passSet = useStore((st) => st.pass.set);
   const level = s.defaultLevel ?? DEFAULT_LEVEL;
+  // lowering the default from Strict asks for the passphrase, as lowering a connection does
+  const [lowering, setLowering] = useState<SecurityLevel | null>(null);
 
   return (
     <div className="set-pane">
       <h3>Security</h3>
       <p className="pane-note">
         The passphrase is one for the whole app. Each connection keeps its own security level (None, Low or Strict) and the statements it asks about, set in its
-        Options or the tabs bar.
+        Options or the tabs bar. The warnings here hold for every SQL connection that does not set its own.
       </p>
       <div className="set-list">
         <SetItem label="Default security level for new connections" desc="Existing connections keep their own" htmlFor="sec-level">
@@ -1444,11 +1696,26 @@ function SecurityPane() {
             id="sec-level"
             value={level}
             off={(v) => v === "strict" && !passSet && level !== "strict" && "Set a passphrase below first"}
-            onChange={(v) => void set({ defaultLevel: v })}
+            onChange={(v) => (level === "strict" && v !== "strict" && passSet ? setLowering(v) : void set({ defaultLevel: v }))}
           />
         </SetItem>
       </div>
+      {lowering &&
+        createPortal(
+          <AuthDialog kind="lower" defaults to={lowering} touch={false} submit={(a) => set({ defaultLevel: lowering }, a)} onClose={() => setLowering(null)} />,
+          document.body,
+        )}
       <PassphraseManager />
+      <h3 className="cx-h">
+        Warnings <span className="cx-h-note">For every connection that does not set its own</span>
+      </h3>
+      <div className="set-list">
+        {WARNINGS.map(([k, key, label, desc]) => (
+          <SetItem key={k} label={label} desc={desc} htmlFor={`sec-warn-${k}`}>
+            <input id={`sec-warn-${k}`} className="switch" type="checkbox" role="switch" checked={s[key] !== false} onChange={(e) => void set({ [key]: e.target.checked ? undefined : false })} />
+          </SetItem>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1468,9 +1735,9 @@ function PassphraseManager() {
           <div className="set-text">
             <span className="set-label">Passphrase</span>
             <span className="desc">
-              {pass.set ? "Set, in the macOS keychain" : "Not set. With one, the statements you pick ask for it before they run"}
+              {pass.set ? "Set, in the macOS login keychain" : "Not set. With one, the statements you pick ask for it before they run"}
               {/* a reset cannot be prevented (the Mac's owner can always do it), so it is never silent */}
-              {pass.set && s.passphraseResetAt && <span className="pass-reset"> Reset with macOS authentication {when(s.passphraseResetAt)}.</span>}
+              {pass.set && s.passphraseResetAt && <span className="pass-reset"> Reset with Touch ID or your login password {when(s.passphraseResetAt)}.</span>}
             </span>
             {pass.set && (
               <button type="button" className="pass-forgot" onClick={() => setSub("reset")}>
@@ -1498,9 +1765,8 @@ function PassphraseManager() {
       </div>
       {sub &&
         createPortal(
-          <PassDialog
+          <PassphraseDialog
             kind={sub}
-            touch={false}
             onClose={() => setSub(null)}
             onDone={async (k) => {
               setSub(null);
@@ -1540,7 +1806,27 @@ const UNLOCK_WINDOWS: [number, string][] = [
  * ask about. Strict needs a passphrase (set in Settings › Security). A connection saved as Strict is locked:
  * lowering it, dropping a statement, Touch ID on or a longer unlock needs the passphrase first (unlock_protect).
  */
+/** The warnings a SQL connection asks before a run, whatever its level; "app" follows Settings › Security. */
+interface Warn {
+  limit: Tri;
+  update: Tri;
+}
+
+/** The two warnings: [key in Warn, key in Settings, label, description]. */
+const WARNINGS: [keyof Warn, "warnBigLimit" | "warnUpdateAll", ReactNode, string][] = [
+  ["limit", "warnBigLimit", "More than 100 rows", "A select whose LIMIT, or the row limit ypacapy adds, is above 100"],
+  [
+    "update",
+    "warnUpdateAll",
+    <>
+      <code className="stmt">UPDATE</code> without <code className="stmt">WHERE</code>
+    </>,
+    "Changes every row of its table, even a table of one row",
+  ],
+];
+
 function SecuritySection({
+  title,
   connId,
   level,
   onLevel,
@@ -1549,7 +1835,12 @@ function SecuritySection({
   lockable,
   mongo = false,
   redis = false,
+  warn,
+  onWarn,
+  follow = "Global",
 }: {
+  /** Settings › Connection: the pane's own heading in place of the dialog's sub-head */
+  title?: ReactNode;
   connId?: string;
   level: SecurityLevel;
   onLevel: (l: SecurityLevel) => void;
@@ -1560,7 +1851,13 @@ function SecuritySection({
   mongo?: boolean;
   /** Redis: commands, grouped by the type they write to */
   redis?: boolean;
+  /** SQL only: the warnings, shown when given */
+  warn?: Warn;
+  onWarn?: (w: Warn) => void;
+  /** what "Use …" follows: the Global settings */
+  follow?: string;
 }) {
+  const settings = useStore((st) => st.settings);
   const kinds = mongo ? MONGO_ALL : redis ? REDIS_ALL : ALL_KINDS;
   const rows: [string, ReactNode, string?][] =
     mongo || redis
@@ -1571,26 +1868,34 @@ function SecuritySection({
   const savedTouch = useStore((st) => !!st.conns.find((c) => c.id === connId)?.touchId);
   const [unlocking, setUnlocking] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
+  // a lower level picked while Strict is locked: the same ask as the tabs bar's level picker
+  const [lowering, setLowering] = useState<SecurityLevel | null>(null);
+  const connName = useStore((st) => st.conns.find((c) => c.id === connId)?.name ?? "");
   const locked = lockable && !unlocked;
+  // the passphrase (or Touch ID) opens the connection for changes; a rejection stays in the ask
+  const unlock = async (a: Approval) => {
+    await api.unlockProtect(connId ?? "", a.kind === "passphrase" ? a.passphrase : undefined, a.kind === "touchId");
+    setUnlocked(true);
+  };
   const put = (p: Partial<Protection>) => onChange({ ...value, ...p });
   const desc = LEVELS.find(([l]) => l === level)?.[2]?.replace("statement", redis ? "command" : "statement");
 
   return (
     <>
-      <h3 className="cx-h">Security</h3>
+      {title ? <h3>{title}</h3> : <h3 className="cx-h">Security</h3>}
       <div className="set-list">
-        <SetItem label="Security level" desc={locked ? "Locked. Use Change below to lower it" : desc} htmlFor="c-level">
+        <SetItem label="Security level" desc={locked ? "Locked. Lowering asks for the passphrase" : desc} htmlFor="c-level">
           <LevelSelect
             id="c-level"
             commands={redis}
             value={level}
-            off={(v) => (v === "strict" && !pass.set && level !== "strict" ? "Set a passphrase in Settings first" : locked && v !== "strict")}
-            onChange={onLevel}
+            off={(v) => v === "strict" && !pass.set && level !== "strict" && "Set a passphrase in Settings first"}
+            onChange={(v) => (locked && v !== "strict" ? setLowering(v) : onLevel(v))}
           />
         </SetItem>
         {level === "strict" && (
           <>
-            <SetItem label="Open with Touch ID" htmlFor="c-touch" sub desc={pass.touchIdAvailable ? undefined : "This Mac has no Touch ID ready"}>
+            <SetItem label="Allow Touch ID" htmlFor="c-touch" sub desc={pass.touchIdAvailable ? undefined : "Touch ID isn't set up on this Mac"}>
               <input id="c-touch" className="switch" type="checkbox" role="switch" disabled={locked || !pass.touchIdAvailable} checked={value.touchId} onChange={(e) => put({ touchId: e.target.checked })} />
             </SetItem>
             <SetItem label="Stay unlocked for" desc="After the passphrase, for this connection only" htmlFor="c-window" sub>
@@ -1623,7 +1928,7 @@ function SecuritySection({
                 }}
               >
                 {unlocked ? <LockOpen {...ico} /> : <Lock {...ico} />}
-                <span>{unlocked ? "Lock" : "Change"}</span>
+                <span>{unlocked ? "Lock" : "Unlock"}</span>
               </button>
             )}
           </div>
@@ -1653,148 +1958,59 @@ function SecuritySection({
           </div>
         </>
       )}
+      {warn && onWarn && (
+        <>
+          <h3 className="cx-h">
+            Warnings <span className="cx-h-note">Ask even when the security level is None</span>
+          </h3>
+          <div className="set-list">
+            {/* not behind the passphrase: a locked Strict connection can still change them */}
+            {WARNINGS.map(([k, key, label, desc]) => (
+              <SetItem key={k} label={label} desc={desc} htmlFor={`c-warn-${k}`}>
+                <Select id={`c-warn-${k}`} className="field set-choice" value={warn[k]} onChange={(e) => onWarn({ ...warn, [k]: e.target.value as Tri })}>
+                  <option value="app">
+                    Use {follow} ({settings[key] !== false ? "on" : "off"})
+                  </option>
+                  <option value="on">On</option>
+                  <option value="off">Off</option>
+                </Select>
+              </SetItem>
+            ))}
+          </div>
+        </>
+      )}
+      {/* portals: over Settings or the connection dialog (a form, which cannot hold another), where the store's single modal cannot be */}
+      {lowering &&
+        connId &&
+        createPortal(
+          <AuthDialog
+            kind="lower"
+            connName={connName}
+            engine={mongo ? "mongo" : redis ? "redis" : undefined}
+            to={lowering}
+            touch={savedTouch && pass.touchIdAvailable}
+            submit={async (a) => {
+              await unlock(a);
+              onLevel(lowering);
+            }}
+            onClose={() => setLowering(null)}
+          />,
+          document.body,
+        )}
       {unlocking &&
         connId &&
-        // a portal: the connection dialog is a form, and a form cannot hold another
         createPortal(
-          <PassDialog
+          <AuthDialog
             kind="unlock"
-            connId={connId}
+            connName={connName}
+            engine={mongo ? "mongo" : redis ? "redis" : undefined}
             touch={savedTouch && pass.touchIdAvailable}
+            submit={unlock}
             onClose={() => setUnlocking(false)}
-            onDone={() => {
-              setUnlocking(false);
-              setUnlocked(true);
-            }}
           />,
           document.body,
         )}
     </>
-  );
-}
-
-const SUB: Record<SubKind, { title: string; primary: string; fields: [string, string][]; help?: string; danger?: boolean }> = {
-  unlock: { title: "Change passphrase protection", primary: "Unlock", fields: [["Passphrase", "current-password"]] },
-  new: { title: "Set passphrase", primary: "Set passphrase", fields: [["Passphrase", "new-password"], ["Type it again", "new-password"]], help: "It cannot be shown again. If you forget it, reset it with Touch ID or your login password." },
-  change: { title: "Change passphrase", primary: "Change passphrase", fields: [["Current passphrase", "current-password"], ["New passphrase", "new-password"], ["Type it again", "new-password"]] },
-  disable: {
-    title: "Disable passphrase",
-    primary: "Disable passphrase",
-    fields: [["Current passphrase", "current-password"]],
-    help: "This turns off passphrase protection on every connection, and Open with Touch ID. Write guards stay as they are.",
-    danger: true,
-  },
-  reset: {
-    title: "Reset passphrase",
-    primary: "Reset passphrase",
-    fields: [["New passphrase", "new-password"], ["Type it again", "new-password"]],
-    help: "The old passphrase cannot be shown, only replaced. macOS asks for Touch ID or your login password first. Connections keep their protection.",
-  },
-};
-
-/** Set, change or disable the passphrase (Settings), or open a connection's protection for changes (its dialog). */
-function PassDialog({ kind, connId = "", touch, onClose, onDone }: { kind: SubKind; connId?: string; touch: boolean; onClose: () => void; onDone: (k: SubKind) => void }) {
-  const d = SUB[kind];
-  const [vals, setVals] = useState<string[]>(d.fields.map(() => ""));
-  const [bad, setBad] = useState<number[]>([]);
-  const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
-  // Escape closes this dialog, not Settings under it
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      onClose();
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [onClose]);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    // React bubbles events through the portal to the connection dialog's form: stop here
-    e.stopPropagation();
-    const empty = vals.map((v, i) => (v ? -1 : i)).filter((i) => i >= 0);
-    if (empty.length) {
-      setBad(empty);
-      setErr("Fill in every field.");
-      return;
-    }
-    if ((kind === "new" || kind === "change" || kind === "reset") && vals[vals.length - 1] !== vals[vals.length - 2]) {
-      setBad([vals.length - 1]);
-      setErr("The two passphrases differ.");
-      return;
-    }
-    setBusy(true);
-    try {
-      if (kind === "unlock") await api.unlockProtect(connId, vals[0], false);
-      else if (kind === "new") await api.setPassphrase(vals[0]);
-      else if (kind === "change") await api.setPassphrase(vals[1], vals[0]);
-      else if (kind === "reset") await api.resetPassphrase(vals[0]);
-      else await api.disablePassphrase(vals[0]);
-      onDone(kind);
-    } catch (x) {
-      setErr(errText(x));
-      setBad([0]);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="backdrop sub-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="dialog" role="dialog" aria-modal="true" aria-label={d.title}>
-        <h2>{d.title}</h2>
-        <form onSubmit={submit} noValidate>
-          {d.fields.map(([label, auto], i) => (
-            <label key={label}>
-              {label}
-              <input
-                className="field"
-                type="password"
-                autoComplete={auto}
-                required
-                aria-required="true"
-                autoFocus={i === 0}
-                aria-invalid={bad.includes(i) || undefined}
-                value={vals[i]}
-                onChange={(e) => setVals(vals.map((v, j) => (j === i ? e.target.value : v)))}
-              />
-            </label>
-          ))}
-          {d.help && <p className="help">{d.help}</p>}
-          <p className="help err" role="alert">
-            {err}
-          </p>
-          <footer>
-            {touch && (
-              <button
-                type="button"
-                className="btn"
-                onClick={async () => {
-                  try {
-                    await api.unlockProtect(connId, undefined, true);
-                    onDone(kind);
-                  } catch (x) {
-                    setErr(errText(x));
-                  }
-                }}
-              >
-                <Fingerprint {...ico} />
-                Use Touch ID
-              </button>
-            )}
-            <button type="button" className="btn" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className={`btn ${d.danger ? "btn--danger" : "btn--primary"}`} aria-busy={busy || undefined} disabled={busy}>
-              {d.primary}
-            </button>
-          </footer>
-        </form>
-      </div>
-    </div>
   );
 }
 

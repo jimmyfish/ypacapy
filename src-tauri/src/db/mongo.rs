@@ -883,7 +883,7 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
                 title: "ypacapy could not read the query".into(),
                 says: Some(e.says(&req.sql)),
                 message: e.message.clone(),
-                hint: Some(format!("It is read before it is sent, so nothing went to {}.", conn.name)),
+                hint: Some(format!("ypacapy reads it before sending, so nothing was sent to {}.", conn.name)),
                 lost: false,
                 ms: t.elapsed().as_millis() as u64, fix: None,
             })
@@ -959,7 +959,7 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
             }
         }
     };
-    if req.history && settings.bool("keepHistory", true) {
+    if req.history && conn.keeps_history(&settings) {
         let (status, rows, error) = match &outcome {
             RunOutcome::Done { sets, affected, .. } => ("ok", affected.map(|a| a as i64).or(sets.last().and_then(|s| s.docs.as_ref()).map(|d| d.len() as i64)), None),
             RunOutcome::Error { title, .. } => ("error", None, Some(title.clone())),
@@ -1006,7 +1006,7 @@ pub async fn mongo_find(req: FindRequest, state: State<'_, DbState>, settings: S
                     title: format!("The {} is not valid", label.to_lowercase()),
                     says: Some(e.says(text)),
                     message: e.message.clone(),
-                    hint: Some(format!("ypacapy reads it before sending, so nothing went to {}.", conn.name)),
+                    hint: Some(format!("ypacapy reads it before sending, so nothing was sent to {}.", conn.name)),
                     lost: false,
                     ms: t.elapsed().as_millis() as u64, fix: None,
                 })

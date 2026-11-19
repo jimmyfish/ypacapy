@@ -135,6 +135,16 @@ pub struct Conn {
     /// missing = Settings > Queries > Connection heartbeat
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub heartbeat: Option<bool>,
+    /// missing = Settings > Queries > Keep query history; false keeps this connection's runs out of history
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keep_history: Option<bool>,
+    /// SQL: warn before a query that can return more than 100 rows (guard::Warning::BigLimit);
+    /// missing = Settings > Security > Warnings (on by default)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warn_big_limit: Option<bool>,
+    /// SQL: warn before an UPDATE without WHERE (guard::Warning::UpdateAll); missing = Settings > Security > Warnings
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warn_update_all: Option<bool>,
     /// MongoDB: the database the user is defined in; missing = admin
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth_source: Option<String>,
@@ -190,10 +200,26 @@ impl Conn {
         };
         all.iter().copied().filter(|k| self.protect.as_ref().is_none_or(|l| l.iter().any(|x| x == k))).collect()
     }
+
+    /// Whether this connection's runs go to history: its own choice, else Settings > Queries > Keep query history.
+    pub fn keeps_history(&self, settings: &crate::settings::SettingsState) -> bool {
+        self.keep_history.unwrap_or_else(|| settings.bool("keepHistory", true))
+    }
+
+    /// Whether a query that can return more than 100 rows asks first: its own choice, else Settings (on).
+    pub fn warns_big_limit(&self, settings: &crate::settings::SettingsState) -> bool {
+        self.warn_big_limit.unwrap_or_else(|| settings.bool("warnBigLimit", true))
+    }
+
+    /// Whether an UPDATE without WHERE asks first: its own choice, else Settings (on).
+    pub fn warns_update_all(&self, settings: &crate::settings::SettingsState) -> bool {
+        self.warn_update_all.unwrap_or_else(|| settings.bool("warnUpdateAll", true))
+    }
 }
 
 /// Whether going from `old` to `new` weakens a Strict connection: a lower level, dropping a statement,
-/// letting Touch ID stand in, or staying unlocked longer. Only Strict is locked behind the passphrase.
+/// letting Touch ID stand in, or staying unlocked longer. Only Strict is locked behind the passphrase; the
+/// warnings (more than 100 rows, UPDATE without WHERE) are not part of it.
 fn lowers_protection(old: &Conn, new: &Conn) -> bool {
     if old.level != SecurityLevel::Strict {
         return false;
@@ -226,7 +252,7 @@ pub fn load() -> Result<Vec<Conn>, String> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(vec![]),
         Err(e) => return Err(format!("Could not read {}: {e}", p.display())),
     };
-    let f: ConnFile = toml::from_str(&text).map_err(|e| format!("{} is not valid: {e}", p.display()))?;
+    let f: ConnFile = toml::from_str(&text).map_err(|e| format!("{} is not valid TOML: {e}", p.display()))?;
     let mut all = f.connections;
     // files from before security levels: the write guard and Protect with passphrase become one level
     if all.iter().any(|c| c.guard.is_some() || c.pass_protect) {
@@ -320,7 +346,7 @@ pub async fn save_connection(mut conn: Conn, password: Option<String>, lock: Sta
     if !is_new && has_pass && !guard.protect_unlocked() {
         if let Ok(old) = find(&conn.id) {
             if lowers_protection(&old, &conn) {
-                return Err("Strict is locked. Use Change and enter the passphrase to lower it.".into());
+                return Err("Strict is locked. Enter the passphrase to lower the security level.".into());
             }
         }
     }
@@ -484,6 +510,18 @@ mod tests {
     }
 
     #[test]
+    fn keep_history_overrides_settings_only_when_set() {
+        let app = |on: bool| crate::settings::SettingsState(std::sync::RwLock::new(serde_json::json!({ "keepHistory": on })));
+        let none = crate::settings::SettingsState::default();
+        assert!(conn(false, None).keeps_history(&none));
+        assert!(!conn(false, None).keeps_history(&app(false)));
+        let off = Conn { keep_history: Some(false), ..conn(false, None) };
+        assert!(!off.keeps_history(&app(true)));
+        let on = Conn { keep_history: Some(true), ..conn(false, None) };
+        assert!(on.keeps_history(&app(false)));
+    }
+
+    #[test]
     fn lowering_is_switching_off_or_dropping_a_kind() {
         let on_all = conn(true, None);
         assert!(lowers_protection(&on_all, &conn(false, None)));
@@ -522,6 +560,9 @@ mod tests {
         assert!(lowers_protection(&strict, &longer));
         assert!(!lowers_protection(&touch, &strict));
         assert!(!lowers_protection(&longer, &strict));
+        // the warnings are not behind the passphrase
+        let quiet = Conn { warn_update_all: Some(false), warn_big_limit: Some(false), ..conn(true, None) };
+        assert!(!lowers_protection(&strict, &quiet));
     }
 
     #[test]

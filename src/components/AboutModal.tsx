@@ -72,7 +72,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
           <h2 className="about-name" id="about-name" title="Reads the same both ways">
             ypa<span>capy</span>
           </h2>
-          <p className="about-tag">A calm database explorer. Everything stays on this Mac.</p>
+          <p className="about-tag">A database client for PostgreSQL, MySQL, SQLite, MongoDB and Redis. Connections, history and passwords stay on this Mac.</p>
           {shown && (
             <div className="about-verline">
               {DEV_BUILD && <span className="build-tag">dev</span>}
@@ -213,7 +213,7 @@ function UpdateCard() {
       <>
         <div className="about-upd-row">
           <p className="about-upd-text">
-            <strong>ypacapy {st.version} is out</strong>
+            <strong>ypacapy {st.version} is available</strong>
             <span className="sub">
               You have {st.current}
               {date ? ` · released ${date}` : ""}

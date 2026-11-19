@@ -18,7 +18,7 @@ const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "hous
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus", "pin", "pin-off",
   "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check", "timer",
-  "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down"];
+  "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down", "arrow-right"];
 // Lucide 1.x renamed fingerprint; the old name is what the pages use
 const RENAMED = { fingerprint: "fingerprint-pattern" };
 // Lucide 1.x has no brand icons: GitHub's mark as lucide-react 0.460.0 drew it (ISC), the same as src/components/Icon.tsx
@@ -132,7 +132,7 @@ ${conns.map(([name, , n, engine]) => `      <div class="ptab ptab--project" styl
       </div>`).join("\n")}
     </nav>
     <div class="strip-end">${chip}
-      <button type="button" class="icon-btn strip-settings" title="Settings  ⌘," aria-label="Settings" data-href="./settings.html">${ic("settings-2")}</button>
+      <button type="button" class="icon-btn strip-settings" title="Settings  ⌘," aria-label="Settings" data-href="./settings.html${current === "home" ? "?show=home" : ""}">${ic("settings-2")}</button>
     </div>
   </div>`;
 const rail = `
@@ -241,7 +241,7 @@ const tabsbar = (active, local, { tabs = TABS, pinned = PINNED, conn = "shop_pro
       <div class="tabsbar">
         <button type="button" class="icon-btn side-toggle" aria-label="Hide sidebar" title="Hide sidebar  ⌘\\">${ic("panel-left-close")}</button>
         <div class="tabs">
-${tabs.map(([id, icon, label, href]) => `          <div class="tab" data-tab="${id}"${id === active ? ' aria-current="page"' : ""}${pinned.includes(id) ? " data-pinned" : ""}><button type="button" class="tab-main"${local.includes(id) ? "" : ` data-href="${href}"`}>${ic(icon)}<span class="name">${label}</span>${id === "q2" ? '<span class="dirty" role="img" aria-label="Unsaved changes"></span>' : ""}</button><button type="button" class="icon-btn close" aria-label="Close ${label}">${ic("x")}</button><button type="button" class="icon-btn pin" aria-label="Unpin ${label}" title="Pinned: kept with ${conn}. Click to unpin">${ic("pin")}</button></div>`).join("\n")}
+${tabs.map(([id, icon, label, href]) => `          <div class="tab" data-tab="${id}"${id === active ? ' aria-current="page"' : ""}${pinned.includes(id) ? " data-pinned" : ""}><button type="button" class="tab-main"${local.includes(id) ? "" : ` data-href="${href}"`}>${ic(icon)}<span class="name">${label}</span>${id === "q2" ? '<span class="dirty" role="img" aria-label="Unsaved changes"></span>' : ""}</button><button type="button" class="icon-btn close" aria-label="Close ${label}">${ic("x")}</button><button type="button" class="icon-btn pin" aria-label="Unpin ${label}" title="Pinned to ${conn}. Click to unpin.">${ic("pin")}</button></div>`).join("\n")}
           <button type="button" class="icon-btn tab-add" aria-label="New query tab">${ic("plus")}</button>
         </div>
         <div class="menu-anchor env-group guard">
@@ -668,12 +668,32 @@ const guardDialogs = `
     </form>
   </div>
 </div>
+<div class="backdrop" id="guard-warn-dlg" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-label="Run this on shop_prod?">
+    <h2>Run this on shop_prod?</h2>
+    <form>
+      <div data-warn="limit">
+        <p class="guard-warn">${ic("triangle-alert")}<span>It can return up to <strong>5,000</strong> rows, more than 100.</span></p>
+      </div>
+      <div data-warn="update" hidden>
+        <p class="guard-warn">${ic("triangle-alert")}<span>This <code class="stmt">UPDATE</code> has no <code class="stmt">WHERE</code>, so it changes every row of its table.</span></p>
+        <p class="guard-final">${ic("shredder")}<span>It cannot be undone. ypacapy keeps no copy of what it overwrites.</span></p>
+      </div>
+      <p class="help guard-warn-off">Turn this warning off in Settings › Connection › Security.</p>
+      <footer>
+        <button type="button" class="btn" data-guard-close>Cancel</button>
+        <button type="submit" class="btn btn--danger"><span data-warn="update" hidden>${ic("shredder")}</span>Run</button>
+      </footer>
+    </form>
+  </div>
+</div>
 <div class="backdrop" id="guard-pass-dlg" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-label="Enter the passphrase to run this">
     <h2>Enter the passphrase to run this</h2>
     <form>
       <p class="help">It changes data or structure on shop_prod:</p>
-      <div class="guard-kinds"><code class="stmt">DELETE</code></div>
+      <div class="guard-kinds"><code class="stmt" id="guard-pass-kind">DELETE</code></div>
+      <p class="guard-warn" id="guard-pass-warn" hidden>${ic("triangle-alert")}<span>This <code class="stmt">UPDATE</code> has no <code class="stmt">WHERE</code>, so it changes every row of its table.</span></p>
       <p class="guard-final" data-final>${ic("shredder")}<span>It cannot be undone. ypacapy keeps no copy of what it deletes or overwrites.</span></p>
       <label>Passphrase<input class="field" type="password" id="guard-pass-in" autocomplete="current-password"></label>
       <p class="help err" role="alert" id="guard-pass-err" hidden>That passphrase is not right.</p>
@@ -690,7 +710,7 @@ const guardDialogs = `
 pages["index.html"] = page({
   title: "ypacapy preview",
   desc: "Design preview of ypacapy, a local-only database explorer for macOS: the query console and its result grid.",
-  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["wide", "Many columns"], ["long", "Long text"], ["cell-menu", "Cell menu"], ["row-menu", "Sidebar menu"], ["level-menu", "Security level menu"], ["tab-menu", "Tab menu"], ["guard-confirm", "Low: confirm"], ["guard-pass", "Strict: passphrase"], ["guard-pass-touch", "Strict with Touch ID"], ["guard-pass-wrong", "Strict: wrong passphrase"], ["history", "History"], ["history-clear", "Clear history"], ["history-none", "History, none yet"], ["ac-tables", "Complete: tables"], ["ac-columns", "Complete: columns"], ["ac-mixed", "Complete: two tables"], ["ac-loading", "Complete: reading columns"], ["ac-schema", "Complete: schema not loaded"]], true),
+  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["wide", "Many columns"], ["long", "Long text"], ["cell-menu", "Cell menu"], ["row-menu", "Sidebar menu"], ["level-menu", "Security level menu"], ["tab-menu", "Tab menu"], ["guard-confirm", "Low: confirm"], ["guard-pass", "Strict: passphrase"], ["guard-pass-touch", "Strict with Touch ID"], ["guard-pass-wrong", "Strict: wrong passphrase"], ["warn-limit", "Warning: more than 100 rows"], ["warn-update", "Warning: UPDATE without WHERE"], ["warn-update-strict", "Strict + UPDATE without WHERE"], ["history", "History"], ["history-clear", "Clear history"], ["history-none", "History, none yet"], ["ac-tables", "Complete: tables"], ["ac-columns", "Complete: columns"], ["ac-mixed", "Complete: two tables"], ["ac-loading", "Complete: reading columns"], ["ac-schema", "Complete: schema not loaded"]], true),
   body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: guardDialogs + histClearDlg + acOverlay }),
   script: js("page-index.js") + js("page-index-ac.js"),
 });
@@ -853,12 +873,12 @@ const erdPicker = `
   <div class="dialog erd-pick" role="dialog" aria-modal="true" aria-labelledby="ep-title">
     <h2 id="ep-title">Tables to draw</h2>
     <form>
-      <p class="help">Tables of <strong id="ep-schema">public</strong> on shop_prod. Only the tables you tick are read from the catalog and drawn.</p>
+      <p class="help">Tables of <strong id="ep-schema">public</strong> on shop_prod. Only the tables you pick are read from the catalog and drawn.</p>
       <div class="search">${ic("search")}<input class="field" id="ep-filter" type="search" placeholder="Filter tables" aria-label="Filter tables" autocomplete="off" spellcheck="false"></div>
       <div class="ep-tools">
-        <button type="button" class="btn btn--quiet" id="ep-all">Select all</button>
-        <button type="button" class="btn btn--quiet" id="ep-none">Unselect all</button>
-        <button type="button" class="btn btn--quiet" id="ep-linked" title="Tick every table one foreign key away from a ticked one (reads the schema's foreign keys)">${ic("link")}${ic("loader-circle", "ep-spin")}<span>Add linked tables</span></button>
+        <button type="button" class="btn btn--quiet" id="ep-all">Pick all</button>
+        <button type="button" class="btn btn--quiet" id="ep-none">Clear all</button>
+        <button type="button" class="btn btn--quiet" id="ep-linked" title="Pick every table one foreign key away from a picked one (reads the schema's foreign keys)">${ic("link")}${ic("loader-circle", "ep-spin")}<span>Add linked tables</span></button>
       </div>
       <div class="ep-list" id="ep-list" role="group" aria-label="Tables of public">${TABLES.map(pickRow).join("")}
         <p class="ep-empty" id="ep-empty" hidden>No table matches <span id="ep-empty-q"></span></p>
@@ -892,13 +912,13 @@ pages["diagram.html"] = page({
             </div>
           </div>
           <button type="button" class="btn btn--quiet erd-save" id="erd-save" title="Save the tables and layout with shop_prod  ⌘S" disabled>${ic("save")}<span>Save</span></button>
-          ${erdTool("refresh-cw", "Read the catalog again", "erd-refresh")}
+          ${erdTool("refresh-cw", "Refresh from the catalog", "erd-refresh")}
           <span class="sep" aria-hidden="true"></span>
           ${erdTool("zoom-out", "Zoom out", "erd-out", "−")}
           ${erdTool("zoom-in", "Zoom in", "erd-in", "+")}
           <button type="button" class="btn btn--quiet erd-zoom" id="erd-actual" title="Actual size  0" aria-label="Zoom 100%, actual size">100%</button>
           ${erdTool("maximize", "Fit the diagram", "erd-fit")}
-          ${erdTool("undo-2", "Reset layout: arrange every table afresh (Save keeps it)", "erd-reset")}
+          ${erdTool("undo-2", "Arrange every table again. Save to keep the new layout.", "erd-reset")}
           <span class="sep" aria-hidden="true"></span>
           ${sel("Columns shown", ["All columns", "Key columns", "Table names"]).replace("<select ", '<select id="erd-detail" ')}
           <span class="push erd-status" id="erd-status" aria-live="polite"></span>
@@ -908,7 +928,7 @@ pages["diagram.html"] = page({
           <p class="erd-foot">Drag a table to move it. Drag the background or scroll to pan, ⌘ scroll or pinch to zoom. Double-click a table to open its rows. Save keeps the picked tables and this layout with shop_prod; Show diagram brings them back, after a restart too. Tables ticked after a save are placed to the right of the saved ones.</p>
         </div>
         <div class="erd-state" data-erd="loading" hidden><div class="empty"><span class="spinner"></span><strong>Reading the catalog of public</strong><span>Tables, columns and foreign keys. No row is read.</span></div></div>
-        <div class="erd-state" data-erd="none" hidden><div class="empty"><strong>No tables picked</strong><span>Pick the tables of public to draw. Only those are read from the catalog.</span><button type="button" class="btn btn--primary" id="erd-pick-empty">${ic("list-checks")}Choose tables</button></div></div>
+        <div class="erd-state" data-erd="none" hidden><div class="empty"><strong>No tables picked</strong><span>Pick the tables of public to draw. Only those are read from the catalog.</span><button type="button" class="btn btn--primary" id="erd-pick-empty">${ic("list-checks")}Pick tables</button></div></div>
         <div class="erd-state" data-erd="error" hidden><div class="empty"><strong>Could not read the catalog of audit</strong><span class="erd-err">permission denied for schema audit</span><span>Ask for USAGE on the schema, then refresh.</span></div></div>
       </div>
       <div class="menu ctx-menu" id="erd-menu" role="menu" aria-label="Table" hidden>
@@ -975,14 +995,110 @@ const subDialog = (key, title, body, primary, danger) => `
   </div>`;
 const passDialogs = () =>
   subDialog("unlock", "Change passphrase protection", passField("p-unlock", "Passphrase", "current-password") + '<p class="help" data-touch-hint hidden>Or use Touch ID.</p>', "Unlock") +
-  subDialog("new", "Set passphrase", passField("p-new", "Passphrase", "new-password") + passField("p-new2", "Type it again", "new-password") + '<p class="help">It cannot be shown again. If you forget it, reset it with Touch ID or your login password.</p>', "Set passphrase") +
-  subDialog("change", "Change passphrase", passField("p-cur", "Current passphrase", "current-password") + passField("p-chg", "New passphrase", "new-password") + passField("p-chg2", "Type it again", "new-password"), "Change passphrase") +
-  subDialog("disable", "Disable passphrase", passField("p-cur2", "Current passphrase", "current-password") + '<p class="help">This turns off passphrase protection on every connection, and Open with Touch ID. Write guards stay as they are.</p>', "Disable passphrase", true) +
-  subDialog("reset", "Reset passphrase", passField("p-rst", "New passphrase", "new-password") + passField("p-rst2", "Type it again", "new-password") + '<p class="help">The old passphrase cannot be shown, only replaced. macOS asks for Touch ID or your login password first. Connections keep their protection.</p>', "Reset passphrase");
+  authSub("new") +
+  authSub("change") +
+  authSub("disable") +
+  authSub("reset");
+// The passphrase asks of a Strict connection, in one shape: a badge, what is about to change, the passphrase, Touch ID.
+// Lower: the level it leaves and the level it goes to, and what that means for writes. Unlock: what opens, and that
+// it locks again when the window closes. The button says the action (Lower to None, Unlock), never just OK.
+const authLevel = (cls, icon, name, desc) => `<span class="auth-level ${cls}">${ic(icon)}<span class="auth-level-text"><strong>${name}</strong><small>${desc}</small></span></span>`;
+const authPass = (id) => `
+      <label class="auth-field" for="${id}">Passphrase
+        <span class="auth-input">${ic("key-round")}<input class="field" id="${id}" type="password" autocomplete="current-password" placeholder="The app passphrase" spellcheck="false"><button type="button" class="auth-eye" aria-label="Show passphrase" aria-pressed="false" data-auth-eye>${ic("eye")}</button></span>
+      </label>
+      <p class="auth-caps" data-auth-caps hidden>${ic("arrow-up")}Caps Lock is on</p>
+      <p class="auth-err" role="alert" data-auth-err hidden>${ic("circle-alert")}<span>That passphrase is not right.</span></p>
+      <div class="auth-touch" data-auth-touch hidden>
+        <div class="auth-or" aria-hidden="true"><span>or</span></div>
+        <button type="button" class="btn auth-btn auth-touch-btn">${ic("fingerprint")}Use Touch ID</button>
+      </div>`;
+const authDialogs = () => `
+<div class="backdrop auth-backdrop" data-auth="lower" hidden>
+  <div class="dialog auth" role="dialog" aria-modal="true" aria-labelledby="auth-lower-t" aria-describedby="auth-lower-d">
+    <div class="auth-head">
+      <span class="auth-badge auth-badge--warn">${ic("lock-open")}</span>
+      <div class="auth-head-text">
+        <h2 id="auth-lower-t">Lower shop_prod from Strict?</h2>
+        <p id="auth-lower-d">Enter the passphrase to change its security level.</p>
+      </div>
+    </div>
+    <div class="auth-shift">
+      ${authLevel("auth-level--from", "lock", "Strict", "Passphrase for the picked statements")}
+      <span class="auth-arrow" aria-label="to">${ic("arrow-right")}</span>
+      <span data-auth-to="none">${authLevel("auth-level--to", "shield-off", "None", "Every statement runs")}</span>
+      <span data-auth-to="low" hidden>${authLevel("auth-level--to", "shield", "Low", "Confirm the picked statements")}</span>
+    </div>
+    <p class="auth-note"><span data-auth-to="none">Writes on shop_prod will run without asking.</span><span data-auth-to="low" hidden>Writes on shop_prod will ask to confirm, without the passphrase.</span></p>
+    <form data-auth-form="lower">${authPass("auth-lower-pass")}
+      <footer class="auth-actions"><button type="button" class="btn auth-btn" data-auth-cancel>Abort</button><button type="submit" class="btn auth-btn auth-btn--danger">${ic("lock-open")}<span data-auth-to="none">Lower to None</span><span data-auth-to="low" hidden>Lower to Low</span></button></footer>
+    </form>
+  </div>
+</div>
+<div class="backdrop auth-backdrop" data-auth="unlock" hidden>
+  <div class="dialog auth" role="dialog" aria-modal="true" aria-labelledby="auth-unlock-t" aria-describedby="auth-unlock-d">
+    <div class="auth-head">
+      <span class="auth-badge">${ic("lock")}</span>
+      <div class="auth-head-text">
+        <h2 id="auth-unlock-t">Unlock shop_prod's Strict settings</h2>
+        <p id="auth-unlock-d">Enter the passphrase to change what Strict asks about.</p>
+      </div>
+    </div>
+    <ul class="auth-scope">
+      <li>${ic("list-checks")}<span>Statements to ask about</span></li>
+      <li>${ic("fingerprint")}<span>Allow Touch ID</span></li>
+      <li>${ic("timer")}<span>Stay unlocked for</span></li>
+    </ul>
+    <p class="auth-note">${ic("lock")}It locks again when you close Settings or the connection dialog.</p>
+    <form data-auth-form="unlock">${authPass("auth-unlock-pass")}
+      <footer class="auth-actions"><button type="button" class="btn auth-btn" data-auth-cancel>Abort</button><button type="submit" class="btn auth-btn auth-btn--primary">${ic("lock-open")}Unlock</button></footer>
+    </form>
+  </div>
+</div>`;
+// The app passphrase's own dialogs (Set, Change, Reset, Disable) in the passphrase asks' shape: a badge, what it does,
+// each field with its key and show/hide, Caps Lock, "They match" under a new pair, Abort and the action in equal halves.
+const AUTH_SUB = {
+  new: { title: "Set passphrase", sub: "One passphrase for the whole app. Strict connections ask for it.", badge: "", icon: "key-round", primary: "Set passphrase",
+    fields: [["p-new", "Passphrase", "new-password"], ["p-new2", "Type it again", "new-password"]],
+    note: ["info", "It cannot be shown again. If you forget it, reset it with Touch ID or your login password."] },
+  change: { title: "Change passphrase", sub: "Enter the current one, then the new one twice.", badge: "", icon: "key-round", primary: "Change passphrase",
+    fields: [["p-cur", "Current passphrase", "current-password"], ["p-chg", "New passphrase", "new-password"], ["p-chg2", "Type it again", "new-password"]],
+    note: ["shield-check", "Connections keep their protection; the new passphrase opens them."] },
+  reset: { title: "Reset passphrase", sub: "The old passphrase can only be replaced.", badge: "warn", icon: "key-round", primary: "Reset passphrase",
+    fields: [["p-rst", "New passphrase", "new-password"], ["p-rst2", "Type it again", "new-password"]],
+    note: ["fingerprint", "macOS asks for Touch ID or your login password first. Connections keep their protection."] },
+  disable: { title: "Disable passphrase", sub: "Enter the current passphrase to turn it off for the whole app.", badge: "danger", icon: "shield-off", primary: "Disable passphrase", danger: true,
+    fields: [["p-cur2", "Current passphrase", "current-password"]],
+    effects: [["off", "lock-open", "Strict connections", "ask to confirm, as Low does"], ["off", "fingerprint", "Allow Touch ID", "turns off on every connection"], ["keep", "shield-check", "Security levels and warnings", "stay as they are"]],
+    note: ["key-round", "You can set a new one any time, here in Security."] },
+};
+const authSub = (key) => {
+  const d = AUTH_SUB[key], pair = d.fields.length > 1 && key !== "disable";
+  return `
+  <div class="backdrop sub-backdrop" data-sub="${key}" hidden>
+    <div class="dialog auth" role="dialog" aria-modal="true" aria-labelledby="auth-${key}-t" aria-describedby="auth-${key}-d">
+      <div class="auth-head">
+        <span class="auth-badge${d.badge ? " auth-badge--" + d.badge : ""}">${ic(d.icon)}</span>
+        <div class="auth-head-text"><h2 id="auth-${key}-t">${d.title}</h2><p id="auth-${key}-d">${d.sub}</p></div>
+      </div>${d.effects ? `
+      <ul class="auth-scope auth-effects">${d.effects.map(([k, icon, strong, rest]) => `<li class="auth-effect--${k}">${ic(icon)}<span><strong>${strong}</strong> ${rest}</span></li>`).join("")}</ul>` : ""}
+      <p class="auth-note">${ic(d.note[0])}<span>${d.note[1]}</span></p>
+      <form data-sub-form="${key}"${pair ? " data-auth-pair" : ""} novalidate>${d.fields.map(([id, label, auto]) => `
+        <label class="auth-field" for="${id}">${label}
+          <span class="auth-input">${ic("key-round")}<input class="field" id="${id}" type="password" autocomplete="${auto}" required aria-required="true" spellcheck="false"><button type="button" class="auth-eye" aria-label="Show passphrase" aria-pressed="false" data-auth-eye>${ic("eye")}</button></span>
+        </label>`).join("")}${pair ? `
+        <p class="auth-match" data-auth-match hidden></p>` : ""}
+        <p class="auth-caps" data-auth-caps hidden>${ic("arrow-up")}Caps Lock is on</p>
+        <p class="auth-err" role="alert" data-auth-err>${ic("circle-alert")}<span data-sub-err></span></p>
+        <footer class="auth-actions"><button type="button" class="btn auth-btn" data-sub-cancel>Abort</button><button type="submit" class="btn auth-btn ${d.danger ? "auth-btn--danger" : "auth-btn--primary"}">${ic(d.icon)}${d.primary}</button></footer>
+      </form>
+    </div>
+  </div>`;
+};
 const securityPane = () => `
       <div class="set-pane" data-pane="security" hidden>
         <h3>Security</h3>
-        <p class="pane-note">The passphrase is one for the whole app. Each connection keeps its own security level (None, Low or Strict) and the statements it asks about, set in its Options or the tabs bar.</p>
+        <p class="pane-note">The passphrase is one for the whole app. Each connection keeps its own security level (None, Low or Strict) and the statements it asks about, set in its Options or the tabs bar. The warnings here hold for every SQL connection that does not set its own.</p>
         <div class="set-list">${setItem("Default security level for new connections", "Existing connections keep their own", levelPick("sec-level", "none"), "sec-level-btn")}
         </div>
         <div class="set-list">
@@ -992,6 +1108,7 @@ const securityPane = () => `
                 <div class="set-ctl" data-pass="set" hidden><button type="button" class="btn" data-open-sub="change">Change passphrase</button><button type="button" class="btn btn--danger" data-open-sub="disable">Disable passphrase</button></div>
               </div>
         </div>
+        ${warnRows("sec")}
       </div>`;
 const sw = (id, on) => `<input id="${id}" class="switch" type="checkbox" role="switch"${on ? " checked" : ""}>`;
 const schemeRow = (slot) => `
@@ -1018,23 +1135,60 @@ const updatesPane = () => `
               </div>${setItem("Release notes", "What changed in each version", relLink("Open on GitHub"))}
         </div>
       </div>`;
+// Settings, opened from a connection tab: that connection's own settings come first, in their own group above the
+// app-wide ones. Opened from Home there is no connection, so only Global shows (and without its heading).
+// Connection > Security: its level, What to ask about, and the warnings (SQL only; they ask whatever the level).
+// Connection > Queries: the values that follow Global > Queries while empty. Edits save as they are made.
+// Warnings: Global sets them for every connection (switches, on by default); a connection follows Global unless it
+// picks On or Off. `follow` names what it follows ("Global" in Settings, "Settings" in the Connect dialog).
+const warnCtl = (id, follow) => (follow ? choice(id, [["app", `Use ${follow} (on)`], ["on", "On"], ["off", "Off"]], "app") : sw(id, true));
+const warnRows = (p, follow, h = "h4", attrs = "") => `<${h} class="cx-h"${attrs}>Warnings <span class="cx-h-note">${follow ? "Ask even when the security level is None" : "For every connection that does not set its own"}</span></${h}>
+        <div class="set-list"${attrs}>${setItem("More than 100 rows", "A select whose LIMIT, or the row limit ypacapy adds, is above 100", warnCtl(p + "-warn-limit", follow), p + "-warn-limit")}${setItem('<code class="stmt">UPDATE</code> without <code class="stmt">WHERE</code>', "Changes every row of its table, even a table of one row", warnCtl(p + "-warn-update", follow), p + "-warn-update")}
+        </div>`;
+const connSecurityPane = () => `
+      <div class="set-pane" data-pane="conn-security">
+        <h3>Security <span class="cx-h-note">shop_prod only</span></h3>
+        <div class="set-list">${setItem("Security level", "Low asks to confirm before a write", choice("cn-level", [["none", "None"], ["low", "Low"], ["strict", "Strict"]], "low"), "cn-level")}
+        </div>
+        <div data-cn-guarded>
+        <div class="protect-head cx-protect-head">
+          <h4 class="cx-h">Statements to ask about</h4>
+          <button type="button" class="btn btn--quiet" id="cn-protect-toggle" data-cn-strict hidden>${ic("lock")}<span>Unlock</span></button>
+        </div>
+        <div class="set-list stmts">${STMTS.map(([k, tag], i) => setItem(`<code class="stmt">${k}</code>${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", sw(`cn-prot-${i}`, true), `cn-prot-${i}`)).join("")}
+        </div>
+        </div>
+        ${warnRows("cn", "Global")}
+      </div>`;
+const connQueriesPane = () => `
+      <div class="set-pane" data-pane="conn-queries" hidden>
+        <h3>Queries <span class="cx-h-note">shop_prod only · empty uses Global</span></h3>
+        <div class="set-list">${setItem("Row limit", "Added to a select that has no limit of its own", '<span class="unit-field"><input id="cn-limit" class="field" inputmode="numeric" placeholder="100"><span class="unit">rows</span></span>', "cn-limit")}${setItem("Statement timeout", "0 lets a statement run as long as it takes", '<span class="unit-field"><input id="cn-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "cn-timeout")}${setItem("Keep query history", "", choice("cn-hist", [["app", "Use Global (on)"], ["on", "On"], ["off", "Off"]], "app"), "cn-hist")}${setItem("Connection heartbeat", "Keeps idle connections open with select 1", choice("cn-beat", [["app", "Use Global (off)"], ["on", "On"], ["off", "Off"]], "app"), "cn-beat")}
+        </div>
+      </div>`;
 pages["settings.html"] = page({
   title: "ypacapy preview, settings",
   desc: "Design preview of ypacapy Settings: theme and color scheme per appearance, compact mode, three fonts, query defaults and where data lives.",
-  barHtml: bar("settings", [["appearance", "Appearance"], ["queries", "Queries"], ["security", "Security"], ["pass-set", "Passphrase set"], ["pass-new", "Set passphrase"], ["pass-change", "Change passphrase"], ["pass-disable", "Disable passphrase"], ["pass-reset", "Forgot passphrase"], ["data", "Data on this Mac"], ["updates", "Updates"], ["upd-available", "Update available"], ["upd-error", "Check failed"], ["upd-dev", "Dev build"]]),
+  barHtml: bar("settings", [["conn-security", "Connection: Security"], ["conn-strict", "Connection: Strict"], ["lower-ask", "Lower from Strict"], ["lower-low", "Lower to Low, Touch ID"], ["lower-wrong", "Lower, wrong passphrase"], ["unlock-ask", "Unlock protection"], ["conn-queries", "Connection: Queries"], ["home", "Opened from Home"], ["appearance", "Appearance"], ["queries", "Queries"], ["security", "Security"], ["pass-set", "Passphrase set"], ["pass-new", "Set passphrase"], ["pass-new-differ", "Set, they differ"], ["pass-change", "Change passphrase"], ["pass-disable", "Disable passphrase"], ["pass-disable-wrong", "Disable, wrong passphrase"], ["pass-reset", "Forgot passphrase"], ["data", "Data on this Mac"], ["updates", "Updates"], ["upd-available", "Update available"], ["upd-error", "Check failed"], ["upd-dev", "Dev build"]]),
   body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: `
 <div class="backdrop" data-close="./index.html">
   <div class="dialog wide" role="dialog" aria-modal="true" aria-label="Settings">
     <h2>Settings</h2>
     <div class="vars settings">
       <ul>
-        <li><button type="button" data-section="appearance" aria-current="true">${ic("type")}Appearance</button></li>
+        <li class="group" data-conn-group><span>Connection</span><span class="cx-h-note">shop_prod</span></li>
+        <li data-conn-group><button type="button" data-section="conn-security" aria-current="true">${ic("shield-check")}Security</button></li>
+        <li data-conn-group><button type="button" data-section="conn-queries">${ic("terminal")}Queries</button></li>
+        <li class="group" data-conn-group>Global</li>
+        <li><button type="button" data-section="appearance">${ic("type")}Appearance</button></li>
         <li><button type="button" data-section="queries">${ic("terminal")}Queries</button></li>
         <li><button type="button" data-section="security">${ic("shield-check")}Security</button></li>
         <li><button type="button" data-section="data">${ic("lock")}Data on this Mac</button></li>
         <li><button type="button" data-section="updates">${ic("circle-arrow-down")}Updates</button></li>
       </ul>
-      <div class="set-pane" data-pane="appearance">
+${connSecurityPane()}
+${connQueriesPane()}
+      <div class="set-pane" data-pane="appearance" hidden>
         <h3>Appearance</h3>
         <div class="set-list">${setItem("Theme", "", `<div class="seg seg--lg" role="group" aria-label="Theme"><button type="button" data-set-theme="auto" aria-pressed="true">Auto</button><button type="button" data-set-theme="light" aria-pressed="false">Light</button><button type="button" data-set-theme="dark" aria-pressed="false">Dark</button></div>`)}${schemeRow("light")}${schemeRow("dark")}${setItem("Compact mode", "", sw("set-compact", false), "set-compact")}${fontRow("set-ui-font", "Interface font", "", "System default", "--font-ui", "--font-size-ui", [12, 13, 14, 15, 16], 14)}${fontRow("set-table-font", "Table font", "", "System monospace", "--font-table", "--font-size-table", [11, 12, 13, 14, 15, 16], 13)}${fontRow("set-console-font", "Editor font", "", "System monospace", "--font-mono", "--font-size-code", [11, 12, 13, 14, 15, 16, 18], 13)}
           <div class="set-sample" aria-label="Sample">
@@ -1059,7 +1213,7 @@ ${securityPane()}
       </div>
 ${updatesPane()}
     </div>
-  </div>${passDialogs()}
+  </div>${passDialogs()}${authDialogs()}
 </div>` }),
   script: js("page-settings.js"),
 });
@@ -1070,7 +1224,7 @@ const lab = (id, t) => `<label for="${id}">${t}</label>`;
 const COLORS = [["5", "Turquoise"], ["2", "Emerald"], ["7", "Sunflower"], ["3", "Carrot"], ["6", "Alizarin"], ["1", "River"], ["8", "Asphalt"], ["4", "Amethyst"]];
 pages["connect.html"] = page({
   title: "ypacapy preview, new connection",
-  desc: "Design preview of adding a PostgreSQL, MySQL, SQLite, MongoDB or Redis connection in ypacapy, with its password kept in the macOS keychain.",
+  desc: "Design preview of adding a PostgreSQL, MySQL, SQLite, MongoDB or Redis connection in ypacapy, with its password kept in the macOS login keychain.",
   barHtml: bar("connect", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["mongo", "MongoDB (SRV)"], ["mongo-host", "MongoDB host and port"], ["mongo-url", "MongoDB URL only"], ["mongo-options", "MongoDB Options"], ["mongo-tls", "MongoDB TLS"], ["mongo-advanced", "MongoDB Advanced"], ["mongo-test-ok", "MongoDB test passed"], ["mongo-test-failed", "MongoDB test failed"], ["redis", "Redis"], ["redis-url", "Redis URL only"], ["redis-options", "Redis Options"], ["redis-tls", "Redis TLS"], ["redis-advanced", "Redis Advanced"], ["redis-test-ok", "Redis test passed"], ["redis-test-failed", "Redis test failed"], ["url-only", "URL only"], ["options", "Options tab"], ["options-low", "Low"], ["options-strict", "Strict"], ["options-nopass", "No passphrase set"], ["level-menu", "Security level menu"], ["group-menu", "Group menu"], ["group-new", "New group"], ["ssl", "SSL tab"], ["advanced", "Advanced tab"], ["name-missing", "Name missing"], ["testing", "Testing"], ["test-stopped", "Test stopped"], ["test-ok", "Test passed"], ["test-failed", "Test failed"]]),
   body: `
 <div class="app">${strip("home")}
@@ -1098,7 +1252,7 @@ pages["connect.html"] = page({
 
       <div class="cx-panel" role="tabpanel" id="p-general" aria-labelledby="t-general">
         <div class="cx-grid">
-          ${lab("c-engine", "Driver")}<span class="cx-full cx-driver">${ic("server", "drv-ico")}${csel("c-engine", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["mongo", "MongoDB"], ["redis", "Redis"]], "postgres")}</span>
+          ${lab("c-engine", "Engine")}<span class="cx-full cx-driver">${ic("server", "drv-ico")}${csel("c-engine", [["postgres", "PostgreSQL"], ["mysql", "MySQL"], ["sqlite", "SQLite"], ["mongo", "MongoDB"], ["redis", "Redis"]], "postgres")}</span>
           <span class="cx-label" id="c-type-l" data-for="server">Connection type</span><span class="cx-full" data-for="server"><span class="seg seg--lg" role="group" aria-labelledby="c-type-l"><button type="button" aria-pressed="true" data-type="default">Default</button><button type="button" aria-pressed="false" data-type="url">URL only</button></span></span>
           <span data-for="fields" class="cx-sub">${lab("c-host", "Host")}<input class="field mono" id="c-host" name="host" value="localhost" autocomplete="off" spellcheck="false">${lab("c-port", "Port")}<input class="field mono cx-port" id="c-port" name="port" value="5432" inputmode="numeric" autocomplete="off">
           ${lab("c-user", "User")}<input class="field mono cx-full" id="c-user" name="user" value="ops" autocomplete="username" spellcheck="false"></span>
@@ -1117,18 +1271,19 @@ pages["connect.html"] = page({
 
       <div class="cx-panel" role="tabpanel" id="p-options" aria-labelledby="t-options" hidden>
         <h3 class="cx-h">Security</h3>
-        <div class="set-list">${setItem("Security level", LEVEL_DESC.none, levelPick("c-level", "none"), "c-level-btn").replace('<span class="desc">', '<span class="desc" data-level-desc>')}${setItem("Open with Touch ID", "", '<input id="c-touch" class="switch" type="checkbox" role="switch">', "c-touch").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-strict hidden")}${setItem("Stay unlocked for", "After the passphrase, for this connection only", choice("c-window", [["0", "Ask every time"], ["60", "1 minute"], ["300", "5 minutes"], ["900", "15 minutes"]], "0"), "c-window").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-strict hidden")}
+        <div class="set-list">${setItem("Security level", LEVEL_DESC.none, levelPick("c-level", "none"), "c-level-btn").replace('<span class="desc">', '<span class="desc" data-level-desc>')}${setItem("Allow Touch ID", "", '<input id="c-touch" class="switch" type="checkbox" role="switch">', "c-touch").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-strict hidden")}${setItem("Stay unlocked for", "After the passphrase, for this connection only", choice("c-window", [["0", "Ask every time"], ["60", "1 minute"], ["300", "5 minutes"], ["900", "15 minutes"]], "0"), "c-window").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-strict hidden")}
         </div>
         <div data-when-guarded hidden>
         <div class="protect-head cx-protect-head">
           <h3 class="cx-h"><span data-for="sql">Statements to ask about</span><span data-for="mongo" hidden>Writes to ask about</span><span data-for="redis" hidden>Commands to ask about</span> <span class="cx-h-note">For this connection</span></h3>
-          <button type="button" class="btn btn--quiet" id="protect-toggle" data-when-strict hidden>${ic("lock")}<span>Change</span></button>
+          <button type="button" class="btn btn--quiet" id="protect-toggle" data-when-strict hidden>${ic("lock")}<span>Unlock</span></button>
         </div>
         <div class="set-list stmts" id="protect">${STMTS.map(([k, tag], i) => setItem(`<code class="stmt">${k}</code>${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-${i}" class="switch" type="checkbox" role="switch" checked>`, `prot-${i}`).replace('class="set-item"', 'class="set-item" data-for="sql"')).join("")}${MONGO_OPS.map(([ks, tag], i) => setItem(`${ks.map((k) => `<code class="stmt">${k}</code>`).join(" ")}${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-m${i}" class="switch" type="checkbox" role="switch" checked>`, `prot-m${i}`).replace('class="set-item"', 'class="set-item" data-for="mongo" hidden')).join("")}${REDIS_OPS.map(([ks, tag], i) => setItem(`${ks.map((k) => `<code class="stmt">${k}</code>`).join(" ")}${tag ? ` <span class="tag">${tag}</span>` : ""}`, "", `<input id="prot-r${i}" class="switch" type="checkbox" role="switch" checked>`, `prot-r${i}`).replace('class="set-item"', 'class="set-item" data-for="redis" hidden')).join("")}
         </div>
         </div>
-        <h3 class="cx-h">Queries <span class="cx-h-note">Empty uses the value in Settings</span></h3>
-        <div class="set-list">${setItem('<span data-for="no-redis">Row limit</span><span data-for="redis" hidden>Page size</span>', '<span data-for="sql">Added to a select that has no limit of its own</span><span data-for="mongo" hidden>Added to a find or aggregate that has no limit of its own</span><span data-for="redis" hidden>How many fields, items or members a key tab reads at a time</span>', '<span class="unit-field"><input id="c-limit" class="field" inputmode="numeric" placeholder="100"><span class="unit">rows</span></span>', "c-limit")}${setItem('<span data-for="no-redis">Statement timeout</span><span data-for="redis" hidden>Command timeout</span>', '<span data-for="no-redis">0 lets a statement run as long as it takes</span><span data-for="redis" hidden>ypacapy stops waiting; Redis has no way to stop a command it started</span>', '<span class="unit-field"><input id="c-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "c-timeout")}${setItem("Connection heartbeat", '<span data-for="sql">Keeps idle sessions open with select 1</span><span data-for="mongo" hidden>Keeps idle sessions open with a ping command</span><span data-for="redis" hidden>Keeps idle connections open with PING</span>', choice("c-beat", [["app", "Use Settings (off)"], ["on", "On"], ["off", "Off"]], "app"), "c-beat")}
+        ${warnRows("c", "Settings", "h3", ' data-for="sql"')}
+        <h3 class="cx-h">Queries <span class="cx-h-note">Empty uses Global</span></h3>
+        <div class="set-list">${setItem('<span data-for="no-redis">Row limit</span><span data-for="redis" hidden>Page size</span>', '<span data-for="sql">Added to a select that has no limit of its own</span><span data-for="mongo" hidden>Added to a find or aggregate that has no limit of its own</span><span data-for="redis" hidden>How many fields, items or members a key tab reads at a time</span>', '<span class="unit-field"><input id="c-limit" class="field" inputmode="numeric" placeholder="100"><span class="unit">rows</span></span>', "c-limit")}${setItem('<span data-for="no-redis">Statement timeout</span><span data-for="redis" hidden>Command timeout</span>', '<span data-for="no-redis">0 lets a statement run as long as it takes</span><span data-for="redis" hidden>ypacapy stops waiting; Redis has no way to stop a command it started</span>', '<span class="unit-field"><input id="c-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "c-timeout")}${setItem("Connection heartbeat", '<span data-for="sql">Keeps idle connections open with select 1</span><span data-for="mongo" hidden>Keeps idle connections open with a ping command</span><span data-for="redis" hidden>Keeps idle connections open with PING</span>', choice("c-beat", [["app", "Use Global (off)"], ["on", "On"], ["off", "Off"]], "app"), "c-beat")}${setItem("Keep query history", "Off keeps this connection's runs out of History, e.g. for production", choice("c-hist", [["app", "Use Global (on)"], ["on", "On"], ["off", "Off"]], "app"), "c-hist")}
         </div>
       </div>
 
@@ -1150,7 +1305,7 @@ pages["connect.html"] = page({
           <span class="help cx-full cx-under">On uses rediss://. ElastiCache with encryption in transit requires it.</span>
           ${lab("c-rtlsca", "CA file")}<span class="with-btn cx-full"><input class="field mono" id="c-rtlsca" placeholder="~/certs/ca.pem" autocomplete="off" spellcheck="false"><button type="button" class="btn">${ic("folder-open")}Choose</button></span>
           ${lab("c-rtlscert", "Client certificate")}<span class="with-btn cx-full"><input class="field mono" id="c-rtlscert" placeholder="~/certs/client.pem" autocomplete="off" spellcheck="false" aria-describedby="c-rtlscert-h"><button type="button" class="btn">${ic("folder-open")}Choose</button></span>
-          <span class="help cx-full cx-under" id="c-rtlscert-h">Only when the server asks for one: a file with the certificate and its key.</span>
+          <span class="help cx-full cx-under" id="c-rtlscert-h">A file with the certificate and its key. Needed only when the server asks for one.</span>
         </div>
         <p class="cx-none" data-for="sqlite" hidden>SQLite opens a file on this Mac. There is no network to secure.</p>
       </div>
@@ -1202,7 +1357,7 @@ const UPD_CHIP = [
   updAnchor("available", "", `${ic("circle-arrow-down")}Update 0.0.2`, `
           <div class="upd-head"><p class="upd-title">ypacapy 0.0.2 is available</p><span class="upd-sub">You have 0.0.1 · released 20 Nov 2026</span></div>
           <ul class="upd-notes">${UPD_NOTES.map((l) => `<li>${l}</li>`).join("")}</ul>${updActions('<button type="button" class="btn btn--quiet" data-upd-close>Later</button>', '<button type="button" class="btn btn--primary" data-upd-go="downloading">Install update</button>')}`),
-  updAnchor("downloading", "", `${ic("loader-circle", "upd-spin")}Updating 42%`, `
+  updAnchor("downloading", "", `${ic("loader-circle", "upd-spin")}Downloading 42%`, `
           <div class="upd-head"><p class="upd-title">Downloading 0.0.2</p><span class="upd-sub">You can keep working while it downloads.</span></div>
           <div class="upd-bar" role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="42"><i style="width:42%"></i></div>
           <div class="upd-row"><span>4.1 of 9.8 MB</span><span>42%</span></div>`),
@@ -1245,7 +1400,7 @@ const aboutCard = (st, line, body) => `
 const ABOUT_CARDS = [
   aboutCard("checking", qline(SQL_CHECK, qwait("running")), updRowA('Looking for a new version…<span class="sub">github.com/jimmyfish/ypacapy</span>', checkAgain(true))),
   aboutCard("current", qline(SQL_CHECK, qst("redir", "0 rows")), updRowA('You\'re on the latest version.<span class="sub">Checked just now</span>', checkAgain())),
-  aboutCard("available", qline(SQL_CHECK, qst("", "1 row")), updRowA('<strong>ypacapy 0.0.2 is out</strong><span class="sub">You have 0.0.1 · released 20 Nov 2026</span>') + `
+  aboutCard("available", qline(SQL_CHECK, qst("", "1 row")), updRowA('<strong>ypacapy 0.0.2 is available</strong><span class="sub">You have 0.0.1 · released 20 Nov 2026</span>') + `
               <div class="about-notes"><ul class="upd-notes">${ABOUT_NOTES.slice(0, 3).map((l) => `<li>${l}</li>`).join("")}</ul><ul class="upd-notes" data-more hidden>${ABOUT_NOTES.slice(3).map((l) => `<li>${l}</li>`).join("")}</ul><button type="button" class="upd-link about-notes-more" aria-expanded="false" data-more-btn>Show all ${ABOUT_NOTES.length} changes${ic("chevron-down")}</button></div>` +
     updRowA("", `<button type="button" class="upd-link" title="${REL}/tag/v0.0.2">Release notes${ic("external-link")}</button><button type="button" class="btn btn--primary" data-about-go="downloading">${ic("circle-arrow-down")}Install update</button>`).replace('<p class="about-upd-text"></p>', "")),
   aboutCard("downloading", qline(SQL_INSTALL, qst("busy", "42%"), 42), updRowA('Downloading 0.0.2 · 42%<span class="sub">4.1 of 9.8 MB · you can keep working</span>')),
@@ -1275,7 +1430,7 @@ pages["about.html"] = page({
         <img src="../../public/app-icon.png" alt="">
       </div>
       <h2 class="about-name" id="about-name" title="Reads the same both ways">ypa<span>capy</span></h2>
-      <p class="about-tag">A calm database explorer. Everything stays on this Mac.</p>
+      <p class="about-tag">A database client for PostgreSQL, MySQL, SQLite, MongoDB and Redis. Connections, history and passwords stay on this Mac.</p>
       <div class="about-verline"><span class="build-tag" data-about-dev hidden>dev</span><button type="button" class="about-ver" title="Copy version"><span data-ver>v0.0.1</span>${ic("copy")}</button></div>
     </header>
     <div class="about-body">${ABOUT_CARDS}
@@ -1459,7 +1614,7 @@ ${["admin", "config", "local"].map((n) => item(`system/${n}`, "database", n).rep
           <button type="button" role="menuitem" class="danger">Drop collection</button>
         </div>
       </div>
-    </aside>`.replace(/Estimate from table statistics/g, "Estimate from collection metadata, not a count");
+    </aside>`.replace(/Estimate from table statistics/g, "Estimated from collection metadata");
 const mhrow = (src, time, status, cls) => `        <div class="row"><button type="button" class="row-main" title="${MCONN} / events&#10;${esc(src)}"><span class="name hq">${esc(src)}</span><span class="htime">${time}</span><span class="hstatus ${cls}">${status}</span></button></div>`;
 const mongoHistory = `
     <aside class="sidebar" data-side="history" hidden>
@@ -1621,7 +1776,7 @@ pages["collection.html"] = page({
           <div class="mq-row">
             ${mqField("where", "filter", "{ field: value }", DEFAULT_FILTER, "mq-filter", ' aria-describedby="where-err"')}
           </div>
-          <div class="mq-actions"><button type="button" class="btn btn--quiet" id="mq-reset" title="Back to the empty filter">Reset</button><button type="button" class="btn btn--quiet" data-href="./mongo.html?show=find" title="Open this query as db.orders.find(…) in a new query tab">${ic("square-code")}Open in console</button>${runGroup}</div>
+          <div class="mq-actions"><button type="button" class="btn btn--quiet" id="mq-reset" title="Back to the empty filter">Reset</button><button type="button" class="btn btn--quiet" data-href="./mongo.html?show=find" title="Open this query as db.orders.find(…) in a new query tab">${ic("square-code")}Open as a query</button>${runGroup}</div>
           <div class="mq-row mq-opts">
             ${mqField("proj", "project", "{ field: 0 }", "")}
             ${mqField("sort", "sort", "{ field: -1 }", "")}
@@ -1634,7 +1789,7 @@ pages["collection.html"] = page({
         <div class="req-title"><span class="name name--static">orders</span><span class="path">${MCONN} / events</span></div>
         <section class="response" aria-label="orders">
           <nav class="subtabs" aria-label="Collection">
-            <button type="button" class="subtab" data-view="docs" aria-pressed="true">Documents<span class="n" id="t-n" title="Estimate from collection metadata, not a count">~48k</span></button>
+            <button type="button" class="subtab" data-view="docs" aria-pressed="true">Documents<span class="n" id="t-n" title="Estimated from collection metadata">~48k</span></button>
             <button type="button" class="subtab" data-view="fields" aria-pressed="false">Fields<span class="n" title="Seen on this page">${MFIELDS.length}</span></button>
             <button type="button" class="subtab" data-view="indexes" aria-pressed="false">Indexes<span class="n">5</span></button>
             <span class="push meta"><span class="dim" id="t-ms">7&nbsp;ms</span></span>
@@ -1649,7 +1804,7 @@ pages["collection.html"] = page({
           <div class="state" data-when="empty" hidden><div class="empty"><strong>No document in orders matches this filter</strong><span>No order has the status lost. In the 20 documents read before, status holds paid, shipped or refunded.</span><button type="button" class="link" id="t-clear">Clear the filter</button></div></div>
           <div class="state" data-when="bad" hidden><div class="error-box" id="where-err">
             <strong>The filter is not valid</strong>
-            <span class="hint-line">ypacapy reads it before sending, so nothing went to ${MCONN}.</span>
+            <span class="hint-line">ypacapy reads it before sending, so nothing was sent to ${MCONN}.</span>
 <pre class="db-says"><span class="bad">Expected , or ] after "paid" at line 1, column 30</span>
 { status: { $in: ["paid" "shipped"] } }
                              ^</pre>
@@ -1937,7 +2092,7 @@ const HASH_EDIT_ROWS = USER.map(([f, v], i) => {
   return tr(i + 1, cells, changed).replace("<tr", `<tr${del ? ' class="row-del"' : ""}`);
 }).concat(`<tr class="row-edit row-new"><td class="rownum">+</td>${editCell(c.text("tier"))}${editCell(c.text("gold"))}</tr>`).join("\n");
 const hashEdit = `
-            <div class="res-tools"><span class="muted">Fields in HSCAN order</span><div class="edit-bar" role="group" aria-label="Unsaved changes"><span class="edit-n">3 changes</span><button type="button" class="btn btn--primary" id="hash-save" title="Write the changes at once  ⌘S">Save</button><button type="button" class="btn" data-revert title="Drop the changes">Revert</button></div>${rresActions("ke")}</div>
+            <div class="res-tools"><span class="muted">Fields in HSCAN order</span><div class="edit-bar" role="group" aria-label="Unsaved changes"><span class="edit-n">3 changes</span><button type="button" class="btn btn--primary" id="hash-save" title="Write the changes at once  ⌘S">Save</button><button type="button" class="btn" data-revert title="Discard the changes">Discard</button></div>${rresActions("ke")}</div>
             <div class="as-pane"><div class="grid-wrap" tabindex="0" aria-label="Fields of user:3107, edited"><table class="grid"><thead><tr>${ROWHEAD}${th("field", "string")}${th("value", "string")}</tr></thead><tbody>
 ${HASH_EDIT_ROWS}
             </tbody></table></div>${inspector("value", "string", 5, "Kyoto")}</div>
@@ -1946,7 +2101,7 @@ ${HASH_EDIT_ROWS}
 // expiry stays. Text that stopped being JSON is said, and can still be saved.
 const SESSION_EDIT = JSON.stringify({ ...SESSION, roles: ["customer", "vip", "beta"] }, null, 2);
 const stringEdit = `
-            <div class="res-tools"><span class="muted str-check">Valid JSON, 421 bytes</span><div class="edit-bar" role="group" aria-label="Unsaved changes"><span class="edit-n">Changed</span><button type="button" class="btn btn--primary" id="str-save" title="Write it with SET  ⌘S">Save</button><button type="button" class="btn" data-revert title="Drop the change">Revert</button></div></div>
+            <div class="res-tools"><span class="muted str-check">Valid JSON, 421 bytes</span><div class="edit-bar" role="group" aria-label="Unsaved changes"><span class="edit-n">Changed</span><button type="button" class="btn btn--primary" id="str-save" title="Write it with SET  ⌘S">Save</button><button type="button" class="btn" data-revert title="Drop the change">Discard</button></div></div>
             <textarea class="str-edit" spellcheck="false" aria-label="Value of session:7f3a91c2">${esc(SESSION_EDIT)}</textarea>
             <p class="help str-note">Save writes it with SET … KEEPTTL, so its expiry stays. Format keeps JSON two spaces deep.</p>`;
 
@@ -1958,7 +2113,7 @@ pages["key.html"] = page({
       <div class="work-body">
         <div class="rk-bar" role="group" aria-label="Key">
           <div class="rk-id"><span id="rk-type">${rtype("hash")}</span><h2 class="rk-name" id="rk-name" title="user:3107"><span class="rk-head">user:3107</span><span class="rk-tail"></span></h2><button type="button" class="icon-btn" title="Copy the key name" aria-label="Copy the key name">${ic("copy")}</button></div>
-          <div class="mq-actions"><button type="button" class="btn btn--quiet" data-info-open>${ic("info")}Info</button><button type="button" class="btn btn--quiet" id="rk-console" data-href="./redis.html?show=hgetall" title="Open a query tab with the command that reads this key">${ic("square-code")}Open in console</button><button type="button" class="btn" id="rk-refresh" title="Read this page again  ⌘R">${ic("refresh-cw")}Refresh</button><button type="button" class="icon-btn icon-btn--outline rk-del" id="rk-del" title="Delete key…" aria-label="Delete key">${ic("shredder")}</button></div>
+          <div class="mq-actions"><button type="button" class="btn btn--quiet" data-info-open>${ic("info")}Info</button><button type="button" class="btn btn--quiet" id="rk-console" data-href="./redis.html?show=hgetall" title="Open a query tab with the command that reads this key">${ic("square-code")}Open as a query</button><button type="button" class="btn" id="rk-refresh" title="Read this page again  ⌘R">${ic("refresh-cw")}Refresh</button><button type="button" class="icon-btn icon-btn--outline rk-del" id="rk-del" title="Delete key…" aria-label="Delete key">${ic("shredder")}</button></div>
           <div class="rk-meta"><span id="rk-len">12 fields</span>${ttlPop}<span id="rk-enc" title="OBJECT ENCODING">listpack</span><span class="rk-db">db0</span></div>
           <div class="mq-row" id="rk-match-row">
             <label class="mq-field"><span class="mq-k">match</span><input class="mq-in" id="rk-match" placeholder="*" spellcheck="false" autocomplete="off" aria-describedby="rk-match-h"></label>
@@ -1980,7 +2135,7 @@ ${Object.entries(KEYS).map(([k, [, , , , , , body]]) => `          <div class="s
           <div class="state" data-when="empty" hidden><div class="empty"><strong>No field in user:3107 matches <span id="rk-empty-q">addr*</span></strong><span>HSCAN read all 12 fields. Their names start with email, full_name, phone, country, city and 7 more.</span><button type="button" class="link" id="rk-clear">Clear the pattern</button></div></div>
           <div class="state" data-when="gone" hidden><div class="error-box">
             <strong>user:3107 is gone</strong>
-            <span class="hint-line">It expired or was deleted after the tree read it. Nothing else changed.</span>
+            <span class="hint-line">It expired or was deleted after the sidebar read it.</span>
 <pre class="db-says"><span class="bad">TYPE user:3107 → none</span></pre>
             <div class="actions"><button type="button" class="btn" id="rk-close">Close this tab</button></div>
           </div></div>

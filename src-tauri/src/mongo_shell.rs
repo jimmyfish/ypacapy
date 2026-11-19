@@ -365,7 +365,7 @@ impl<'a> Parser<'a> {
                     return Ok(Bson::ObjectId(ObjectId::new()));
                 }
                 let s = one_str("24 hex digits in quotes")?;
-                ObjectId::parse_str(&s).map(Bson::ObjectId).or_else(|_| err(format!("{s} is not an ObjectId: it needs 24 hex digits"), at))
+                ObjectId::parse_str(&s).map(Bson::ObjectId).or_else(|_| err(format!("{s} is not an ObjectId. An ObjectId has 24 hex digits."), at))
             }
             "ISODate" | "Date" => match args.as_slice() {
                 [] => Ok(Bson::DateTime(DateTime::now())),
@@ -413,7 +413,7 @@ impl<'a> Parser<'a> {
             }
             "MinKey" => Ok(Bson::MinKey),
             "MaxKey" => Ok(Bson::MaxKey),
-            _ => err(format!("ypacapy does not know {id}(). It reads values, not JavaScript"), at),
+            _ => err(format!("ypacapy does not know {id}(). It reads values only."), at),
         }
     }
 }
@@ -495,7 +495,7 @@ pub fn parse_command(src: &str) -> R<Command> {
     match &p.tok {
         Tok::Ident(d) if d == "db" => {}
         Tok::End => return err("Nothing to run", 0),
-        Tok::Ident(w) if w == "use" || w == "show" => return err(format!("ypacapy does not take {w}. Pick the database in the query line, and see collections in the sidebar"), p.at),
+        Tok::Ident(w) if w == "use" || w == "show" => return err(format!("ypacapy does not run {w}. Pick the database in the query line, and see collections in the sidebar"), p.at),
         t => return err(format!("A query starts with db, as in db.orders.find(), not {}", describe(t)), p.at),
     }
     p.bump()?;

@@ -1159,11 +1159,13 @@ pub async fn run_query(
         return redis::run(req, conn, &state, &settings, &guard_state, &store).await;
     }
     let c = guard::classify(&req.sql, conn.engine);
-    if let Some(ask) = guard::check(&c, &conn, req.approval, &guard_state).await? {
+    let row_limit = conn.row_limit.map(u64::from).unwrap_or_else(|| settings.u64("rowLimit", 100)) as usize;
+    let adds_limit = req.add_limit && c.limitable && row_limit > 0;
+    // the console's runs (add_limit) warn about size; table tabs read a page at a time
+    if let Some(ask) = guard::check_sql(&c, &conn, &settings, req.add_limit, adds_limit.then_some(row_limit as u64), req.approval, &guard_state).await? {
         return Ok(RunOutcome::Ask(ask));
     }
-    let row_limit = conn.row_limit.map(u64::from).unwrap_or_else(|| settings.u64("rowLimit", 100)) as usize;
-    let (sql, limit) = if req.add_limit && c.limitable && row_limit > 0 {
+    let (sql, limit) = if adds_limit {
         (format!("{}\nlimit {row_limit}", &req.sql[..c.end]), Some(row_limit))
     } else {
         (req.sql.clone(), None)
@@ -1204,7 +1206,7 @@ pub async fn run_query(
             out
         }
     };
-    if req.history && settings.bool("keepHistory", true) {
+    if req.history && conn.keeps_history(&settings) {
         let (status, rows, error) = match &outcome {
             RunOutcome::Done { sets, affected, .. } => ("ok", sets.last().map(|s| s.rows.len() as i64).or(affected.map(|a| a as i64)), None),
             RunOutcome::Error { title, .. } => ("error", None, Some(title.clone())),
@@ -1318,7 +1320,7 @@ pub async fn apply_edits(
         Ok((Applied::Miss { index, n }, _)) => RunOutcome::Error {
             title: if n == 0 { "A row to change was not found".into() } else { format!("A change matched {n} rows, not one") },
             says: Some(req.statements[index].clone()),
-            message: "Nothing was saved: the transaction was rolled back.".into(),
+            message: "The transaction was rolled back, so nothing was saved.".into(),
             hint: Some(if n == 0 { "The row may have been changed or deleted since it was read. Refresh, then edit again.".into() } else { "Its key does not pick out a single row.".into() }),
             lost: false,
             ms, fix: None,
@@ -1330,7 +1332,7 @@ pub async fn apply_edits(
     if let RunOutcome::Error { lost: true, .. } = outcome {
         state.drop_conn(&conn.id).await;
     }
-    if settings.bool("keepHistory", true) {
+    if conn.keeps_history(&settings) {
         let (status, rows, error) = match &outcome {
             RunOutcome::Done { affected, .. } => ("ok", affected.map(|a| a as i64), None),
             RunOutcome::Error { title, .. } => ("error", None, Some(title.clone())),
@@ -1433,6 +1435,9 @@ mod tests {
             app_name: None,
             connect_timeout: None,
             heartbeat: None,
+            keep_history: None,
+            warn_big_limit: None,
+            warn_update_all: None,
             auth_source: None,
             srv: false,
             tls: None,

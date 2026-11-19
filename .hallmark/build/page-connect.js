@@ -180,7 +180,7 @@
     $$("#protect .switch").forEach((sw) => { sw.disabled = f("c-level").value === "strict" && !unlocked; });
     const t = f("protect-toggle");
     $("use", t).setAttribute("href", unlocked ? "#i-lock-open" : "#i-lock");
-    $("span", t).textContent = unlocked ? "Lock" : "Change";
+    $("span", t).textContent = unlocked ? "Lock" : "Unlock";
   };
   f("protect-toggle").addEventListener("click", () => {
     if (unlocked) { unlocked = false; renderLock(); return; }

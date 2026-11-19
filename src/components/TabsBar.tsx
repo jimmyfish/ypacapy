@@ -164,7 +164,7 @@ export function TabsBar() {
                 {unsaved && <span className="dirty" role="img" aria-label={t.kind === "diagram" ? "Unsaved layout" : "Unsaved changes"} />}
               </button>
               {t.pinned ? (
-                <button type="button" className="icon-btn pin" aria-label={`Unpin ${name}`} title={`Pinned: kept with this connection. Click to unpin`} onClick={() => st.pinTab(t.id, false)}>
+                <button type="button" className="icon-btn pin" aria-label={`Unpin ${name}`} title="Pinned to this connection. Click to unpin." onClick={() => st.pinTab(t.id, false)}>
                   <Pin {...ico} />
                 </button>
               ) : (

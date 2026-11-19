@@ -50,7 +50,7 @@ export function UpdateChip() {
     chip = (
       <>
         <LoaderCircle {...ico} className="ico upd-spin" />
-        {state.kind === "installing" ? "Installing" : pct !== undefined ? `Updating ${pct}%` : "Updating"}
+        {state.kind === "installing" ? "Installing" : pct !== undefined ? `Downloading ${pct}%` : "Downloading"}
       </>
     );
   } else if (state.kind === "ready") {

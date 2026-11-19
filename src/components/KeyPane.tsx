@@ -154,7 +154,7 @@ export function KeyPane({ tab }: { tab: KeyTab }) {
       <div className="state">
         <div className="error-box">
           <strong>{tab.key} is gone</strong>
-          <span className="hint-line">It expired or was deleted after the tree read it. Nothing else changed.</span>
+          <span className="hint-line">It expired or was deleted after the sidebar read it.</span>
           <pre className="db-says">
             <span className="bad">TYPE {tab.key} → none</span>
           </pre>
@@ -246,7 +246,7 @@ export function KeyPane({ tab }: { tab: KeyTab }) {
       <div className="state">
         <div className="empty">
           <strong>ypacapy does not draw a {type} yet</strong>
-          <span>Read it in the console with the module's own commands.</span>
+          <span>Read it in a query tab with the module's own commands.</span>
         </div>
       </div>
     );
@@ -278,7 +278,7 @@ export function KeyPane({ tab }: { tab: KeyTab }) {
           </button>
           <button type="button" className="btn btn--quiet" title="Open a query tab with the command that reads this key" onClick={console_}>
             <SquareCode {...ico} />
-            Open in console
+            Open as a query
           </button>
           <button type="button" className="btn" title="Read this page again  ⌘R" disabled={busy || session.status !== "open"} onClick={() => void st.readKey(tab.id, { page: tab.page })}>
             <RefreshCw {...ico} />

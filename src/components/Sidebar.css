@@ -1,0 +1,39 @@
+/* Sidebar.tsx: its own rules, moved out of src/styles.css in their original order. Shared rules (used by more than one component) stay in src/styles.css. */
+.icon-btn--outline { border: 1px solid var(--color-field-edge); }
+/* drag the sidebar's right edge to resize; past the minimum width it hides */
+.side-resize { position: absolute; top: 0; bottom: 0; right: -4px; width: 7px; z-index: var(--z-raised); cursor: col-resize; }
+.side-resize::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 1px; background: transparent; transition: background-color var(--dur-micro) var(--ease-out); }
+.side-resize:hover::after, body.col-resizing .side-resize::after { left: 2px; width: 3px; background: var(--color-accent); }
+.side-head { display: flex; align-items: center; justify-content: space-between; padding: var(--space-sm) var(--space-md) var(--space-2xs); }
+.side-head h2 { font-size: var(--text-xl); font-weight: 600; letter-spacing: 0; }
+.side-tools { display: flex; gap: var(--space-xs); padding: var(--space-2xs) var(--space-md) var(--space-xs); }
+/* one "more" button per row, shown on hover, keyboard focus, or while its menu is open */
+.row-more { display: none; min-width: 24px; min-height: 24px; margin-right: var(--space-3xs); border-radius: 6px; }
+.row:hover .row-more, .row:focus-within .row-more, .row.menu-open .row-more { display: inline-grid; }
+.row.menu-open { background: var(--color-paper-3); }
+.row.menu-open .row-more { background: var(--color-paper-2); color: var(--color-ink); }
+.hstatus { margin-left: auto; padding-right: var(--space-xs); font: 600 var(--text-xs) var(--font-mono); }
+.recent .hstatus { margin: 0; padding: 0; }
+/* ---- from voidHTTP src/styles.css lines 757,759 (history row time) ---- */
+/* history rows: when it was sent, then the status */
+.htime { margin-left: auto; color: var(--color-muted); font: var(--text-xs) var(--font-mono); font-variant-numeric: tabular-nums; }
+.htime + .hstatus { margin-left: var(--space-xs); min-width: 3ch; text-align: right; }
+.hq { font: var(--text-code) var(--font-mono); color: var(--color-ink-2); }
+/* history: when, then rows or error, like voidHTTP's response history */
+.hstatus.rows { color: var(--color-ok); }
+/* history is per connection: a run on another database than the picked one names it, muted, before the SQL */
+.hdb { flex-shrink: 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 var(--space-2xs); border-radius: 4px; background: var(--color-paper-3); color: var(--color-muted); font: var(--text-xs)/1.6 var(--font-mono); }
+.tree .tree-note { padding: var(--space-2xs) var(--space-sm) var(--space-2xs) var(--indent, 0); color: var(--color-muted); font-size: var(--text-sm); }
+.tree .tree-note.err { color: var(--color-error); }
+/* Redis: key type badges in the tree and the key head, the tree's scan line and TTL marks, the key tab's head */
+.rtype { display: inline-block; flex-shrink: 0; box-sizing: border-box; min-width: 46px; margin-right: var(--space-xs); padding: 1px var(--space-3xs); border-radius: 4px; background: var(--bg); color: var(--fg); font: 700 10px/1.5 var(--font-ui); letter-spacing: 0.04em; text-align: center; }
+.scan-more { display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-2xs) var(--space-sm); color: var(--color-muted); font-size: var(--text-sm); }
+/* Redis: the scan line, pinned under the tree */
+.side-foot { flex-shrink: 0; padding: var(--space-2xs) var(--space-xs); border-top: 1px solid var(--color-rule); }
+.scan-more .link { margin-left: auto; }
+.scan-more code { font-family: var(--font-mono); color: var(--color-ink-2); }
+/* a key with a TTL: a timer at the row's end, the time left on hover. Expiring only is the same timer, pressed. */
+.rttl { display: inline-flex; flex-shrink: 0; margin-left: auto; padding-left: var(--space-2xs); color: var(--color-warn); }
+.rttl .ico { width: 13px; height: 13px; }
+.ttl-only[aria-pressed="true"] { color: var(--color-warn); border-color: var(--color-warn); background: var(--color-paper-2); }
+.rk-id .rtype { margin-right: var(--space-3xs); }

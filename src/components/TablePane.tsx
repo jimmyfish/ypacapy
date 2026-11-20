@@ -1,3 +1,4 @@
+import "./TablePane.css";
 import { useEffect, useMemo, useRef } from "react";
 import { DEFAULT_ROW_LIMIT, useCurrent, useStore } from "../store";
 import { estimate } from "../lib/cells";

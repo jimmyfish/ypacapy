@@ -1,0 +1,10 @@
+/* LevelPicker.tsx: its own rules, moved out of src/styles.css in their original order. Shared rules (used by more than one component) stay in src/styles.css. */
+/* Security level in a dialog: a field that opens the guard menu */
+.level-btn { display: flex; align-items: center; gap: var(--space-xs); position: relative; padding-right: 32px; text-align: left; cursor: pointer; }
+.level-btn .guard-ico { width: 16px; height: 16px; color: var(--color-muted); flex-shrink: 0; }
+.level-btn .env-name { flex: 1; }
+.level-btn .select-chev { position: absolute; top: 50%; right: 10px; width: 14px; height: 14px; transform: translateY(-50%); color: var(--color-muted); }
+.level-btn[aria-expanded="true"] { border-color: var(--color-focus); }
+.level-pick .guard-menu { width: max-content; }
+/* security level menu: the name over a one-line description */
+.guard-menu .gm-text { display: grid; gap: 1px; flex: 1; }

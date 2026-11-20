@@ -1,3 +1,4 @@
+import "./TabsBar.css";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { isDirty, useCurrent, useStore } from "../store";

@@ -1,3 +1,4 @@
+import "./GroupPicker.css";
 import { useRef, useState } from "react";
 import { useDismiss } from "./useDismiss";
 import { Check, ChevronDown, Folder, FolderMinus, FolderPlus, icoC, ico } from "./Icon";

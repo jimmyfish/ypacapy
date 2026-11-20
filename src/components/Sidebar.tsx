@@ -1,3 +1,4 @@
+import "./Sidebar.css";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useCurrent, useStore, type SideView } from "../store";
 import { api, errText } from "../lib/api";

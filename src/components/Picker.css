@@ -1,0 +1,18 @@
+/* Picker.tsx: its own rules, moved out of src/styles.css in their original order. Shared rules (used by more than one component) stay in src/styles.css. */
+.picker-trigger { display: flex; align-items: center; gap: var(--space-xs); padding: 0 32px 0 var(--space-2xs); color: var(--color-ink); text-align: left; cursor: pointer; }
+.picker-trigger .picker-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-trigger .select-chev { position: absolute; top: 50%; right: 10px; width: 14px; height: 14px; transform: translateY(-50%); color: var(--color-muted); pointer-events: none; }
+/* the ring is for keyboard focus only: a mouse pick hands focus back to the field without lighting it up */
+.picker-trigger:focus:not(:focus-visible) { outline: none; }
+.picker-trigger[aria-expanded="true"] { border-color: var(--color-edge-aa); }
+/* portalled to <body> with a fixed left/top/width (Picker.tsx), above the dialog */
+.picker-menu { position: fixed; top: auto; right: auto; min-width: 0; z-index: calc(var(--z-modal) + 50); }
+.picker-menu .picker-opt { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-xs); padding: 0 var(--space-xs); }
+.picker-menu .picker-opt[aria-selected="true"] { background: var(--color-accent-soft); }
+.picker-menu .picker-opt[aria-selected="true"] .picker-label { font-weight: 600; }
+.picker-menu .picker-opt:hover, .picker-menu .picker-opt:focus-visible { background: var(--color-paper-3); }
+.picker-menu .picker-check { width: 14px; height: 14px; color: var(--color-link); }
+.picker-menu .picker-check.is-off { visibility: hidden; }
+.picker--color .picker-trigger { width: 160px; }
+.picker--engine .picker-trigger { padding-left: var(--space-xs); }
+.picker--engine { display: grid; }

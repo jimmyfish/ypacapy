@@ -1,3 +1,4 @@
+import "./EngineIcon.css";
 import type { CSSProperties } from "react";
 import type { Engine } from "../types";
 

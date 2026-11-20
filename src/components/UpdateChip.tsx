@@ -1,3 +1,4 @@
+import "./UpdateChip.css";
 import { useEffect, useRef } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useUpdates } from "../updates";

@@ -1,3 +1,4 @@
+import "./Picker.css";
 import {
   useEffect,
   useLayoutEffect,

@@ -1,0 +1,38 @@
+/* QueryPane.tsx: its own rules, moved out of src/styles.css in their original order. Shared rules (used by more than one component) stay in src/styles.css. */
+.btn--primary.joined-tail { margin-left: 0; border-left: 1px solid var(--color-on-accent-rule); }
+/* ---- from voidHTTP src/styles.css lines 359,460 ---- */
+/* resize grip between request and response */
+.divider { height: 12px; flex-shrink: 0; cursor: row-resize; display: grid; place-items: center; border-top: 3px solid var(--color-rule); }
+.divider::after { content: ""; width: 16px; height: 4px; background: radial-gradient(circle, var(--color-muted) 1.25px, transparent 1.75px) 0 0 / 6px 4px repeat-x; }
+.divider:hover { border-top-color: var(--color-accent); }
+/* side by side: the divider stands up between request and response */
+.divider[aria-orientation="vertical"] { width: 12px; height: auto; cursor: col-resize; border-top: none; border-left: 3px solid var(--color-rule); }
+.divider[aria-orientation="vertical"]::after { width: 4px; height: 16px; background-size: 4px 6px; background-repeat: repeat-y; }
+.divider[aria-orientation="vertical"]:hover { border-left-color: var(--color-accent); }
+.request-line .joined-tail { padding: 0; }
+.ctx-fixed { height: 28px; padding: 0 var(--space-2xs); color: var(--color-ink); }
+.req-pane { display: flex; flex-direction: column; min-height: 0; flex: 1 1 0; }
+body.row-resizing, body.row-resizing * { cursor: row-resize !important; user-select: none; -webkit-user-select: none; }
+/* Run: play icon, bold label, its shortcut inside the button. While a run is out the button is disabled
+ * and a turning loader-circle takes the play icon's place. */
+.request-line .btn--run { gap: var(--space-xs); padding: 0 var(--space-md) 0 var(--space-sm); font-weight: 700; }
+.btn--run .run-ico, .btn--run .run-spin { width: 15px; height: 15px; stroke-width: 2; }
+.btn--run .run-spin { animation: spin 0.8s linear infinite; }
+.btn--run[aria-busy="true"]:disabled { opacity: 0.8; cursor: progress; }
+.btn--run .run-kbd { margin-left: var(--space-xs); font: 500 var(--text-sm) / 1 var(--font-ui); letter-spacing: 0.04em; opacity: 0.85; }
+@media (prefers-reduced-motion: reduce) { .btn--run .run-spin { animation-duration: 2.4s; } }
+/* Save: one button, one width. Saved and unchanged, it reads "Saved" with a green check and does nothing;
+ * never saved or edited since, it reads "Save". */
+.request-line .btn--save { min-width: 96px; gap: 6px; }
+.btn--save .save-ico { width: 15px; height: 15px; color: var(--color-ok); }
+.btn--save[data-saved="true"]:disabled { opacity: 1; cursor: default; color: var(--color-muted); background: var(--color-paper); }
+.write-res .ok-ico { width: 24px; height: 24px; color: var(--color-ok); }
+.write-res .db-says { text-align: left; }
+.rk-bar .mq-row .btn--run { min-height: 32px; }
+.ctx .ctx-db { color: var(--color-ink-2); font-family: var(--font-mono); }
+@container mq-bar (max-width: 760px) {
+  .mq-actions .btn--run { padding-inline: var(--space-sm); }
+}
+/* Query tabs: paging a run ypacapy added the row limit to. Next re-runs it with an offset; no totals, only the page number */
+.response > .q-pager { margin: 0; padding: var(--space-2xs) var(--space-md); border-top: 1px solid var(--color-rule); }
+.q-pager .pager-hint { margin-right: auto; font: var(--text-sm) var(--font-ui); }

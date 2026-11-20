@@ -1,3 +1,4 @@
+import "./Home.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
 import { ENGINE_LABEL } from "../lib/sql";

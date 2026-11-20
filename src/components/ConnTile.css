@@ -1,0 +1,11 @@
+/* ConnTile.tsx: its own rules, moved out of src/styles.css in their original order. Shared rules (used by more than one component) stay in src/styles.css. */
+.proj-tile {
+  display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px;
+  background: var(--bg); color: var(--fg); font-size: var(--text-lg); font-weight: 700;
+}
+.proj-tile--sm { width: 20px; height: 20px; border-radius: 6px; font-size: var(--text-xs); }
+/* project tile holds the chosen Lucide icon in the chosen colour */
+.proj-tile .ico { width: 22px; height: 22px; }
+.proj-tile--sm .ico { width: 13px; height: 13px; }
+.drag-ghost .proj-tile { flex: none; }
+.ptab--project[aria-current="page"] .proj-tile { background: var(--fg); color: var(--color-paper); }

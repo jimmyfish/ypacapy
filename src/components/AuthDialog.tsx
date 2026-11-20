@@ -1,3 +1,4 @@
+import "./AuthDialog.css";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from "react";
 import { api, errText } from "../lib/api";
 import { LEVELS, type Approval, type Engine, type SecurityLevel } from "../types";

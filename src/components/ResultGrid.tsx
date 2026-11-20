@@ -1,3 +1,4 @@
+import "./ResultGrid.css";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { save } from "@tauri-apps/plugin-dialog";

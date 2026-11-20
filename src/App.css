@@ -1,0 +1,54 @@
+/* App.tsx: its own rules, moved out of src/styles.css in their original order. Shared rules (used by more than one component) stay in src/styles.css. */
+/* compact icon-only rail: labels live in tooltips and aria-labels */
+.rail { display: flex; flex-direction: column; align-items: center; gap: var(--space-2xs); padding: var(--space-xs) 0; }
+.rail-mark {
+  display: grid; place-items: center; width: 32px; height: 32px; margin-bottom: var(--space-xs);
+  border-radius: var(--radius-control); background: var(--color-paper);
+}
+.rail-item {
+  display: grid; place-items: center; width: 34px; height: 34px; padding: 0;
+  border: none; border-radius: var(--radius-control); background: transparent; color: var(--color-muted);
+}
+.rail-item .ico { width: 20px; height: 20px; }
+.rail-item:hover { color: var(--color-ink); background: var(--color-paper-3); }
+.rail-item[aria-current="page"] { color: var(--color-link); background: var(--color-accent-soft); }
+.rail-item:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+.app-strip { grid-column: 1 / -1; display: flex; align-items: center; min-width: 0; padding-left: 84px; -webkit-user-select: none; user-select: none; }
+.ptabs { display: flex; align-items: center; align-self: stretch; gap: var(--space-2xs); min-width: 0; overflow-x: auto; overflow-y: hidden; }
+.ptab {
+  display: inline-flex; align-items: center; gap: var(--space-xs); flex-shrink: 0; height: 30px; padding: 0 var(--space-sm);
+  border: none; border-radius: var(--radius-control); background: none; color: var(--color-muted); white-space: nowrap;
+}
+.ptab:hover { color: var(--color-ink); background: var(--color-paper-3); }
+.ptab[aria-current="page"] { background: var(--color-paper); color: var(--color-ink); font-weight: 600; }
+.ptab:focus-visible, .ptab-main:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.ptab--project { padding: 0 var(--space-2xs) 0 0; }
+.ptab-main { display: inline-flex; align-items: center; gap: var(--space-xs); height: 100%; padding: 0 var(--space-2xs) 0 var(--space-xs); border: none; background: none; color: inherit; font: inherit; }
+.ptab-close { min-width: 22px; min-height: 22px; border-radius: 6px; }
+.ptab-sep { width: 1px; height: 16px; margin: 0 var(--space-2xs); background: var(--color-edge-soft); }
+@media (max-width: 40rem) {
+  .app-strip { padding-left: var(--space-md); }
+}
+.app > .rail { padding-top: 0; }
+/* ---- from voidHTTP src/styles.css lines 688,693 ---- */
+/* ---------- title strip: app settings on the far right ---------- */
+/* right end of the strip: dev build pill, update chip, Settings gear. The group takes the auto margin,
+ * so the gear stays at the far right whichever of the others is shown */
+.strip-end { margin-left: auto; display: flex; align-items: center; gap: var(--space-2xs); flex-shrink: 0; }
+.strip-settings { margin-right: var(--space-xs); flex-shrink: 0; }
+.strip-settings.on, .strip-settings[aria-expanded="true"] { background: var(--color-paper); color: var(--color-ink); }
+[data-density="compact"] .ptab-main { padding-left: var(--space-sm); }
+/* ======================================================================
+   ypacapy: what a database tool adds to voidHTTP's kit. Only tokens; no literal colours.
+   ====================================================================== */
+.rail-mark { color: var(--color-link); }
+.boot { height: 100%; background: var(--color-canvas); }
+body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-select: none; -webkit-user-select: none; }
+/* Connection tabs in the title strip wear the connection's colour, so a red (production) connection is seen at a
+   glance: every open connection tab is filled with its tint; the active one adds a ring and a solid tile in the
+   connection colour. --fg / --bg sit on the tab (App.tsx) and match the tile's own, so tab, ring and tile are one colour. */
+.ptab--project { background: var(--bg); color: var(--fg); }
+.ptab--project:hover { background: color-mix(in srgb, var(--fg) 16%, var(--bg)); color: var(--fg); }
+.ptab--project[aria-current="page"] { background: var(--bg); color: var(--color-ink); box-shadow: inset 0 0 0 1.5px var(--fg); }
+.ptab--project .ptab-close { color: inherit; }
+.ptab--project .ptab-close:hover { background: color-mix(in srgb, var(--fg) 18%, transparent); color: var(--fg); }

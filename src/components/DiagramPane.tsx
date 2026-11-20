@@ -7,6 +7,7 @@
  * the cardinality at both ends; double-click opens its rows. Save (⌘S) keeps the picks and layout with the
  * connection; nothing is kept on its own. Export writes an image, Mermaid, DBML or a .drawio file on this Mac.
  */
+import "./DiagramPane.css";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";

@@ -1,0 +1,2 @@
+/* Icon.tsx: its own rules, moved out of src/styles.css in their original order. Shared rules (used by more than one component) stay in src/styles.css. */
+.ico-lg { width: 22px; height: 22px; }

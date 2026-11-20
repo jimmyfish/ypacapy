@@ -1,3 +1,4 @@
+import "./App.css";
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useCurrent, useStore, type SideView } from "./store";

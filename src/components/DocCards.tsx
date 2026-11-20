@@ -1,3 +1,4 @@
+import "./DocCards.css";
 import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useStore } from "../store";
 import { fieldsOf, shellInline, shellPretty, typeOf } from "../lib/bson";

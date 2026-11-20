@@ -1,0 +1,35 @@
+/* UpdateChip.tsx: its own rules, moved out of src/styles.css in their original order. Shared rules (used by more than one component) stay in src/styles.css. */
+/* in-app updates, taken as is from voidHTTP (its preview .hallmark/preview/updates.html, approved 2026-11-13): a chip in the title strip
+ * beside the Settings gear, a popover under it for each step, and the Updates pane in Settings */
+/* title strip: the chip sits in .strip-end, beside the gear */
+.upd-anchor { position: relative; display: flex; align-items: center; flex-shrink: 0; }
+.upd-chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 8px;
+  border: none; border-radius: var(--radius-pill); background: var(--color-accent-soft); color: var(--color-link);
+  font-size: var(--text-sm); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.upd-chip:hover { filter: brightness(0.97); }
+.upd-chip[aria-expanded="true"] { box-shadow: 0 0 0 1px var(--color-link); }
+.upd-chip:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+/* ready: the one step that wants a click, so it is filled */
+.upd-chip--ready { background: var(--color-accent); color: var(--color-accent-ink); }
+.upd-chip--ready:hover { filter: brightness(1.08); }
+.upd-chip--error { background: transparent; color: var(--color-error); box-shadow: inset 0 0 0 1px var(--color-error); }
+/* popover: the .menu surface, wider and padded like a small card */
+.upd-pop {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: var(--z-dropdown); width: 320px;
+  display: grid; gap: var(--space-sm); padding: var(--space-md); border-radius: 10px;
+  background: var(--color-paper); box-shadow: 0 0 0 1px var(--color-rule), 0 8px 24px var(--color-shadow);
+  color: var(--color-ink); font-size: var(--text-md); -webkit-user-select: text; user-select: text;
+}
+.upd-pop[hidden] { display: none; }
+.upd-head { display: grid; gap: var(--space-3xs); }
+.upd-title { display: flex; align-items: center; gap: var(--space-xs); margin: 0; font-size: var(--text-md); font-weight: 600; }
+.upd-title .ok { color: var(--color-ok); }
+.upd-title .bad { color: var(--color-error); }
+.upd-sub { color: var(--color-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.upd-bar { height: 6px; border-radius: var(--radius-pill); background: var(--color-paper-3); overflow: hidden; }
+.upd-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--color-accent); }
+.upd-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); color: var(--color-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.upd-actions { display: flex; justify-content: flex-end; gap: var(--space-xs); margin-top: var(--space-2xs); }
+.upd-actions .upd-link { margin-right: auto; }

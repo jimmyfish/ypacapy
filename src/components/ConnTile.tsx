@@ -1,3 +1,4 @@
+import "./ConnTile.css";
 import type { Conn } from "../types";
 import { connColorId } from "../lib/connColors";
 import { HardDrive, Server, ico } from "./Icon";

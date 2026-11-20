@@ -1,9 +1,10 @@
 # Graph Report - ypacapy  (2026-11-20)
 
 ## Corpus Check
-- 77 files · ~332,182 words
+- 77 files · ~332,673 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 10 file(s) not represented in the graph (top: .css 5, (none) 4, .lock 1)
+- Unclassified: 33 file(s) not represented in the graph (top: .css 28, (none) 4, .lock 1)
+- WARNING: 33 of 148 files seen (22%) have no supported extractor and are missing from this graph entirely. It may look complete while representing only part of the codebase.
 
 ## Summary
 - 2058 nodes · 4855 edges · 104 communities (87 shown, 17 thin omitted)
@@ -11,7 +12,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8ada7bff`
+- Built from commit: `2e4ca251`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -117,8 +118,8 @@
 5. `DocCards()` - 27 edges
 6. `run()` - 27 edges
 7. `useCurrent()` - 26 edges
-8. `errText()` - 25 edges
-9. `ResultGrid()` - 25 edges
+8. `ResultGrid()` - 25 edges
+9. `errText()` - 25 edges
 10. `react` - 25 edges
 
 ## Surprising Connections (you probably didn't know these)
@@ -126,12 +127,12 @@
   .hallmark/preview/index.html → src/components/Modals.tsx
 - `savedAt()` --semantically_similar_to--> `savedAtLabel()`  [INFERRED] [semantically similar]
   .hallmark/preview/diagram.html → src/lib/diagramTab.ts
-- `Query history sidebar` --semantically_similar_to--> `HistorySide()`  [INFERRED] [semantically similar]
-  .hallmark/preview/index.html → src/components/Sidebar.tsx
 - `diagram.html (ER diagram preview)` --semantically_similar_to--> `DiagramPane()`  [INFERRED] [semantically similar]
   .hallmark/preview/diagram.html → src/components/DiagramPane.tsx
 - `Tables to draw picker dialog` --semantically_similar_to--> `Picker()`  [INFERRED] [semantically similar]
   .hallmark/preview/diagram.html → src/components/DiagramPane.tsx
+- `Query history sidebar` --semantically_similar_to--> `HistorySide()`  [INFERRED] [semantically similar]
+  .hallmark/preview/index.html → src/components/Sidebar.tsx
 
 ## Import Cycles
 - 1-file cycle: `src-tauri/src/keychain.rs -> src-tauri/src/keychain.rs`
@@ -517,17 +518,17 @@ Nodes (4): MongoTls, Insecure, Off, On
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Where things live (module map)` connect `README icons` to `Fonts`, `Local store`, `DB runtime types`, `paths.rs`, `guard.rs`, `API and types`, `SettingsState`, `Keychain`, `conns.rs`?**
-  _High betweenness centrality (0.372) - this node is a cross-community bridge._
+  _High betweenness centrality (0.382) - this node is a cross-community bridge._
 - **What connects `Cancelled`, `Done`, `Failed` to the rest of the system?**
   _128 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `MongoDB driver` be split into smaller, more focused modules?**
   _Cohesion score 0.05742821473158552 - nodes in this community are weakly interconnected._
 - **Why does `home.html (Home / Connections preview)` connect `home.html (Home / Connections preview)` to `search`, `Redis previews`, `Settings dialog panes (Appearance, Queries, Security, Data on this Mac, Updates)`, `connect.html (New connection preview)`, `Connections store`?**
-  _High betweenness centrality (0.065) - this node is a cross-community bridge._
+  _High betweenness centrality (0.066) - this node is a cross-community bridge._
 - **Should `BSON values` be split into smaller, more focused modules?**
   _Cohesion score 0.05909351692484223 - nodes in this community are weakly interconnected._
-- **Why does `redis.html (Redis connection preview)` connect `Redis previews` to `home.html (Home / Connections preview)`, `QueryPane.tsx`, `connect.html (New connection preview)`?**
-  _High betweenness centrality (0.051) - this node is a cross-community bridge._
+- **Why does `State` connect `API and types` to `DiagramPane.tsx`, `Home.tsx`, `Grid icons`, `QueryPane.tsx`, `Guard icons`, `connect.html (New connection preview)`?**
+  _High betweenness centrality (0.055) - this node is a cross-community bridge._
 
 ### Low-confidence Hints
 _AMBIGUOUS edges — the extractor was unsure. Verify before acting on these._

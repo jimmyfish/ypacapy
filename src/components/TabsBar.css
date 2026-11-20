@@ -1,0 +1,43 @@
+/* TabsBar.tsx: its own rules, moved out of src/styles.css in their original order. Shared rules (used by more than one component) stay in src/styles.css. */
+.tab-main { flex: 1 1 auto; display: flex; align-items: center; gap: var(--space-xs); min-width: 0; height: 100%; padding: 0 var(--space-xs) 0 var(--space-sm); border: none; background: none; color: inherit; }
+.tab[aria-current="page"] .tab-main .name { font-weight: 600; }
+.tab-main .m { width: auto; }
+.tab-main:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+.tab-add { align-self: flex-end; margin: 0 0 2.5px var(--space-2xs); flex-shrink: 0; }
+.tabsbar .env-group { padding-left: var(--space-sm); }
+.env-group { margin-left: auto; align-self: center; }
+/* centred in the bar, so its bottom edge keeps 10px off the bar's rule: (52 - 32) / 2 */
+.env-group .env-picker { margin-left: 0; }
+.env-group .btn { min-height: 28px; }
+.env-group .env-picker { min-height: 28px; }
+.env-picker {
+  margin-left: auto; display: flex; align-items: center; gap: var(--space-xs); flex-shrink: 0;
+  min-height: 36px; padding: 0 var(--space-sm); white-space: nowrap;
+  border: 1px solid var(--color-field-edge); border-radius: var(--radius-control); background: var(--color-paper); color: var(--color-ink);
+}
+.env-picker:hover { background: var(--color-paper-3); }
+.env-picker:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+/* tabs bar toggles: sidebar on the far left, layout beside the environment */
+.side-toggle { align-self: flex-end; margin-bottom: 2.5px; flex-shrink: 0; }
+/* on the tab text line, like .tab-add */
+/* the toggle and the new-tab plus sit beside the tabs: hovered, the icon brightens with no square behind it */
+.side-toggle:hover, .tab-add:hover { background: transparent; color: var(--color-ink); }
+/* centred with the environment picker beside it */
+.side-toggle { margin-right: calc(var(--space-sm) * -1 + var(--space-2xs)); }
+.layout-toggle + .env-group { margin-left: var(--space-2xs); }
+/* the write guard of the open connection: voidHTTP's environment picker and menu */
+.guard .env-picker .ico:last-child { width: 14px; height: 14px; color: var(--color-muted); }
+/* passphrase protection on: a fingerprint beside the guard's label */
+.guard .env-picker[data-level="none"] .guard-ico { color: var(--color-warn); }
+/* ---- from voidHTTP src/styles.css lines 494,496 (environment picker face) ---- */
+.env-picker { cursor: pointer; }
+.env-picker[aria-expanded="true"] { background: var(--color-paper-3); }
+.env-picker .env-name { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the security level pill: no edge, tinted by level (Flat UI: None Asphalt, Low Carrot, Strict Alizarin), bold name */
+.guard .env-picker { --fg: var(--proj-8-fg); --bg: var(--proj-8-bg); gap: 6px; padding: 0 var(--space-xs) 0 var(--space-sm); border: none; border-radius: var(--radius-pill); background: var(--bg); color: var(--fg); font-weight: 700; }
+.guard .env-picker[data-level="low"] { --fg: var(--proj-3-fg); --bg: var(--proj-3-bg); }
+.guard .env-picker[data-level="strict"] { --fg: var(--proj-6-fg); --bg: var(--proj-6-bg); }
+.guard .env-picker:hover, .guard .env-picker[aria-expanded="true"] { background: color-mix(in srgb, var(--fg) 14%, var(--bg)); }
+.guard .env-picker .guard-ico, .guard .env-picker[data-level="none"] .guard-ico { color: currentColor; }
+.guard .env-picker .ico:last-child { color: currentColor; opacity: 0.7; margin-left: 2px; }
+.ctx-menu .tm-wrap { max-width: 240px; white-space: normal; }

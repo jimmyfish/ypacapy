@@ -1,0 +1,53 @@
+/* CollectionPane.tsx: its own rules, moved out of src/styles.css in their original order. Shared rules (used by more than one component) stay in src/styles.css. */
+/* the collection's query bar: url-field boxes, a label on the left, text that wraps to more lines */
+/* two columns: Filter over Project and Sort on the left; the buttons over Skip and Limit on the right, as wide as the
+   buttons. Every label on the left has one width, so values start on one line; Project and Sort stretch to the taller. */
+.mq-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-xs); padding: var(--space-md) var(--space-md) var(--space-xs); }
+.mq-paging { grid-column: 2; grid-row: 2; align-self: start; display: flex; gap: var(--space-xs); }
+.mq-num { flex: 1 1 0; }
+.mq-num .mq-k { width: auto; }
+/* width 0: Skip and Limit take what the buttons leave them and never widen the column, so Run sits at the right edge */
+.mq-num .mq-in { align-self: flex-start; width: 0; height: 30px; padding: 0 var(--space-sm) 0 0; text-align: right; }
+.fields-note { margin: 0 0 var(--space-xs); color: var(--color-muted); max-width: 72ch; }
+.grid td.fpath { font-family: var(--font-table); }
+.fp-parent { color: var(--color-muted); }
+/* the collection's Options: Project, Sort, Skip and Limit fold under the filter; the count shows what is set */
+.mq-opts[hidden], .mq-paging[hidden] { display: none; }
+.mq-more .mq-more-ico { width: 14px; height: 14px; margin-right: var(--space-3xs); transition: transform 0.12s; }
+.mq-more[aria-expanded="true"] .mq-more-ico { transform: rotate(90deg); }
+.mq-more[aria-expanded="true"] { color: var(--color-ink); }
+.mq-set { min-width: 18px; height: 18px; margin-left: var(--space-2xs); padding: 0 5px; border-radius: var(--radius-pill); background: var(--color-accent-soft); color: var(--color-link); font: 600 var(--text-xs)/18px var(--font-ui); text-align: center; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .mq-more .mq-more-ico { transition: none; } }
+/* The query bar reads its own width (the sidebar takes from it), not the window's. Narrow, its buttons drop their
+   words for icons (Options swaps its chevron for sliders, Reset gains an arrow) and the filter's word gives way to a
+   funnel; they all stay on the filter's line. Narrower still, Project and Sort stack and Skip and Limit take the line
+   under them. Each button keeps its name in aria-label and title. */
+.mq-bar { container: mq-bar / inline-size; }
+.mq-narrow-ico, .mq-k-ico { display: none; }
+@container mq-bar (max-width: 760px) {
+  .mq-actions .mq-narrow-ico { display: inline-block; }
+  .mq-more[aria-expanded="true"] { background: var(--color-paper-2); }
+  .mq-num { flex: 1; }
+  .mq-filter .mq-k { display: flex; align-items: center; width: auto; height: 30px; padding-right: var(--space-2xs); align-self: flex-start; }
+  .mq-filter .mq-k-t { display: none; }
+  .mq-filter .mq-k-ico { display: inline-block; width: 15px; height: 15px; color: var(--sql-keyword); }
+}
+@container mq-bar (max-width: 520px) {
+  .mq-opts, .mq-paging { grid-column: 1 / -1; grid-row: auto; }
+  .mq-opts { flex-direction: column; }
+}
+/* the collection toolbar, as Compass lays it out: view, add, copy and export on the left; the pager on the right */
+.res-tools .res-add { min-height: 28px; padding: 0 var(--space-xs); gap: var(--space-3xs); }
+.res-tools .res-add .ico { width: 15px; height: 15px; }
+.res-tools .res-add + .res-actions { margin-left: 0; }
+.pager-n { margin-right: var(--space-2xs); color: var(--color-muted); font: var(--text-sm) var(--font-ui); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pager-est { color: var(--color-ink-2); }
+.pager-count { padding: 0; font: inherit; }
+.spinner--sm { display: inline-block; width: 12px; height: 12px; vertical-align: -2px; }
+@container res (max-width: 640px) { .res-tools .res-add .btn-label { display: none; } }
+/* Options, Reset and Open as a query are icons at every width (owner pick: less crowded); title and aria-label name them */
+.mq-ico-btn .btn-label, .mq-ico-btn .mq-more-ico { display: none; }
+.mq-ico-btn .mq-narrow-ico { display: inline-block; }
+.mq-actions .mq-ico-btn { gap: 0; min-width: 32px; padding-inline: var(--space-xs); justify-content: center; }
+.mq-actions .mq-ico-btn .ico { margin-right: 0; }
+.mq-more.mq-ico-btn[aria-expanded="true"] { background: var(--color-paper-2); color: var(--color-ink); }

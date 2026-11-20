@@ -1,0 +1,7 @@
+/* EngineIcon.tsx: its own rules, moved out of src/styles.css in their original order. Shared rules (used by more than one component) stay in src/styles.css. */
+/* engine: the brand glyph sits where the colour picker's 20px tile does, so labels line up */
+.picker--engine .engine-ico { flex-shrink: 0; margin: 0 2px; }
+/* Home cards: the tile shows the connection type as its engine glyph (PostgreSQL elephant, MySQL dolphin, SQLite
+   feather) on the connection's colour; no PG / MYSQL / SQLITE word by the address. The drag ghost's small tile shrinks it. */
+.proj-tile .engine-ico { width: 22px; height: 22px; }
+.proj-tile--sm .engine-ico { width: 13px; height: 13px; }

@@ -1,3 +1,4 @@
+import "./CollectionPane.css";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DEFAULT_ROW_LIMIT, uid, useCurrent, useStore } from "../store";
 import { api } from "../lib/api";

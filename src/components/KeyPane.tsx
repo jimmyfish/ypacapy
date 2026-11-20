@@ -1,3 +1,4 @@
+import "./KeyPane.css";
 import { useEffect, useMemo } from "react";
 import { useCurrent, useStore } from "../store";
 import { duration, ttlLeft } from "../lib/time";

@@ -1,3 +1,4 @@
+import "./SqlEditor.css";
 import { Fragment, forwardRef, useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { highlightSql } from "../lib/sql";

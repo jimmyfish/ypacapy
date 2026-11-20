@@ -1,3 +1,4 @@
+import "./Icon.css";
 import { createLucideIcon } from "lucide-react";
 
 /** Icons: Lucide (lucide-react 1.75.0), one stroke weight everywhere. */

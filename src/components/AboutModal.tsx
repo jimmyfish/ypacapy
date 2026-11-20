@@ -1,3 +1,4 @@
+import "./AboutModal.css";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useUpdates } from "../updates";

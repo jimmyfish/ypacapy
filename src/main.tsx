@@ -1,8 +1,9 @@
 /// <reference types="vite/client" />
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
+// Shared kit first: each component then imports its own CSS, which must land after it in the bundle.
 import "./styles.css";
+import App from "./App";
 
 // The webview's own menu (Reload, and Inspect in dev builds) is not an app menu. Keep the native menu
 // only where it edits or copies text. Dev builds keep it everywhere, so Inspect Element stays reachable.

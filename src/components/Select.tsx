@@ -1,3 +1,4 @@
+import "./Select.css";
 import type { SelectHTMLAttributes } from "react";
 import { ChevronDown, ico } from "./Icon";
 

@@ -1,3 +1,4 @@
+import "./QueryPane.css";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isDirty, useCurrent, useStore } from "../store";
 import { ENGINE_LABEL, ENGINE_NAME, formatSql, statementAt } from "../lib/sql";

@@ -1,0 +1,28 @@
+/* Connection status, heartbeat on only: a turning refresh-cw while connecting (muted) or reconnecting (amber); a dot
+   once it settles, green connected, red disconnected. On the connection tabs, at the foot of the sidebar. */
+.cs-mark { flex: none; display: inline-grid; place-items: center; width: 8px; height: 8px; border-radius: 50%; background: var(--color-ok); }
+.cs-mark[data-cs="disconnected"] { background: var(--color-error); }
+.cs-mark .cs-spin { display: none; width: 13px; height: 13px; stroke-width: 2.5; color: var(--color-muted); }
+.cs-mark:is([data-cs="connecting"], [data-cs="reconnecting"]) { width: 13px; height: 13px; background: none; }
+.cs-mark:is([data-cs="connecting"], [data-cs="reconnecting"]) .cs-spin { display: block; animation: spin 1.1s linear infinite; }
+.cs-mark[data-cs="reconnecting"] .cs-spin { color: var(--color-warn); }
+@media (prefers-reduced-motion: reduce) { .cs-mark .cs-spin { animation: none; } }
+
+/* on a connection tab: after the name, ringed in the tab's own tint so it reads on any connection colour; a
+   disconnected tab also greys its engine tile, a cue that isn't only the dot's colour (red on a red tab) */
+.ptab-main .cs-tab { margin-left: 2px; box-shadow: 0 0 0 2px var(--bg); }
+.ptab-main .cs-tab:is([data-cs="connecting"], [data-cs="reconnecting"]) { box-shadow: none; }
+.ptab--project:has(.cs-tab[data-cs="disconnected"]) .proj-tile { filter: grayscale(1); opacity: 0.55; }
+
+/* the foot of the sidebar */
+.conn-status { flex: none; display: flex; align-items: center; gap: var(--space-xs); margin-top: auto; min-height: 32px; padding: var(--space-2xs) var(--space-md); border-top: 1px solid var(--color-rule); font-size: var(--text-sm); white-space: nowrap; }
+.conn-status .cs-label { font-weight: 600; color: var(--color-ink); }
+.conn-status[data-cs="disconnected"] .cs-label { color: var(--color-error); }
+
+/* dropped while idle: a bar under the tabs, above the tab's work, which stays where it is */
+.hb-bar { flex: none; display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-md); border-bottom: 1px solid color-mix(in srgb, var(--color-error) 30%, var(--color-rule)); background: color-mix(in srgb, var(--color-error) 8%, var(--color-paper)); }
+.hb-bar-ico { flex: none; width: 18px; height: 18px; color: var(--color-error); }
+.hb-bar-text { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--space-sm); font-size: var(--text-sm); }
+.hb-bar-text span { color: var(--color-ink-2); }
+.hb-bar[data-cs="reconnecting"] { border-bottom-color: color-mix(in srgb, var(--color-warn) 30%, var(--color-rule)); background: color-mix(in srgb, var(--color-warn) 8%, var(--color-paper)); }
+.hb-bar[data-cs="reconnecting"] .hb-bar-ico { color: var(--color-warn); }

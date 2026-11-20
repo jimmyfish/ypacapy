@@ -190,17 +190,32 @@ export function Home() {
     st.openModal({
       kind: "confirm",
       title: `Remove ${c.name}?`,
-      message:
-        c.engine === "sqlite"
-          ? "Capy wipes the connection and its query history from this Mac. Saved queries stay. The database file stays put."
-          : "Capy wipes the connection, its keychain password and its query history from this Mac. Saved queries stay. The database isn't touched.",
+      message: "Capy wipes it from this Mac.",
       confirmLabel: "Remove",
-      final: true,
+      final: c.engine === "sqlite" ? true : "It can't be undone. To get it back, add it again with its password.",
+      icon: "unplug",
+      subject: { conn: c, name: c.name, meta: address(c).join(""), mono: c.engine === "sqlite" },
+      effects:
+        c.engine === "sqlite"
+          ? [["off", "unplug", "The connection", "goes"], ["off", "history", "Its query history", "goes"], ["keep", "bookmark", "Saved queries", "stay"], ["keep", "hard-drive", "The database file", "stays put"]]
+          : [["off", "unplug", "The connection and its keychain password", "go"], ["off", "history", "Its query history", "goes"], ["keep", "bookmark", "Saved queries", "stay"], ["keep", "database", "The database", "isn't touched"]],
       onConfirm: () => void st.deleteConn(c.id),
     });
 
   const newGroupFor = (c: Conn) =>
-    st.openModal({ kind: "prompt", title: `Move ${c.name} to a new group`, label: "Group name", initial: "", onSubmit: (name) => void st.setGroup([c.id], name) });
+    st.openModal({
+      kind: "prompt",
+      title: `Move ${c.name} to a new group`,
+      message: `Capy makes the group and moves ${c.name} into it.`,
+      label: "Group name",
+      icon: "folder-plus",
+      fieldIcon: "folder",
+      placeholder: "Production",
+      confirmLabel: "Move",
+      actionIcon: "folder-input",
+      initial: "",
+      onSubmit: (name) => void st.setGroup([c.id], name),
+    });
 
   // renaming onto an existing group joins the two; a folded group stays folded under its new name
   const renameGroup = (from: string, to: string, list: Conn[]) => {

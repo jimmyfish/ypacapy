@@ -8,7 +8,7 @@ import { api, errText } from "../lib/api";
 import { highlightInline } from "../lib/sql";
 import { systemFonts } from "../lib/fonts";
 import { BUILTIN, DEFAULT_SCHEME, FAMILIES, SCHEMES, schemeSwatch, type BuiltinId } from "../lib/themes";
-import { DEFAULT_LEVEL, LEVELS, MONGO_KINDS, REDIS_KINDS, STATEMENTS, type Approval, type Conn, type Engine, type MongoTls, type ReadPref, type SecurityLevel, type Settings, type SslMode, type Warning } from "../types";
+import { DEFAULT_LEVEL, LEVELS, MONGO_KINDS, REDIS_KINDS, STATEMENTS, type Approval, type Conn, type Engine, type MongoTls, type ReadPref, type SecurityLevel, type Settings, type SslMode } from "../types";
 import { Select } from "./Select";
 import { LevelSelect } from "./LevelPicker";
 import { GroupSelect } from "./GroupPicker";
@@ -20,13 +20,13 @@ import { RELEASES_URL, mb, releaseDate } from "../lib/updater";
 import { DEV_BUILD } from "../build";
 import { AboutModal } from "./AboutModal";
 import { AuthDialog, PassphraseDialog, type PassKind } from "./AuthDialog";
+import { ConfirmAsk, GuardAsk, PromptAsk, SaveQueryAsk } from "./Ask";
 import type { CollInfo, KeyInfo } from "../types";
 import {
   CircleAlert,
   CircleArrowDown,
   CircleCheck,
   ExternalLink,
-  Fingerprint,
   FolderOpen,
   KeyRound,
   LoaderCircle,
@@ -34,7 +34,6 @@ import {
   LockOpen,
   PlugZap,
   ShieldCheck,
-  Shredder,
   Terminal,
   TriangleAlert,
   Type,
@@ -55,36 +54,17 @@ export function Modals() {
   if (!modal) return null;
   switch (modal.kind) {
     case "confirm":
-      return (
-        <Shell title={modal.title} onClose={close}>
-          <p>{modal.message}</p>
-          {modal.final && <Final>It cannot be undone.</Final>}
-          <footer>
-            <button type="button" className="btn" onClick={close}>
-              Cancel
-            </button>
-            {modal.alt && (
-              <button type="button" className="btn" onClick={() => (close(), modal.alt!.run())}>
-                {modal.alt.label}
-              </button>
-            )}
-            <button type="button" className="btn btn--danger" autoFocus onClick={() => (close(), modal.onConfirm())}>
-              {modal.final && <Shredder {...ico} />}
-              {modal.confirmLabel ?? "Delete"}
-            </button>
-          </footer>
-        </Shell>
-      );
+      return <ConfirmAsk m={modal} onClose={close} />;
     case "prompt":
-      return <PromptModal m={modal} onClose={close} />;
+      return <PromptAsk m={modal} onClose={close} />;
     case "saveQuery":
-      return <SaveQueryModal tabId={modal.tabId} onClose={close} />;
+      return <SaveQueryAsk tabId={modal.tabId} onClose={close} />;
     case "connect":
       return <ConnectModal conn={modal.conn} group={modal.group} onClose={close} />;
     case "settings":
       return <SettingsModal section={modal.section} onClose={close} />;
     case "guard":
-      return <GuardModal m={modal} onClose={close} />;
+      return <GuardAsk m={modal} onClose={close} />;
     case "lower":
       return <AuthDialog kind="lower" connName={modal.connName} engine={modal.engine} to={modal.to} touch={modal.touch} submit={modal.submit} onClose={close} />;
     case "about":
@@ -94,16 +74,6 @@ export function Modals() {
     case "keyInfo":
       return <KeyInfoModal m={modal} onClose={close} />;
   }
-}
-
-/** An ask before something that cannot be undone: a red line with the shredder */
-function Final({ children }: { children: ReactNode }) {
-  return (
-    <p className="guard-final">
-      <Shredder {...ico} />
-      <span>{children}</span>
-    </p>
-  );
 }
 
 // ---------- Redis key Info ----------
@@ -320,185 +290,6 @@ function Shell({ title, onClose, children, wide, style }: { title: string; onClo
         {children}
       </div>
     </div>
-  );
-}
-
-function PromptModal({ m, onClose }: { m: Extract<Modal, { kind: "prompt" }>; onClose: () => void }) {
-  const [v, setV] = useState(m.initial);
-  return (
-    <Shell title={m.title} onClose={onClose}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!v.trim()) return;
-          onClose();
-          m.onSubmit(v.trim());
-        }}
-      >
-        <label>
-          {m.label}
-          <input className="field" autoFocus value={v} onFocus={(e) => e.target.select()} onChange={(e) => setV(e.target.value)} />
-        </label>
-        <footer>
-          <button type="button" className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="btn btn--primary">
-            OK
-          </button>
-        </footer>
-      </form>
-    </Shell>
-  );
-}
-
-function SaveQueryModal({ tabId, onClose }: { tabId: string; onClose: () => void }) {
-  const saved = useStore((s) => s.saved);
-  const tab = useStore((s) => Object.values(s.sessions).flatMap((x) => x.tabs).find((t) => t.id === tabId));
-  const [name, setName] = useState(tab?.kind === "query" ? tab.title : "");
-  const [folder, setFolder] = useState(tab?.kind === "query" ? (tab.savedFolder ?? "") : "");
-  const folders = [...new Set(saved.map((s) => s.folder).filter(Boolean))].sort();
-  return (
-    <Shell title="Save query" onClose={onClose}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!name.trim()) return;
-          onClose();
-          void useStore.getState().saveTab(tabId, name.trim(), folder.trim());
-        }}
-      >
-        <label>
-          Name
-          <input className="field" autoFocus value={name} onFocus={(e) => e.target.select()} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label>
-          Folder
-          <input className="field" list="save-folders" placeholder="None" value={folder} onChange={(e) => setFolder(e.target.value)} />
-          <datalist id="save-folders">
-            {folders.map((f) => (
-              <option key={f} value={f} />
-            ))}
-          </datalist>
-        </label>
-        <p className="help">Kept in ~/.config/ypacapy/ypacapy.db</p>
-        <footer>
-          <button type="button" className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="btn btn--primary">
-            Save
-          </button>
-        </footer>
-      </form>
-    </Shell>
-  );
-}
-
-// ---------- the write guard ----------
-
-function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onClose: () => void }) {
-  const [pass, setPass] = useState("");
-  const verify = m.ask.level === "strict";
-  const approve = (a: Approval) => {
-    onClose();
-    m.onApprove(a);
-  };
-  // Redis KEYS is a read: the ask says why it asks, and offers SCAN
-  const keysOnly = !!m.ask.ops?.length && m.ask.ops.every((o) => o === "KEYS");
-  // the connection's warnings (SQL): they ask at any security level; alone, nothing the level asks about is in the run
-  const warns = m.ask.warnings ?? [];
-  const warnOnly = warns.length > 0 && !m.ask.kinds.length && !m.ask.unreadable;
-  return (
-    <Shell title={verify ? "Enter the passphrase to run this" : "Run this on " + m.connName + "?"} onClose={onClose}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (verify) {
-            if (pass) approve({ kind: "passphrase", passphrase: pass });
-          } else approve({ kind: "confirm" });
-        }}
-      >
-        {!warnOnly && (
-          <p className="help">
-            {m.write
-              ? m.write.help
-              : m.ask.unreadable
-              ? `Capy couldn't tell what this ${m.ask.ops ? "command" : "SQL"} does, so it asks first.`
-              : keysOnly
-                ? `It reads every key in the database, and ${m.connName} answers no one else until it is done:`
-                : `It changes data or structure on ${m.connName}:`}
-          </p>
-        )}
-        {m.ask.kinds.length > 0 && (
-          <div className="guard-kinds">
-            {(m.ask.ops?.length ? m.ask.ops : m.ask.kinds).map((k) => (
-              <code key={k} className="stmt">
-                {k}
-              </code>
-            ))}
-          </div>
-        )}
-        {/* a write ypacapy built: the exact command it sends */}
-        {m.write && <pre className="db-says guard-cmd">{m.write.cmd}</pre>}
-        {warns.map((w) => (
-          <p key={w.kind} className="guard-warn">
-            <TriangleAlert {...ico} />
-            <span>{warnText(w)}</span>
-          </p>
-        ))}
-        {verify && (
-          <label>
-            Passphrase
-            <input className="field" type="password" autoFocus autoComplete="current-password" aria-invalid={m.ask.error ? true : undefined} value={pass} onChange={(e) => setPass(e.target.value)} />
-          </label>
-        )}
-        {m.ask.final && <Final>It can't be undone. Capy keeps no copy of what it shreds or overwrites. Gone is gone.</Final>}
-        {m.ask.error && (
-          <p className="help err" role="alert">
-            {m.ask.error}
-          </p>
-        )}
-        {warns.length > 0 && <p className="help guard-warn-off">Turn {warns.length > 1 ? "these warnings" : "this warning"} off in Settings › Connection › Security.</p>}
-        <footer>
-          {verify && m.ask.touchId && (
-            <button type="button" className="btn" onClick={() => approve({ kind: "touchId" })}>
-              <Fingerprint {...ico} />
-              Use Touch ID
-            </button>
-          )}
-          <button type="button" className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          {m.alt && (
-            <button type="button" className="btn" onClick={() => (onClose(), m.alt!.run())}>
-              {m.alt.label}
-            </button>
-          )}
-          {/* an insert loses nothing: the plain primary button */}
-          <button type="submit" className={`btn ${m.write?.safe && !m.ask.final ? "btn--primary" : "btn--danger"}`} autoFocus={!verify}>
-            {m.ask.final && <Shredder {...ico} />}
-            {m.write ? m.write.label : keysOnly ? "Run KEYS" : "Run"}
-          </button>
-        </footer>
-      </form>
-    </Shell>
-  );
-}
-
-/** guard::Warning in words. BIG_LIMIT in Rust is 100. */
-function warnText(w: Warning): ReactNode {
-  if (w.kind === "updateAll")
-    return (
-      <>
-        This <code className="stmt">UPDATE</code> has no <code className="stmt">WHERE</code>, so it changes every row of its table.
-      </>
-    );
-  if (w.limit === null) return "Nothing limits how many rows it returns, so more than 100 can come back.";
-  return (
-    <>
-      It can return up to <strong>{w.limit.toLocaleString()}</strong> rows{w.added ? ", the row limit Capy tacks on" : ""}, more than 100.
-    </>
   );
 }
 

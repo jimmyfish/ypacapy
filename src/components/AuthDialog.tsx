@@ -55,7 +55,7 @@ function useShake(): [RefObject<HTMLDivElement>, () => void] {
 }
 
 /** A passphrase field: its key, show or hide, and Caps Lock reported to `onCaps`. */
-function PassField(p: {
+export function PassField(p: {
   id: string;
   label: string;
   value: string;
@@ -101,7 +101,7 @@ function PassField(p: {
   );
 }
 
-function Caps({ on }: { on: boolean }) {
+export function Caps({ on }: { on: boolean }) {
   return on ? (
     <p className="auth-caps">
       <ArrowUp {...ico} />
@@ -110,7 +110,7 @@ function Caps({ on }: { on: boolean }) {
   ) : null;
 }
 
-function Err({ text }: { text: string }) {
+export function Err({ text }: { text: string }) {
   return text ? (
     <p className="auth-err" role="alert">
       <CircleAlert {...ico} />

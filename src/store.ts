@@ -11,13 +11,64 @@ import type { Approval, Ask, ColumnsEntry, Conn, DiagramTab, Engine, HistoryEntr
 export type SettingsSection = "conn-security" | "conn-queries" | "appearance" | "queries" | "security" | "data" | "updates";
 export type SideView = "schema" | "history" | "saved";
 
+/** An ask's badge: red when something goes for good, amber when something is lost or risky, none (blue) when nothing is */
+export type AskTone = "danger" | "warn";
+/** The icons an ask can name; Ask.tsx draws them */
+export type AskIcon =
+  | "bookmark" | "circle-alert" | "database" | "folder" | "folder-input" | "folder-plus" | "hard-drive" | "history" | "key"
+  | "network" | "pencil" | "save" | "search" | "shredder" | "square-code" | "table-2" | "undo-2" | "unplug" | "x";
+/** What an ask acts on, in a card under its head: a connection (its tile) or a tab, saved query or table (an icon) */
+export interface AskSubject {
+  name: string;
+  meta?: string;
+  /** meta in the code face: SQL, a file path */
+  mono?: boolean;
+  icon?: AskIcon;
+  /** a connection: its engine glyph in its colour */
+  conn?: Pick<Conn, "engine" | "color">;
+}
+/** One effect: what goes (off, red) or stays (keep, green), and what happens to it */
+export type AskEffect = [kind: "off" | "keep", icon: AskIcon, what: string, happens: string];
+/** A second way on, under an "or" (Save and close, Use SCAN instead) */
+export type AskAlt = { label: string; icon?: AskIcon; run: () => void };
+
 export type Modal =
   | { kind: "settings"; section?: SettingsSection }
   | { kind: "about" }
   | { kind: "connect"; conn?: Conn; group?: string }
-  /** final: it cannot be undone; the dialog says so and the button carries the shredder. alt: a second way on (Save and close) */
-  | { kind: "confirm"; title: string; message: string; confirmLabel?: string; final?: boolean; onConfirm: () => void; alt?: { label: string; run: () => void } }
-  | { kind: "prompt"; title: string; label: string; initial: string; onSubmit: (v: string) => void }
+  /**
+   * message: the line under the title. final: it can't be undone; the red line says so (true: the plain words, a string:
+   * its own) and the button carries the shredder. tone and icon: the badge (default red shredder when final, amber).
+   */
+  | {
+      kind: "confirm";
+      title: string;
+      message: string;
+      confirmLabel?: string;
+      final?: boolean | string;
+      onConfirm: () => void;
+      alt?: AskAlt;
+      tone?: AskTone;
+      icon?: AskIcon;
+      subject?: AskSubject;
+      effects?: AskEffect[];
+      /** the action button's icon when it isn't final */
+      actionIcon?: AskIcon;
+    }
+  /** one field; the button says what it does (confirmLabel), never just OK */
+  | {
+      kind: "prompt";
+      title: string;
+      label: string;
+      initial: string;
+      onSubmit: (v: string) => void;
+      message?: string;
+      icon?: AskIcon;
+      fieldIcon?: AskIcon;
+      placeholder?: string;
+      confirmLabel?: string;
+      actionIcon?: AskIcon;
+    }
   | { kind: "saveQuery"; tabId: string }
   /** the passphrase or confirm ask before a run; with title and message, the passphrase before lowering Strict */
   | {
@@ -25,7 +76,7 @@ export type Modal =
       ask: Ask;
       connName: string;
       onApprove: (a: Approval) => void;
-      alt?: { label: string; run: () => void };
+      alt?: AskAlt;
       /** a write ypacapy built (a document edited in the JSON view): what it does, the command itself, the button's word */
       write?: { help: string; cmd: string; label: string; safe?: boolean };
     }
@@ -35,6 +86,18 @@ export type Modal =
   | { kind: "collInfo"; connId: string; database: string; collection: string }
   /** Redis: a key's type, encoding, length, TTL and memory, read when it opens */
   | { kind: "keyInfo"; connId: string; key: string };
+
+/** A tab as an ask shows it: its icon, its name, and where it lives (a query's first line, a saved query's folder) */
+function tabSubject(tab: Tab): AskSubject {
+  if (tab.kind === "query") {
+    if (tab.savedId) return { icon: "square-code", name: tab.title, meta: `Saved queries${tab.savedFolder ? ` / ${tab.savedFolder}` : ""}` };
+    const first = tab.sql.split("\n").map((l) => l.trim()).find(Boolean);
+    return { icon: "square-code", name: tab.title, ...(first ? { meta: first, mono: true } : {}) };
+  }
+  if (tab.kind === "table") return { icon: "table-2", name: tab.schema ? `${tab.schema}.${tab.table}` : tab.table };
+  if (tab.kind === "key") return { icon: "key", name: tab.key };
+  return { icon: "network", name: tab.origin ?? tab.schema };
+}
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -124,6 +187,11 @@ interface State {
    * the error to show on the document, or null when it was written; undefined when the ask was cancelled.
    */
   writeDoc(tabId: string, cmd: string, what: { help: string; label: string; safe?: boolean }, approval?: Approval): Promise<string | null | undefined>;
+  /**
+   * Redis, the sidebar's Delete key (asked first): runs cmd (DEL on the key) on the current connection, behind the
+   * write guard. On success the key leaves the keys read and its tab closes; an error shows as a toast.
+   */
+  deleteKey(key: string, cmd: string, approval?: Approval): Promise<void>;
   loadTableInfo(tabId: string): Promise<void>;
   saveTab(tabId: string, name?: string, folder?: string): Promise<void>;
 
@@ -295,11 +363,17 @@ export const useStore = create<State>()((set, get) => {
   const askDiscard = (tabId: string, again: () => void) => {
     const n = pendingIn(tabId);
     if (!n) return false;
+    const hit = sessionOfTab(tabId);
+    const connName = hit ? get().conns.find((c) => c.id === hit[0])?.name : undefined;
+    const subject = hit ? tabSubject(hit[2]) : undefined;
     get().openModal({
       kind: "confirm",
       title: `Discard ${n} unsaved change${n === 1 ? "" : "s"}?`,
-      message: "Running again reloads the rows. Save first to keep the changes.",
+      message: `Running again reloads the rows${connName ? ` from ${connName}` : ""}. Save first to keep your changes.`,
       confirmLabel: "Discard",
+      icon: "undo-2",
+      actionIcon: "undo-2",
+      ...(subject ? { subject: { ...subject, meta: `${n} unsaved change${n === 1 ? "" : "s"}` } } : {}),
       onConfirm: again,
     });
     return true;
@@ -824,8 +898,11 @@ export const useStore = create<State>()((set, get) => {
         get().openModal({
           kind: "confirm",
           title: `Close ${tab.title}?`,
-          message: tab.savedId ? "Its changes since the last save are lost." : "Its text is not saved anywhere.",
+          message: tab.savedId ? "You lose its changes since the last save." : "Its text isn't saved anywhere. Close it and it's gone.",
           confirmLabel: "Close",
+          icon: "square-code",
+          actionIcon: "x",
+          subject: tabSubject(tab),
           onConfirm: () => get().closeTab(tabId, true),
         });
         return;
@@ -835,11 +912,15 @@ export const useStore = create<State>()((set, get) => {
         get().openModal({
           kind: "confirm",
           title: `Close ${tab.origin ?? tab.schema}?`,
-          message: saved ? "Its changes since the last save are lost. Show diagram brings back the saved one." : "Its tables and layout are not saved anywhere.",
+          message: saved ? "You lose its changes since the last save. Show diagram brings back the saved one." : "Its tables and layout aren't saved anywhere. Close it and they're gone.",
           confirmLabel: "Close",
+          icon: "network",
+          actionIcon: "x",
+          subject: { ...tabSubject(tab), meta: `${get().conns.find((c) => c.id === id)?.name ?? ""} · ${tab.tables.length} table${tab.tables.length === 1 ? "" : "s"} drawn` },
           onConfirm: () => get().closeTab(tabId, true),
           alt: {
             label: "Save and close",
+            icon: "save",
             run: () => {
               get().saveDiagram(tabId);
               get().closeTab(tabId, true);
@@ -853,8 +934,11 @@ export const useStore = create<State>()((set, get) => {
         get().openModal({
           kind: "confirm",
           title: `Close ${tab.kind === "query" ? tab.title : tab.kind === "key" ? tab.key : tab.kind === "table" ? tab.table : (tab.origin ?? tab.schema)}?`,
-          message: `${pending} unsaved change${pending === 1 ? "" : "s"} to its rows ${pending === 1 ? "is" : "are"} lost.`,
+          message: `You lose ${pending} unsaved change${pending === 1 ? "" : "s"} to its rows.`,
           confirmLabel: "Close",
+          icon: tabSubject(tab).icon,
+          actionIcon: "x",
+          subject: { ...tabSubject(tab), meta: `${pending} unsaved change${pending === 1 ? "" : "s"}` },
           onConfirm: () => get().closeTab(tabId, true),
         });
         return;
@@ -910,6 +994,7 @@ export const useStore = create<State>()((set, get) => {
         const alt = scan
           ? {
               label: "Use SCAN instead",
+              icon: "search" as const,
               run: () => {
                 if (sql === tab.sql) get().updateTab(tabId, { sql: scan });
                 void get().run(tabId, { ...opts, sql: scan });
@@ -1017,6 +1102,34 @@ export const useStore = create<State>()((set, get) => {
       const now = sessionOfTab(tabId)?.[2];
       void get().readTable(tabId, { offset: now?.kind === "table" ? now.offset : 0, discard: true });
       return null;
+    },
+
+    async deleteKey(key, cmd, approval) {
+      const connId = get().currentId;
+      const s = connId ? get().sessions[connId] : undefined;
+      const conn = get().conns.find((c) => c.id === connId);
+      if (!connId || !s || !conn) return;
+      const out = await api.runQuery({ runId: uid(), connId, database: s.database, schema: s.schema, sql: cmd, addLimit: false, approval, history: true }).catch(failed);
+      if (out.kind === "ask") {
+        get().openModal({
+          kind: "guard",
+          ask: out,
+          connName: conn.name,
+          write: { help: `It deletes ${key} from ${conn.name}.`, label: "Delete", cmd },
+          onApprove: (a) => void get().deleteKey(key, cmd, a),
+        });
+        return;
+      }
+      if (out.kind === "error") {
+        if (out.lost) patchSession(connId, (x) => ({ tree: {}, columns: {}, ...lostLink(x) }));
+        get().showToast([out.title, out.message].filter(Boolean).join(". "));
+        return;
+      }
+      if (out.kind === "cancelled") return get().showToast(out.timeout ? "Stopped by the statement timeout" : "Cancelled");
+      patchSession(connId, (x) => (x.keys ? { keys: { ...x.keys, keys: x.keys.keys.filter((k) => k.key !== key), total: Math.max(0, x.keys.total - 1) } } : {}));
+      for (const t of get().sessions[connId]?.tabs ?? []) if (t.kind === "key" && t.key === key) get().closeTab(t.id, true);
+      if (get().side === "history") void get().loadHistory();
+      get().showToast(`Deleted ${key}`);
     },
 
     async loadTableInfo(tabId) {

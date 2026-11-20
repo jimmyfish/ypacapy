@@ -600,7 +600,10 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
     st.openModal({
       kind: "prompt",
       title: "Rename query",
+      message: "The name shows on its tab.",
       label: "Name",
+      fieldIcon: "square-code",
+      confirmLabel: "Rename",
       initial: tab.title,
       onSubmit: (title) => {
         st.updateTab(tab.id, { title });

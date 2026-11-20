@@ -383,8 +383,22 @@ function RedisSide() {
     { label: "Copy name", icon: <Copy {...ico} />, run: () => copy(k.key) },
     { label: "Info", icon: <Info {...ico} />, run: () => st.openModal({ kind: "keyInfo", connId: id, key: k.key }) },
     { label: "sep", sep: true, run: () => {} },
-    // never run on the person's behalf: DEL opens in a query tab, behind the write guard
-    { label: "Delete key", danger: true, icon: <Shredder {...ico} />, run: () => st.newQueryTab(`DEL ${redisArg(k.key)}\n`, "Delete " + k.key) },
+    // asked first, then DEL runs behind the write guard (which asks again on Low and Strict)
+    {
+      label: "Delete key",
+      danger: true,
+      icon: <Shredder {...ico} />,
+      run: () =>
+        st.openModal({
+          kind: "confirm",
+          title: `Delete ${k.key}?`,
+          message: `Capy runs DEL on ${conn.name}, ${db}.`,
+          final: true,
+          icon: "key",
+          subject: { icon: "key", name: k.key, meta: `DEL ${redisArg(k.key)}`, mono: true },
+          onConfirm: () => void st.deleteKey(k.key, `DEL ${redisArg(k.key)}`),
+        }),
+    },
   ];
   // inside a folder a key shows the part after the folder's path; the full key is on hover
   const leaf = (k: ScanKey, indent: number, folder = "") => {
@@ -575,9 +589,14 @@ function HistorySide() {
             st.openModal({
               kind: "confirm",
               title: `Clear ${name} history?`,
-              message: `Every query run on ${name} is removed from ypacapy.db. Other connections' history and saved queries are not touched.`,
+              message: `Capy deletes every query run on ${name} from ypacapy.db.`,
               confirmLabel: "Clear",
               final: true,
+              icon: "history",
+              effects: [
+                ["keep", "history", "Other connections' history", "stays"],
+                ["keep", "bookmark", "Saved queries", "stay"],
+              ],
               onConfirm: () => {
                 if (!id) return;
                 api.clearHistory(id).then(
@@ -648,7 +667,7 @@ function SavedSide() {
   };
   const menu = (s: Saved): MenuItem[] => [
     { label: "Open", icon: <SquareCode {...ico} />, run: () => openSaved(s) },
-    { label: "Rename", icon: undefined, run: () => st.openModal({ kind: "prompt", title: "Rename saved query", label: "Name", initial: s.name, onSubmit: (name) => void api.saveQuery({ ...s, name }).then(() => useStore.getState().loadSaved()) }) },
+    { label: "Rename", icon: undefined, run: () => st.openModal({ kind: "prompt", title: "Rename saved query", message: "Only the name changes. The SQL stays as it is.", label: "Name", fieldIcon: "bookmark", confirmLabel: "Rename", initial: s.name, onSubmit: (name) => void api.saveQuery({ ...s, name }).then(() => useStore.getState().loadSaved()) }) },
     { label: "sep", sep: true, run: () => {} },
     {
       label: "Delete",
@@ -658,8 +677,10 @@ function SavedSide() {
         st.openModal({
           kind: "confirm",
           title: `Delete ${s.name}?`,
-          message: "The saved query is removed from ypacapy.db.",
+          message: "Capy deletes it from ypacapy.db.",
           final: true,
+          icon: "bookmark",
+          subject: { icon: "square-code", name: s.name, meta: `Saved queries${s.folder ? ` / ${s.folder}` : ""}` },
           onConfirm: () => void api.deleteSaved(s.id).then(() => useStore.getState().loadSaved()),
         }),
     },

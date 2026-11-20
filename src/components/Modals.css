@@ -62,8 +62,7 @@
 .protect-head[hidden], .stmts[hidden] { display: none; }
 .stmts .set-item { min-height: 40px; }
 .stmts .tag { color: var(--color-muted); font: var(--text-sm) var(--font-ui); }
-/* ---- ypacapy app-only: the write guard's question before a run, and the tree's loading and error rows ---- */
-.guard-kinds { display: flex; flex-wrap: wrap; gap: var(--space-2xs); margin: 0 0 var(--space-md); }
+/* ---- ypacapy app-only: the tree's loading and error rows ---- */
 /* New connection, data-source layout: name and colour on top, tabs, then right-aligned labels with fields to their right.
    Four columns: label, field, side label (Port), side field. Wrapper spans use display: contents so rows can hide as one. */
 .dialog.cx { width: 640px; }
@@ -126,13 +125,6 @@
 .info-dlg footer { align-items: center; }
 .info-dlg .info-when { margin-right: auto; }
 .info-dlg dl > span { display: contents; }
-/* An ask before something that cannot be undone: a red line with the shredder, and the shredder on the danger button */
-.guard-final { display: flex; align-items: flex-start; gap: var(--space-2xs); margin: var(--space-xs) 0 0; color: var(--color-error); font-weight: 500; }
-.guard-final .ico { flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px; }
-/* a connection's warning (more than 100 rows, UPDATE without WHERE): asks at any security level */
-.guard-warn { display: flex; align-items: flex-start; gap: var(--space-2xs); margin: 0 0 var(--space-xs); color: var(--color-ink); }
-.guard-warn > .ico { flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px; color: var(--color-warn); }
-.dialog .guard-warn-off { margin-top: var(--space-sm); }
 /* Settings > Updates, as an onsen: the capy soaking big in the middle, the version under it, the state as a pill, the action below */
 .upd-hero {
   position: relative; display: grid; justify-items: center; gap: var(--space-2xs); margin-bottom: var(--space-md);
@@ -162,5 +154,3 @@
 .upd-hero-ctl .btn { gap: 6px; height: 28px; min-height: 28px; padding: 0 12px; font-size: var(--text-sm); }
 .upd-hero-ctl .btn .ico { width: 14px; height: 14px; }
 @media (prefers-reduced-motion: reduce) { .upd-hero-prog { transition: none; } }
-/* the write guard shows the exact command a document edit sends */
-.guard-cmd { margin-top: var(--space-xs); max-height: 220px; overflow: auto; white-space: pre; font-size: calc(var(--text-code) * 0.92); }

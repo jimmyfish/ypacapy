@@ -404,7 +404,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
       </div>`;
 
 // ---------- preview bar ----------
-const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["diagram", "Diagram"], ["mongo", "MongoDB"], ["collection", "Collection"], ["redis", "Redis"], ["key", "Key"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["about", "About"]];
+const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["diagram", "Diagram"], ["mongo", "MongoDB"], ["collection", "Collection"], ["redis", "Redis"], ["key", "Key"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["about", "About"], ["modals", "Modals"]];
 const UI_FONTS = `<option value="">System</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option><option value="Avenir Next, Avenir, sans-serif">Avenir</option><option value="Georgia, serif">Georgia</option>`;
 const MONO_FONTS = `<option value="">System mono</option><option value="Menlo, monospace">Menlo</option><option value="'Courier New', monospace">Courier</option><option value="Monaco, monospace">Monaco</option>`;
 // preview-only: recolour the first connection tab (shop_prod) to try each connection colour on the title strip
@@ -2270,6 +2270,255 @@ ${Object.entries(KEYS).map(([k, [, , , , , , body]]) => `          <div class="s
         </section>
       </div>` }),
   script: `window.RKEYS = ${JSON.stringify(Object.fromEntries(Object.entries(KEYS).map(([k, [key, type, len, ttl, enc]]) => [k, { key, type, len, ttl, enc, what: KTITLES[k], badge: rtype(type) }])))};\n` + js("page-redis-tree.js") + js("page-key.js") + js("page-mongo-info.js"),
+});
+
+// ---------- Modals: every dialog the app opens, on one page ----------
+// A gallery, not a screen: each dialog sits open on its own dimmed stage, grouped by where it lives in src/.
+// Dialogs the other pages already draw are taken from their markup (one source); the Shell asks (confirm, prompt,
+// Save query, the write guard) are drawn here from src/components/Modals.tsx, with the app's own words.
+const grabDiv = (html, marker) => {
+  const at = html.indexOf(marker);
+  if (at < 0) throw new Error(`modals: no ${marker}`);
+  const start = html.lastIndexOf("<div", at), re = /<div\b|<\/div>/g;
+  re.lastIndex = start;
+  for (let depth = 0, m; (m = re.exec(html)); ) if (!(depth += m[0] === "</div>" ? -1 : 1)) return html.slice(start, re.lastIndex);
+  throw new Error(`modals: ${marker} never closes`);
+};
+// open on its stage: the root loses hidden, its id and its close-to-page link
+const opened = (b) => b.replace(/^<div class="(backdrop[^"]*)"[^>]*>/, '<div class="$1">');
+const grab = (html, marker) => opened(grabDiv(html, marker));
+const mShell = (title, inner, cls = "") => `<div class="backdrop"><div class="dialog${cls}" role="dialog" aria-modal="true" aria-label="${title}"><h2>${title}</h2>${inner}</div></div>`;
+const mFinal = (t) => `<p class="guard-final">${ic("shredder")}<span>${t}</span></p>`;
+const mBtn = (label, cls = "", icon = "") => `<button type="button" class="btn${cls ? " " + cls : ""}">${icon ? ic(icon) : ""}${label}</button>`;
+// Modals.tsx "confirm": the message, the shredder line when final, Cancel, the alt, the red action
+const mConfirm = ({ title, message, label = "Delete", final, alt }) => mShell(title, `
+      <p>${message}</p>${final ? mFinal("It cannot be undone.") : ""}
+      <footer>${mBtn("Cancel")}${alt ? mBtn(alt) : ""}${mBtn(label, "btn--danger", final ? "shredder" : "")}</footer>`);
+// Modals.tsx "prompt": one field, OK
+const mPrompt = ({ title, label, value = "", ph = "" }) => mShell(title, `
+      <form><label>${label}<input class="field" value="${esc(value)}"${ph ? ` placeholder="${ph}"` : ""} autocomplete="off" spellcheck="false"></label>
+      <footer>${mBtn("Cancel")}<button type="submit" class="btn btn--primary">OK</button></footer></form>`);
+const mSave = mShell("Save query", `
+      <form><label>Name<input class="field" value="Refunds by customer" autocomplete="off" spellcheck="false"></label>
+      <label>Folder<input class="field" placeholder="None" value="Reports" autocomplete="off" spellcheck="false"></label>
+      <p class="help">Kept in ~/.config/ypacapy/ypacapy.db</p>
+      <footer>${mBtn("Cancel")}<button type="submit" class="btn btn--primary">Save</button></footer></form>`);
+// Modals.tsx GuardModal, field for field: what it changes, the kinds, the exact command (a write Capy built), warnings,
+// the passphrase (Strict), the shredder line, the error, then Touch ID, Cancel, the alt and Run
+const WARN = {
+  limit: "It can return up to <strong>5,000</strong> rows, more than 100.",
+  added: "It can return up to <strong>1,000</strong> rows, the row limit Capy tacks on, more than 100.",
+  nolimit: "Nothing limits how many rows it returns, so more than 100 can come back.",
+  updateAll: 'This <code class="stmt">UPDATE</code> has no <code class="stmt">WHERE</code>, so it changes every row of its table.',
+};
+const mGuard = ({ conn = "shop_prod", verify, help, kinds = [], cmd, warns = [], final, error, touch, alt, label = "Run", safe }) => mShell(verify ? "Enter the passphrase to run this" : `Run this on ${conn}?`, `
+      <form>${help ? `<p class="help">${help}</p>` : ""}${kinds.length ? `<div class="guard-kinds">${kinds.map((k) => `<code class="stmt">${k}</code>`).join("")}</div>` : ""}${cmd ? `<pre class="db-says guard-cmd">${esc(cmd)}</pre>` : ""}${warns.map((w) => `
+      <p class="guard-warn">${ic("triangle-alert")}<span>${WARN[w]}</span></p>`).join("")}${verify ? `
+      <label>Passphrase<input class="field" type="password" value="${error ? "hunter22" : ""}" autocomplete="off"${error ? ' aria-invalid="true"' : ""}></label>` : ""}${final ? mFinal("It can't be undone. Capy keeps no copy of what it shreds or overwrites. Gone is gone.") : ""}${error ? `
+      <p class="help err" role="alert">${error}</p>` : ""}${warns.length ? `<p class="help guard-warn-off">Turn ${warns.length > 1 ? "these warnings" : "this warning"} off in Settings › Connection › Security.</p>` : ""}
+      <footer>${verify && touch ? mBtn("Use Touch ID", "", "fingerprint") : ""}${mBtn("Cancel")}${alt ? mBtn(alt) : ""}<button type="submit" class="btn ${safe && !final ? "btn--primary" : "btn--danger"}">${final ? ic("shredder") : ""}${label}</button></footer></form>`);
+const CHANGES = (conn = "shop_prod") => `It changes data or structure on ${conn}:`;
+const MONGO_ID = 'ObjectId("6735a1c2e4b0f81d2c9a4417")';
+
+// ---------- The asks in the passphrase asks' shape (.dialog.auth.ask), as src/components/Ask.tsx draws them ----------
+// Approved 2026-11-20 over the plain Shell asks above (mConfirm, mPrompt, mSave, mGuard), which stay only as the record.
+// A tinted badge says what kind of ask it is (red: something goes for good, amber: something is lost or risky,
+// blue: nothing is lost), the title asks, the line under it says why. What it acts on sits in an inset card: the
+// connection, the tab, the statements and the exact command. Effects read as off/keep rows. Inputs are the 40px wells.
+// An alternative action (Save and close, Use SCAN instead) sits under an "or", like Touch ID. Cancel and the action
+// are equal filled halves, and the action says what it does (Rename, Move, Run KEYS), never OK.
+const aHead = (tone, icon, title, sub) => `
+    <div class="auth-head"><span class="auth-badge${tone ? " auth-badge--" + tone : ""}">${ic(icon)}</span><div class="auth-head-text"><h2>${title}</h2>${sub ? `<p>${sub}</p>` : ""}</div></div>`;
+const aShell = (title, inner) => `<div class="backdrop"><div class="dialog auth ask" role="dialog" aria-modal="true" aria-label="${esc(title)}">${inner}
+  </div></div>`;
+const aActions = (action, cancel = "Cancel") => `
+      <footer class="auth-actions"><button type="button" class="btn auth-btn">${cancel}</button>${action}</footer>`;
+const aBtn = (cls, icon, label) => `<button type="submit" class="btn auth-btn auth-btn--${cls}">${icon ? ic(icon) : ""}${label}</button>`;
+const aFinal = (t = "It can't be undone.") => `
+      <p class="ask-final">${ic("shredder")}<span>${t}</span></p>`;
+const aIco = (icon) => `<span class="ask-subject-ico">${ic(icon)}</span>`;
+const aTile = (engine, n) => `<span class="proj-tile ask-tile" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)">${engIco(engine, 18)}</span>`;
+const aSubject = (lead, name, meta, mono) => `
+    <div class="ask-subject">${lead}<span class="ask-subject-text"><strong>${name}</strong>${meta ? `<small${mono ? ' class="mono"' : ""}>${meta}</small>` : ""}</span></div>`;
+const aEffects = (rows) => `
+    <ul class="auth-scope auth-effects">${rows.map(([k, icon, strong, rest]) => `<li class="auth-effect--${k}">${ic(icon)}<span><strong>${strong}</strong> ${rest}</span></li>`).join("")}</ul>`;
+const aAlt = (icon, label) => `
+      <div class="auth-or" aria-hidden="true"><span>or</span></div><button type="button" class="btn auth-btn ask-alt">${ic(icon)}${label}</button>`;
+const aWell = (label, icon, value = "", ph = "") => `
+      <label class="auth-field">${label}<span class="auth-input ask-input">${ic(icon)}<input class="field" value="${esc(value)}"${ph ? ` placeholder="${ph}"` : ""} autocomplete="off" spellcheck="false"></span></label>`;
+// a confirm: the head, what it acts on, the effects, the shredder line, an alt under "or", Cancel and the action
+const aConfirm = ({ tone, icon, title, sub, subject = "", effects, final, alt, label, btnIcon }) => aShell(title, `${aHead(tone, icon, title, sub)}${subject}${effects ? aEffects(effects) : ""}
+    <form>${final ? aFinal(final === true ? undefined : final) : ""}${alt ? aAlt(...alt) : ""}${aActions(aBtn("danger", final ? "shredder" : btnIcon, label))}
+    </form>`);
+const aPrompt = ({ icon, title, sub, wells, label, btnIcon }) => aShell(title, `${aHead("", icon, title, sub)}
+    <form>${wells.join("")}${aActions(aBtn("primary", btnIcon, label))}
+    </form>`);
+// the write guard: why, the statements and the exact command in one card, warnings as amber rows, the passphrase well
+const aGuard = ({ conn = "shop_prod", tone = "warn", icon = "shield", sub, kinds = [], cmd, warns = [], final, verify, error, touch, alt, label = "Run", safe }) => {
+  const title = `Run this on ${conn}?`;
+  return aShell(title, `${aHead(verify ? "" : tone, verify ? "lock" : icon, title, sub)}${kinds.length ? `
+    <div class="ask-what"><div class="ask-kinds">${kinds.map((k) => `<code class="ask-chip">${k}</code>`).join("")}</div>${cmd ? `<pre class="ask-cmd">${esc(cmd)}</pre>` : ""}</div>` : ""}${warns.length ? `
+    <ul class="auth-scope ask-warns">${warns.map((w) => `<li>${ic("triangle-alert")}<span>${WARN[w]}</span></li>`).join("")}</ul>
+    <p class="ask-off">${ic("settings-2")}Turn ${warns.length > 1 ? "these warnings" : "this warning"} off in Settings › Connection › Security.</p>` : ""}${verify ? `
+    <p class="auth-note">${ic("lock")}<span>${conn} is Strict, so it needs the passphrase.</span></p>` : ""}
+    <form>${final ? aFinal("It can't be undone. Capy keeps no copy of what it shreds or overwrites. Gone is gone.") : ""}${verify ? `
+      <label class="auth-field">Passphrase
+        <span class="auth-input">${ic("key-round")}<input class="field" type="password" value="${error ? "hunter22" : ""}" placeholder="Capy's passphrase" autocomplete="off" spellcheck="false"${error ? ' aria-invalid="true"' : ""}><button type="button" class="auth-eye" aria-label="Show passphrase" aria-pressed="false" data-auth-eye>${ic("eye")}</button></span>
+      </label>${error ? `
+      <p class="auth-err" role="alert">${ic("circle-alert")}<span>${error}</span></p>` : ""}${touch ? `
+      <div class="auth-or" aria-hidden="true"><span>or</span></div><button type="button" class="btn auth-btn auth-touch-btn">${ic("fingerprint")}Use Touch ID</button>` : ""}` : ""}${alt ? aAlt(...alt) : ""}${aActions(aBtn(safe && !final ? "primary" : "danger", final ? "shredder" : verify ? "lock-open" : "play", label))}
+    </form>`);
+};
+const SHOP = aTile("postgres", 6), CHANGED = (conn = "shop_prod") => `It changes data or structure on ${conn}.`;
+const NEXT = {
+  "remove-conn": aConfirm({ tone: "danger", icon: "unplug", title: "Remove shop_prod?", sub: "Capy wipes it from this Mac.", subject: aSubject(SHOP, "shop_prod", "localhost:5432 / shop"), label: "Remove", final: "It can't be undone. To get it back, add it again with its password.",
+    effects: [["off", "unplug", "The connection and its keychain password", "go"], ["off", "history", "Its query history", "goes"], ["keep", "bookmark", "Saved queries", "stay"], ["keep", "database", "The database", "isn't touched"]] }),
+  "remove-sqlite": aConfirm({ tone: "danger", icon: "unplug", title: "Remove analytics.sqlite?", sub: "Capy wipes it from this Mac.", subject: aSubject(aTile("sqlite", 2), "analytics.sqlite", "~/data/analytics.sqlite", true), label: "Remove", final: true,
+    effects: [["off", "unplug", "The connection", "goes"], ["off", "history", "Its query history", "goes"], ["keep", "bookmark", "Saved queries", "stay"], ["keep", "hard-drive", "The database file", "stays put"]] }),
+  "clear-history": aConfirm({ tone: "danger", icon: "history", title: "Clear shop_prod history?", sub: "Capy deletes every query run on shop_prod from ypacapy.db.", label: "Clear", final: true,
+    effects: [["keep", "history", "Other connections' history", "stays"], ["keep", "bookmark", "Saved queries", "stay"]] }),
+  "delete-saved": aConfirm({ tone: "danger", icon: "bookmark", title: "Delete Refunds by customer?", sub: "Capy deletes it from ypacapy.db.", subject: aSubject(aIco("square-code"), "Refunds by customer", "Saved queries / Reports"), final: true, label: "Delete" }),
+  "close-query": aConfirm({ tone: "warn", icon: "square-code", title: "Close Query 3?", sub: "Its text isn't saved anywhere. Close it and it's gone.", subject: aSubject(aIco("square-code"), "Query 3", "select c.email, count(*) as refunds from customers c …", true), label: "Close", btnIcon: "x" }),
+  "close-saved": aConfirm({ tone: "warn", icon: "square-code", title: "Close Refunds by customer?", sub: "You lose its changes since the last save.", subject: aSubject(aIco("square-code"), "Refunds by customer", "Saved queries / Reports"), label: "Close", btnIcon: "x" }),
+  "close-diagram": aConfirm({ tone: "warn", icon: "network", title: "Close public?", sub: "You lose its changes since the last save. Show diagram brings back the saved one.", subject: aSubject(aIco("network"), "public", "shop_prod · 3 tables drawn"), alt: ["save", "Save and close"], label: "Close", btnIcon: "x" }),
+  "close-edits": aConfirm({ tone: "warn", icon: "table-2", title: "Close orders?", sub: "You lose 3 unsaved changes to its rows.", subject: aSubject(aIco("table-2"), "public.orders", "3 unsaved changes"), label: "Close", btnIcon: "x" }),
+  "discard-edits": aConfirm({ tone: "warn", icon: "undo-2", title: "Discard 3 unsaved changes?", sub: "Running again reloads the rows from shop_prod. Save first to keep your changes.", subject: aSubject(aIco("table-2"), "public.orders", "3 unsaved changes"), label: "Discard", btnIcon: "undo-2" }),
+  "save-query": aPrompt({ icon: "save", title: "Save query", sub: "Capy keeps it in ypacapy.db, on this Mac.", wells: [aWell("Name", "square-code", "Refunds by customer"), aWell("Folder", "folder", "Reports", "None")], label: "Save", btnIcon: "save" }),
+  "rename-query": aPrompt({ icon: "pencil", title: "Rename query", sub: "The name shows on its tab.", wells: [aWell("Name", "square-code", "Query 3")], label: "Rename" }),
+  "rename-saved": aPrompt({ icon: "pencil", title: "Rename saved query", sub: "Only the name changes. The SQL stays as it is.", wells: [aWell("Name", "bookmark", "Refunds by customer")], label: "Rename" }),
+  "new-group": aPrompt({ icon: "folder-plus", title: "Move shop_prod to a new group", sub: "Capy makes the group and moves shop_prod into it.", wells: [aWell("Group name", "folder", "", "Production")], label: "Move", btnIcon: "folder-input" }),
+  "g-delete": aGuard({ tone: "danger", icon: "shredder", sub: CHANGED(), kinds: ["DELETE"], final: true }),
+  "g-alter": aGuard({ sub: CHANGED(), kinds: ["ALTER"] }),
+  "g-several": aGuard({ tone: "danger", icon: "shredder", sub: CHANGED(), kinds: ["INSERT", "UPDATE", "DROP"], final: true }),
+  "g-unreadable": aGuard({ icon: "circle-alert", sub: "Capy couldn't tell what this SQL does, so it asks first." }),
+  "g-limit": aGuard({ icon: "triangle-alert", sub: "It's a read, but it can bring back a lot of rows.", warns: ["limit"] }),
+  "g-added": aGuard({ icon: "triangle-alert", sub: "It's a read, but it can bring back a lot of rows.", warns: ["added"] }),
+  "g-nolimit": aGuard({ icon: "triangle-alert", sub: "It's a read, but it can bring back a lot of rows.", warns: ["nolimit"] }),
+  "g-update-all": aGuard({ tone: "danger", icon: "shredder", sub: CHANGED(), kinds: ["UPDATE"], warns: ["updateAll"], final: true }),
+  "g-strict": aGuard({ verify: true, sub: CHANGED(), kinds: ["DROP"], final: true, touch: true }),
+  "g-strict-wrong": aGuard({ verify: true, sub: CHANGED(), kinds: ["DELETE"], final: true, error: "That passphrase is not right." }),
+  "g-mongo-delete": aGuard({ conn: MCONN, tone: "danger", icon: "shredder", sub: "It deletes 1 document from orders.", kinds: ["deleteOne"], cmd: `db.orders.deleteOne(\n  { _id: ${MONGO_ID} }\n)`, label: "Delete", final: true }),
+  "g-mongo-update": aGuard({ conn: MCONN, icon: "pencil", sub: "It changes 1 document in orders.", kinds: ["updateOne"], cmd: `db.orders.updateOne(\n  { _id: ${MONGO_ID} },\n  { $set: { status: "shipped" } }\n)`, label: "Update" }),
+  "g-mongo-insert": aGuard({ conn: MCONN, tone: "", icon: "circle-plus", sub: "It adds 1 document to orders.", kinds: ["insertOne"], cmd: `db.orders.insertOne({\n  customer_id: 3107,\n  status: "paid",\n  total: 129.9\n})`, label: "Insert", safe: true }),
+  "g-redis-del": aGuard({ conn: RCONN, tone: "danger", icon: "shredder", sub: CHANGED(RCONN), kinds: ["DEL"], final: true }),
+  "g-redis-keys": aGuard({ conn: RCONN, icon: "timer", sub: `It reads every key in the database, and ${RCONN} answers no one else until it's done.`, kinds: ["KEYS"], alt: ["search", "Use SCAN instead"], label: "Run KEYS" }),
+};
+
+// AuthDialog.tsx, from the Settings page's markup; Lower to Low with Touch ID and the wrong passphrase are the same dialog
+const authAll = authDialogs(), passAll = passDialogs();
+const lower = grab(authAll, 'data-auth="lower"');
+const lowerLow = lower.replace(/<span data-auth-to="none">/g, '<span data-auth-to="none" hidden>').replace(/data-auth-to="low" hidden/g, 'data-auth-to="low"').replace("data-auth-touch hidden", "data-auth-touch");
+const lowerWrong = lower.replace("data-auth-err hidden", "data-auth-err");
+const sub = (k) => grab(passAll, `data-sub="${k}"`);
+// DiagramPane.tsx: the picker with three tables ticked; the code dialog with what it holds
+let picked = 0;
+const erdPick = grab(erdPicker, 'id="erd-pick-dlg"').replace(/<input type="checkbox" value="/g, (m) => (picked++ < 3 ? '<input type="checkbox" checked value="' : m)).replace('<span class="ep-n" id="ep-n" aria-live="polite"></span>', '<span class="ep-n">3 of 8</span>');
+const MERMAID = `erDiagram
+  customers ||--o{ orders : "customer_id"
+  orders ||--o{ order_items : "order_id"
+  customers {
+    int8 id PK
+    text email
+    text full_name
+  }
+  orders {
+    int8 id PK
+    int8 customer_id FK
+    text status
+    numeric total
+  }`;
+const erdCode = grab(erdExport, 'id="erd-code-dlg"').replace('<p class="help" id="ec-help"></p>', '<p class="help" id="ec-help">Paste it where Mermaid renders: a Markdown file on GitHub or GitLab, Notion, or the Mermaid live editor. It lists every column of the tables drawn.</p>').replace('aria-label="Code"></pre>', `aria-label="Code">${esc(MERMAID)}</pre>`);
+// the info dialogs, ready and still reading
+const reading = (b) => b.replace('data-info-state="ready"', 'data-info-state="ready" hidden').replace('data-info-state="loading" hidden', 'data-info-state="loading"');
+const collInfo = grab(mInfoDlg, 'id="info-dlg"'), keyInfo = grab(rInfoDlg, 'id="info-dlg"');
+
+// [id, title, where it opens, what src calls it, dialog, wide]
+const MODAL_GROUPS = [
+  ["asks", "Confirm and prompt", "Ask.tsx · ConfirmAsk, PromptAsk, SaveQueryAsk. The passphrase asks' shape: a tinted badge, what it acts on, go/stay rows, 40px wells and a named action.", [
+    ["remove-conn", "Remove connection", "Home › card ⋯ › Remove connection", "confirm · final", mConfirm({ title: "Remove shop_prod?", message: "Capy wipes the connection, its keychain password and its query history from this Mac. Saved queries stay. The database isn't touched.", label: "Remove", final: true })],
+    ["remove-sqlite", "Remove SQLite connection", "Home › card ⋯ › Remove connection", "confirm · final", mConfirm({ title: "Remove analytics.sqlite?", message: "Capy wipes the connection and its query history from this Mac. Saved queries stay. The database file stays put.", label: "Remove", final: true })],
+    ["clear-history", "Clear history", "Sidebar › History › Clear", "confirm · final", mConfirm({ title: "Clear shop_prod history?", message: "Every query run on shop_prod is removed from ypacapy.db. Other connections' history and saved queries are not touched.", label: "Clear", final: true })],
+    ["delete-saved", "Delete saved query", "Sidebar › Saved › ⋯ › Delete", "confirm · final", mConfirm({ title: "Delete Refunds by customer?", message: "The saved query is removed from ypacapy.db.", final: true })],
+    ["close-query", "Close an unsaved query", "Tabs bar › × on a changed query", "confirm", mConfirm({ title: "Close Query 3?", message: "Its text is not saved anywhere.", label: "Close" })],
+    ["close-saved", "Close a changed saved query", "Tabs bar › × on a saved query with edits", "confirm", mConfirm({ title: "Close Refunds by customer?", message: "Its changes since the last save are lost.", label: "Close" })],
+    ["close-diagram", "Close a changed diagram", "Tabs bar › × on a diagram", "confirm · alt", mConfirm({ title: "Close public?", message: "Its changes since the last save are lost. Show diagram brings back the saved one.", label: "Close", alt: "Save and close" })],
+    ["close-edits", "Close with row edits", "Tabs bar › × on a table with pending edits", "confirm", mConfirm({ title: "Close orders?", message: "3 unsaved changes to its rows are lost.", label: "Close" })],
+    ["discard-edits", "Discard row edits", "Table › Run again with pending edits", "confirm", mConfirm({ title: "Discard 3 unsaved changes?", message: "Running again reloads the rows. Save first to keep the changes.", label: "Discard" })],
+    ["save-query", "Save query", "Query › Save  ⌘S, first save", "saveQuery", mSave],
+    ["rename-query", "Rename query", "Query › title", "prompt", mPrompt({ title: "Rename query", label: "Name", value: "Query 3" })],
+    ["rename-saved", "Rename saved query", "Sidebar › Saved › ⋯ › Rename", "prompt", mPrompt({ title: "Rename saved query", label: "Name", value: "Refunds by customer" })],
+    ["new-group", "Move to a new group", "Home › card ⋯ › New group…", "prompt", mPrompt({ title: "Move shop_prod to a new group", label: "Group name" })],
+  ]],
+  ["guard", "Write guard", "Ask.tsx · GuardAsk, asked before a run that writes: the statements and the exact command in one card, warnings as amber rows, the passphrase well and Touch ID as in Lower from Strict.", [
+    ["g-delete", "Low · a DELETE", "Query › Run", "guard · final", mGuard({ help: CHANGES(), kinds: ["DELETE"], final: true })],
+    ["g-alter", "Low · an ALTER", "Query › Run", "guard", mGuard({ help: CHANGES(), kinds: ["ALTER"] })],
+    ["g-several", "Low · a script with several", "Query › Run all", "guard · final", mGuard({ help: CHANGES(), kinds: ["INSERT", "UPDATE", "DROP"], final: true })],
+    ["g-unreadable", "Couldn't tell", "Query › Run, SQL the guard can't parse", "guard · unreadable", mGuard({ help: "Capy couldn't tell what this SQL does, so it asks first." })],
+    ["g-limit", "Warning · big limit", "Query › Run, any level", "guard · warning", mGuard({ warns: ["limit"] })],
+    ["g-added", "Warning · the added limit", "Query › Run, Settings row limit over 100", "guard · warning", mGuard({ warns: ["added"] })],
+    ["g-nolimit", "Warning · no limit", "Query › Run, Add limit off", "guard · warning", mGuard({ warns: ["nolimit"] })],
+    ["g-update-all", "Warning · UPDATE without WHERE", "Query › Run, Low", "guard · warning · final", mGuard({ help: CHANGES(), kinds: ["UPDATE"], warns: ["updateAll"], final: true })],
+    ["g-strict", "Strict · passphrase and Touch ID", "Query › Run, Strict", "guard · passphrase", mGuard({ verify: true, help: CHANGES(), kinds: ["DROP"], final: true, touch: true })],
+    ["g-strict-wrong", "Strict · wrong passphrase", "Query › Run, Strict", "guard · passphrase · error", mGuard({ verify: true, help: CHANGES(), kinds: ["DELETE"], final: true, error: "That passphrase is not right." })],
+    ["g-mongo-delete", "MongoDB · delete a document", "Collection › document ⋯ › Delete", "guard · write", mGuard({ conn: MCONN, help: "It deletes 1 document from orders:", kinds: ["deleteOne"], cmd: `db.orders.deleteOne(\n  { _id: ${MONGO_ID} }\n)`, label: "Delete", final: true })],
+    ["g-mongo-update", "MongoDB · update a document", "Collection › document › Save", "guard · write", mGuard({ conn: MCONN, help: "It changes 1 document in orders:", kinds: ["updateOne"], cmd: `db.orders.updateOne(\n  { _id: ${MONGO_ID} },\n  { $set: { status: "shipped" } }\n)`, label: "Update" })],
+    ["g-mongo-insert", "MongoDB · insert a document", "Collection › Duplicate › Insert", "guard · write · safe", mGuard({ conn: MCONN, help: "It adds 1 document to orders:", kinds: ["insertOne"], cmd: `db.orders.insertOne({\n  customer_id: 3107,\n  status: "paid",\n  total: 129.9\n})`, label: "Insert", safe: true })],
+    ["g-redis-del", "Redis · DEL", "Redis › Run", "guard · final", mGuard({ conn: RCONN, help: CHANGES(RCONN), kinds: ["DEL"], final: true })],
+    ["g-redis-keys", "Redis · KEYS", "Redis › Run KEYS", "guard · alt", mGuard({ conn: RCONN, help: `It reads every key in the database, and ${RCONN} answers no one else until it is done:`, kinds: ["KEYS"], alt: "Use SCAN instead", label: "Run KEYS" })],
+  ]],
+  ["pass", "Passphrase", "AuthDialog.tsx: a badge, what changes, the passphrase well, Abort and the action in equal halves.", [
+    ["lower-none", "Lower from Strict to None", "Connection › Security level", "lower", lower],
+    ["lower-low", "Lower to Low, Touch ID", "Connection › Security level", "lower · touch", lowerLow],
+    ["lower-wrong", "Lower, wrong passphrase", "Connection › Security level", "lower · error", lowerWrong],
+    ["unlock", "Unlock Strict settings", "Settings › Connection › Security", "unlock", grab(authAll, 'data-auth="unlock"')],
+    ["pass-new", "Set passphrase", "Settings › Security", "PassphraseDialog new", sub("new")],
+    ["pass-change", "Change passphrase", "Settings › Security", "PassphraseDialog change", sub("change")],
+    ["pass-reset", "Reset passphrase", "Settings › Security › Forgot", "PassphraseDialog reset", sub("reset")],
+    ["pass-disable", "Disable passphrase", "Settings › Security", "PassphraseDialog disable", sub("disable")],
+  ]],
+  ["info", "Info", "Modals.tsx · CollInfoModal, KeyInfoModal: read when the dialog opens and on Refresh, never on a timer.", [
+    ["coll-info", "MongoDB collection", "Sidebar › collection ⋯ › Info", "collInfo", collInfo],
+    ["coll-info-reading", "MongoDB collection, reading", "Sidebar › collection ⋯ › Info", "collInfo · loading", reading(collInfo)],
+    ["key-info", "Redis key", "Sidebar › key ⋯ › Info, or the key tab", "keyInfo", keyInfo],
+    ["key-info-reading", "Redis key, reading", "Sidebar › key ⋯ › Info", "keyInfo · loading", reading(keyInfo)],
+  ]],
+  ["diagram", "Diagram", "DiagramPane.tsx: picking tables, and the two exports.", [
+    ["erd-pick", "Tables to draw", "Schema › Show diagram", "erd-pick", erdPick],
+    ["erd-img", "Export image", "Diagram › Export › Image", "erd-img", grab(erdExport, 'id="erd-img-dlg"')],
+    ["erd-code", "Mermaid code", "Diagram › Export › Mermaid", "erd-code", erdCode, true],
+  ]],
+  ["big", "Settings, connection, About", "The big ones. Each has its own page with every state; here they sit at rest.", [
+    ["settings", "Settings", "Title strip › ⚙  ⌘,", "SettingsModal", grab(pages["settings.html"], '<div class="backdrop" data-close="./index.html">'), true, "settings"],
+    ["connect", "New connection", "Home › New connection", "ConnectModal", grab(pages["connect.html"], '<div class="backdrop" data-close="./home.html">'), true, "connect"],
+    ["about", "About ypacapy", "App menu › About ypacapy", "AboutModal", grab(pages["about.html"], '<div class="backdrop" data-close="./index.html">').replace('data-about="current" aria-label="Updates" aria-live="polite" hidden', 'data-about="current" aria-label="Updates" aria-live="polite"'), false, "about"],
+  ]],
+];
+// an ask Ask.tsx draws comes from NEXT; the rest from the other pages' markup
+const mItem = ([id, title, where, kind, dlg, wide, page]) => `
+      <article class="mg-item${wide ? " mg-item--wide" : ""}" id="m-${id}">
+        <header class="mg-cap"><h3><a href="#m-${id}">${title}</a></h3><span class="mg-kind">${kind}</span>${page ? `<a class="mg-more" href="./${page}.html">Every state${ic("arrow-right")}</a>` : ""}<p class="mg-where">${where}</p></header>
+        <div class="mg-stage">${NEXT[id] ?? dlg}</div>
+      </article>`;
+const MODAL_COUNT = MODAL_GROUPS.reduce((n, g) => n + g[3].length, 0);
+pages["modals.html"] = page({
+  title: "ypacapy preview, modals",
+  desc: "Design preview of every modal in ypacapy on one page: confirm and prompt, the write guard, the passphrase asks, Info, the diagram dialogs, Settings, New connection and About.",
+  barHtml: bar("modals", [["all", `All ${MODAL_COUNT}`], ...MODAL_GROUPS.map(([g, name, , items]) => [g, `${name} ${items.length}`])]),
+  body: `
+<div class="mg">
+  <nav class="mg-toc" aria-label="Modals">${MODAL_GROUPS.map(([g, name, , items]) => `
+    <p class="mg-toc-h" data-toc="${g}">${name}</p>
+    <ul data-toc="${g}">${items.map(([id, title]) => `<li><a href="#m-${id}">${title}</a></li>`).join("")}</ul>`).join("")}
+  </nav>
+  <main class="mg-main">${MODAL_GROUPS.map(([g, name, note, items]) => `
+    <section class="mg-group" data-group="${g}" aria-labelledby="mg-${g}">
+      <header class="mg-group-head"><h2 id="mg-${g}">${name}</h2><span class="mg-n">${items.length}</span><p>${note}</p></header>
+      <div class="mg-grid">${items.map(mItem).join("")}
+      </div>
+    </section>`).join("")}
+  </main>
+</div>`,
+  script: js("page-modals.js"),
 });
 
 for (const old of ["table.css", "settings.css", "connect.css"]) fs.rmSync(`${OUT}/${old}`, { force: true });

@@ -158,10 +158,10 @@ export function DocCards({ docs, label, edit, addKey, onAdded, onDrafting }: { d
     const id = idOf(mode.at);
     const [cmd, what] =
       mode.kind === "del"
-        ? [deleteCommand(edit.collection, id), { help: `It deletes 1 document from ${edit.collection}:`, label: "Delete" }]
+        ? [deleteCommand(edit.collection, id), { help: `It deletes 1 document from ${edit.collection}.`, label: "Delete" }]
         : mode.kind === "new"
-          ? [insertCommand(edit.collection, mode.draft), { help: `It adds 1 document to ${edit.collection}:`, label: "Insert", safe: true }]
-          : [updateCommand(edit.collection, id, mode.draft), { help: `It changes 1 document in ${edit.collection}:`, label: "Update" }];
+          ? [insertCommand(edit.collection, mode.draft), { help: `It adds 1 document to ${edit.collection}.`, label: "Insert", safe: true }]
+          : [updateCommand(edit.collection, id, mode.draft), { help: `It changes 1 document in ${edit.collection}.`, label: "Update" }];
     setMode((m) => m && { ...m, busy: true, err: undefined });
     const err = await st.writeDoc(edit.tabId, cmd, what);
     // null: written, and the page is read again (which closes the card); undefined: the ask was cancelled

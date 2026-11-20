@@ -69,7 +69,7 @@ After that, the app updates itself. A little chip shows up in the title strip wh
 - **PostgreSQL, MySQL/MariaDB and SQLite**, one async driver family (`sqlx`). Column types come from each driver's own result metadata.
 - **MongoDB and Redis** too, each with its own sidebar, tabs and console. See [MongoDB](#mongodb) and [Redis](#redis) below.
 - **Home** shows connections as coloured tiles, in named groups you can fold, rename or ungroup. `⌘F` finds one, `Enter` opens it.
-- **Per connection:** SSL mode (`disable` through `verify-full`, with a CA file), connect timeout, PostgreSQL `application_name`, and its own row limit and statement timeout. Test checks it before you save.
+- **Per connection:** SSL mode (`disable` through `verify-full`, with a CA file), connect timeout, PostgreSQL `application_name`, and its own row limit, statement timeout, warnings, history and heartbeat. Test checks it before you save. Open Settings from a connection's tab and that connection's own Security and Queries come first, above the app-wide ones under Global.
 - **Schema tree:** databases, schemas, tables, views, materialized views, foreign tables and functions. Each schema loads when you expand it and stays cached until Refresh. Pick the database and schema from the context picker.
 - **Open tabs come back.** Each connection's tabs, including unsaved SQL, are restored the next time you open it. Pin a tab (right-click it) to keep it at the left of the row; pinned table tabs come back too, with their `WHERE` filter. Tabs take the connection's colour, so prod doesn't have to look like staging.
 
@@ -78,7 +78,7 @@ After that, the app updates itself. A little chip shows up in the title strip wh
 - `⌘↵` runs the selection, or with nothing selected the statement the cursor is in (up to the next `;`). `⇧⌘↵` runs the whole editor. Several statements in one run? Fine.
 - **Autocomplete** for tables, aliases and columns. It reuses the schema tree you already loaded and reads a table's columns once, the first time a statement names it. Keystrokes never hit the database.
 - **Format** (via `sql-formatter`) and `⌘/` to comment lines. Both stay on the native undo stack, so `⌘Z` behaves.
-- **Row limit** (100 by default) is added to a query that has no `LIMIT` of its own. When it can't be added, ypacapy keeps at most 10,000 rows of a result set.
+- **Row limit** (100 by default) is added to a query that has no `LIMIT` of its own. When it can't be added, ypacapy keeps at most 10,000 rows of a result set. When it was added, Next and Previous page through the rest: the same query again with an offset, kept out of History.
 - **Cancel** and the statement timeout (30 s by default) stop the query on the server too (`pg_cancel_backend`, `KILL QUERY`), so nothing keeps grinding after you've given up on it.
 - **Errors read like your database's own client**, with `LINE n:` and a caret under the spot. Lost the connection? It says so and offers Reconnect.
 - `CREATE`, `ALTER` or `DROP` reloads the schema tree by itself.
@@ -88,13 +88,15 @@ After that, the app updates itself. A little chip shows up in the title strip wh
 - **Result grid:** sort, frozen primary-key columns, typed cells (numbers, timestamps, booleans, coloured JSON, bytes), a cell inspector, and `⌘C`.
 - **Export** rows as CSV, JSON, Markdown table or plain text.
 - **Edit in place.** A result that reads one table plainly (no join, group, union or distinct), with its full primary key, can be edited. Type over a cell, `⌘⌫` a row, then `⌘S`. All changes go in one transaction, one `UPDATE` or `DELETE` per row keyed by the primary key. If any statement touches more or fewer than one row, the whole thing rolls back.
-- **Table tabs:** rows with a `WHERE` filter and paging, plus the table's columns, indexes and foreign keys from the catalog.
+- **Table tabs:** rows with a `WHERE` filter and paging (pick the rows per page right in the pager), plus the table's columns, indexes and foreign keys from the catalog.
 
 ### <img src="docs/assets/icons/leaf.svg" width="20" height="20" align="top" alt="" /> MongoDB
 
 - **Connect** with a host and port, a seed list, an SRV record (`mongodb+srv`), or by pasting a `mongodb://` URL. Auth database, TLS (CA file, or a client certificate for X.509), replica set, read preference and direct connection are all there.
-- **Collections open on a query bar:** Filter, Project and Sort take mongosh values (`ObjectId()`, `ISODate()`, `/regex/`, unquoted keys), with Skip and Limit beside Run. Each box is checked before anything is sent, so a typo never reaches the server, and no sort is added you didn't ask for.
-- **Documents as a table or as JSON.** One column per top-level field, typed by BSON, with how many documents have each field; a missing field is hatched, not shown as null. Copy and export as mongosh, Extended JSON, CSV or Markdown.
+- **Collections open on a query bar:** Filter takes mongosh values (`ObjectId()`, `ISODate()`, `/regex/`, unquoted keys), and Project, Sort, Skip and Limit wait under Options. Each box is checked before anything is sent, so a typo never reaches the server, and no sort is added you didn't ask for.
+- **Documents as JSON or a table.** JSON comes first: a card per document, with objects and arrays folded until you open them. The table has one column per top-level field, typed by BSON, with how many documents have each field; a missing field is hatched, not shown as null. Copy and export as mongosh, Extended JSON, CSV or Markdown.
+- **Edit in place.** Edit, duplicate or delete a document right on its card, or Add document (Example from fields fills in the fields the page shows). Each change is one `updateOne`, `insertOne` or `deleteOne` on the document's `_id`, and the write guard shows it before it runs.
+- **The pager** reads `1 – 20 of ~N`: N is the collection's own estimate, never counted. With a filter, click count for one `countDocuments`.
 - **Fields, Indexes and Info.** Fields lists the paths seen on the page (ypacapy never samples the collection). Info reads `$collStats` once when it opens: the server's document count, sizes, compression and each index's size.
 - **mongosh console:** `find`, `aggregate`, `countDocuments`, `distinct`, the write methods, `createIndex`, `runCommand` and `.explain()`. The text is parsed, never run as JavaScript. A find or aggregate without a limit gets the row limit, and `maxTimeMS` stops a slow one on the server.
 
@@ -116,7 +118,7 @@ After that, the app updates itself. A little chip shows up in the title strip wh
 
 ### <img src="docs/assets/icons/history.svg" width="20" height="20" align="top" alt="" /> History and saved queries
 
-- **History** belongs to the open connection: its last 2,000 runs, searchable, with time, rows and status. Clear empties only that connection's list.
+- **History** belongs to the open connection: its last 2,000 runs, searchable, with time, rows and status. Clear empties only that connection's list. A connection can keep its runs out of History altogether (Settings, Keep query history).
 - **Saved queries** live in folders. A tab tied to a saved query shows when it has drifted from the saved text.
 
 ### <img src="docs/assets/icons/palette.svg" width="20" height="20" align="top" alt="" /> Make it yours
@@ -124,7 +126,7 @@ After that, the app updates itself. A little chip shows up in the title strip wh
 - **Light or dark**, each with its own colour scheme: ypacapy Light / Dark, plus the Ayu, Atom One and Xcode families.
 - **Fonts:** pick the UI, table and code fonts from what's installed on your Mac, each with its own size.
 - **Compact mode** for small screens and big result sets.
-- **Connection heartbeat** (off by default): a `select 1` on idle PostgreSQL and MySQL connections every 30 s, for servers or VPNs that drop idle sessions. Each connection can override it.
+- **Connection heartbeat** (off by default): every 30 s, a `select 1` on idle PostgreSQL and MySQL connections, a `ping` on MongoDB and a `PING` on Redis, for servers or VPNs that drop idle sessions. Each connection can override it. With it on, the connection's tab and the sidebar show whether the server answers, and a connection that dropped is opened again on its own once it does.
 
 ## <img src="docs/assets/icons/shield-check.svg" width="24" height="24" align="top" alt="" /> The write guard
 
@@ -141,6 +143,8 @@ Every connection has a **security level**. Set it in the connection's Options or
 - **MongoDB:** kinds of write method (insert, update, delete, findAndModify, `$out` and `$merge` in an aggregate, drop, create, rename, users). The ask shows the method that will run. A `runCommand` ypacapy doesn't know asks too.
 - **Redis:** commands grouped by what they write to (strings, hashes, lists, sets, sorted sets, streams, keys, expiry, flush, scripts, server), plus `KEYS`, which holds the server while it reads every key; its ask offers Use SCAN instead. A command ypacapy doesn't know asks too.
 - When what runs deletes or overwrites data, the ask says it cannot be undone, in red, with the shredder on the button.
+
+**Warnings** ask too, at every level, None included: a SQL query that can return more than 100 rows, and an `UPDATE` without `WHERE`. They're on by default (Settings › Security › Warnings) and each connection can follow that or pick On or Off. They're never behind the passphrase.
 
 <details>
 <summary><img src="docs/assets/icons/wrench.svg" width="18" height="18" align="top" alt="" /> <b>How it decides, and why it's hard to sneak past</b></summary>
@@ -229,9 +233,10 @@ src-tauri/src/paths.rs     ~/.config/ypacapy, atomic writes, export files (text 
 src/store.ts               app state (zustand)
 src/types.ts               shared types, mirrored by the Rust structs
 src/lib/                   SQL, mongosh and redis-cli helpers, autocomplete, grid edits, cell formats,
-                           BSON, ER diagram layout and exports, themes, updater
+                           BSON, MongoDB document edits, ER diagram layout and exports, themes, updater
 src/components/            UI: Home, Sidebar, QueryPane, SqlEditor, ResultGrid, TablePane,
-                           CollectionPane, KeyPane, DiagramPane, Modals, ...
+                           CollectionPane, DocCards, KeyPane, DiagramPane, ConnStatus, Modals, ...
+                           Each component's own CSS sits next to it (Foo.tsx + Foo.css)
 .github/workflows/         release and Rust cache pipelines
 ```
 

@@ -1,18 +1,18 @@
 # Graph Report - ypacapy  (2026-11-20)
 
 ## Corpus Check
-- 78 files · ~336,155 words
+- 78 files · ~337,080 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 34 file(s) not represented in the graph (top: .css 29, (none) 4, .lock 1)
 - WARNING: 34 of 150 files seen (23%) have no supported extractor and are missing from this graph entirely. It may look complete while representing only part of the codebase.
 
 ## Summary
-- 2083 nodes · 4926 edges · 104 communities (85 shown, 19 thin omitted)
+- 2071 nodes · 4968 edges · 93 communities (86 shown, 7 thin omitted)
 - Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 309 edges (avg confidence: 0.82)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `778a0e83`
+- Built from commit: `2b74e191`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -38,31 +38,31 @@
 - State
 - Changelog features
 - README icons
-- showDirty
+- themes.ts
 - Pool
-- DbState
-- execute
+- apply_edits
+- find
 - DocCards.tsx
 - Rust cache workflow
 - types.ts
 - complete.ts
 - Keychain
 - Connections store
-- .get
+- DbState
 - Redis previews
 - package.json
 - ERD catalog reads
 - Local store
 - themes.ts
-- Redis state
+- .redis
 - Unreleased changelog
-- SqlEditor.tsx
+- CollectionPane.tsx
 - Build info and About
 - home.html (Home / Connections preview)
 - Security level (None / Low / Strict)
 - CHANGELOG.md
 - QueryPane.tsx
-- rediscli.ts
+- vite.config.ts
 - Settings dialog panes (Appearance, Queries, Security, Data on this Mac, Updates)
 - Connect URL sync
 - Estimated document counts (~48k from collection metadata, not a count)
@@ -70,17 +70,17 @@
 - TypeScript config
 - updater.ts
 - SettingsState
-- connect
+- redis.rs
 - store.ts
 - find
 - ConnectModal
 - connect.html (New connection preview)
-- check_kinds
+- run
 - diagramTab.ts
 - GuardState
 - render() (key head and value page)
 - check_kinds
-- MultiplexedConnection
+- ROpen
 - window.Erd (inlined src/lib/diagram.ts + diagramExport.ts)
 - Fonts
 - classify
@@ -88,7 +88,7 @@
 - paths.rs
 - AGENTS.md
 - render() (collection view/state)
-- Schema tree sidebar
+- UpdateChip
 - ~/.config/ypacapy (settings.toml, connections.toml, ypacapy.db)
 - SecurityLevel
 - RawExec
@@ -96,7 +96,9 @@
 - Engine enum
 - LegacyGuard
 - Tauri capabilities
-- place
+- Collection Info dialog ($collStats: count, sizes, indexes, validator)
+- @tauri-apps/api
+- scripts
 - About dialog (modal over the workspace)
 - Applied
 - Connect preview helpers
@@ -106,31 +108,30 @@
 - Saved queries sidebar
 - ypacapy root
 - SslMode
-- MongoTls
 
 ## God Nodes (most connected - your core abstractions)
 1. `State` - 53 edges
 2. `useStore` - 47 edges
 3. `icoC()` - 33 edges
 4. `DiagramPane()` - 28 edges
-5. `DocCards()` - 27 edges
-6. `useCurrent()` - 26 edges
-7. `errText()` - 25 edges
-8. `ResultGrid()` - 25 edges
+5. `run()` - 27 edges
+6. `DocCards()` - 27 edges
+7. `ResultGrid()` - 26 edges
+8. `useCurrent()` - 26 edges
 9. `react` - 25 edges
-10. `DbState` - 23 edges
+10. `run()` - 25 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `savedAt()` --semantically_similar_to--> `savedAtLabel()`  [INFERRED] [semantically similar]
   .hallmark/preview/diagram.html → src/lib/diagramTab.ts
-- `Query history sidebar` --semantically_similar_to--> `HistorySide()`  [INFERRED] [semantically similar]
-  .hallmark/preview/index.html → src/components/Sidebar.tsx
-- `Strict: passphrase dialog (optional Touch ID)` --semantically_similar_to--> `GuardModal()`  [INFERRED] [semantically similar]
-  .hallmark/preview/index.html → src/components/Modals.tsx
 - `diagram.html (ER diagram preview)` --semantically_similar_to--> `DiagramPane()`  [INFERRED] [semantically similar]
   .hallmark/preview/diagram.html → src/components/DiagramPane.tsx
 - `Tables to draw picker dialog` --semantically_similar_to--> `Picker()`  [INFERRED] [semantically similar]
   .hallmark/preview/diagram.html → src/components/DiagramPane.tsx
+- `Strict: passphrase dialog (optional Touch ID)` --semantically_similar_to--> `GuardModal()`  [INFERRED] [semantically similar]
+  .hallmark/preview/index.html → src/components/Modals.tsx
+- `Query history sidebar` --semantically_similar_to--> `HistorySide()`  [INFERRED] [semantically similar]
+  .hallmark/preview/index.html → src/components/Sidebar.tsx
 
 ## Import Cycles
 - 1-file cycle: `src-tauri/src/keychain.rs -> src-tauri/src/keychain.rs`
@@ -153,23 +154,23 @@
 - **No heavy automatic queries across engines** — readme_quiet_on_server, readme_autocomplete, readme_er_diagram_table_picker, changelog_redis_key_sidebar, changelog_mongo_fields_indexes [INFERRED 0.85]
 - **Light, catalog-only reads policy across preview screens** — hallmark_preview_index_estimated_row_counts, hallmark_preview_table_estimated_row_count, hallmark_preview_diagram_catalog_only_read, hallmark_preview_index_sql_autocomplete, hallmark_preview_diagram_table_picker [INFERRED 0.85]
 
-## Communities (104 total, 19 thin omitted)
+## Communities (93 total, 7 thin omitted)
 
 ### Community 0 - "MongoDB driver"
 Cohesion: 0.06
-Nodes (49): capitalise(), Args, canonical(), client_options(), code_name(), collect(), collections(), CollInfo (+41 more)
+Nodes (47): Args, canonical(), client_options(), code_name(), collect(), collections(), CollInfo, conn() (+39 more)
 
 ### Community 1 - "BSON values"
 Cohesion: 0.06
 Nodes (42): ABOUT, build(), CHECK_UPDATES, CLOSE_TAB, CLOSE_WINDOW, on_event(), SETTINGS, command_kind() (+34 more)
 
 ### Community 2 - "DiagramPane.tsx"
-Cohesion: 0.11
-Nodes (20): blobBase64(), BoxItem, BoxMenu(), clampZoom(), CODE, CodeDialog(), DETAILS, DiagramPane() (+12 more)
+Cohesion: 0.09
+Nodes (22): palette(), blobBase64(), Box, BoxItem, BoxMenu(), clampZoom(), CODE, CodeDialog() (+14 more)
 
 ### Community 3 - "Home.tsx"
-Cohesion: 0.07
-Nodes (27): Unpinnable diagram tab with unsaved dot, Pinned query tabs, index.html (Vite app entry), react-dom@^18.3.1, react, react-dom, GroupSelect(), address() (+19 more)
+Cohesion: 0.08
+Nodes (26): Pinned query tabs, react, GroupSelect(), address(), dropAttr(), DropKey, ENGINE_WORDS, GroupRename() (+18 more)
 
 ### Community 4 - "Result grid with cell inspector, on-screen sort and copy/export menus"
 Cohesion: 0.18
@@ -177,7 +178,7 @@ Nodes (12): fillCols() (Go to column menu), pick() (grid cell select + inspector
 
 ### Community 5 - "DB runtime types"
 Cohesion: 0.05
-Nodes (13): Affected, BEAT_WAIT, EditRequest, HARD_CAP, Link, impl_affected!, impl_cells!, impl_raw! (+5 more)
+Nodes (15): Affected, BEAT_WAIT, ColumnBrief, EditRequest, HARD_CAP, Link, impl_affected!, impl_cells! (+7 more)
 
 ### Community 6 - "Brand and graph docs"
 Cohesion: 0.20
@@ -189,38 +190,38 @@ Nodes (40): outputs, runs-on, steps, GITHUB_TOKEN, TAURI_SIGNING_PRIVATE_KEY, TA
 
 ### Community 8 - "redis-cli parser"
 Cohesion: 0.08
-Nodes (33): c(), query(), classifies_for_the_guard(), Cmd, EXPIRE, FLUSH, HASHES, KEYS_W (+25 more)
+Nodes (32): query(), classifies_for_the_guard(), Cmd, EXPIRE, FLUSH, HASHES, KEYS_W, Kind (+24 more)
 
 ### Community 9 - "Grid icons"
-Cohesion: 0.07
-Nodes (37): Box(), AnyFormat, Cell(), CellEditor(), ColKey, DocsActions(), GridRow, jsonHtml() (+29 more)
+Cohesion: 0.11
+Nodes (26): AnyFormat, Cell(), DocsActions(), GridRow, jsonHtml(), MenuButton(), MenuItem, SaveError (+18 more)
 
 ### Community 10 - "AuthDialog.tsx"
-Cohesion: 0.15
+Cohesion: 0.14
 Nodes (13): AuthDialog(), Caps(), Err(), Head(), PASS, PassField(), PassKind, PassphraseDialog() (+5 more)
 
 ### Community 11 - "diagram.ts"
 Cohesion: 0.12
-Nodes (30): anchorY(), BODY_PAD, Box, boxSize(), Cardinality, cardinality(), DiagramColumn, DiagramDetail (+22 more)
+Nodes (29): anchorY(), BODY_PAD, Box, boxSize(), Cardinality, cardinality(), DiagramColumn, DiagramDetail (+21 more)
 
 ### Community 12 - "Guard icons"
-Cohesion: 0.07
-Nodes (38): Strict: passphrase dialog (optional Touch ID), ALL_KINDS, CollInfoModal(), CONN_TABS, ConnTab, Final(), GuardModal(), Modals() (+30 more)
+Cohesion: 0.06
+Nodes (40): Strict: passphrase dialog (optional Touch ID), ALL_KINDS, CollInfoModal(), CONN_TABS, ConnTab, Final(), GuardModal(), KeyInfoModal() (+32 more)
 
 ### Community 13 - "Redis and Mongo config"
-Cohesion: 0.13
-Nodes (25): b(), cell(), col(), entries(), escaped(), items(), KeyInfo, KeyPage (+17 more)
+Cohesion: 0.19
+Nodes (20): b(), c(), cell(), col(), entries(), escaped(), items(), KeyPage (+12 more)
 
 ### Community 14 - "History sidebar"
-Cohesion: 0.14
-Nodes (19): JsonLine(), KeyPane(), PARTS, prettyJson(), foldKeys(), MenuItem, MONGO_SYSTEM, READ_WHOLE (+11 more)
+Cohesion: 0.13
+Nodes (26): Clear history dialog, Query history sidebar, JsonLine(), KeyPane(), PARTS, prettyJson(), foldKeys(), HistorySide() (+18 more)
 
 ### Community 15 - "App.tsx"
 Cohesion: 0.11
-Nodes (32): Clear history dialog, Query history sidebar, App(), AppStrip(), ConnWork(), SIDEBAR_DEFAULT, stack(), useTheme() (+24 more)
+Nodes (27): index.html (Vite app entry), App(), ConnWork(), SIDEBAR_DEFAULT, stack(), useTypeTokens(), CollectionPane(), beatOn() (+19 more)
 
 ### Community 16 - "Updater chip preview"
-Cohesion: 0.08
+Cohesion: 0.07
 Nodes (25): Install failed state (signature mismatch, rolled back, 0.0.1 unchanged, Download from GitHub), app, security, windows, build, beforeBuildCommand, beforeDevCommand, devUrl (+17 more)
 
 ### Community 17 - "guard.rs"
@@ -239,21 +240,21 @@ Nodes (30): About dialog (version, update state, dev git info), Added, Mongo Fie
 Cohesion: 0.11
 Nodes (22): Lucide 'ban' icon (teal #1abc9c), Lucide 'check' icon (teal #1abc9c), Lucide 'circle-help' icon (teal #1abc9c), Lucide 'download' icon (teal #1abc9c), Lucide 'feather' icon (teal #1abc9c), Lucide 'hard-drive' icon (teal #1abc9c), Lucide 'keyboard' icon (teal #1abc9c), Lucide 'lightbulb' icon (teal #1abc9c) (+14 more)
 
-### Community 21 - "showDirty"
-Cohesion: 0.40
-Nodes (5): askClose(), changed(), savedAt(), showDirty(), state()
+### Community 21 - "themes.ts"
+Cohesion: 0.17
+Nodes (21): useTheme(), alpha(), BUILTIN, BuiltinId, contrast(), DEFAULT_SCHEME, FAMILIES, findScheme() (+13 more)
 
 ### Community 22 - "Pool"
-Cohesion: 0.20
-Nodes (16): conn(), connect(), execute(), first(), Open, open(), Pool, Lite (+8 more)
+Cohesion: 0.16
+Nodes (21): apply(), catalog(), conn(), connect(), execute(), first(), on_pool!, Open (+13 more)
 
-### Community 23 - "DbState"
-Cohesion: 0.13
-Nodes (19): apply(), apply_edits(), cancel_query(), close_connection(), DbState, host_of(), on_pool!, password_for() (+11 more)
+### Community 23 - "apply_edits"
+Cohesion: 0.09
+Nodes (20): apply_edits(), capitalise(), Cells, Collected, ColMeta, done(), Exec, Cancelled (+12 more)
 
-### Community 24 - "execute"
-Cohesion: 0.18
-Nodes (8): Cells, Collected, ColMeta, done(), Exec, Cancelled, Done, ResultSet
+### Community 24 - "find"
+Cohesion: 0.27
+Nodes (14): clean_group(), ConnLock, delete_connection(), duplicate_connection(), find(), new_id(), now_ms(), save_connection() (+6 more)
 
 ### Community 25 - "DocCards.tsx"
 Cohesion: 0.07
@@ -264,64 +265,64 @@ Cohesion: 0.08
 Nodes (24): jobs, macos, runs-on, steps, strategy, target, name, on (+16 more)
 
 ### Community 27 - "types.ts"
-Cohesion: 0.09
-Nodes (29): KeyFolder, CollInfo, ColumnBrief, Conn, DEFAULT_LEVEL, DiagramTab, ErdColumn, ErdKey (+21 more)
+Cohesion: 0.13
+Nodes (23): KeyFolder, CollInfo, ColumnBrief, Conn, ErdColumn, ErdKey, HistoryEntry, KeyInfo (+15 more)
 
 ### Community 28 - "complete.ts"
-Cohesion: 0.07
-Nodes (42): ac-data JSON (schemas, tables, columns), accept() (insert suggestion via insertText), window.acShow (autocomplete presets), build() (suggestion list), cols() / fetchCols() column cache, context() (caret statement/clause/table refs), paint() (editor highlight), window.pvShow (query states) (+34 more)
+Cohesion: 0.05
+Nodes (51): layout() (schema tree filter), ac-data JSON (schemas, tables, columns), accept() (insert suggestion via insertText), window.acShow (autocomplete presets), build() (suggestion list), cols() / fetchCols() column cache, context() (caret statement/clause/table refs), paint() (editor highlight) (+43 more)
 
 ### Community 29 - "Keychain"
-Cohesion: 0.14
-Nodes (14): check_passphrase(), clear_passphrase(), delete(), derive(), get(), get_string(), has_passphrase(), ITERATIONS (+6 more)
+Cohesion: 0.12
+Nodes (17): password_for(), set_passphrase(), check_passphrase(), clear_passphrase(), derive(), get(), get_string(), has_passphrase() (+9 more)
 
 ### Community 30 - "Connections store"
-Cohesion: 0.13
-Nodes (19): Card drag-and-drop between groups, Connection groups (Production, Staging, Ungrouped), Connection search (name, host, user, database, file, engine, group; Cmd+F, Enter opens first, Esc clears), Connections home (grouped connection cards), dropOn(), dup() (duplicate connection), endDrag(), Group menu (New connection here, Rename group, Close N open, Ungroup) (+11 more)
+Cohesion: 0.11
+Nodes (22): Card menu (Edit connection, Duplicate, Move to group, New group, Remove from group, Remove connection), Card drag-and-drop between groups, Connection card (engine tile, name, address, last opened), Connection groups (Production, Staging, Ungrouped), Connections home (grouped connection cards), dropOn(), dup() (duplicate connection), Duplicated toast (Duplicated as shop_prod copy) (+14 more)
 
-### Community 31 - ".get"
-Cohesion: 0.22
-Nodes (17): catalog(), check_schema(), col(), ColumnBrief, err_text(), load_schema(), open_connection(), OpenInfo (+9 more)
+### Community 31 - "DbState"
+Cohesion: 0.17
+Nodes (19): cancel_query on the test's id (Stop test), cancel_query(), check_schema(), close_connection(), col(), DbState, err_text(), load_schema() (+11 more)
 
 ### Community 32 - "Redis previews"
-Cohesion: 0.13
-Nodes (21): redis.html (Redis connection preview), ask() (write guard dialog for DEL / KEYS), Expiring only filter (TTL keys), Guard dialogs: confirm (Low) and passphrase with Touch ID (Strict), Key Info dialog (TYPE, OBJECT encoding, MEMORY USAGE, idle time), Key row menu (Open key, New command, Copy name, Info, Delete key), window.mInfo() (Info dialog preview states), Pinned query tabs kept with the connection (+13 more)
+Cohesion: 0.12
+Nodes (22): key.html (Redis key preview), redis.html (Redis connection preview), ask() (write guard dialog for DEL / KEYS), Expiring only filter (TTL keys), Guard dialogs: confirm (Low) and passphrase with Touch ID (Strict), Key Info dialog (TYPE, OBJECT encoding, MEMORY USAGE, idle time), Key row menu (Open key, New command, Copy name, Info, Delete key), window.mInfo() (Info dialog preview states) (+14 more)
 
 ### Community 33 - "package.json"
-Cohesion: 0.06
-Nodes (42): dependencies, lucide-react@1.75.0, react@^18.3.1, sql-formatter@15.9.0, @tauri-apps/api@^2.0.0, @tauri-apps/plugin-dialog@^2.0.0, @tauri-apps/plugin-opener@^2, @tauri-apps/plugin-process@^2 (+34 more)
+Cohesion: 0.09
+Nodes (29): dependencies, lucide-react@1.75.0, react@^18.3.1, sql-formatter@15.9.0, @tauri-apps/plugin-dialog@^2.0.0, @tauri-apps/plugin-opener@^2, @tauri-apps/plugin-process@^2, @tauri-apps/plugin-updater@^2 (+21 more)
 
 ### Community 34 - "ERD catalog reads"
-Cohesion: 0.19
-Nodes (24): add_uniques(), among(), diagram(), ErdColumn, ErdKey, ErdTable, keys_of(), kind_of() (+16 more)
+Cohesion: 0.18
+Nodes (25): add_uniques(), among(), diagram(), ErdColumn, ErdKey, ErdTable, keys_of(), kind_of() (+17 more)
 
 ### Community 35 - "Local store"
-Cohesion: 0.22
-Nodes (13): now_ms(), clear_history(), delete_saved(), HISTORY_MAX, HistoryEntry, list_history(), list_saved(), load_workspace() (+5 more)
+Cohesion: 0.23
+Nodes (12): clear_history(), delete_saved(), HISTORY_MAX, HistoryEntry, list_history(), list_saved(), load_workspace(), LocalStore (+4 more)
 
 ### Community 36 - "themes.ts"
-Cohesion: 0.08
-Nodes (40): fill(), GLYPHS, ld(), Mongo(), Mysql(), Postgres(), Redis(), Sqlite() (+32 more)
+Cohesion: 0.12
+Nodes (26): react-dom@^18.3.1, react-dom, AppStrip(), ConnTile(), EngineIcon(), fill(), GLYPHS, ld() (+18 more)
 
-### Community 37 - "Redis state"
-Cohesion: 0.22
-Nodes (11): DbState, err_text(), heartbeat(), lost(), open_info(), redis_key(), redis_key_info(), redis_scan() (+3 more)
+### Community 37 - ".redis"
+Cohesion: 0.30
+Nodes (9): DbState, err_text(), KeyInfo, KeyRequest, lost(), open_info(), redis_key(), redis_key_info() (+1 more)
 
 ### Community 38 - "Unreleased changelog"
 Cohesion: 0.09
 Nodes (30): Added, Changed, One ⋮ menu per connection card on Home, Duplicate a connection (own keychain item, same group), Lucide icons 1.75.0 upgrade (from 0.460.0), Collection Info ($collStats, read on open and Refresh), Documents as table (BSON-typed columns) or JSON, Write guard for MongoDB (write-method kinds, unknown runCommand asks) (+22 more)
 
-### Community 39 - "SqlEditor.tsx"
-Cohesion: 0.15
-Nodes (7): Box, ItemIcon(), Marked(), Props, SqlEditor, TYPE_ICON, kindOf()
+### Community 39 - "CollectionPane.tsx"
+Cohesion: 0.17
+Nodes (7): Box(), ColKey, GridEdit, api, DEFAULT_ROW_LIMIT, ResultSet, TableTab
 
 ### Community 40 - "Build info and About"
-Cohesion: 0.19
-Nodes (20): DEV_BUILD, DevBuild, AboutModal(), BuildCard(), CheckSql(), InstallSql(), K(), Line() (+12 more)
+Cohesion: 0.12
+Nodes (24): DEV_BUILD, DevBuild, AboutModal(), BuildCard(), CheckSql(), InstallSql(), K(), Line() (+16 more)
 
 ### Community 41 - "home.html (Home / Connections preview)"
-Cohesion: 0.14
-Nodes (21): about.html (About ypacapy preview), About preview bar (states: Up to date, Checking, Update available, Downloading, Installing, Ready to restart, Install failed, Dev build), Query workspace behind About (schema tree, history, saved queries, tabs, results), setPinned() (tab pin), Pinned query tabs (Pin/Unpin, Close skips pinned, diagrams unpinnable), diagram.html (ER diagram preview), home.html (Home / Connections preview), Card menu (Edit connection, Duplicate, Move to group, New group, Remove from group, Remove connection) (+13 more)
+Cohesion: 0.18
+Nodes (18): about.html (About ypacapy preview), About preview bar (states: Up to date, Checking, Update available, Downloading, Installing, Ready to restart, Install failed, Dev build), Query workspace behind About (schema tree, history, saved queries, tabs, results), setPinned() (tab pin), Pinned query tabs (Pin/Unpin, Close skips pinned, diagrams unpinnable), diagram.html (ER diagram preview), home.html (Home / Connections preview), Connection search (name, host, user, database, file, engine, group; Cmd+F, Enter opens first, Esc clears) (+10 more)
 
 ### Community 42 - "Security level (None / Low / Strict)"
 Cohesion: 0.08
@@ -332,20 +333,20 @@ Cohesion: 0.25
 Nodes (8): [0.0.1] - 2026-11-18, Changelog, Keep a Changelog + Semantic Versioning, Release pipeline (GitHub Actions draft release, latest.json, notes from CHANGELOG), Lucide 'rocket' icon (teal #1abc9c), Cutting a release (tag vX.Y.Z, draft release, publish by hand), release.yml workflow (aarch64 + x86_64 bundles, latest.json), Tauri updater signing key secrets
 
 ### Community 44 - "QueryPane.tsx"
-Cohesion: 0.07
-Nodes (53): LinkNote(), KeyInfoModal(), CtxSelect(), Elapsed(), ErrorState(), QueryContext(), QueryPane(), QueryResults() (+45 more)
+Cohesion: 0.06
+Nodes (53): Redis command console (redis-cli commands in Query tabs), CtxSelect(), Elapsed(), QueryContext(), QueryPane(), QueryResults(), RunGroup(), RunMeta() (+45 more)
 
-### Community 45 - "rediscli.ts"
-Cohesion: 0.60
-Nodes (4): Redis command console (redis-cli commands in Query tabs), esc(), highlightRedis(), line()
+### Community 45 - "vite.config.ts"
+Cohesion: 0.29
+Nodes (6): vite@^5.4.10, @vitejs/plugin-react@^4.3.2, vite, @vitejs/plugin-react, devBuild(), git()
 
 ### Community 46 - "Settings dialog panes (Appearance, Queries, Security, Data on this Mac, Updates)"
-Cohesion: 0.09
+Cohesion: 0.10
 Nodes (21): openSub() (connect preview), Per-connection Queries options (row limit / page size, timeout, heartbeat), Settings Appearance pane (theme, scheme per appearance, compact, three fonts), apply() (settings preview), closeSub() (settings preview), Settings dialog panes (Appearance, Queries, Security, Data on this Mac, Updates), go() (settings pane switch), openSub() (settings preview) (+13 more)
 
 ### Community 47 - "Connect URL sync"
-Cohesion: 0.15
-Nodes (17): cancel_query on the test's id (Stop test), fromUrl() (URL to fields), layout() (per-engine field visibility), mongoUrl() (mongodb / mongodb+srv URL), window.pvShow (connect states), pvStart() (connect preview), redisUrl() (redis / rediss URL), save_connection Tauri command (+9 more)
+Cohesion: 0.16
+Nodes (16): fromUrl() (URL to fields), layout() (per-engine field visibility), mongoUrl() (mongodb / mongodb+srv URL), window.pvShow (connect states), pvStart() (connect preview), redisUrl() (redis / rediss URL), save_connection Tauri command, selectTab() (connection settings tabs) (+8 more)
 
 ### Community 48 - "Estimated document counts (~48k from collection metadata, not a count)"
 Cohesion: 0.22
@@ -360,44 +361,44 @@ Cohesion: 0.12
 Nodes (16): compilerOptions, isolatedModules, jsx, lib, module, moduleResolution, noEmit, noFallthroughCasesInSwitch (+8 more)
 
 ### Community 51 - "updater.ts"
-Cohesion: 0.12
-Nodes (16): Release notes list (first 3, rest behind Show all N changes), Show all / Show less release notes handler, Updater state cards (checking, current, available, downloading, installing, ready, failed), Notes(), UpdateChip(), checkForUpdate(), hasPendingUpdate(), installUpdate() (+8 more)
+Cohesion: 0.19
+Nodes (13): Dev build card (channel, git-describe version, branch, commit, updates off in dev builds), Release notes list (first 3, rest behind Show all N changes), Show all / Show less release notes handler, show(), step() (About updater/dev card switch), Updater state cards (checking, current, available, downloading, installing, ready, failed), checkForUpdate(), hasPendingUpdate() (+5 more)
 
 ### Community 52 - "SettingsState"
 Cohesion: 0.21
-Nodes (8): run(), config_dir(), write_atomic(), load_settings(), read_file(), save_settings(), SettingsState, strip_nulls()
+Nodes (8): run(), config_dir(), config_path(), load_settings(), read_file(), save_settings(), SettingsState, strip_nulls()
 
-### Community 53 - "connect"
-Cohesion: 0.31
-Nodes (10): against_a_server(), client(), connect(), db_of(), group(), reads_the_database_number(), secs(), test() (+2 more)
+### Community 53 - "redis.rs"
+Cohesion: 0.15
+Nodes (14): against_a_server(), client(), connect(), db_of(), group(), reads_the_database_number(), ScanKey, ScanPage (+6 more)
 
 ### Community 54 - "store.ts"
 Cohesion: 0.08
-Nodes (23): Saved diagram (tables, positions, zoom, detail), flushWorkspace(), keptDiagrams(), KeptKey, KeptQuery, KeptTable, lastWritten, Modal (+15 more)
+Nodes (26): save(), Saved diagram (tables, positions, zoom, detail), positionsOf(), flushWorkspace(), keptDiagrams(), KeptKey, KeptQuery, KeptTable (+18 more)
 
 ### Community 55 - "find"
 Cohesion: 0.16
-Nodes (30): clean_group(), Conn, conn(), ConnFile, ConnLock, copy_name(), copy_names_skip_taken_ones(), delete_connection() (+22 more)
+Nodes (23): Conn, conn(), ConnFile, copy_name(), copy_names_skip_taken_ones(), group_is_trimmed_and_blank_is_none(), keep_history_overrides_settings_only_when_set(), list_connections() (+15 more)
 
 ### Community 56 - "ConnectModal"
-Cohesion: 0.18
+Cohesion: 0.17
 Nodes (20): AppearancePane(), ConnectModal(), ConnQueriesPane(), ConnSecurityPane(), connUrl(), DataPane(), FontRow(), fromTri() (+12 more)
 
 ### Community 57 - "connect.html (New connection preview)"
 Cohesion: 0.13
 Nodes (16): connect.html (New connection preview), Advanced tab (app name, connect timeout; Mongo replica set/read preference/direct; Redis key separator, keys per scan), New connection dialog form (Name, Color, Group; General/Options/SSL/Advanced tabs), drawGroup(), Group picker (No group, Home groups, New group...), Security level picker ([data-level-pick], connect), Statements / writes / commands to ask about (per engine), renderLevel() (+8 more)
 
-### Community 58 - "check_kinds"
-Cohesion: 0.17
-Nodes (11): Approval, Confirm, Passphrase, TouchId, approve_lowering(), authenticate(), authenticate_owner(), check_kinds() (+3 more)
+### Community 58 - "run"
+Cohesion: 0.33
+Nodes (6): run(), Step, Cancelled, Done, Failed, summary()
 
 ### Community 59 - "diagramTab.ts"
-Cohesion: 0.16
-Nodes (16): DiagramLayout, DiagramModel, diagramModel(), tableKey(), withMoves(), diagramCanSave(), diagramChanged(), diagramLayoutOf() (+8 more)
+Cohesion: 0.15
+Nodes (17): DiagramLayout, DiagramModel, diagramModel(), tableKey(), withMoves(), diagramCanSave(), diagramChanged(), diagramKey() (+9 more)
 
 ### Community 60 - "GuardState"
-Cohesion: 0.20
-Nodes (12): Passphrase sub-dialogs (set, change, disable, reset/forgot, unlock), approve_default_lowering(), disable_passphrase(), GuardState, Inner, lock_protect(), reset_passphrase(), set_passphrase() (+4 more)
+Cohesion: 0.13
+Nodes (18): Passphrase sub-dialogs (set, change, disable, reset/forgot, unlock), Approval, Confirm, Passphrase, TouchId, approve_default_lowering(), approve_lowering(), authenticate() (+10 more)
 
 ### Community 61 - "render() (key head and value page)"
 Cohesion: 0.25
@@ -407,41 +408,37 @@ Nodes (9): fillInfo() (key Info dialog), Key gone state (TYPE -> none), Key head
 Cohesion: 0.27
 Nodes (8): Ask, check(), check_sql(), Classified, Warning, BigLimit, UpdateAll, warnings()
 
-### Community 63 - "MultiplexedConnection"
-Cohesion: 0.28
-Nodes (6): open_one(), server_of(), Step, Cancelled, Done, Failed
+### Community 63 - "ROpen"
+Cohesion: 0.31
+Nodes (3): heartbeat(), open_one(), ROpen
 
 ### Community 64 - "window.Erd (inlined src/lib/diagram.ts + diagramExport.ts)"
-Cohesion: 0.17
-Nodes (18): apply() (draw picked tables), Selection cardinality marks and linked columns, Linked table from another schema (outside box), draw(), window.Erd (inlined src/lib/diagram.ts + diagramExport.ts), window.ERD_DATA / ERD_LINKS sample catalog, openCode() (Mermaid/DBML), openDiagram() (+10 more)
+Cohesion: 0.12
+Nodes (23): apply() (draw picked tables), askClose(), Selection cardinality marks and linked columns, changed(), Linked table from another schema (outside box), draw(), window.Erd (inlined src/lib/diagram.ts + diagramExport.ts), window.ERD_DATA / ERD_LINKS sample catalog (+15 more)
 
 ### Community 65 - "Fonts"
 Cohesion: 0.33
 Nodes (5): FontList, list_fonts(), mono_names(), named_mono(), scan()
 
 ### Community 66 - "classify"
-Cohesion: 0.21
-Nodes (13): big_limits_warn_above_100(), classify(), classify_tokens(), dialect(), fallback_tokenizer(), kinds(), reads_never_ask(), row_limit_target() (+5 more)
+Cohesion: 0.17
+Nodes (15): big_limits_warn_above_100(), classify(), classify_tokens(), dialect(), fallback_tokenizer(), is_final(), kinds(), reads_never_ask() (+7 more)
 
 ### Community 67 - "start_heartbeat"
 Cohesion: 0.43
 Nodes (4): Beat, beat_pool!, heartbeat(), start_heartbeat()
 
 ### Community 68 - "paths.rs"
-Cohesion: 0.28
-Nodes (4): base64(), config_path(), decode_base64(), write_binary_file()
+Cohesion: 0.32
+Nodes (4): base64(), decode_base64(), expand_tilde(), write_binary_file()
 
 ### Community 69 - "AGENTS.md"
 Cohesion: 0.13
 Nodes (15): Graph freshness hooks (PostToolUse + git post-commit), graphify knowledge graph (graphify-out/), app-icon.svg (ypacapy app icon), White capybara head soaking in the cylinder, Database cylinder as hot-spring tub, Teal gradient rounded tile (#2fd3b0 to #0a6e5d), Yuzu (yellow fruit with green leaf) on capybara's head, CLAUDE.md (symlink to AGENTS.md) (+7 more)
 
 ### Community 70 - "render() (collection view/state)"
-Cohesion: 0.18
-Nodes (11): Collection Fields view (fields seen on this page), Collection Indexes view (keys, unique, partial/sparse options), Collection Info dialog ($collStats: count, sizes, indexes, validator), window.mInfo (Info dialog preview states), Filter matches nothing state (with values seen hint), window.pvShow (collection states), reload() (collection run), render() (collection view/state) (+3 more)
-
-### Community 71 - "Schema tree sidebar"
-Cohesion: 0.50
-Nodes (4): layout() (schema tree filter), Schema tree sidebar, layout() (schema tree filter), MongoDB database tree (Collections, Views, System databases)
+Cohesion: 0.33
+Nodes (6): Collection Fields view (fields seen on this page), Collection Indexes view (keys, unique, partial/sparse options), Filter matches nothing state (with values seen hint), reload() (collection run), render() (collection view/state), valid() (bracket/comma parser stand-in)
 
 ### Community 72 - "~/.config/ypacapy (settings.toml, connections.toml, ypacapy.db)"
 Cohesion: 0.16
@@ -467,9 +464,21 @@ Nodes (4): LegacyGuard, Confirm, Run, Verify
 Cohesion: 0.33
 Nodes (5): description, identifier, permissions, $schema, windows
 
+### Community 79 - "Collection Info dialog ($collStats: count, sizes, indexes, validator)"
+Cohesion: 0.40
+Nodes (5): Collection Info dialog ($collStats: count, sizes, indexes, validator), window.mInfo (Info dialog preview states), window.pvShow (collection states), Key Info dialog (TYPE, OBJECT ENCODING, MEMORY USAGE), Collection Info dialog ($collStats, mongo console)
+
+### Community 80 - "@tauri-apps/api"
+Cohesion: 0.40
+Nodes (4): @tauri-apps/api@^2.0.0, @tauri-apps/api, FontList, systemFonts()
+
+### Community 81 - "scripts"
+Cohesion: 0.40
+Nodes (5): scripts, build, dev, tauri, typecheck
+
 ### Community 85 - "About dialog (modal over the workspace)"
-Cohesion: 0.18
-Nodes (10): About dialog (modal over the workspace), Version copy handler (clipboard, Copied for 1.4s), Copyable version button (copies 'ypacapy vX' for bug reports), Dev build card (channel, git-describe version, branch, commit, updates off in dev builds), GitHub and Report an issue links (github.com/jimmyfish/ypacapy), Capybara app icon in its onsen (steam, ripple rings), Onsen click handler (restart ping animation), show() (+2 more)
+Cohesion: 0.29
+Nodes (7): About dialog (modal over the workspace), Version copy handler (clipboard, Copied for 1.4s), Copyable version button (copies 'ypacapy vX' for bug reports), GitHub and Report an issue links (github.com/jimmyfish/ypacapy), Capybara app icon in its onsen (steam, ripple rings), Onsen click handler (restart ping animation), REPO_URL
 
 ### Community 86 - "Applied"
 Cohesion: 0.40
@@ -491,34 +500,30 @@ Nodes (3): apply() (theme/density, updates preview), setFont() (updates preview)
 Cohesion: 0.33
 Nodes (6): SslMode, Disable, Prefer, Require, VerifyCa, VerifyFull
 
-### Community 103 - "MongoTls"
-Cohesion: 0.50
-Nodes (4): MongoTls, Insecure, Off, On
-
 ## Ambiguous Edges - Review These
 - `Lucide 'users' icon (teal #1abc9c)` → `Never on the wishlist (accounts, cloud sync, telemetry, background scans)`  [AMBIGUOUS]
   README.md · relation: references
 
 ## Knowledge Gaps
-- **128 isolated node(s):** `Done`, `Ask`, `Error`, `Cancelled`, `Done` (+123 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 585 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **19 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **128 isolated node(s):** `ypacapy`, `Postgres`, `Mysql`, `Sqlite`, `Mongo` (+123 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 572 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **7 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Where things live (module map)` connect `AGENTS.md` to `Fonts`, `Local store`, `paths.rs`, `DB runtime types`, `guard.rs`, `SettingsState`, `store.ts`, `find`, `types.ts`, `Keychain`?**
-  _High betweenness centrality (0.393) - this node is a cross-community bridge._
-- **What connects `Done`, `Ask`, `Error` to the rest of the system?**
+  _High betweenness centrality (0.371) - this node is a cross-community bridge._
+- **Are the 6 inferred relationships involving `run()` (e.g. with `capitalise()` and `summary()`) actually correct?**
+  _`run()` has 6 INFERRED edges - model-reasoned connections that need verification._
+- **What connects `ypacapy`, `Postgres`, `Mysql` to the rest of the system?**
   _128 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `MongoDB driver` be split into smaller, more focused modules?**
-  _Cohesion score 0.05714285714285714 - nodes in this community are weakly interconnected._
-- **Why does `<img src="docs/assets/icons/code-xml.svg" width="24" height="24" align="top" alt="" /> Hack on it` connect `AGENTS.md` to `CHANGELOG.md`, `Changelog features`, `README icons`?**
-  _High betweenness centrality (0.036) - this node is a cross-community bridge._
+  _Cohesion score 0.05873340143003064 - nodes in this community are weakly interconnected._
+- **Why does `home.html (Home / Connections preview)` connect `home.html (Home / Connections preview)` to `Redis previews`, `connect.html (New connection preview)`, `themes.js`, `Connections store`?**
+  _High betweenness centrality (0.059) - this node is a cross-community bridge._
 - **Should `BSON values` be split into smaller, more focused modules?**
   _Cohesion score 0.059921710328214396 - nodes in this community are weakly interconnected._
-- **Why does `State` connect `State` to `DiagramPane.tsx`, `Grid icons`, `store.ts`, `ConnectModal`, `connect.html (New connection preview)`, `types.ts`, `DocCards.tsx`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
 
 ### Low-confidence Hints
 _AMBIGUOUS edges — the extractor was unsure. Verify before acting on these._

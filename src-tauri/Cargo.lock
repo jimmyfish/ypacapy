@@ -6983,7 +6983,7 @@ dependencies = [
 
 [[package]]
 name = "ypacapy"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "block2",
  "fontdb",

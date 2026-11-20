@@ -4,19 +4,36 @@ All notable changes to ypacapy are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-20
+
 ### Added
 
 - **Warnings per connection.** A SQL query that can return more than 100 rows (its own LIMIT, the row limit ypacapy adds, or nothing limiting it), and an `UPDATE` without `WHERE`, ask before they run. They ask at every security level, None included; at Strict the passphrase ask carries them. Settings › Security › Warnings sets them for every connection (on by default); a connection can follow that or pick On or Off. The warnings are not behind the passphrase, Strict included. Table tabs do not warn about size.
 - **Keep query history per connection.** Use Settings, On or Off, so a production connection can keep its runs out of History.
 - **Connection settings in Settings.** Opened from a connection tab, Settings starts with that connection's own Security (level, what it asks about, warnings) and Queries (row limit, timeout, history, heartbeat), above the app-wide ones under Global. Opened from Home, only Global shows.
+- **Connection status.** With the heartbeat on (for the connection or in Settings; SQLite is never pinged), each connection tab in the title strip shows a green dot when the server answers, a red one when it doesn't, and a turning icon while it connects or reconnects. The foot of the sidebar says Connecting, Connected, Disconnected or Reconnecting.
+- **Dropped connections come back on their own.** A connection that a run lost, or that stops answering the heartbeat, is opened again on a later heartbeat once the server answers. Each check waits up to 10 s. While it's down, a bar over the work area says since when and offers Reconnect. A run that lost the connection says so in its own results, with a note that the heartbeat keeps trying. Redis gets a fresh connection in place of one that stopped answering.
+- **Edit MongoDB documents in place.** In a collection tab's JSON view each document has Edit, Duplicate, Copy and Delete. Edit changes values, field names and types, adds or removes fields, and undoes one change at a time; double-click a value to start. `_id` stays fixed. Update, Insert or Delete sends one `updateOne`, `insertOne` or `deleteOne` on the document's `_id` through the write guard, and the ask shows the exact command. Values that can't be written back yet (binary data that isn't a UUID, the deprecated types) are locked.
+- **Add document.** Add document on a collection tab (also offered by an empty collection) opens a blank document at the top. Example from fields fills it with the fields seen on the page, each with an empty value of its type. Nothing is read from the server for it.
+- **Rows per page on table and collection tabs.** A picker in the pager sets the page size for that tab (50 to 1,000, plus the row limit) and reads from the first page again. Settings stay as they are.
+- **Pages in the console.** When ypacapy added the row limit to a query (SQL, or a MongoDB find or aggregate), Next and Previous read the next or previous page of the same query. Pages don't warn about size again and stay out of History. Without an `ORDER BY` (or a sort), a hint says rows can shift between pages.
+- **Collection pager with a total.** It reads `1 – 20 of ~N`. With no filter, N is the estimate from the collection's metadata, never counted. With a filter, click count to run one `countDocuments` for it; the number stays until the filter changes. Refresh reads the page again.
 
 ### Changed
 
-- **Clearer wording across the app.** One name per thing (Cancelled, Discard, Refresh, Pick tables, Engine, Open as a query, Use Global, Allow Touch ID, Unlock), no colon reveals or "X, not Y" lines, and engine-neutral messages where they fit. The About tagline now says what ypacapy is and what stays on this Mac.
+- **MongoDB documents open as JSON.** Collection tabs and console results show JSON first, as one card per document. Objects and arrays start folded and say their size, with a peek inside; click a line to open it, or Expand all on the card. Copy and Export work from the JSON view too.
+- **Project, Sort, Skip and Limit fold under Options** in a collection's query bar, with a count of the ones set. A box with an error opens it. In a narrow window the buttons of the query bar, and of a Redis key tab, turn into icons.
+- **Paging goes until an empty page.** Table, collection and console pages keep Next on until a page comes back empty, since nothing is counted. An empty page keeps the columns of the last page.
+- **Settings › Updates redesigned.** The capy soaks in its onsen as in About, with the version, a status pill, one line of detail and the action under it, plus a progress bar while an update downloads.
+- **Friendlier wording across the app.** One name per thing (Cancelled, Discard, Refresh, Pick tables, Engine, Open as a query, Use Global, Allow Touch ID, Unlock), no colon reveals or "X, not Y" lines, and engine-neutral messages where they fit. The copy is casual now, and messages where the app speaks for itself call it Capy ("Capy doesn't run JavaScript…"). The About tagline is now "A hot spring for your databases."
 - **Settings keeps a minimum height,** so a short pane does not shrink the window.
 - **New passphrase asks for Strict connections.** Lowering from Strict (tabs bar, Settings, the connection dialog) shows the level it leaves and the one it goes to and what that means for writes; Change shows what it unlocks. Both have a show/hide passphrase field, a Caps Lock hint, Touch ID when the connection allows it, and Abort beside the action. Picking None or Low on a locked Strict connection asks right there instead of needing Change first.
 - **Lowering the default security level from Strict asks for the passphrase.** Settings › Security › Default security level for new connections now uses the same ask as lowering a connection.
 - **Passphrase dialogs redesigned.** Set, Change, Reset and Disable passphrase share the same look: a badge, what the action does (Disable lists what turns off and what stays), show/hide on every field, a Caps Lock hint, "They match" / "They differ" while typing the new one twice, and Abort beside the action. While the app checks, the action (or Use Touch ID) shows a turning loader instead of only greying out.
+
+### Fixed
+
+- **Closing a connection tab no longer waits.** Its pools close in the background, so a query still running or the MongoDB driver's shutdown doesn't hold the tab up. Opening it again gets a fresh pool.
 
 ## [0.1.0] - 2026-11-19
 
@@ -72,6 +89,7 @@ First release.
 - **About dialog.** Shows the version, the update state and, in dev builds, the git commit, branch and tag.
 - **Release pipeline.** GitHub Actions builds Apple silicon and Intel bundles from a version tag into a draft release, with `latest.json` for the updater. The notes are taken from this file.
 
-[Unreleased]: https://github.com/jimmyfish/ypacapy/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/jimmyfish/ypacapy/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/jimmyfish/ypacapy/releases/tag/v0.1.1
 [0.1.0]: https://github.com/jimmyfish/ypacapy/releases/tag/v0.1.0
 [0.0.1]: https://github.com/jimmyfish/ypacapy/releases/tag/v0.0.1

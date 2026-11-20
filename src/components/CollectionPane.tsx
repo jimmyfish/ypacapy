@@ -258,7 +258,7 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
       <div className="structure">
         <h3>Fields</h3>
         <p className="fields-note">
-          From the {n} document{n === 1 ? "" : "s"} on this page. ypacapy does not sample the collection, so a field only on other documents is not here.
+          From the {n} document{n === 1 ? "" : "s"} on this page. Capy doesn't dig through the whole collection, so a field that lives only on other documents isn't here.
         </p>
         {fields.length ? (
           <div className="grid-wrap">

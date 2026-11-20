@@ -793,7 +793,7 @@ function ImageDialog({ model, layout, detail, name, onClose }: { model: DiagramM
 
 const CODE = {
   mermaid: { title: "Mermaid code", ext: "mmd", help: "Paste it where Mermaid renders: a Markdown file on GitHub or GitLab, Notion, or the Mermaid live editor. It lists every column of the tables drawn." },
-  dbml: { title: "DBML for dbdiagram.io", ext: "dbml", help: "Paste it into the editor at dbdiagram.io (ypacapy doesn't open or send anything there). It lists every column of the tables drawn, their keys and references." },
+  dbml: { title: "DBML for dbdiagram.io", ext: "dbml", help: "Paste it into the editor at dbdiagram.io (Capy never goes there or sends it anything). It lists every column of the tables drawn, their keys and references." },
 } as const;
 
 /** Mermaid or DBML of the tables drawn: Copy, or Save as file */

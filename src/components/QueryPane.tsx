@@ -351,10 +351,10 @@ function QueryResults({ tab }: { tab: QueryTab }) {
           <strong>{o.timeout ? "Stopped by the statement timeout" : "Cancelled"}</strong>
           <span>
             {redis
-              ? "Redis cannot stop a command it started. ypacapy stopped waiting and opens a new connection for the next one."
+              ? "Redis can't stop a command once it starts. Capy gave up waiting and grabs a fresh connection for the next one."
               : o.timeout
                 ? "Settings › Queries sets how long a statement may run."
-                : "ypacapy asked the database to stop the statement."}
+                : "Capy asked the database to stop the statement."}
           </span>
         </div>
       </div>

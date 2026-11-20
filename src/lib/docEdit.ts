@@ -109,7 +109,7 @@ const copyable = (f: Field) => f.locked === undefined || f.type === "regex" || f
 export function uncopyable(fields: Field[]): string | null {
   for (const f of fields) {
     if (f.removed) continue;
-    if (!copyable(f)) return `${f.key} holds ${TYPE_LABEL[f.type] === "Binary" ? "binary data" : `a ${TYPE_LABEL[f.type]} value`} ypacapy can't write yet`;
+    if (!copyable(f)) return `${f.key} holds ${TYPE_LABEL[f.type] === "Binary" ? "binary data" : `a ${TYPE_LABEL[f.type]} value`} Capy can't write yet`;
     const inner = f.kids && uncopyable(f.kids);
     if (inner) return inner;
   }

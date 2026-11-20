@@ -742,10 +742,10 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
         Ok(c) => c,
         Err(e) => {
             return Ok(RunOutcome::Error {
-                title: "ypacapy could not read the command".into(),
+                title: "Capy couldn't make sense of the command".into(),
                 says: Some(e.says(&req.sql)),
                 message: e.message.clone(),
-                hint: Some(format!("ypacapy reads it before sending, so nothing was sent to {}.", conn.name)),
+                hint: Some(format!("Capy reads it before sending, so nothing was sent to {}.", conn.name)),
                 lost: false,
                 ms: ms(&t),
                 fix: None,
@@ -755,7 +755,7 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
     let (ops, unknown) = match redis_cli::kinds(&cmds) {
         Ok(k) => k,
         Err((i, why)) => {
-            return Ok(RunOutcome::Error { title: format!("ypacapy does not send {}", cmds[i].name()), says: None, message: why.into(), hint: Some(format!("Nothing was sent to {}.", conn.name)), lost: false, ms: ms(&t), fix: None })
+            return Ok(RunOutcome::Error { title: format!("Capy won't send {}", cmds[i].name()), says: None, message: why.into(), hint: Some(format!("Nothing was sent to {}.", conn.name)), lost: false, ms: ms(&t), fix: None })
         }
     };
     let mut writes: Vec<&'static str> = ops.iter().map(|(k, _)| *k).collect();
@@ -824,7 +824,7 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
                     title: format!("Lost the connection to {}", conn.name),
                     says: None,
                     message: err_text(&e),
-                    hint: Some(ran.unwrap_or_else(|| "A read is safe to send again; ypacapy does not resend a write on its own.".into())),
+                    hint: Some(ran.unwrap_or_else(|| "A read is safe to send again; Capy never resends a write on its own.".into())),
                     lost: true,
                     ms: elapsed,
                     fix: None,

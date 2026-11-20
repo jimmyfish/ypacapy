@@ -282,7 +282,7 @@ export function AuthDialog({
             autoComplete="current-password"
             autoFocus
             invalid={!!err}
-            placeholder="The app passphrase"
+            placeholder="Capy's passphrase"
             onCaps={setCaps}
             inputRef={input}
           />

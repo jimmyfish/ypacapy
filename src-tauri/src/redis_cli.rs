@@ -192,7 +192,7 @@ const READS: &[&str] = &[
 /// Commands that would leave this connection in another state than the one ypacapy keeps it in (another
 /// database, a transaction, a subscription). The console does not send them.
 const REFUSED: &[(&str, &str)] = &[
-    ("SELECT", "ypacapy stays on this connection's database. To work in another, add a connection with that database number."),
+    ("SELECT", "Capy stays on this connection's database. To work in another, add a connection with that database number."),
     ("MULTI", "Transactions are not available in the console yet. Each command runs on its own."),
     ("EXEC", "Transactions are not available in the console yet. Each command runs on its own."),
     ("DISCARD", "Transactions are not available in the console yet. Each command runs on its own."),
@@ -208,8 +208,8 @@ const REFUSED: &[(&str, &str)] = &[
     ("SYNC", "SYNC is for replicas only."),
     ("PSYNC", "PSYNC is for replicas only."),
     ("QUIT", "Close the connection's tab to disconnect."),
-    ("RESET", "RESET would leave the connection in another state than ypacapy keeps it in."),
-    ("HELLO", "ypacapy speaks RESP2 on this connection; HELLO would change that."),
+    ("RESET", "RESET would leave the connection in another state than Capy keeps it in."),
+    ("HELLO", "Capy speaks RESP2 on this connection; HELLO would change that."),
     ("AUTH", "Sign in with another user by editing the connection, so the password stays in the keychain."),
 ];
 

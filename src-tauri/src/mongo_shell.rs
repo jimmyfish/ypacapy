@@ -128,7 +128,7 @@ impl<'a> Lexer<'a> {
             self.i += 1;
             Tok::Punct(c)
         } else {
-            return err(format!("ypacapy does not read {c} here"), start);
+            return err(format!("Capy can't read {c} here"), start);
         };
         self.prev = Some(tok.clone());
         Ok((tok, start))
@@ -340,7 +340,7 @@ impl<'a> Parser<'a> {
             _ => {}
         }
         if !self.is('(') {
-            return err(format!("ypacapy does not run JavaScript, so {id} has no value here. Write the value itself"), at);
+            return err(format!("Capy doesn't run JavaScript, so {id} has no value here. Write the value itself"), at);
         }
         self.bump()?;
         let args = self.args()?;
@@ -369,7 +369,7 @@ impl<'a> Parser<'a> {
             }
             "ISODate" | "Date" => match args.as_slice() {
                 [] => Ok(Bson::DateTime(DateTime::now())),
-                [Bson::String(s)] => date(s).map(Bson::DateTime).ok_or_else(|| ParseError { message: format!("{s} is not a date ypacapy reads, such as 2026-10-19 or 2026-10-19T10:00:00Z"), pos: at }),
+                [Bson::String(s)] => date(s).map(Bson::DateTime).ok_or_else(|| ParseError { message: format!("{s} isn't a date Capy reads, such as 2026-10-19 or 2026-10-19T10:00:00Z"), pos: at }),
                 [Bson::Int32(n)] => Ok(Bson::DateTime(DateTime::from_millis(*n as i64))),
                 [Bson::Int64(n)] => Ok(Bson::DateTime(DateTime::from_millis(*n))),
                 [Bson::Double(n)] => Ok(Bson::DateTime(DateTime::from_millis(*n as i64))),
@@ -413,7 +413,7 @@ impl<'a> Parser<'a> {
             }
             "MinKey" => Ok(Bson::MinKey),
             "MaxKey" => Ok(Bson::MaxKey),
-            _ => err(format!("ypacapy does not know {id}(). It reads values only."), at),
+            _ => err(format!("Capy doesn't know {id}(). It reads values only."), at),
         }
     }
 }
@@ -495,7 +495,7 @@ pub fn parse_command(src: &str) -> R<Command> {
     match &p.tok {
         Tok::Ident(d) if d == "db" => {}
         Tok::End => return err("Nothing to run", 0),
-        Tok::Ident(w) if w == "use" || w == "show" => return err(format!("ypacapy does not run {w}. Pick the database in the query line, and see collections in the sidebar"), p.at),
+        Tok::Ident(w) if w == "use" || w == "show" => return err(format!("Capy doesn't run {w}. Pick the database in the query line, and see collections in the sidebar"), p.at),
         t => return err(format!("A query starts with db, as in db.orders.find(), not {}", describe(t)), p.at),
     }
     p.bump()?;
@@ -541,7 +541,7 @@ pub fn parse_command(src: &str) -> R<Command> {
         p.bump()?;
     }
     if p.tok != Tok::End {
-        return err("ypacapy runs one statement at a time. Select the one to run, or remove the rest", p.at);
+        return err("Capy runs one statement at a time. Select the one to run, or remove the rest", p.at);
     }
     Ok(Command { target: if names.is_empty() { Target::Db } else { Target::Coll(names.join(".")) }, call, chain })
 }
@@ -664,7 +664,7 @@ mod tests {
         let e = parse_value(src).unwrap_err();
         assert_eq!(e.message, "Expected , or ] after \"paid\"");
         assert_eq!(e.line_col(src), (1, 26));
-        assert!(parse_value("{ a: someVar }").unwrap_err().message.contains("does not run JavaScript"));
+        assert!(parse_value("{ a: someVar }").unwrap_err().message.contains("doesn't run JavaScript"));
         assert!(parse_value("{ a: 1 } { b: 2 }").is_err());
         assert_eq!(parse_value("  ").unwrap(), None);
     }

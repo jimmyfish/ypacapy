@@ -246,7 +246,7 @@ export function KeyPane({ tab }: { tab: KeyTab }) {
     body = (
       <div className="state">
         <div className="empty">
-          <strong>ypacapy does not draw a {type} yet</strong>
+          <strong>Capy can't draw a {type} yet</strong>
           <span>Read it in a query tab with the module's own commands.</span>
         </div>
       </div>

@@ -424,7 +424,7 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
             {m.write
               ? m.write.help
               : m.ask.unreadable
-              ? `ypacapy could not read what this ${m.ask.ops ? "command" : "SQL"} does, so it asks first.`
+              ? `Capy couldn't tell what this ${m.ask.ops ? "command" : "SQL"} does, so it asks first.`
               : keysOnly
                 ? `It reads every key in the database, and ${m.connName} answers no one else until it is done:`
                 : `It changes data or structure on ${m.connName}:`}
@@ -453,7 +453,7 @@ function GuardModal({ m, onClose }: { m: Extract<Modal, { kind: "guard" }>; onCl
             <input className="field" type="password" autoFocus autoComplete="current-password" aria-invalid={m.ask.error ? true : undefined} value={pass} onChange={(e) => setPass(e.target.value)} />
           </label>
         )}
-        {m.ask.final && <Final>It cannot be undone. ypacapy keeps no copy of what it deletes or overwrites.</Final>}
+        {m.ask.final && <Final>It can't be undone. Capy keeps no copy of what it shreds or overwrites. Gone is gone.</Final>}
         {m.ask.error && (
           <p className="help err" role="alert">
             {m.ask.error}
@@ -497,7 +497,7 @@ function warnText(w: Warning): ReactNode {
   if (w.limit === null) return "Nothing limits how many rows it returns, so more than 100 can come back.";
   return (
     <>
-      It can return up to <strong>{w.limit.toLocaleString()}</strong> rows{w.added ? ", the row limit ypacapy adds" : ""}, more than 100.
+      It can return up to <strong>{w.limit.toLocaleString()}</strong> rows{w.added ? ", the row limit Capy tacks on" : ""}, more than 100.
     </>
   );
 }
@@ -974,7 +974,7 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
                     <>
                       <label htmlFor="c-db">Database</label>
                       <input className="field mono cx-full" id="c-db" autoComplete="off" spellCheck={false} placeholder={redis ? "0" : undefined} inputMode={redis ? "numeric" : undefined} value={database} onChange={(e) => (setDatabase(redis ? e.target.value.replace(/\D/g, "") : e.target.value), setUrlDraft(null))} />
-                      {redis && <span className="help cx-full cx-under">A number, 0 to 15. Empty uses 0. ypacapy shows this database only.</span>}
+                      {redis && <span className="help cx-full cx-under">A number, 0 to 15. Empty uses 0. Capy only peeks at this one.</span>}
                       {mongo && (
                         <>
                           <label htmlFor="c-authdb">Auth database</label>
@@ -1033,7 +1033,7 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
               </SetItem>
               <SetItem
                 label={redis ? "Command timeout" : "Statement timeout"}
-                desc={redis ? "ypacapy stops waiting; Redis has no way to stop a command it started" : "0 lets a statement run as long as it takes"}
+                desc={redis ? "Capy gives up waiting; Redis can't stop a command once it starts" : "0 lets a statement run as long as it takes"}
                 htmlFor="c-timeout"
               >
                 <OptUnit id="c-timeout" unit="s" placeholder={String(settings.statementTimeout ?? 30)} value={stmtTimeout} onChange={setStmtTimeout} />
@@ -1431,7 +1431,7 @@ function ConnQueriesPane({ conn }: { conn: Conn }) {
         >
           <OptUnit id="cn-limit" unit="rows" placeholder={String(settings.rowLimit ?? DEFAULT_ROW_LIMIT)} value={rowLimit} onChange={setRowLimit} />
         </SetItem>
-        <SetItem label={redis ? "Command timeout" : "Statement timeout"} desc={redis ? "ypacapy stops waiting; Redis has no way to stop a command it started" : "0 lets a statement run as long as it takes"} htmlFor="cn-timeout">
+        <SetItem label={redis ? "Command timeout" : "Statement timeout"} desc={redis ? "Capy gives up waiting; Redis can't stop a command once it starts" : "0 lets a statement run as long as it takes"} htmlFor="cn-timeout">
           <OptUnit id="cn-timeout" unit="s" placeholder={String(settings.statementTimeout ?? 30)} value={stmtTimeout} onChange={setStmtTimeout} />
         </SetItem>
         <SetItem label="Keep query history" desc="Off keeps this connection's runs out of History" htmlFor="cn-hist">
@@ -1821,7 +1821,7 @@ interface Warn {
 
 /** The two warnings: [key in Warn, key in Settings, label, description]. */
 const WARNINGS: [keyof Warn, "warnBigLimit" | "warnUpdateAll", ReactNode, string][] = [
-  ["limit", "warnBigLimit", "More than 100 rows", "A select whose LIMIT, or the row limit ypacapy adds, is above 100"],
+  ["limit", "warnBigLimit", "More than 100 rows", "A select whose LIMIT, or the row limit Capy tacks on, is above 100"],
   [
     "update",
     "warnUpdateAll",
@@ -2148,7 +2148,7 @@ function UpdatesPane() {
         <div className="set-item" aria-disabled={DEV_BUILD ? "true" : undefined}>
           <div className="set-text">
             <label htmlFor="set-auto-update">Check automatically</label>
-            <span className="desc">{DEV_BUILD ? "Off in dev builds, so nothing overwrites this one" : "Peek for a new version every time ypacapy opens"}</span>
+            <span className="desc">{DEV_BUILD ? "Off in dev builds, so nothing overwrites this one" : "Peek for a new version every time Capy wakes up"}</span>
           </div>
           <div className="set-ctl">
             {DEV_BUILD ? (

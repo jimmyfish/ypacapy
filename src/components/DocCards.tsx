@@ -274,7 +274,7 @@ export function DocCards({ docs, label, edit, addKey, onAdded, onDrafting }: { d
                 </span>
               ) : f.locked !== undefined ? (
                 <>
-                  <span className="jv-lock" title="ypacapy keeps this value as it is">
+                  <span className="jv-lock" title="Capy leaves this value just as it is">
                     <Lock {...ico} />
                     {TYPE_LABEL[f.type]}
                   </span>

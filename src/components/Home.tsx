@@ -192,8 +192,8 @@ export function Home() {
       title: `Remove ${c.name}?`,
       message:
         c.engine === "sqlite"
-          ? "ypacapy removes the connection and its query history from this Mac. Saved queries stay. The database file stays where it is."
-          : "ypacapy removes the connection, its keychain password and its query history from this Mac. Saved queries stay. The database is not touched.",
+          ? "Capy wipes the connection and its query history from this Mac. Saved queries stay. The database file stays put."
+          : "Capy wipes the connection, its keychain password and its query history from this Mac. Saved queries stay. The database isn't touched.",
       confirmLabel: "Remove",
       final: true,
       onConfirm: () => void st.deleteConn(c.id),

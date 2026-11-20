@@ -399,7 +399,7 @@ impl Args<'_> {
     }
     fn none_after(&self, n: usize) -> Result<(), String> {
         if self.args.len() > n {
-            return Err(format!("{}() takes at most {n} argument{}; ypacapy does not pass the rest", self.method, if n == 1 { "" } else { "s" }));
+            return Err(format!("{}() takes at most {n} argument{}; Capy doesn't pass the rest", self.method, if n == 1 { "" } else { "s" }));
         }
         Ok(())
     }
@@ -418,7 +418,7 @@ fn modifications(a: &Args, i: usize) -> Result<UpdateModifications, String> {
 fn take_opts(opts: &Option<Document>, known: &[&str], method: &str) -> Result<Document, String> {
     let d = opts.clone().unwrap_or_default();
     if let Some(k) = d.keys().find(|k| !known.contains(&k.as_str())) {
-        return Err(format!("ypacapy does not pass the option {k} to {method}() yet"));
+        return Err(format!("Capy doesn't pass the option {k} to {method}() yet"));
     }
     Ok(d)
 }
@@ -448,7 +448,7 @@ async fn exec(db: &Database, client: &Client, cmd: &Command, row_limit: usize, o
     let coll = db.collection::<Document>(name);
     let chain_only = |allowed: &[&str]| -> Result<(), String> {
         match cmd.chain.iter().find(|c| !allowed.contains(&c.name.as_str())) {
-            Some(c) => Err(format!("ypacapy does not run .{}() after {}()", c.name, a.method)),
+            Some(c) => Err(format!("Capy doesn't run .{}() after {}()", c.name, a.method)),
             None => Ok(()),
         }
     };
@@ -534,7 +534,7 @@ async fn exec(db: &Database, client: &Client, cmd: &Command, row_limit: usize, o
             let (docs, cut) = collect(f.await?, cap).await?;
             let mut msgs = vec![format!("{} returned{}", plural_docs(docs.len() as u64), if cut { ", more were left unread" } else { "" })];
             if added {
-                msgs.push(format!("The find had no limit, so ypacapy added .limit({row_limit})."));
+                msgs.push(format!("The find had no limit, so Capy tacked on .limit({row_limit})."));
             }
             Out { limit: added.then_some(row_limit), ..Out::docs(docs, cut, msgs) }
         }
@@ -597,7 +597,7 @@ async fn exec(db: &Database, client: &Client, cmd: &Command, row_limit: usize, o
             }
             let mut msgs = vec![format!("{} returned{}", plural_docs(docs.len() as u64), if cut { ", more were left unread" } else { "" })];
             if added {
-                msgs.push(format!("The pipeline had no $limit, so ypacapy added {{ $limit: {row_limit} }} at its end."));
+                msgs.push(format!("The pipeline had no $limit, so Capy tacked {{ $limit: {row_limit} }} onto its end."));
             }
             Out { limit: added.then_some(row_limit), ..Out::docs(docs, cut, msgs) }
         }
@@ -809,15 +809,15 @@ async fn exec(db: &Database, client: &Client, cmd: &Command, row_limit: usize, o
             let r = db.run_command(doc! { "collStats": name }).await?;
             Out::docs(vec![r], false, vec![])
         }
-        "bulkWrite" => return Ok(Err("ypacapy does not run bulkWrite() yet. Run each write on its own.".into())),
-        m => return Ok(Err(format!("ypacapy does not know db.{name}.{m}()"))),
+        "bulkWrite" => return Ok(Err("Capy can't run bulkWrite() yet. Run each write on its own.".into())),
+        m => return Ok(Err(format!("Capy doesn't know db.{name}.{m}()"))),
     }))
 }
 
 async fn exec_db(db: &Database, client: &Client, cmd: &Command, a: &Args<'_>, max_time: Duration) -> Result<Result<Out, String>, MError> {
     let _ = max_time;
     if !cmd.chain.is_empty() {
-        return Ok(Err(format!("ypacapy does not run .{}() after db.{}()", cmd.chain[0].name, a.method)));
+        return Ok(Err(format!("Capy doesn't run .{}() after db.{}()", cmd.chain[0].name, a.method)));
     }
     Ok(Ok(match a.method {
         "runCommand" | "adminCommand" => {
@@ -856,7 +856,7 @@ async fn exec_db(db: &Database, client: &Client, cmd: &Command, a: &Args<'_>, ma
         }
         "stats" => Out::docs(vec![db.run_command(doc! { "dbStats": 1 }).await?], false, vec![]),
         "getName" => Out::docs(vec![doc! { "name": db.name() }], false, vec![]),
-        m => return Ok(Err(format!("ypacapy does not know db.{m}()"))),
+        m => return Ok(Err(format!("Capy doesn't know db.{m}()"))),
     }))
 }
 
@@ -889,10 +889,10 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
         Ok(c) => c,
         Err(e) => {
             return Ok(RunOutcome::Error {
-                title: "ypacapy could not read the query".into(),
+                title: "Capy couldn't make sense of the query".into(),
                 says: Some(e.says(&req.sql)),
                 message: e.message.clone(),
-                hint: Some(format!("ypacapy reads it before sending, so nothing was sent to {}.", conn.name)),
+                hint: Some(format!("Capy reads it before sending, so nothing was sent to {}.", conn.name)),
                 lost: false,
                 ms: t.elapsed().as_millis() as u64, fix: None,
             })
@@ -1015,7 +1015,7 @@ pub async fn mongo_find(req: FindRequest, state: State<'_, DbState>, settings: S
                     title: format!("The {} is not valid", label.to_lowercase()),
                     says: Some(e.says(text)),
                     message: e.message.clone(),
-                    hint: Some(format!("ypacapy reads it before sending, so nothing was sent to {}.", conn.name)),
+                    hint: Some(format!("Capy reads it before sending, so nothing was sent to {}.", conn.name)),
                     lost: false,
                     ms: t.elapsed().as_millis() as u64, fix: None,
                 })

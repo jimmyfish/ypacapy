@@ -37,6 +37,10 @@ export {
   FolderMinus,
   FolderOpen,
   FolderPlus,
+  // the collection's query bar, narrow: the filter's funnel, Options, Reset
+  Funnel,
+  SlidersHorizontal,
+  RotateCcw,
   HardDrive,
   Hash,
   IdCard,

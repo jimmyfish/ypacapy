@@ -18,7 +18,7 @@ const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "hous
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus", "pin", "pin-off",
   "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check", "timer",
-  "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down", "arrow-right", "chevrons-up-down", "chevrons-down-up", "circle-plus", "copy-plus"];
+  "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down", "arrow-right", "chevrons-up-down", "chevrons-down-up", "circle-plus", "copy-plus", "sliders-horizontal", "rotate-ccw", "funnel"];
 // Lucide 1.x renamed fingerprint; the old name is what the pages use
 const RENAMED = { fingerprint: "fingerprint-pattern" };
 // Lucide 1.x has no brand icons: GitHub's mark as lucide-react 0.460.0 drew it (ISC), the same as src/components/Icon.tsx
@@ -258,7 +258,7 @@ const FORMATS = ["Plain text", "JSON", "Markdown table", "CSV"];
 const resActions = (id) => `<div class="res-actions"><div class="menu-anchor"><button type="button" class="icon-btn" title="Columns" aria-label="Go to a column" aria-haspopup="menu" aria-expanded="false" data-menu="${id}-cols">${ic("columns-3")}</button><div class="menu cols-menu" id="${id}-cols" role="menu" aria-label="Go to a column" data-cols hidden></div></div>${[["copy", "Copy", "copy"], ["export", "Export", "download"]].map(([k, label, icon]) => `<div class="menu-anchor"><button type="button" class="icon-btn" title="${label}" aria-label="${label} rows" aria-haspopup="menu" aria-expanded="false" data-menu="${id}-${k}">${ic(icon)}</button><div class="menu" id="${id}-${k}" role="menu" aria-label="${label} as" hidden><p class="menu-note">${label} as</p>${FORMATS.map((x) => `<button type="button" role="menuitem">${x}</button>`).join("")}</div></div>`).join("")}</div>`;
 // Run: one button, play icon, its shortcut inside (⌘↵ runs the selection or the statement at the cursor); Run all is ⇧⌘↵
 const runGroup = `
-          <button type="button" class="btn btn--primary btn--run" id="run" title="Run  ⌘↵">${ic("play", "run-ico")}${ic("loader-circle", "run-spin")}<span>Run</span><span class="run-kbd" aria-hidden="true">⌘↵</span></button>`;
+          <button type="button" class="btn btn--primary btn--run" id="run" title="Run  ⌘↵">${ic("play", "run-ico")}${ic("loader-circle", "run-spin")}<span class="btn-label">Run</span><span class="run-kbd" aria-hidden="true">⌘↵</span></button>`;
 
 const app = ({ current, side = "", work, overlay = "", chip = "", conns }) => `
 <div class="app">${strip(current, chip, conns)}${rail}
@@ -1566,7 +1566,7 @@ const jvNode = (k, v, depth, idx, ro) => {
   const kids = !fold ? "" : t === "array" ? v.map((x, i) => jvNode(i, x, depth + 1, true, ro)).join("") : Object.entries(v).filter(([, x]) => x !== undefined).map(([kk, x]) => jvNode(kk, x, depth + 1, false, ro)).join("");
   const lock = ro || k === "_id";
   const tools = ro ? "" : `<span class="jv-tools">${lock ? `<span class="jv-lock" title="_id can't change">${ic("lock")}_id is fixed</span>` : `${jvTypes(t)}<button type="button" class="icon-btn jv-undo" title="Undo this change" aria-label="Undo this change">${ic("undo-2")}</button><button type="button" class="icon-btn jv-rm" title="Remove this field" aria-label="Remove ${esc(k)}">${ic("shredder")}</button>`}</span>`;
-  return `<div class="jv-node"><div class="jv-row${lock ? " jv-ro" : ""}" style="--d:${depth}" data-t="${t}">${fold ? `<button type="button" class="jv-caret" aria-expanded="false" aria-label="Show ${esc(k)}">${ic("chevron-right")}</button>` : '<span class="jv-caret-sp"></span>'}<span class="jv-k${idx ? " jv-idx" : ""}">${esc(k)}</span><span class="j-p">:</span><span class="jv-v">${fold ? jvPeek(v, t) : jvLeaf(v, t)}</span>${tools}</div>${fold ? `<div class="jv-kids" hidden>${kids}</div>` : ""}</div>`;
+  return `<div class="jv-node"><div class="jv-row${lock ? " jv-ro" : ""}" style="--d:${depth}" data-t="${t}">${fold ? `<button type="button" class="jv-caret" aria-expanded="false" aria-label="Show ${esc(k)}">${ic("chevron-right")}</button>` : '<span class="jv-caret-sp"></span>'}<span class="jv-k${idx ? " jv-idx" : ""}">${esc(k)}</span><span class="j-p">:</span><span class="jv-v">${fold ? jvPeek(v, t) : jvLeaf(v, t)}</span>${tools}</div>${fold ? `<div class="jv-kids"><div class="jv-kids-in">${kids}</div></div>` : ""}</div>`;
 };
 const jvDoc = (d, i, edit) => `
               <article class="jv-doc" aria-label="Document ${i + 1}" data-id="${d._id?.$oid ?? esc(d._id)}" data-copy="${esc(plain(shellVal(d, "", true)))}">
@@ -1581,6 +1581,7 @@ const jvDoc = (d, i, edit) => `
                 <button type="button" class="btn btn--quiet jv-add">${ic("circle-plus")}Add field</button>
                 <div class="jv-foot">
                   <span class="jv-msg" aria-live="polite"></span>
+                  <button type="button" class="btn btn--quiet jv-example" data-jv="example" data-mode-only="new" title="Fill in the fields this page shows (its Fields tab), each with an empty value of its type. Nothing is read.">${ic("wand-sparkles")}Example from fields</button>
                   <button type="button" class="btn" data-jv="cancel">Cancel</button>
                   <button type="button" class="btn btn--primary" data-jv="update" data-mode-only="edit">Update</button>
                   <button type="button" class="btn btn--danger" data-jv="delete" data-mode-only="del">${ic("shredder")}Delete</button>
@@ -1588,7 +1589,7 @@ const jvDoc = (d, i, edit) => `
                 </div>` : ""}
               </article>`;
 const jdocs = (label, docs, edit = false) => `
-            <div class="jv-list" tabindex="0" aria-label="${label}"${edit ? " data-edit" : ""}>${docs.map((d, i) => jvDoc(d, i, edit)).join("")}
+            <div class="jv-list" tabindex="0" aria-label="${label}"${edit ? ` data-edit data-fields="${esc(JSON.stringify(MFIELDS))}"` : ""}>${docs.map((d, i) => jvDoc(d, i, edit)).join("")}
             </div>`;
 
 // sample: orders, as a collection holds them. Old orders carry a legacy_id from the SQL days (an int, a few a string);
@@ -1848,14 +1849,14 @@ const mqField = (id, label, ph, value, cls = "", extra = "") => `<label class="m
 pages["collection.html"] = page({
   title: "ypacapy preview, collection",
   desc: "Design preview of a MongoDB collection in ypacapy: its documents under a query bar, the fields seen on the page, its indexes, and its Info.",
-  barHtml: bar("collection", [["docs", "Documents"], ["open", "Nested fields open"], ["edit", "Editing a document"], ["guard-update", "Low: updateOne"], ["guard-update-pass", "Strict: updateOne"], ["duplicate", "Duplicate a document"], ["guard-insert", "Low: insertOne"], ["delete", "Delete a document"], ["guard-delete", "Low: deleteOne"], ["guard-delete-pass", "Strict: deleteOne"], ["table", "Table view"], ["multiline", "Multi-line filter and sort"], ["fields", "Fields"], ["indexes", "Indexes"], ["no-match", "Filter matches nothing"], ["bad-filter", "Filter not valid"], ["loading", "Loading"], ["info", "Info"], ["info-loading", "Info, reading"]]),
+  barHtml: bar("collection", [["docs", "Documents"], ["counted", "Filter, counted"], ["no-filter", "No filter: estimate"], ["add", "Add a document"], ["add-example", "New document, example from fields"], ["open", "Nested fields open"], ["edit", "Editing a document"], ["guard-update", "Low: updateOne"], ["guard-update-pass", "Strict: updateOne"], ["duplicate", "Duplicate a document"], ["guard-insert", "Low: insertOne"], ["delete", "Delete a document"], ["guard-delete", "Low: deleteOne"], ["guard-delete-pass", "Strict: deleteOne"], ["table", "Table view"], ["multiline", "Multi-line filter and sort"], ["fields", "Fields"], ["indexes", "Indexes"], ["no-match", "Filter matches nothing"], ["bad-filter", "Filter not valid"], ["loading", "Loading"], ["info", "Info"], ["info-loading", "Info, reading"]]),
   body: app({ current: MCONN, conns: MCONNS, side: mongoSide("orders") + mongoHistory + savedSide, overlay: mInfoDlg + cguardDialogs, work: `${mtabs("orders", ["orders"])}
       <div class="work-body">
         <div class="mq-bar" role="group" aria-label="Query for orders">
           <div class="mq-row">
-            ${mqField("where", "filter", "{ field: value }", DEFAULT_FILTER, "mq-filter", ' aria-describedby="where-err"')}
+            ${mqField("where", "filter", "{ field: value }", DEFAULT_FILTER, "mq-filter", ' aria-describedby="where-err"').replace('<span class="mq-k">filter</span>', `<span class="mq-k" title="Filter">${ic("funnel", "mq-k-ico")}<span class="mq-k-t">filter</span></span>`)}
           </div>
-          <div class="mq-actions"><button type="button" class="btn btn--quiet mq-more" id="mq-more" aria-expanded="false" aria-controls="mq-opts mq-paging" title="Project, sort, skip and limit">${ic("chevron-right", "mq-more-ico")}Options<span class="mq-set" id="mq-set" title="Options set" hidden></span></button><button type="button" class="btn btn--quiet" id="mq-reset" title="Back to the empty filter">Reset</button><button type="button" class="btn btn--quiet" data-href="./mongo.html?show=find" title="Open this query as db.orders.find(…) in a new query tab">${ic("square-code")}Open as a query</button>${runGroup}</div>
+          <div class="mq-actions"><button type="button" class="btn btn--quiet mq-more mq-ico-btn" id="mq-more" aria-expanded="false" aria-controls="mq-opts mq-paging" title="Project, sort, skip and limit" aria-label="Options">${ic("chevron-right", "mq-more-ico")}${ic("sliders-horizontal", "mq-narrow-ico")}<span class="btn-label">Options</span><span class="mq-set" id="mq-set" title="Options set" hidden></span></button><button type="button" class="btn btn--quiet mq-ico-btn" id="mq-reset" title="Back to the empty filter" aria-label="Reset">${ic("rotate-ccw", "mq-narrow-ico")}<span class="btn-label">Reset</span></button><button type="button" class="btn btn--quiet mq-ico-btn" data-href="./mongo.html?show=find" title="Open this query as db.orders.find(…) in a new query tab" aria-label="Open as a query">${ic("square-code")}<span class="btn-label">Open as a query</span></button>${runGroup}</div>
           <div class="mq-row mq-opts" id="mq-opts" hidden>
             ${mqField("proj", "project", "{ field: 0 }", "")}
             ${mqField("sort", "sort", "{ field: -1 }", "")}
@@ -1874,10 +1875,9 @@ pages["collection.html"] = page({
             <span class="push meta"><span class="dim" id="t-ms">7&nbsp;ms</span></span>
           </nav>
           <div class="state" data-when="full" data-view-of="docs">
-            <div class="res-tools">${asSeg}<span class="muted" id="t-range">Documents 1 to 20, in stored order</span>${mresActions("t")}</div>
+            <div class="res-tools">${asSeg}<button type="button" class="btn btn--quiet res-add" id="t-add" title="Add a document" aria-label="Add a document">${ic("plus")}<span class="btn-label">Add document</span></button>${mresActions("t")}<div class="pager" role="group" aria-label="Pages"><span class="pager-n" id="t-pager" aria-live="polite"></span><button type="button" class="icon-btn" id="t-refresh" title="Read this page again  ⌘↵" aria-label="Refresh">${ic("refresh-cw")}</button><button type="button" class="icon-btn" aria-label="Previous page" title="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page" title="Next page">${ic("chevron-right")}</button></div></div>
             <div class="as-pane" data-as="json">${jdocs("Documents of orders", MDOCS, true)}</div>
             <div class="as-pane" data-as="table" hidden>${mgrid("t", "Documents of orders", MDOCS, 0)}</div>
-            <div class="grid-foot"><span>1 to 20</span><button type="button" class="icon-btn" aria-label="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page">${ic("chevron-right")}</button></div>
           </div>
           <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Reading orders</strong><span>${MCONN}, events.orders</span></div></div>
           <div class="state" data-when="empty" hidden><div class="empty"><strong>No document in orders matches this filter</strong><span>No order has the status lost. In the 20 documents read before, status holds paid, shipped or refunded.</span><button type="button" class="link" id="t-clear">Clear the filter</button></div></div>
@@ -2192,7 +2192,7 @@ pages["key.html"] = page({
       <div class="work-body">
         <div class="rk-bar" role="group" aria-label="Key">
           <div class="rk-id"><span id="rk-type">${rtype("hash")}</span><h2 class="rk-name" id="rk-name" title="user:3107"><span class="rk-head">user:3107</span><span class="rk-tail"></span></h2><button type="button" class="icon-btn" title="Copy the key name" aria-label="Copy the key name">${ic("copy")}</button></div>
-          <div class="mq-actions"><button type="button" class="btn btn--quiet" data-info-open>${ic("info")}Info</button><button type="button" class="btn btn--quiet" id="rk-console" data-href="./redis.html?show=hgetall" title="Open a query tab with the command that reads this key">${ic("square-code")}Open as a query</button><button type="button" class="btn" id="rk-refresh" title="Read this page again  ⌘R">${ic("refresh-cw")}Refresh</button><button type="button" class="icon-btn icon-btn--outline rk-del" id="rk-del" title="Delete key…" aria-label="Delete key">${ic("shredder")}</button></div>
+          <div class="mq-actions"><button type="button" class="btn btn--quiet" data-info-open title="Info" aria-label="Info">${ic("info")}<span class="btn-label">Info</span></button><button type="button" class="btn btn--quiet" id="rk-console" data-href="./redis.html?show=hgetall" title="Open a query tab with the command that reads this key" aria-label="Open as a query">${ic("square-code")}<span class="btn-label">Open as a query</span></button><button type="button" class="btn" id="rk-refresh" title="Read this page again  ⌘R" aria-label="Refresh">${ic("refresh-cw")}<span class="btn-label">Refresh</span></button><button type="button" class="icon-btn icon-btn--outline rk-del" id="rk-del" title="Delete key…" aria-label="Delete key">${ic("shredder")}</button></div>
           <div class="rk-meta"><span id="rk-len">12 fields</span>${ttlPop}<span id="rk-enc" title="OBJECT ENCODING">listpack</span><span class="rk-db">db0</span></div>
           <div class="mq-row" id="rk-match-row">
             <label class="mq-field"><span class="mq-k">match</span><input class="mq-in" id="rk-match" placeholder="*" spellcheck="false" autocomplete="off" aria-describedby="rk-match-h"></label>

@@ -81,9 +81,9 @@ export function RunGroup({ busy, disabled, onRun, kbd, items }: { busy: boolean;
   const [open, setOpen] = useState(false);
   const ref = useDismiss(open, () => setOpen(false));
   const run = (
-    <button type="button" className="btn btn--primary btn--run" aria-busy={busy || undefined} disabled={disabled || busy} title={`Run  ${kbd}`} onClick={onRun}>
+    <button type="button" className="btn btn--primary btn--run" aria-label="Run" aria-busy={busy || undefined} disabled={disabled || busy} title={`Run  ${kbd}`} onClick={onRun}>
       {busy ? <LoaderCircle {...icoC("run-spin")} /> : <Play {...icoC("run-ico")} />}
-      <span>Run</span>
+      <span className="btn-label">Run</span>
       <span className="run-kbd" aria-hidden="true">
         {kbd}
       </span>

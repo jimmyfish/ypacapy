@@ -1,21 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
-import { DEFAULT_ROW_LIMIT, useCurrent, useStore } from "../store";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { DEFAULT_ROW_LIMIT, uid, useCurrent, useStore } from "../store";
+import { api } from "../lib/api";
 import { estimate } from "../lib/cells";
 import { docsToSet, fieldsOf } from "../lib/bson";
 import { duration } from "../lib/time";
 import type { TableTab } from "../types";
 import { ErrorState, RunGroup } from "./QueryPane";
-import { ResultGrid } from "./ResultGrid";
+import { DocsActions, ResultGrid } from "./ResultGrid";
 import { DocCards } from "./DocCards";
 import { mongoColl } from "./Sidebar";
-import { Braces, ChevronLeft, ChevronRight, Key, Link, SquareCode, Table2, ico, icoC } from "./Icon";
+import { Braces, ChevronLeft, ChevronRight, Funnel, Key, Link, Plus, RefreshCw, RotateCcw, SlidersHorizontal, SquareCode, Table2, ico, icoC } from "./Icon";
 
 /** a query bar box that grows with its text, one line to eight, then scrolls */
-function Box({ id, label, value, placeholder, invalid, onChange, className = "" }: { id: string; label: string; value: string; placeholder: string; invalid?: boolean; onChange: (v: string) => void; className?: string }) {
+/** icon: stands in for the label when the bar is narrow (the filter's funnel) */
+function Box({ id, label, icon, value, placeholder, invalid, onChange, className = "" }: { id: string; label: string; icon?: ReactNode; value: string; placeholder: string; invalid?: boolean; onChange: (v: string) => void; className?: string }) {
   const rows = Math.min(8, Math.max(1, value.split("\n").length));
   return (
     <label className={`mq-field${className ? " " + className : ""}`} htmlFor={id}>
-      <span className="mq-k">{label}</span>
+      <span className="mq-k" title={icon ? label[0].toUpperCase() + label.slice(1) : undefined}>
+        {icon}
+        {icon ? <span className="mq-k-t">{label}</span> : label}
+      </span>
       <textarea
         id={id}
         className="mq-in"
@@ -53,6 +58,13 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
   const as = tab.as ?? "json";
   // Project, Sort, Skip and Limit start folded under Options; the count says how many are set while folded
   const [optsOpen, setOptsOpen] = useState(false);
+  // Add document: a key the JSON view takes to open an empty new document; drafting keeps the list up for it
+  const [addKey, setAddKey] = useState(0);
+  const [drafting, setDrafting] = useState(false);
+  // the pager's total with a filter: one countDocuments, run when asked, kept for that filter
+  const [count, setCount] = useState<{ filter: string; n?: number; busy?: boolean; err?: string } | null>(null);
+  // a read of the page (Run, a page turn, a write's re-read) may follow changed data: the count is asked for again
+  useEffect(() => setCount((c) => (c?.busy ? c : null)), [tab.run.runId]);
 
   // ⌘↵ reads the documents again, from any box
   useEffect(() => {
@@ -106,24 +118,62 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
       </button>
     </span>
   );
-  const lead = (
-    <span className="muted">
-      Documents {from} to {to}, {tab.sort?.trim() ? "sorted" : "in stored order"}
-    </span>
-  );
-  const foot = (
-    <div className="grid-foot">
-      <span>
-        {from} to {to}
+  // The pager, as Compass has it: "1 – 20 of N". No filter: N is the estimate from collection metadata (~), never
+  // counted. A filter: N waits for "count", one countDocuments(filter) the user asks for, kept until the filter changes.
+  const filterText = tab.where.trim();
+  const noFilter = !filterText || /^\{\s*\}$/.test(filterText);
+  const counted = count && count.filter === filterText ? count : null;
+  const runCount = async () => {
+    setCount({ filter: filterText, busy: true });
+    const out = await api
+      .runQuery({ runId: uid(), connId: conn.id, database: tab.schema, sql: `${mongoColl(tab.table)}.countDocuments(${filterText})`, addLimit: false, history: false })
+      .catch((e) => ({ kind: "error" as const, title: String(e), message: "" }));
+    const v = out.kind === "done" ? (out.sets[out.sets.length - 1]?.docs?.[0] as { count?: unknown } | undefined)?.count : undefined;
+    const num = typeof v === "number" ? v : v && typeof v === "object" ? Number(Object.values(v)[0]) : NaN;
+    setCount(Number.isFinite(num) ? { filter: filterText, n: num } : { filter: filterText, err: out.kind === "error" ? out.title : "The count did not come back" });
+  };
+  const total = noFilter ? (
+    est !== null && est !== undefined ? (
+      <span className="pager-est" title="Estimated from collection metadata, not counted">
+        ~{est.toLocaleString()}
       </span>
-      <button type="button" className="icon-btn" aria-label="Previous page" disabled={tab.offset === 0} onClick={() => read(Math.max(0, tab.offset - limit))}>
+    ) : null
+  ) : counted?.busy ? (
+    <span className="spinner spinner--sm" aria-label="Counting" />
+  ) : counted?.n !== undefined ? (
+    counted.n.toLocaleString()
+  ) : (
+    <button type="button" className="link pager-count" title={counted?.err ?? `Count the documents this filter matches: one countDocuments on ${conn.name}`} onClick={() => void runCount()}>
+      {counted?.err ? "count failed, again?" : "count"}
+    </button>
+  );
+  const pager = (
+    <div className="pager" role="group" aria-label="Pages">
+      <span className="pager-n" aria-live="polite">
+        {n ? `${from} – ${to}` : "No documents"}
+        {n > 0 && total !== null && <> of {total}</>}
+      </span>
+      <button type="button" className="icon-btn" title="Read this page again  ⌘↵" aria-label="Refresh" disabled={busy || session.status !== "open"} onClick={() => read()}>
+        <RefreshCw {...ico} />
+      </button>
+      <button type="button" className="icon-btn" title="Previous page" aria-label="Previous page" disabled={tab.offset === 0} onClick={() => read(Math.max(0, tab.offset - limit))}>
         <ChevronLeft {...ico} />
       </button>
-      {/* no totals: a full page means there may be more */}
-      <button type="button" className="icon-btn" aria-label="Next page" disabled={n < limit} onClick={() => read(tab.offset + limit)}>
+      {/* a full page means there may be more */}
+      <button type="button" className="icon-btn" title="Next page" aria-label="Next page" disabled={n < limit} onClick={() => read(tab.offset + limit)}>
         <ChevronRight {...ico} />
       </button>
     </div>
+  );
+  const add = () => {
+    if (as !== "json") put({ as: "json" });
+    setAddKey((k) => k + 1);
+  };
+  const addBtn = (
+    <button type="button" className="btn btn--quiet res-add" title="Add a document" aria-label="Add a document" onClick={add}>
+      <Plus {...ico} />
+      <span className="btn-label">Add document</span>
+    </button>
   );
 
   let docsBody;
@@ -148,20 +198,28 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
         </div>
       </div>
     );
-  else if (set && n > 0)
+  else if (set && (n > 0 || drafting || addKey > 0))
     docsBody =
-      as === "table" ? (
+      as === "table" && n > 0 ? (
         <div className="state">
-          <ResultGrid set={set} label={`Documents of ${tab.table}`} exportName={tab.table} lead={<>{seg}{lead}</>} foot={foot} />
+          <ResultGrid set={set} label={`Documents of ${tab.table}`} exportName={tab.table} lead={<>{seg}{addBtn}</>} trail={pager} />
         </div>
       ) : (
         <div className="state">
           <div className="res-tools">
             {seg}
-            {lead}
+            {addBtn}
+            <DocsActions set={set} exportName={tab.table} />
+            {pager}
           </div>
-          <DocCards docs={docs} label={`Documents of ${tab.table}`} edit={{ tabId: tab.id, collection: tab.table, projected: !!tab.project?.trim() }} />
-          {foot}
+          <DocCards
+            docs={docs}
+            label={`Documents of ${tab.table}`}
+            edit={{ tabId: tab.id, collection: tab.table, projected: !!tab.project?.trim() }}
+            addKey={addKey}
+            onAdded={() => setAddKey(0)}
+            onDrafting={setDrafting}
+          />
         </div>
       );
   else if (o?.kind === "done")
@@ -183,7 +241,12 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
               </button>
             </>
           ) : (
-            <strong>{tab.table} has no documents</strong>
+            <>
+              <strong>{tab.table} has no documents</strong>
+              <button type="button" className="link" onClick={add}>
+                Add a document
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -293,24 +356,27 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
     <div className="work-body">
       <div className="mq-bar" role="group" aria-label={`Query for ${tab.table}`}>
         <div className="mq-row">
-          <Box id={`mq-f-${tab.id}`} label="filter" className="mq-filter" placeholder="{ field: value }" value={tab.where} invalid={bad === "filter"} onChange={(v) => put({ where: v })} />
+          <Box id={`mq-f-${tab.id}`} label="filter" icon={<Funnel {...icoC("mq-k-ico")} />} className="mq-filter" placeholder="{ field: value }" value={tab.where} invalid={bad === "filter"} onChange={(v) => put({ where: v })} />
         </div>
         <div className="mq-actions">
-          <button type="button" className="btn btn--quiet mq-more" aria-expanded={showOpts} aria-controls={`mq-opts-${tab.id} mq-paging-${tab.id}`} title="Project, sort, skip and limit" onClick={() => setOptsOpen(!showOpts)}>
+          {/* narrow, the buttons drop their words for icons (styles: .mq-bar); aria-label keeps each one's name */}
+          <button type="button" className="btn btn--quiet mq-more mq-ico-btn" aria-label="Options" aria-expanded={showOpts} aria-controls={`mq-opts-${tab.id} mq-paging-${tab.id}`} title="Project, sort, skip and limit" onClick={() => setOptsOpen(!showOpts)}>
             <ChevronRight {...icoC("mq-more-ico")} />
-            Options
+            <SlidersHorizontal {...icoC("mq-narrow-ico")} />
+            <span className="btn-label">Options</span>
             {!showOpts && optsSet > 0 && (
               <span className="mq-set" title={`${optsSet} option${optsSet > 1 ? "s" : ""} set`}>
                 {optsSet}
               </span>
             )}
           </button>
-          <button type="button" className="btn btn--quiet" title="Back to the empty filter" onClick={reset}>
-            Reset
+          <button type="button" className="btn btn--quiet mq-ico-btn" title="Back to the empty filter" aria-label="Reset" onClick={reset}>
+            <RotateCcw {...icoC("mq-narrow-ico")} />
+            <span className="btn-label">Reset</span>
           </button>
-          <button type="button" className="btn btn--quiet" title={`Open this query as ${mongoColl(tab.table)}.find(…) in a new query tab`} onClick={console_}>
+          <button type="button" className="btn btn--quiet mq-ico-btn" title={`Open this query as ${mongoColl(tab.table)}.find(…) in a new query tab`} aria-label="Open as a query" onClick={console_}>
             <SquareCode {...ico} />
-            Open as a query
+            <span className="btn-label">Open as a query</span>
           </button>
           <RunGroup busy={busy} disabled={session.status !== "open"} onRun={() => read()} kbd="⌘↵" />
         </div>

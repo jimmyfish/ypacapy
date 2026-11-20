@@ -165,7 +165,7 @@ function ConnWork() {
       <div className="state">
         <div className="empty">
           <strong>No tab open</strong>
-          <span>Open a table from the schema, or start a query.</span>
+          <span>{conn?.engine === "mongo" ? "Open a collection from the databases, or start a query." : "Open a table from the schema, or start a query."}</span>
           <button type="button" className="btn" onClick={() => st.newQueryTab()}>
             New query
           </button>

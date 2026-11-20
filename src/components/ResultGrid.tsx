@@ -327,7 +327,59 @@ type SaveError = Extract<RunOutcome, { kind: "error" }>;
  * key, a double-click (or Enter, or typing) edits a cell; changes stay on screen (green, deleted rows red)
  * until Save (⌘S) writes them in one transaction, or Revert drops them.
  */
-export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: { set: ResultSet; keys?: Record<string, ColKey>; label: string; exportName: string; lead?: ReactNode; foot?: ReactNode; edit?: GridEdit }) {
+/**
+ * Copy and Export for MongoDB documents shown without the grid (the JSON view): the grid's two menus, in MongoDB's
+ * formats, for every document on the page.
+ */
+export function DocsActions({ set, exportName }: { set: ResultSet; exportName: string }) {
+  const showToast = useStore((s) => s.showToast);
+  const text = (f: MongoFormat) => ((f === "mongosh" || f === "Extended JSON") && set.docs ? renderDocs(f, set.docs) : render(f as Format, set.columns, set.rows));
+  const n = `${set.rows.length} document${set.rows.length === 1 ? "" : "s"}`;
+  const run = async (what: "Copy" | "Export", f: MongoFormat) => {
+    if (what === "Copy")
+      return navigator.clipboard?.writeText(text(f)).then(
+        () => showToast(`Copied ${n} as ${f}`),
+        (e) => showToast(errText(e)),
+      );
+    const path = await save({ defaultPath: `${exportName}.${MONGO_EXT[f]}`, title: `Export documents as ${f}` }).catch(() => null);
+    if (!path) return;
+    try {
+      await api.writeTextFile(path, text(f));
+      showToast(`Exported ${n}`);
+    } catch (e) {
+      showToast(errText(e));
+    }
+  };
+  return (
+    <div className="res-actions">
+      {(["Copy", "Export"] as const).map((what) => (
+        <MenuButton key={what} label={`${what} documents`} title={what} icon={what === "Copy" ? <Copy {...ico} /> : <Download {...ico} />}>
+          {(close) => (
+            <div className="menu" role="menu" aria-label={`${what} as`}>
+              <p className="menu-note">{what} as</p>
+              {MONGO_FORMATS.map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    close();
+                    void run(what, f);
+                  }}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          )}
+        </MenuButton>
+      ))}
+    </div>
+  );
+}
+
+/** trail: after Copy and Export, at the toolbar's right end (a collection's pager) */
+export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, edit }: { set: ResultSet; keys?: Record<string, ColKey>; label: string; exportName: string; lead?: ReactNode; trail?: ReactNode; foot?: ReactNode; edit?: GridEdit }) {
   const kinds = useMemo(() => set.columns.map((c) => kindOf(c.type)), [set]);
   const target = edit && edit.target && typeof edit.target === "object" ? edit.target : null;
 
@@ -743,6 +795,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, foot, edit }: {
             </MenuButton>
           ))}
         </div>
+        {trail}
       </div>
       {saveErr && (
         <div className="edit-err" role="alert">

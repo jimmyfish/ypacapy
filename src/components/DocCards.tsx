@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useStore } from "../store";
-import { shellInline, shellPretty, typeOf } from "../lib/bson";
+import { fieldsOf, shellInline, shellPretty, typeOf } from "../lib/bson";
 import {
   EDIT_TYPES,
   TYPE_LABEL,
@@ -20,7 +20,7 @@ import {
   type Field,
 } from "../lib/docEdit";
 import { ShellText } from "./ResultGrid";
-import { Check, ChevronRight, ChevronsDownUp, ChevronsUpDown, CirclePlus, Copy, CopyPlus, Lock, Pencil, Shredder, Undo2, ico } from "./Icon";
+import { Check, ChevronRight, ChevronsDownUp, ChevronsUpDown, CirclePlus, Copy, CopyPlus, Lock, Pencil, Shredder, Undo2, WandSparkles, ico } from "./Icon";
 
 /**
  * MongoDB's JSON view, as Compass shows it: a card per document, a line per field. Objects and arrays fold
@@ -35,9 +35,22 @@ export interface DocEdit {
   projected: boolean;
 }
 
-type Mode = { kind: "edit" | "del" | "new"; at: number; draft: Field[]; err?: string; busy?: boolean; focus?: string };
+/** at: the document's index; -1 is a new document added at the top. note: what a new card says it is */
+type Mode = { kind: "edit" | "del" | "new"; at: number; draft: Field[]; err?: string; busy?: boolean; focus?: string; note?: string; blank?: boolean };
 
 const isContainer = (f: Field) => f.type === "object" || f.type === "array";
+const hex24 = () => Array.from({ length: 24 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
+/** an empty value of each type, as the editor holds it (Example from fields) */
+const EMPTY: Partial<Record<Field["type"], () => string>> = {
+  string: () => "",
+  int32: () => "0",
+  int64: () => "0",
+  double: () => "0",
+  decimal128: () => "0",
+  bool: () => "false",
+  date: () => new Date().toISOString(),
+  objectId: hex24,
+};
 const live = (fs: Field[] | undefined) => (fs ?? []).filter((k) => !k.removed);
 
 /** a closed object: Object and its field names; a closed array: Array (n) and its first values */
@@ -80,7 +93,11 @@ function scalarText(f: Field): string {
 /** an editable value: the type's wrapper around a box as wide as its text */
 const WRAP: Partial<Record<Field["type"], [string, string]>> = { string: ["'", "'"], int64: ["Long('", "')"], decimal128: ["Decimal128('", "')"], objectId: ["ObjectId('", "')"], date: ["ISODate('", "')"] };
 
-export function DocCards({ docs, label, edit }: { docs: unknown[]; label: string; edit?: DocEdit }) {
+/**
+ * addKey: set (non-zero) to open an empty new document at the top; onAdded says it was taken. onDrafting: whether a
+ * new document is open, so the page can keep this list up for it even when the page has no documents.
+ */
+export function DocCards({ docs, label, edit, addKey, onAdded, onDrafting }: { docs: unknown[]; label: string; edit?: DocEdit; addKey?: number; onAdded?: () => void; onDrafting?: (on: boolean) => void }) {
   const st = useStore.getState();
   const drafts = useMemo(() => docs.map(toDraft), [docs]);
   // open objects and arrays, by document and field path; a new page closes them all
@@ -91,6 +108,23 @@ export function DocCards({ docs, label, edit }: { docs: unknown[]; label: string
     setOpen((o) => (Object.keys(o).length ? {} : o));
     setMode(null);
   }, [docs]);
+  // Add document (the toolbar's +): after the reset above, so a fresh mount keeps it
+  useEffect(() => {
+    if (!addKey || !edit) return;
+    const f = newField("field");
+    setMode({ kind: "new", at: -1, draft: [f], focus: f.id, blank: true, note: "New document, not inserted yet" });
+    onAdded?.();
+  }, [addKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const drafting = mode?.kind === "new";
+  useEffect(() => onDrafting?.(drafting), [drafting]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Opening slides (styles: .jv-kids). Nested fields mount on first open and stay; one never opened is not drawn,
+  // so a long array costs nothing until it is. A first open mounts closed, then opens on the next frame, so it
+  // slides too.
+  const fold = (keys: string[], value: boolean) => {
+    setOpen((o) => ({ ...o, ...Object.fromEntries(keys.map((k) => [k, value && !(k in o) ? false : value])) }));
+    if (value) requestAnimationFrame(() => requestAnimationFrame(() => setOpen((o) => ({ ...o, ...Object.fromEntries(keys.map((k) => [k, true])) }))));
+  };
 
   const put = (fn: (fs: Field[]) => Field[]) => setMode((m) => (m ? { ...m, draft: fn(m.draft), err: undefined } : m));
   const change = (id: string, fn: (f: Field) => Field | null) =>
@@ -164,7 +198,7 @@ export function DocCards({ docs, label, edit }: { docs: unknown[]; label: string
     const fixedId = depth === 0 && f.key === "_id";
     const canEdit = editing && !fixedId && f.locked === undefined && !f.removed;
     const err = editing ? invalid(f) : null;
-    const toggle = () => folds && setOpen((o) => ({ ...o, [key]: !o[key] }));
+    const toggle = () => folds && fold([key], !open[key]);
     const changed = editing && !fresh && !!f.orig && !f.removed && (f.orig.key !== f.key || f.orig.type !== f.type || (!f.kids && f.orig.text !== f.text));
     const orig = mode ? origOf(drafts[mode.at] ?? [], f.id) : undefined;
 
@@ -256,7 +290,7 @@ export function DocCards({ docs, label, edit }: { docs: unknown[]; label: string
                       onClick={() => {
                         const add = newField(f.type === "array" ? String(kids.length) : "field");
                         change(f.id, (x) => ({ ...x, kids: [...(x.kids ?? []), add] }));
-                        setOpen((o) => ({ ...o, [key]: true }));
+                        fold([key], true);
                         setMode((m) => m && { ...m, focus: add.id });
                       }}
                     >
@@ -282,9 +316,9 @@ export function DocCards({ docs, label, edit }: { docs: unknown[]; label: string
             </span>
           )}
         </div>
-        {isOpen && (
-          <div className="jv-kids">
-            {(f.kids ?? []).map((k) => line(k, depth + 1, `${path}.${k.orig?.key ?? k.id}`, at, editing, f.type === "array", fresh))}
+        {folds && key in open && (
+          <div className={`jv-kids${isOpen ? " open" : ""}`}>
+            <div className="jv-kids-in">{(f.kids ?? []).map((k) => line(k, depth + 1, `${path}.${k.orig?.key ?? k.id}`, at, editing, f.type === "array", fresh))}</div>
           </div>
         )}
       </div>
@@ -317,6 +351,40 @@ export function DocCards({ docs, label, edit }: { docs: unknown[]; label: string
     );
   }
 
+  // Example from fields: the paths and types the Fields tab lists (from the documents on this page; nothing is
+  // read), as a document with an empty value of each field's type. An array of objects gets one object; _id is
+  // left to the server. A field's first type seen wins, null only when it is all there was.
+  function example() {
+    const fields = fieldsOf(docs);
+    type Node = { type?: string; kids: Map<string, Node> };
+    const root: Node = { kids: new Map() };
+    for (const { path, types } of fields) {
+      if (path === "_id") continue;
+      const t = types.split(", ").find((x) => x !== "null") ?? "null";
+      let at = root;
+      path.split(".").forEach((p, i, parts) => {
+        if (!at.kids.has(p)) at.kids.set(p, { kids: new Map() });
+        at = at.kids.get(p)!;
+        if (i === parts.length - 1) at.type = t;
+        else if (at.type === "array of object") {
+          if (!at.kids.has("0")) at.kids.set("0", { type: "object", kids: new Map() });
+          at = at.kids.get("0")!;
+        }
+      });
+    }
+    const make = (key: string, n: Node): Field => {
+      const raw = n.type === "array of object" ? "array" : (n.type ?? "object");
+      // a type the editor cannot write (binary, regex…) starts as null
+      const type = ((EDIT_TYPES as readonly string[]).includes(raw) ? raw : "null") as Field["type"];
+      const f = { ...newField(key), type, text: EMPTY[type]?.() ?? "" };
+      if (type === "object" || type === "array") f.kids = [...n.kids].map(([k, c]) => make(k, c));
+      return f;
+    };
+    const draft = [...root.kids].map(([k, n]) => make(k, n));
+    setMode((m) => m && { ...m, draft, blank: false, focus: undefined, note: `Example from the ${fields.length} fields on this page, not inserted yet` });
+    fold(containers(draft, "", -1), true);
+  }
+
   const containers = (fs: Field[], base: string, at: number): string[] =>
     fs.flatMap((f) => {
       const p = `${base}.${f.orig?.key ?? f.id}`;
@@ -341,7 +409,7 @@ export function DocCards({ docs, label, edit }: { docs: unknown[]; label: string
               title={allOpen ? "Collapse all" : "Expand all"}
               aria-label={allOpen ? "Collapse all" : "Expand all"}
               disabled={!all.length}
-              onClick={() => setOpen((o) => ({ ...o, ...Object.fromEntries(all.map((k) => [k, !allOpen])) }))}
+              onClick={() => fold(all, !allOpen)}
             >
               {allOpen ? <ChevronsDownUp {...ico} /> : <ChevronsUpDown {...ico} />}
             </button>
@@ -400,13 +468,18 @@ export function DocCards({ docs, label, edit }: { docs: unknown[]; label: string
                 (mine.kind === "del"
                   ? "Delete this document?"
                   : mine.kind === "new"
-                    ? edit?.projected
-                      ? "Copy, not inserted yet. Only the fields on screen are copied: the projection hides some"
-                      : "Copy, not inserted yet"
+                    ? (mine.note ??
+                      (edit?.projected ? "Copy, not inserted yet. Only the fields on screen are copied: the projection hides some" : "Copy, not inserted yet"))
                     : n
                       ? `${n} change${n > 1 ? "s" : ""}, not sent yet`
                       : "Nothing changed yet")}
             </span>
+            {mine.kind === "new" && mine.blank && (
+              <button type="button" className="btn btn--quiet jv-example" title="Fill in the fields this page shows (its Fields tab), each with an empty value of its type. Nothing is read." onClick={example}>
+                <WandSparkles {...ico} />
+                Example from fields
+              </button>
+            )}
             <button type="button" className="btn" disabled={mine.busy} onClick={() => setMode(null)}>
               Cancel
             </button>
@@ -430,6 +503,7 @@ export function DocCards({ docs, label, edit }: { docs: unknown[]; label: string
 
   return (
     <div className="jv-list" tabIndex={0} aria-label={label}>
+      {mode?.kind === "new" && mode.at === -1 && card(-1, true)}
       {docs.flatMap((_, i) => [card(i, false), mode?.kind === "new" && mode.at === i ? card(i, true) : null])}
     </div>
   );

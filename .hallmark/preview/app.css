@@ -1804,3 +1804,62 @@ body.cards-dragging .group-drop-new { display: flex; }
 /* a foldable line folds from anywhere on it */
 .jv-row:has(> .jv-caret) { cursor: pointer; }
 .jv-row:has(> .jv-caret):hover .jv-caret { color: var(--color-ink); }
+/* folding slides: the kids' row grows from 0fr to 1fr and fades in, fast. Closed, they're hidden from focus and
+   readers once the slide ends (visibility waits for it). */
+.jv-kids { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 0.14s ease-out, opacity 0.14s ease-out; }
+.jv-kids.open { grid-template-rows: 1fr; opacity: 1; }
+.jv-kids-in { min-height: 0; overflow: hidden; visibility: hidden; transition: visibility 0s linear 0.14s; }
+.jv-kids.open > .jv-kids-in { visibility: visible; transition-delay: 0s; }
+@media (prefers-reduced-motion: reduce) { .jv-kids, .jv-kids-in { transition: none; } }
+/* The query bar reads its own width (the sidebar takes from it), not the window's. Narrow, its buttons drop their
+   words for icons (Options swaps its chevron for sliders, Reset gains an arrow); narrower still, the filter takes the
+   whole line and the buttons sit under it. Each button keeps its name in aria-label and title. */
+.mq-bar { container: mq-bar / inline-size; }
+.mq-narrow-ico { display: none; }
+@container mq-bar (max-width: 760px) {
+  .mq-actions .btn-label, .mq-actions .run-kbd, .mq-actions .mq-more-ico { display: none; }
+  .mq-actions .mq-narrow-ico { display: inline-block; }
+  .mq-actions .btn { gap: 0; padding-inline: var(--space-xs); }
+  .mq-actions .btn .ico { margin-right: 0; }
+  .mq-actions .btn--run { padding-inline: var(--space-sm); }
+  .mq-more[aria-expanded="true"] { background: var(--color-paper-2); }
+  .mq-num { flex: 1; }
+}
+/* the filter's word gives way to a funnel when narrow, so the box keeps its room beside the buttons */
+.mq-k-ico { display: none; }
+@container mq-bar (max-width: 760px) {
+  .mq-filter .mq-k { display: flex; align-items: center; width: auto; height: 30px; padding-right: var(--space-2xs); align-self: flex-start; }
+  .mq-filter .mq-k-t { display: none; }
+  .mq-filter .mq-k-ico { display: inline-block; width: 15px; height: 15px; color: var(--sql-keyword); }
+}
+/* narrower still: the buttons stay beside the filter; Project and Sort stack, Skip and Limit share the line under them */
+@container mq-bar (max-width: 520px) {
+  .mq-opts, .mq-paging { grid-column: 1 / -1; grid-row: auto; }
+  .mq-opts { flex-direction: column; }
+  .mq-actions { gap: 2px; }
+}
+/* the query boxes scroll without a bar: it sat over a one-line box. The caret, the trackpad and the wheel still scroll */
+.mq-in { scrollbar-width: none; }
+.mq-in::-webkit-scrollbar { display: none; }
+/* the collection toolbar, as Compass lays it out: view, add, copy and export on the left; the pager on the right */
+.res-tools .res-add { min-height: 28px; padding: 0 var(--space-xs); gap: var(--space-3xs); }
+.res-tools .res-add .ico { width: 15px; height: 15px; }
+.res-tools .res-add + .res-actions { margin-left: 0; }
+.pager { display: flex; align-items: center; gap: var(--space-3xs); margin-left: auto; }
+.pager-n { margin-right: var(--space-2xs); color: var(--color-muted); font: var(--text-sm) var(--font-ui); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pager-est { color: var(--color-ink-2); }
+.pager-count { padding: 0; font: inherit; }
+.pager .icon-btn { min-width: 28px; min-height: 28px; border-radius: 6px; }
+.spinner--sm { width: 12px; height: 12px; vertical-align: -2px; }
+/* narrow: Add document keeps its plus only */
+.response { container: res / inline-size; }
+@container res (max-width: 640px) { .res-tools .res-add .btn-label { display: none; } .seg--lead button { font-size: 0; gap: 0; } .seg--lead button .ico { width: 15px; height: 15px; } }
+/* Example from fields: only on a new, still empty document */
+.jv-doc:not([data-blank]) .jv-example { display: none; }
+.jv-example .ico { width: 14px; height: 14px; margin-right: var(--space-3xs); }
+/* Options, Reset and Open as a query are icons at every width (owner pick: less crowded); title and aria-label name them */
+.mq-ico-btn .btn-label, .mq-ico-btn .mq-more-ico { display: none; }
+.mq-ico-btn .mq-narrow-ico { display: inline-block; }
+.mq-actions .mq-ico-btn { gap: 0; min-width: 32px; padding-inline: var(--space-xs); justify-content: center; }
+.mq-actions .mq-ico-btn .ico { margin-right: 0; }
+.mq-more.mq-ico-btn[aria-expanded="true"] { background: var(--color-paper-2); color: var(--color-ink); }

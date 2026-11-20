@@ -272,17 +272,17 @@ export function KeyPane({ tab }: { tab: KeyTab }) {
           </button>
         </div>
         <div className="mq-actions">
-          <button type="button" className="btn btn--quiet" onClick={() => st.openModal({ kind: "keyInfo", connId: conn.id, key: tab.key })}>
+          <button type="button" className="btn btn--quiet" title="Info" aria-label="Info" onClick={() => st.openModal({ kind: "keyInfo", connId: conn.id, key: tab.key })}>
             <Info {...ico} />
-            Info
+            <span className="btn-label">Info</span>
           </button>
-          <button type="button" className="btn btn--quiet" title="Open a query tab with the command that reads this key" onClick={console_}>
+          <button type="button" className="btn btn--quiet" title="Open a query tab with the command that reads this key" aria-label="Open as a query" onClick={console_}>
             <SquareCode {...ico} />
-            Open as a query
+            <span className="btn-label">Open as a query</span>
           </button>
-          <button type="button" className="btn" title="Read this page again  ⌘R" disabled={busy || session.status !== "open"} onClick={() => void st.readKey(tab.id, { page: tab.page })}>
+          <button type="button" className="btn" title="Read this page again  ⌘R" disabled={busy || session.status !== "open"} aria-label="Refresh" onClick={() => void st.readKey(tab.id, { page: tab.page })}>
             <RefreshCw {...ico} />
-            Refresh
+            <span className="btn-label">Refresh</span>
           </button>
         </div>
         <p className="rk-meta">

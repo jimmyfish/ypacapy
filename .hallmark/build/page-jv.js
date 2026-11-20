@@ -5,7 +5,8 @@
     const COLL = "orders";
     const fold = (caret, open) => {
       const kids = caret.closest(".jv-node").querySelector(":scope > .jv-kids");
-      caret.setAttribute("aria-expanded", String(open)); kids.hidden = !open;
+      // the kids stay in the page; .open slides them in (styles: .jv-kids)
+      caret.setAttribute("aria-expanded", String(open)); kids.classList.toggle("open", open);
     };
     const syncFoldBtn = (doc) => {
       const b = $('[data-jv="fold"]', doc); if (!b) return;
@@ -87,7 +88,7 @@
       const row = $(":scope > .jv-row", node), kids = $(":scope > .jv-kids", node);
       if (!kids) return valText(row);
       const arr = row.dataset.t === "array", inner = pad + "  ";
-      const parts = $$(":scope > .jv-node", kids).map((n) => (arr ? valOf(n, inner) : `${quote(keyOf(n).textContent)}: ${valOf(n, inner)}`));
+      const parts = $$(":scope > .jv-kids-in > .jv-node", kids).map((n) => (arr ? valOf(n, inner) : `${quote(keyOf(n).textContent)}: ${valOf(n, inner)}`));
       const [o, c] = arr ? ["[", "]"] : ["{", "}"], one = `${o} ${parts.join(", ")} ${c}`;
       // short and flat stays on one line, as mongosh prints it; anything else opens up
       return one.length <= 44 && !parts.some((x) => x.includes("\n")) ? one : `${o}\n${inner}${parts.join(`,\n${inner}`)}\n${pad}${c}`;
@@ -132,8 +133,7 @@
         doc.classList.add("jv-gone");
         setTimeout(() => {
           doc.remove();
-          const n = $$(".jv-list[data-edit] .jv-doc").length, r = $("#t-range");
-          if (r) r.textContent = `Documents 1 to ${n}, in stored order`;
+          window.ypPager?.();
         }, 220);
         return;
       }
@@ -143,8 +143,7 @@
         if (idRow) { $(".jv-v", idRow).innerHTML = `<span class="q-f">ObjectId</span><span class="j-p">(</span><span class="j-str">'<span class="jv-ed">${id}</span>'</span><span class="j-p">)</span>`; $(".jv-lock", idRow).lastChild.textContent = "_id is fixed"; }
         doc.dataset.copy = serialize(doc).replace(/^\{/, `{\n  _id: ObjectId('${id}'),`);
         commit(doc);
-        const n = $$(".jv-list[data-edit] .jv-doc").length, r = $("#t-range");
-        if (r) r.textContent = `Documents 1 to ${n}, in stored order`;
+        window.ypPager?.();
         return;
       }
       commit(doc);
@@ -156,10 +155,80 @@
     }, true));
     $$("[data-guard-close]").forEach((b) => b.addEventListener("click", () => { b.closest(".backdrop").hidden = true; pending = null; }));
 
+    const typeMenu = (label) => {
+      const sel = $(".jv-list[data-edit] .jv-type").cloneNode(true);
+      [...sel.options].forEach((o) => o.toggleAttribute("selected", o.text === label));
+      return sel.outerHTML;
+    };
+    // Add document: an empty new card at the top of the page, a first field ready to name; Insert sends insertOne
+    window.jvAdd = () => {
+      const list = $(".jv-list[data-edit]"), src = list && $(".jv-doc", list);
+      if (!src) return;
+      $$(".jv-doc[data-mode]").forEach(cancel);
+      const doc = src.cloneNode(true);
+      delete doc.dataset.id; doc.classList.remove("jv-saved");
+      doc.dataset.mode = "new"; doc.ariaLabel = "New document";
+      $(".jv-body", doc).innerHTML = "";
+      $(".jv-msg", doc).textContent = "New document, not inserted yet";
+      doc.dataset.blank = "";
+      list.prepend(doc); list.scrollTop = 0;
+      addField(doc);
+      return doc;
+    };
+    // Example from fields: the paths and types the Fields tab lists (from the documents on this page; nothing is read),
+    // as a document with an empty value of each field's type. An array of objects gets one object; _id is left to the
+    // server. Each field's first type seen wins (null only when it is all there was).
+    const EMPTY = { string: "", int32: "0", double: "0", decimal128: "0", bool: "false", date: () => new Date().toISOString().replace(/\.\d+Z$/, ".000Z"), objectId: () => newOid() };
+    const LABEL = { string: "String", int32: "Int32", double: "Double", decimal128: "Decimal128", bool: "Boolean", date: "Date", objectId: "ObjectId", null: "Null", object: "Object", array: "Array" };
+    function example(doc) {
+      const list = doc.closest(".jv-list"), fields = JSON.parse(list.dataset.fields || "[]");
+      // paths into a tree: a.b under a; under an array of objects, its fields go in its one item
+      const root = { kids: new Map() };
+      for (const [path, types] of fields) {
+        if (path === "_id") continue;
+        const parts = path.split("."), t = types.split(", ").find((x) => x !== "null") || "null";
+        let at = root;
+        parts.forEach((p, i) => {
+          if (!at.kids.has(p)) at.kids.set(p, { kids: new Map() });
+          at = at.kids.get(p);
+          if (i === parts.length - 1) at.type = t;
+          // the array's item: its fields hang off a "0" object
+          if (i < parts.length - 1 && at.type === "array of object") { if (!at.kids.has("0")) at.kids.set("0", { type: "object", kids: new Map() }); at = at.kids.get("0"); }
+        });
+      }
+      const rmTpl = $(".jv-list[data-edit] .jv-rm");
+      const tools = (t) => `<span class="jv-tools">${typeMenu(LABEL[t])}<button type="button" class="icon-btn jv-undo" hidden></button><button type="button" class="icon-btn jv-rm" title="Remove this field" aria-label="Remove field">${rmTpl.innerHTML}</button></span>`;
+      const ed = (x, cls = "") => `<span class="jv-ed${cls}" contenteditable="plaintext-only" spellcheck="false">${x}</span>`;
+      const fn = (name, x) => `<span class="q-f">${name}</span><span class="j-p">(</span><span class="j-str">'${ed(x)}'</span><span class="j-p">)</span>`;
+      const leaf = (t) => {
+        const v = typeof EMPTY[t] === "function" ? EMPTY[t]() : EMPTY[t];
+        if (t === "string") return `<span class="j-str">'${ed("")}'</span>`;
+        if (t === "objectId") return fn("ObjectId", v);
+        if (t === "date") return fn("ISODate", v);
+        if (t === "decimal128") return fn("Decimal128", v);
+        if (t === "int32" || t === "double") return ed(v, " j-num");
+        if (t === "bool") return ed(v, " j-bool");
+        return '<span class="j-null jv-ed">null</span>';
+      };
+      const node = (key, n, depth, idx) => {
+        const t = n.type === "array of object" ? "array" : n.type || "object";
+        const kids = [...n.kids].map(([k, c]) => node(k, c, depth + 1, t === "array"));
+        const folds = kids.length > 0;
+        const val = folds ? `<span class="jv-kind">${t === "array" ? `Array (${kids.length})` : "Object"}</span>` : t === "array" ? '<span class="j-p">[]</span>' : t === "object" ? '<span class="j-p">{}</span>' : leaf(t);
+        const keyHtml = idx ? `<span class="jv-k jv-idx">${key}</span>` : `<span class="jv-k" contenteditable="plaintext-only" spellcheck="false">${key}</span>`;
+        return `<div class="jv-node"><div class="jv-row" style="--d:${depth}" data-t="${t}">${folds ? `<button type="button" class="jv-caret" aria-expanded="true" aria-label="Hide ${key}">${$(".jv-caret", list)?.innerHTML ?? ""}</button>` : '<span class="jv-caret-sp"></span>'}${keyHtml}<span class="j-p">:</span><span class="jv-v">${val}</span>${tools(t)}</div>${folds ? `<div class="jv-kids open"><div class="jv-kids-in">${kids.join("")}</div></div>` : ""}</div>`;
+      };
+      $(".jv-body", doc).innerHTML = [...root.kids].map(([k, n]) => node(k, n, 0, false)).join("");
+      delete doc.dataset.blank;
+      $(".jv-msg", doc).textContent = `Example from the ${fields.length} fields on this page, not inserted yet`;
+      $(".jv-row .jv-ed", doc)?.focus();
+    }
     function addField(doc) {
       const body = $(".jv-body", doc), n = $$(".jv-new", doc).length;
+      // the type menu and remove button are copied from any card (a new one may have no fields yet)
+      const rmTpl = $(".jv-rm", doc) || $(".jv-list[data-edit] .jv-rm");
       const tmp = document.createElement("div");
-      tmp.innerHTML = `<div class="jv-node"><div class="jv-row jv-new" style="--d:0" data-t="string"><span class="jv-caret-sp"></span><span class="jv-k" contenteditable="plaintext-only" spellcheck="false">field${n ? n + 1 : ""}</span><span class="j-p">:</span><span class="jv-v"><span class="j-str">'<span class="jv-ed" contenteditable="plaintext-only" spellcheck="false" data-orig=""></span>'</span></span><span class="jv-tools">${$(".jv-type", doc).outerHTML.replace(/ selected/g, "").replace("<option>String", "<option selected>String")}<button type="button" class="icon-btn jv-undo" hidden></button><button type="button" class="icon-btn jv-rm" title="Remove this field" aria-label="Remove field">${$(".jv-rm", doc).innerHTML}</button></span></div></div>`;
+      tmp.innerHTML = `<div class="jv-node"><div class="jv-row jv-new" style="--d:0" data-t="string"><span class="jv-caret-sp"></span><span class="jv-k" contenteditable="plaintext-only" spellcheck="false">field${n ? n + 1 : ""}</span><span class="j-p">:</span><span class="jv-v"><span class="j-str">'<span class="jv-ed" contenteditable="plaintext-only" spellcheck="false" data-orig=""></span>'</span></span><span class="jv-tools">${typeMenu("String")}<button type="button" class="icon-btn jv-undo" hidden></button><button type="button" class="icon-btn jv-rm" title="Remove this field" aria-label="Remove field">${rmTpl.innerHTML}</button></span></div></div>`;
       const node = tmp.firstElementChild; body.append(node);
       const k = $(".jv-k", node); k.focus(); getSelection().selectAllChildren(k);
       recount(doc);
@@ -185,6 +254,7 @@
         if (!editable) return;
         if (act === "edit") enter(doc);
         if (act === "dup") dup(doc);
+        if (act === "example") example(doc);
         if (act === "del") { $$(".jv-doc[data-mode]").forEach(cancel); doc.dataset.mode = "del"; $(".jv-msg", doc).textContent = "Delete this document?"; $('[data-jv="delete"]', doc).focus(); }
         if (act === "cancel") cancel(doc);
         if (act === "update" || act === "delete" || act === "insert") send(doc);
@@ -251,6 +321,8 @@
         doc.dataset.mode = "del"; $(".jv-msg", doc).textContent = "Delete this document?"; doc.scrollIntoView({ block: "nearest" });
         send(doc);
       }
+      if (k === "add") window.jvAdd();
+      if (k === "add-example") example(window.jvAdd());
       if (k === "delete") { doc.dataset.mode = "del"; $(".jv-msg", doc).textContent = "Delete this document?"; doc.scrollIntoView({ block: "nearest" }); }
     };
   }

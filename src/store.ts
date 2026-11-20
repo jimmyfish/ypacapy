@@ -447,22 +447,13 @@ export const useStore = create<State>()((set, get) => {
           tree: {},
           columns: {},
           expanded: schema ? { [schema]: true, [`${schema}/tables`]: true, [`${schema}/views`]: true } : {},
-          // MongoDB opens on its first collection (below), not on an empty console; Redis on its console
+          // MongoDB opens on the empty state: nothing is read until a collection is picked. Redis on its console
           ...(s.tabs.length || mongo ? {} : (() => {
             const t = newQuery(1);
             return { tabs: [t], activeTabId: t.id };
           })()),
         }));
-        if (schema)
-          void get()
-            .loadSchema(schema)
-            .then(() => {
-              const now = get().sessions[id];
-              if (!mongo || !now || now.tabs.length) return;
-              const first = now.tree[schema]?.data?.tables.find((t) => t.kind !== "view");
-              if (first) get().openTable(schema, first.name);
-              else get().newQueryTab();
-            });
+        if (schema) void get().loadSchema(schema);
         // Redis: the tree's first SCAN
         if (get().conns.find((c) => c.id === id)?.engine === "redis") void get().scanKeys({ connId: id });
         // pinned table tabs kept from last time read their rows and columns now that the pool is open

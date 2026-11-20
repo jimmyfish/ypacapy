@@ -18,6 +18,25 @@
   }
   more.addEventListener("click", () => { const open = more.getAttribute("aria-expanded") !== "true"; setOpts(open); if (open) proj.focus(); });
   [proj, sort, $("#skip"), $("#limit")].forEach((f) => f.addEventListener("input", () => setOpts()));
+  // The toolbar's pager, as Compass has it: "1 – 20 of N". With no filter N is the estimate from collection metadata
+  // (~, nothing is counted). With a filter N is unknown until asked: "count" runs one countDocuments(filter), and the
+  // number holds until the filter changes.
+  let counted = null, counting = false, countedFor = "";
+  const noFilter = () => /^\s*(\{\s*\})?\s*$/.test(where.value);
+  function pager() {
+    const el = $("#t-pager"), n = $$(".jv-list[data-edit] .jv-doc:not([data-mode='new'])").length || 20;
+    const range = `1 – ${n} of `;
+    if (state === "empty") { el.textContent = "No documents"; return; }
+    if (noFilter()) el.innerHTML = `${range}<span class="pager-est" title="Estimated from collection metadata, not counted">~48,213</span>`;
+    else if (counting) el.innerHTML = `${range}<span class="spinner spinner--sm" aria-label="Counting"></span>`;
+    else if (counted !== null && countedFor === where.value) el.textContent = range + counted.toLocaleString("en-US");
+    else el.innerHTML = `${range}<button type="button" class="link pager-count" title="Count the documents this filter matches: one countDocuments on events_prod">count</button>`;
+    $(".pager-count", el)?.addEventListener("click", () => {
+      counting = true; pager();
+      setTimeout(() => { counting = false; counted = /"lost"/.test(where.value) ? 0 : 31904; countedFor = where.value; pager(); }, 600);
+    });
+  }
+  window.ypPager = pager;
   function render() {
     $$(".subtab[data-view]").forEach((s) => s.setAttribute("aria-pressed", String(s.dataset.view === view)));
     $$(".response .state").forEach((s) => { s.hidden = view !== "docs" || s.dataset.when !== state; });
@@ -31,6 +50,8 @@
     state === "bad" ? where.setAttribute("aria-invalid", "true") : where.removeAttribute("aria-invalid");
     $("#t-n").textContent = state === "empty" ? "0" : "~48k";
     $("#t-ms").textContent = busy ? "reading" : "7 ms";
+    pager();
+    $("#t-refresh").disabled = busy;
   }
   $$(".subtab[data-view]").forEach((s) => s.addEventListener("click", () => { view = s.dataset.view; if (state === "loading") state = "full"; render(); }));
   $$(".seg [data-as]").forEach((b) => b.addEventListener("click", () => { as = b.dataset.as; render(); }));
@@ -44,6 +65,8 @@
     setTimeout(() => { state = /"lost"/.test(where.value) ? "empty" : "full"; render(); }, 500);
   }
   run.addEventListener("click", reload);
+  $("#t-refresh").addEventListener("click", reload);
+  $("#t-add").addEventListener("click", () => window.jvAdd());
   // Enter in a box is a new line; ⌘↵ runs (below). The one-line Skip and Limit run on Enter.
   [$("#skip"), $("#limit")].forEach((f) => f.addEventListener("keydown", (e) => { if (e.key === "Enter") reload(); }));
   $("#mq-reset").addEventListener("click", () => { where.value = "{}"; proj.value = sort.value = $("#skip").value = ""; $("#limit").value = "20"; boxes.forEach(grow); setOpts(); reload(); });
@@ -64,5 +87,9 @@
     window.mInfo(k);
     state = { "no-match": "empty", loading: "loading", "bad-filter": "bad" }[k] || "full";
     render();
+    counting = false; counted = null;
+    if (k === "no-filter") { where.value = "{}"; grow(where); }
+    if (k === "counted") { counted = 31904; countedFor = where.value; }
+    pager();
     window.jvShow(k);
   };

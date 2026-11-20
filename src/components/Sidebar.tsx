@@ -8,6 +8,7 @@ import { clockOf, dayLabel, startOfDay } from "../lib/time";
 import { ttlLeft } from "../lib/time";
 import type { Saved, ScanKey } from "../types";
 import { useDismiss } from "./useDismiss";
+import { SideLink } from "./ConnStatus";
 import { Braces, ChevronDown, ChevronRight, Copy, Database, Ellipsis, Eye, Folder, Info, Key, Network, RefreshCw, Search, Shredder, SquareCode, SquareFunction, Table2, Timer, icoC, ico } from "./Icon";
 
 /** MongoDB's own databases: listed, but folded under one group at the end */
@@ -43,6 +44,7 @@ export function Sidebar({ view, onResizeStart }: { view: SideView; onResizeStart
     <aside className="sidebar">
       <div className="side-resize" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" title="Drag to resize, drag past the edge to hide" onMouseDown={onResizeStart} />
       {view === "schema" ? conn?.engine === "redis" ? <RedisSide /> : <SchemaSide /> : view === "history" ? <HistorySide /> : <SavedSide />}
+      <SideLink />
     </aside>
   );
 }

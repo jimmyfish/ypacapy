@@ -65,6 +65,8 @@ export {
   Pencil,
   Plus,
   RefreshCw,
+  // connection status: dropped
+  Unplug,
   Search,
   Server,
   Settings2,

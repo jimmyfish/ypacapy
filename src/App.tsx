@@ -17,6 +17,8 @@ import { schemeTokens } from "./lib/themes";
 import { connColorId } from "./lib/connColors";
 import { useUpdates } from "./updates";
 import { UpdateChip } from "./components/UpdateChip";
+import { LinkBar, TabLink } from "./components/ConnStatus";
+import type { Link } from "./types";
 import { Bookmark, Database, HistoryIcon, House, ListTree, Settings2, X, ico, icoLg } from "./components/Icon";
 
 export const SIDEBAR_DEFAULT = 296;
@@ -115,6 +117,7 @@ function AppStrip() {
               <button type="button" className="ptab-main" onClick={() => st.openConn(id)}>
                 <ConnTile conn={c} small typed />
                 {c.name}
+                <TabLink conn={c} />
               </button>
               <button type="button" className="icon-btn ptab-close" aria-label={`Close ${c.name}`} onClick={() => st.closeConn(id)}>
                 <X {...ico} />
@@ -238,6 +241,8 @@ export default function App() {
         }
       }),
       listen("menu:settings", () => useStore.getState().openModal({ kind: "settings" })),
+      // the heartbeat's word on each open connection: the status on its tab and in the sidebar
+      listen<{ id: string; state: Link }>("conn:link", (e) => useStore.getState().setLink(e.payload.id, e.payload.state)),
       // "About ypacapy" opens our own dialog instead of the native panel
       listen("menu:about", () => useStore.getState().openModal({ kind: "about" })),
       // "Check for Updates…": the chip's popover when there is something to act on, otherwise Settings > Updates
@@ -302,6 +307,7 @@ export default function App() {
             {!sideHidden && <Sidebar view={side} onResizeStart={startSideResize} />}
             <main className="work">
               <TabsBar />
+              <LinkBar />
               <ConnWork />
             </main>
           </div>

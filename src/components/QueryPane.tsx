@@ -14,6 +14,7 @@ import { SqlEditor, type Completer } from "./SqlEditor";
 import { useDismiss } from "./useDismiss";
 import { Braces, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, LoaderCircle, Play, Table2, WandSparkles, ico, icoC } from "./Icon";
 import { DocCards } from "./DocCards";
+import { LinkNote } from "./ConnStatus";
 
 /** The connection's database and schema pickers, inside the query line's filled field. */
 function CtxSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
@@ -160,6 +161,7 @@ export function ErrorState({ o, onReconnect, onFix }: { o: Extract<RunOutcome, {
           <strong>{o.title}</strong>
           <span className="msg">{o.message}</span>
           {o.hint && <span className="hint-line">{o.hint} Run it again once it is back.</span>}
+          <LinkNote />
           <div className="actions">
             <button type="button" className="btn" onClick={onReconnect}>
               Reconnect

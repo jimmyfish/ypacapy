@@ -948,7 +948,7 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
         Got::Failed(e) => {
             let out = run_error(&e, &conn, ms);
             if lost(&e) {
-                state.drop_mongo(&conn.id).await;
+                state.lose(&conn).await;
             }
             out
         }
@@ -1064,7 +1064,7 @@ pub async fn mongo_find(req: FindRequest, state: State<'_, DbState>, settings: S
                 }
             }
             if lost(&e) {
-                state.drop_mongo(&conn.id).await;
+                state.lose(&conn).await;
             }
             run_error(&e, &conn, ms)
         }
@@ -1170,11 +1170,14 @@ async fn stats(db: &Database, collection: &str) -> Result<CollInfo, String> {
     Ok(info)
 }
 
-/// The optional heartbeat: ping on each open MongoDB connection that has it on
-pub async fn heartbeat(app: &AppHandle, global: bool) {
-    let opens: Vec<Arc<MOpen>> = app.state::<DbState>().mongo.lock().await.values().filter(|o| o.heartbeat.unwrap_or(global)).cloned().collect();
-    for o in opens {
-        let _ = o.client.database("admin").run_command(doc! { "ping": 1 }).await;
+/// The optional heartbeat: ping on each open MongoDB connection that has it on. The driver opens its
+/// connections again on its own, so a ping that answers after a drop is the reconnect.
+pub(super) async fn heartbeat(state: &DbState, global: bool, beat: &mut super::Beat<'_>) {
+    let opens: Vec<(String, Arc<MOpen>)> = state.mongo.lock().await.iter().filter(|(_, o)| o.heartbeat.unwrap_or(global)).map(|(id, o)| (id.clone(), o.clone())).collect();
+    for (id, o) in opens {
+        beat.start(&id);
+        let up = matches!(tokio::time::timeout(super::BEAT_WAIT, o.client.database("admin").run_command(doc! { "ping": 1 })).await, Ok(Ok(_)));
+        beat.done(&id, Some(up));
     }
 }
 

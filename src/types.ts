@@ -505,8 +505,15 @@ export interface SchemaNode {
 }
 
 /** One open connection: its pool on the Rust side, its tree cache and tabs here. */
+/** A connection's status with the heartbeat on: connecting while its tab opens, then what the heartbeat (conn:link) and runs say */
+export type Link = "connecting" | "connected" | "disconnected" | "reconnecting";
+
 export interface Session {
   status: "opening" | "open" | "error";
+  /** heartbeat on only: the status on its tab and at the foot of the sidebar */
+  link?: Link;
+  /** when it went down (ms), for the bar over the work area; cleared when it's back */
+  downAt?: number;
   error?: string;
   info?: OpenInfo;
   database: string;

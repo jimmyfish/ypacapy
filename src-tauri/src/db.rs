@@ -1,9 +1,10 @@
 //! The databases the person added: one sqlx pool per connection and database, opened on demand,
 //! kept for the session. ypacapy only ever runs catalog lookups and limited reads on its own;
 //! everything else is what the person typed. No polling: a pooled connection is tested when it is
-//! acquired, and the optional heartbeat (Settings > Queries, off by default) is the only timer.
+//! acquired, and the optional heartbeat (Settings > Queries, off by default) is the only timer. With it on, the
+//! heartbeat also tells the window each connection's status, and opens again one that dropped.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -15,7 +16,7 @@ use sqlx::mysql::{MySqlConnectOptions, MySqlDatabaseError, MySqlPool, MySqlPoolO
 use sqlx::postgres::{PgConnectOptions, PgDatabaseError, PgErrorPosition, PgPool, PgPoolOptions, PgQueryResult, PgRow, PgSslMode};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions, SqliteQueryResult, SqliteRow};
 use sqlx::{Column, Either, Executor, Row, TypeInfo, ValueRef};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio_util::sync::CancellationToken;
 
 use crate::conns::{self, Conn, Engine, SslMode};
@@ -69,6 +70,8 @@ pub struct DbState {
     /// Redis: one entry per connection, on its own database
     redis: tokio::sync::Mutex<HashMap<String, Arc<redis::ROpen>>>,
     runs: std::sync::Mutex<HashMap<String, CancellationToken>>,
+    /// connections a run lost (their pools or clients dropped), by id: the heartbeat opens them again
+    lost: std::sync::Mutex<HashMap<String, Conn>>,
 }
 
 // ---------- values: every cell is read as the text the database gives ----------
@@ -419,7 +422,26 @@ impl DbState {
         Ok(map.entry(key).or_insert(open).clone())
     }
 
+    /// A run lost the connection: drop what was open and leave it to the heartbeat to open again
+    pub(super) async fn lose(&self, conn: &Conn) {
+        self.drop_conn(&conn.id).await;
+        if let Ok(mut l) = self.lost.lock() {
+            l.insert(conn.id.clone(), conn.clone());
+        }
+    }
+    /// Open the connection again after a drop: its own database, client or console
+    async fn reopen(&self, conn: &Conn) -> Result<(), String> {
+        match conn.engine {
+            Engine::Mongo => self.mongo(conn).await.map(|_| ()),
+            Engine::Redis => self.redis(conn).await.map(|_| ()),
+            Engine::Sqlite => Ok(()),
+            _ => self.get(conn, "").await.map(|_| ()).map_err(|e| err_text(&e)),
+        }
+    }
     async fn drop_conn(&self, id: &str) {
+        if let Ok(mut l) = self.lost.lock() {
+            l.remove(id);
+        }
         let gone: Vec<Arc<Open>> = {
             let mut map = self.open.lock().await;
             let keys: Vec<_> = map.keys().filter(|(c, _)| c == id).cloned().collect();
@@ -1213,7 +1235,7 @@ pub async fn run_query(
         Err(e) => {
             let out = run_error(&e, conn.engine, &sql, &conn, ms);
             if let RunOutcome::Error { lost: true, .. } = out {
-                state.drop_conn(&conn.id).await;
+                state.lose(&conn).await;
             }
             out
         }
@@ -1342,7 +1364,7 @@ pub async fn apply_edits(
         Err(e) => failed(&e, &sql),
     };
     if let RunOutcome::Error { lost: true, .. } = outcome {
-        state.drop_conn(&conn.id).await;
+        state.lose(&conn).await;
     }
     if conn.keeps_history(&settings) {
         let (status, rows, error) = match &outcome {
@@ -1378,42 +1400,146 @@ pub fn cancel_query(run_id: String, state: State<'_, DbState>) {
 
 // ---------- heartbeat ----------
 
+/// How long one heartbeat check waits for an answer before it counts as none
+const BEAT_WAIT: Duration = Duration::from_secs(10);
+
+/// conn:link, for the status on the connection's tab and at the foot of the sidebar
+#[derive(Serialize, Clone)]
+struct Link<'a> {
+    id: &'a str,
+    /// connected, disconnected, reconnecting (connecting is the window's own, while a tab opens)
+    state: &'a str,
+}
+
+/// One tick's report: what each check found, said to the window
+struct Beat<'a> {
+    app: &'a AppHandle,
+    /// connections the last check found down: their next check is a reconnect
+    down: &'a mut HashSet<String>,
+}
+
+impl Beat<'_> {
+    fn say(&self, id: &str, state: &str) {
+        let _ = self.app.emit("conn:link", Link { id, state });
+    }
+    /// before a check: one that was down is being reconnected
+    fn start(&self, id: &str) {
+        if self.down.contains(id) {
+            self.say(id, "reconnecting");
+        }
+    }
+    /// after it: Some(answered), None when there was nothing to ask (every pooled connection busy with a run)
+    fn done(&mut self, id: &str, up: Option<bool>) {
+        match up {
+            Some(true) => {
+                self.down.remove(id);
+                self.say(id, "connected");
+            }
+            Some(false) => {
+                self.down.insert(id.to_string());
+                self.say(id, "disconnected");
+            }
+            None if self.down.contains(id) => self.say(id, "disconnected"),
+            None => {}
+        }
+    }
+}
+
+/// One pool's check: `select 1` on each idle connection. One that doesn't answer is closed, and a fresh one is
+/// opened to tell a stale session from a server that's gone. An empty pool opens one; an all-busy pool says nothing.
+macro_rules! beat_pool {
+    ($p:expr) => {{
+        let p = $p;
+        let mut held = vec![];
+        while let Some(c) = p.try_acquire() {
+            held.push(c);
+        }
+        if held.is_empty() && p.size() > 0 {
+            None
+        } else {
+            let mut fresh = held.is_empty();
+            for c in held.iter_mut() {
+                if !matches!(tokio::time::timeout(BEAT_WAIT, c.run("select 1")).await, Ok(Ok(()))) {
+                    c.close_on_drop();
+                    fresh = true;
+                }
+            }
+            drop(held);
+            if !fresh {
+                Some(true)
+            } else {
+                // acquire() tests what it takes (test_before_acquire) and opens a new one in place of a dead one
+                let check = async {
+                    let mut c = p.acquire().await?;
+                    c.run("select 1").await
+                };
+                Some(matches!(tokio::time::timeout(BEAT_WAIT, check).await, Ok(Ok(()))))
+            }
+        }
+    }};
+}
+
 /// Settings > Queries > Connection heartbeat (off by default): every interval, `select 1` on each idle
 /// pooled connection of every open PostgreSQL and MySQL connection, for servers that drop idle sessions.
 /// A connection's own Heartbeat choice (Advanced tab) overrides the setting for that connection.
 /// Connections busy with a run are not touched (they are not idle). SQLite is never pinged.
+/// Each tick tells the window every such connection's status (conn:link), and opens again the ones a run
+/// lost, so a dropped connection comes back on its own once the server answers.
 pub fn start_heartbeat(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
+        let mut down = HashSet::new();
         loop {
             let every = app.state::<SettingsState>().u64("heartbeatEvery", 30).max(5);
             tokio::time::sleep(Duration::from_secs(every)).await;
             let global = app.state::<SettingsState>().bool("heartbeat", false);
-            let opens: Vec<Arc<Open>> = app.state::<DbState>().open.lock().await.values().filter(|o| o.heartbeat.unwrap_or(global)).cloned().collect();
-            for o in opens {
-                match &o.pool {
-                    Pool::Pg(p) => {
-                        let mut held = vec![];
-                        while let Some(c) = p.try_acquire() {
-                            held.push(c);
-                        }
-                        for c in held.iter_mut() {
-                            let _ = c.run("select 1").await;
-                        }
+            let state = app.state::<DbState>();
+            let mut beat = Beat { app: &app, down: &mut down };
+            // the ones a run lost: down by definition, so this check is a reconnect
+            let lost: Vec<Conn> = state.lost.lock().map(|l| l.values().filter(|c| c.heartbeat.unwrap_or(global)).cloned().collect()).unwrap_or_default();
+            for c in lost {
+                beat.down.insert(c.id.clone());
+                beat.start(&c.id);
+                let up = matches!(tokio::time::timeout(BEAT_WAIT, state.reopen(&c)).await, Ok(Ok(())));
+                if up {
+                    if let Ok(mut l) = state.lost.lock() {
+                        l.remove(&c.id);
                     }
-                    Pool::My(p) => {
-                        let mut held = vec![];
-                        while let Some(c) = p.try_acquire() {
-                            held.push(c);
-                        }
-                        for c in held.iter_mut() {
-                            let _ = c.run("select 1").await;
-                        }
-                    }
-                    Pool::Lite(_) => {}
+                }
+                beat.done(&c.id, Some(up));
+            }
+            // PostgreSQL and MySQL: every pool of a connection (one per database) has to answer
+            let mut pools: Vec<(String, Vec<Arc<Open>>)> = vec![];
+            for ((id, _), o) in state.open.lock().await.iter() {
+                if !o.heartbeat.unwrap_or(global) || matches!(o.pool, Pool::Lite(_)) {
+                    continue;
+                }
+                match pools.iter_mut().find(|(x, _)| x == id) {
+                    Some((_, v)) => v.push(o.clone()),
+                    None => pools.push((id.clone(), vec![o.clone()])),
                 }
             }
-            mongo::heartbeat(&app, global).await;
-            redis::heartbeat(&app, global).await;
+            for (id, opens) in pools {
+                beat.start(&id);
+                let mut up = None;
+                for o in opens {
+                    let r = match &o.pool {
+                        Pool::Pg(p) => beat_pool!(p),
+                        Pool::My(p) => beat_pool!(p),
+                        Pool::Lite(_) => None,
+                    };
+                    match r {
+                        Some(false) => {
+                            up = Some(false);
+                            break;
+                        }
+                        Some(true) => up = Some(true),
+                        None => {}
+                    }
+                }
+                beat.done(&id, up);
+            }
+            mongo::heartbeat(&state, global, &mut beat).await;
+            redis::heartbeat(&state, global, &mut beat).await;
         }
     });
 }

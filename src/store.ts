@@ -5,7 +5,7 @@ import { editCount, type Edits } from "./lib/edit";
 import { docsToSet } from "./lib/bson";
 import { positionsOf, withLinked } from "./lib/diagram";
 import { diagramCanSave, diagramChanged, diagramKey, diagramLayoutOf, diagramModelOf, diagramViews, mergeDiagram } from "./lib/diagramTab";
-import type { Approval, Ask, ColumnsEntry, Conn, DiagramTab, Engine, HistoryEntry, KeyTab, SavedDiagram, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
+import type { Approval, Ask, ColumnsEntry, Conn, DiagramTab, Engine, HistoryEntry, KeyTab, Link, SavedDiagram, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
 
 /** conn-*: the open connection's own settings, shown only when Settings opens from its tab */
 export type SettingsSection = "conn-security" | "conn-queries" | "appearance" | "queries" | "security" | "data" | "updates";
@@ -79,6 +79,8 @@ interface State {
   closeConn(id: string): Promise<void>;
   goHome(): void;
   reconnect(id: string): Promise<void>;
+  /** the heartbeat's word on a connection (conn:link) */
+  setLink(id: string, link: Link): void;
   setDatabase(db: string): Promise<void>;
   setSchema(schema: string): void;
   setLevel(level: SecurityLevel, approval?: Approval): Promise<void>;
@@ -253,6 +255,9 @@ async function readWorkspace(id: string): Promise<{ tabs: Tab[]; active: string 
     return { tabs: [], active: null, diagrams: {} };
   }
 }
+
+/** a run that lost the connection: Disconnected, from now unless it already was */
+const lostLink = (s: Session): Partial<Session> => ({ link: "disconnected", downAt: s.downAt ?? Date.now() });
 
 const emptySession = (): Session => ({ status: "opening", database: "", schema: "", tree: {}, columns: {}, expanded: {}, tabs: [], activeTabId: null });
 
@@ -431,7 +436,9 @@ export const useStore = create<State>()((set, get) => {
       set((st) => ({ view: "conn", currentId: id, openIds: st.openIds.includes(id) ? st.openIds : [...st.openIds, id] }));
       const existing = get().sessions[id];
       if (existing && existing.status !== "error") return;
-      set((st) => ({ sessions: { ...st.sessions, [id]: { ...emptySession(), tabs: existing?.tabs ?? [], activeTabId: existing?.activeTabId ?? null, diagrams: existing?.diagrams } } }));
+      // a tab opening is Connecting; one that was open before (Reconnect, or a retry after a drop) is Reconnecting
+      const link: Link = existing?.info ? "reconnecting" : "connecting";
+      set((st) => ({ sessions: { ...st.sessions, [id]: { ...emptySession(), tabs: existing?.tabs ?? [], activeTabId: existing?.activeTabId ?? null, diagrams: existing?.diagrams, link, downAt: existing?.downAt } } }));
       if (!restored.has(id)) {
         const ws = await readWorkspace(id);
         patchSession(id, (s) => ({ tabs: [...ws.tabs, ...s.tabs], activeTabId: s.activeTabId ?? ws.active, diagrams: { ...ws.diagrams, ...s.diagrams } }));
@@ -445,6 +452,8 @@ export const useStore = create<State>()((set, get) => {
         patchSession(id, (s) => ({
           status: "open",
           error: undefined,
+          link: "connected",
+          downAt: undefined,
           info,
           database: info.database,
           schema,
@@ -471,7 +480,7 @@ export const useStore = create<State>()((set, get) => {
           void get().loadTableInfo(t.id);
         }
       } catch (e) {
-        patchSession(id, () => ({ status: "error", error: errText(e) }));
+        patchSession(id, (s) => ({ status: "error", error: errText(e), link: "disconnected", downAt: s.downAt ?? Date.now() }));
       }
     },
 
@@ -496,6 +505,15 @@ export const useStore = create<State>()((set, get) => {
       await api.closeConnection(id).catch(() => {});
       patchSession(id, () => ({ status: "error", keys: undefined }));
       await get().openConn(id);
+    },
+
+    setLink(id, link) {
+      const s = get().sessions[id];
+      // an opening tab says Connecting until it opens; a failed open shows its own error
+      if (!s || s.status !== "open" || s.link === link) return;
+      patchSession(id, (x) => ({ link, downAt: link === "connected" ? undefined : x.downAt ?? Date.now() }));
+      // back after a run lost it: the tree that run cleared reads again
+      if (link === "connected" && s.schema && !Object.keys(s.tree).length) void get().loadSchema(s.schema);
     },
 
     async setDatabase(db) {
@@ -905,7 +923,8 @@ export const useStore = create<State>()((set, get) => {
       // a new run starts on the first page; a page keeps the columns of the last page that had rows
       patchTab(tabId, { run: { status: "done", runId, outcome: out, sql }, offset: opts.offset ?? 0, ...(opts.page ? {} : { pageCols: undefined }) });
       if (out.kind === "done" && out.ddl) get().refreshTree(connId);
-      if (out.kind === "error" && out.lost) patchSession(connId, () => ({ tree: {}, columns: {} }));
+      if (out.kind === "error" && out.lost) patchSession(connId, (s) => ({ tree: {}, columns: {}, ...lostLink(s) }));
+      if (out.kind === "done") patchSession(connId, (s) => (s.link && s.link !== "connected" ? { link: "connected", downAt: undefined } : {}));
       if (get().side === "history") void get().loadHistory();
     },
 
@@ -988,7 +1007,7 @@ export const useStore = create<State>()((set, get) => {
           });
         });
       if (out.kind === "error") {
-        if (out.lost) patchSession(connId, () => ({ tree: {}, columns: {} }));
+        if (out.lost) patchSession(connId, (s) => ({ tree: {}, columns: {}, ...lostLink(s) }));
         return [out.title, out.message].filter(Boolean).join(". ");
       }
       if (out.kind === "cancelled") return out.timeout ? "Stopped by the statement timeout" : "Cancelled";

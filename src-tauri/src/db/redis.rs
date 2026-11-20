@@ -25,8 +25,8 @@ const STRING_CAP: i64 = 1 << 20;
 
 pub struct ROpen {
     client: Client,
-    /// the tree, key tabs, Info and the heartbeat
-    browse: MultiplexedConnection,
+    /// the tree, key tabs, Info and the heartbeat; the heartbeat puts a new one in when it stops answering
+    browse: std::sync::Mutex<MultiplexedConnection>,
     /// the console; None after a run was given up on, opened again by the next run
     console: tokio::sync::Mutex<Option<MultiplexedConnection>>,
     /// "Redis 7.2.4", ", replica" when it is one
@@ -125,7 +125,7 @@ async fn connect(conn: &Conn, password: Option<String>) -> Result<ROpen, String>
     let pong: Result<Value, _> = ::redis::cmd("PING").query_async(&mut browse).await;
     pong.map_err(|e| err_text(&e))?;
     let server = server_of(&mut browse).await;
-    Ok(ROpen { client, browse, console: tokio::sync::Mutex::new(None), server, heartbeat: conn.heartbeat, db: db_of(conn)?, wait, name })
+    Ok(ROpen { client, browse: std::sync::Mutex::new(browse), console: tokio::sync::Mutex::new(None), server, heartbeat: conn.heartbeat, db: db_of(conn)?, wait, name })
 }
 
 impl DbState {
@@ -145,7 +145,23 @@ impl DbState {
 
 impl ROpen {
     fn browse(&self) -> MultiplexedConnection {
-        self.browse.clone()
+        self.browse.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+    /// A multiplexed connection doesn't heal: open a new one, and use it if it answers
+    async fn renew(&self) -> bool {
+        let fresh = async {
+            let mut c = open_one(&self.client, self.wait, &self.name).await?;
+            let _: Value = ::redis::cmd("PING").query_async(&mut c).await?;
+            Ok::<_, RedisError>(c)
+        };
+        match tokio::time::timeout(super::BEAT_WAIT, fresh).await {
+            Ok(Ok(c)) => {
+                *self.browse.lock().unwrap_or_else(|e| e.into_inner()) = c;
+                self.drop_console().await;
+                true
+            }
+            _ => false,
+        }
     }
     async fn console(&self) -> Result<MultiplexedConnection, RedisError> {
         let mut c = self.console.lock().await;
@@ -481,7 +497,7 @@ pub async fn redis_scan(id: String, cursor: String, pattern: Option<String>, sta
         Ok(r) => r,
         Err(e) => {
             if lost(&e) {
-                state.drop_redis(&conn.id).await;
+                state.lose(&conn).await;
             }
             return Err(err_text(&e));
         }
@@ -644,7 +660,7 @@ pub async fn redis_key(req: KeyRequest, state: State<'_, DbState>, settings: Sta
         }
         Some(Err(e)) => {
             if lost(&e) {
-                state.drop_redis(&conn.id).await;
+                state.lose(&conn).await;
             }
             Err(err_text(&e))
         }
@@ -819,7 +835,7 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
             let ran = if before.is_empty() { None } else { Some(format!("The {} before it ran.", if before.len() == 1 { "command".to_string() } else { format!("{} commands", before.len()) })) };
             if lost(&e) {
                 open.drop_console().await;
-                state.drop_redis(&conn.id).await;
+                state.lose(&conn).await;
                 RunOutcome::Error {
                     title: format!("Lost the connection to {}", conn.name),
                     says: None,
@@ -894,12 +910,16 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
     Ok(outcome)
 }
 
-/// The optional heartbeat: PING on each open Redis connection that has it on
-pub async fn heartbeat(app: &AppHandle, global: bool) {
-    let opens: Vec<Arc<ROpen>> = app.state::<DbState>().redis.lock().await.values().filter(|o| o.heartbeat.unwrap_or(global)).cloned().collect();
-    for o in opens {
+/// The optional heartbeat: PING on each open Redis connection that has it on; one that doesn't answer
+/// gets a new connection in its place, if the server answers that.
+pub(super) async fn heartbeat(state: &DbState, global: bool, beat: &mut super::Beat<'_>) {
+    let opens: Vec<(String, Arc<ROpen>)> = state.redis.lock().await.iter().filter(|(_, o)| o.heartbeat.unwrap_or(global)).map(|(id, o)| (id.clone(), o.clone())).collect();
+    for (id, o) in opens {
+        beat.start(&id);
         let mut c = o.browse();
-        let _: Result<Value, _> = ::redis::cmd("PING").query_async(&mut c).await;
+        let pong = tokio::time::timeout(super::BEAT_WAIT, ::redis::cmd("PING").query_async::<Value>(&mut c)).await;
+        let up = matches!(pong, Ok(Ok(_))) || o.renew().await;
+        beat.done(&id, Some(up));
     }
 }
 

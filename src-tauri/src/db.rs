@@ -425,8 +425,14 @@ impl DbState {
             let keys: Vec<_> = map.keys().filter(|(c, _)| c == id).cloned().collect();
             keys.into_iter().filter_map(|k| map.remove(&k)).collect()
         };
-        for o in gone {
-            on_pool!(&o.pool, p => p.close().await);
+        // close() waits for every checked-out connection (a query still running) to come back:
+        // the closing tab doesn't wait for that. Off the map already, so reopening gets a fresh pool.
+        if !gone.is_empty() {
+            tauri::async_runtime::spawn(async move {
+                for o in gone {
+                    on_pool!(&o.pool, p => p.close().await);
+                }
+            });
         }
         self.drop_mongo(id).await;
         self.drop_redis(id).await;

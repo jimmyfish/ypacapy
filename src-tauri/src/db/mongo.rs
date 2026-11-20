@@ -138,8 +138,11 @@ impl DbState {
         Ok(self.mongo.lock().await.entry(conn.id.clone()).or_insert(open).clone())
     }
     pub(super) async fn drop_mongo(&self, id: &str) {
-        if let Some(o) = self.mongo.lock().await.remove(id) {
-            o.client.clone().shutdown().immediate(true).await;
+        let gone = self.mongo.lock().await.remove(id);
+        // shutdown() waits for the driver's monitors to stop, which can take a heartbeat (seconds):
+        // in the background, so closing the tab doesn't wait for it
+        if let Some(o) = gone {
+            tauri::async_runtime::spawn(async move { o.client.clone().shutdown().immediate(true).await });
         }
     }
 }

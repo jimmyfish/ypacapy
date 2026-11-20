@@ -42,9 +42,9 @@
     "semantic_hash": ""
   },
   "src-tauri/src/db.rs": {
-    "mtime": 1795089475.6236656,
-    "seen": 1795090469.009224,
-    "ast_hash": "80e2fc19b2d5715edd78fd5ef69268cb",
+    "mtime": 1795158146.960156,
+    "seen": 1795158148.312806,
+    "ast_hash": "63eafebd95e47cba4dcef64ec9aa9c7e",
     "semantic_hash": ""
   },
   "src-tauri/src/fonts.rs": {
@@ -552,9 +552,9 @@
     "semantic_hash": ""
   },
   "src-tauri/src/db/mongo.rs": {
-    "mtime": 1795089485.3491364,
-    "seen": 1795090469.009226,
-    "ast_hash": "99750f8ee5cbe72e596634a939ad642e",
+    "mtime": 1795158146.9604702,
+    "seen": 1795158148.312808,
+    "ast_hash": "40d697fc0f5f54fa96a5eabf9eab7a5f",
     "semantic_hash": ""
   },
   "src-tauri/src/mongo_shell.rs": {

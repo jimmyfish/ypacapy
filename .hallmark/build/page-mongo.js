@@ -4,7 +4,12 @@
   let tab = "q1", state = "full", sub = "results", as = "json", q3Fixed = false;
   const NAMES = { q1: ["Refunds by customer", "Saved queries / Reports"], q2: ["Query 2", "Not saved"], q3: ["Query 3", "Not saved"], q4: ["Old carts", "Saved queries / Ops"], q5: ["Daily revenue", "Saved queries / Reports"] };
   const MS = { q1: "41 ms", q2: "12 ms", q3: "9 ms", q4: "86 ms", q5: "1.2 s" };
-  const LIMIT = { q1: "limit 500 added", q2: "limit 50", q3: "limit 500 added" };
+  // Paging: only a run ypacapy added the row limit to. Query 1's aggregate has no $limit (9 documents, then an empty page);
+  // Query 3's find has no .limit() (20, then 8, then an empty page); Query 2 has .limit(50), so no pager. The preview's row limit
+  // is 20; Next turns off only after a page comes back empty (nothing is counted). Next runs it again with .skip(20).limit(20), or { $skip }, { $limit } at the pipeline's end.
+  const LIMIT = 20;
+  const PAGED = { q1: { pages: { 0: 9 } }, q3: { pages: { 0: 20, 20: 8 }, hint: "No sort, so documents can shift between pages" } };
+  const off = { q1: 0, q3: 0 };
   const restState = (t) => (t === "q3" && !q3Fixed ? "error" : t === "q4" || t === "q5" ? "idle" : "full");
   const count = (t) => $$(`.state[data-for="${t}"][data-as="table"] tbody tr`).length;
   function render() {
@@ -15,18 +20,31 @@
     $$(".subtab[data-sub]").forEach((s) => s.setAttribute("aria-pressed", String(s.dataset.sub === sub)));
     $$(".response .state").forEach((s) => {
       const w = s.dataset.when;
-      s.hidden = sub === "messages" ? w !== "messages" : !(w === state && (!s.dataset.for || s.dataset.for === tab) && (!s.dataset.as || s.dataset.as === as));
+      s.hidden = sub === "messages" ? w !== "messages" : !(w === state && (!s.dataset.for || s.dataset.for === tab) && (!s.dataset.as || s.dataset.as === as) && (!s.dataset.page || Number(s.dataset.page) === (off[tab] ?? 0)));
     });
     $$(".seg [data-as]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.as === as)));
     // "Go to a column" only means something in Table
     $$('.res-actions [data-menu$="-cols"]').forEach((b) => { b.closest(".menu-anchor").hidden = as !== "table"; });
-    $(".res-tools").hidden = sub === "messages" || state !== "full";
+    $(".res-tools").hidden = sub === "messages" || (state !== "full" && state !== "nomore");
     const busy = state === "loading";
     run.toggleAttribute("aria-busy", busy); run.disabled = busy;
-    const meta = { full: ["ok", "OK", MS[tab], LIMIT[tab]], written: ["ok", "OK", MS[tab]], empty: ["ok", "OK", "21 ms"], error: ["fail", "Error", "3 ms"], lost: ["fail", "No primary", "30 s"], loading: ["dim", "Running", ""], idle: ["dim", "Not run", ""] }[state];
+    const meta = { full: ["ok", "OK", MS[tab], PAGED[tab] ? `limit ${LIMIT}` : ""], nomore: ["ok", "OK", "8 ms", `limit ${LIMIT}`], written: ["ok", "OK", MS[tab]], empty: ["ok", "OK", "21 ms"], error: ["fail", "Error", "3 ms"], lost: ["fail", "No primary", "30 s"], loading: ["dim", "Running", ""], idle: ["dim", "Not run", ""] }[state];
     $("#r-meta").innerHTML = `<span class="${meta[0]}">${meta[1]}</span>${meta[2] ? `<span class="dim">${meta[2]}</span>` : ""}${meta[3] ? `<span class="dim">${meta[3]}</span>` : ""}`;
-    $("#r-n").textContent = state === "full" ? String(count(tab)) : state === "empty" ? "0" : "";
+    const p = PAGED[tab], rows = p && state === "full" ? p.pages[off[tab]] ?? 0 : 0;
+    $("#r-n").textContent = state === "full" ? String(p ? rows : count(tab)) : state === "empty" || state === "nomore" ? "0" : "";
     $("#r-n").hidden = !$("#r-n").textContent;
+    // the pager: under the results of a paged run, on its pages and on "No more documents"
+    const pg = $("#q-pager");
+    pg.hidden = !p || sub !== "results" || !(state === "full" || state === "nomore");
+    if (!pg.hidden) {
+      const o = off[tab];
+      // the page number only: nothing is counted, so there is no "of N"
+      $("#q-range").textContent = `Page ${o / LIMIT + 1}`;
+            $("#q-hint").textContent = p.hint ?? ""; $("#q-hint").hidden = !p.hint;
+      $("#q-prev").disabled = o === 0;
+      // no count, no guess from a short page: Next stays on until a page comes back empty
+      $("#q-next").disabled = rows === 0;
+    }
   }
   $$(".tab[data-tab] .tab-main:not([data-href])").forEach((b) => b.addEventListener("click", () => { tab = b.closest(".tab").dataset.tab; state = restState(tab); render(); }));
   $$(".subtab[data-sub]").forEach((s) => s.addEventListener("click", () => { sub = s.dataset.sub; render(); }));
@@ -49,6 +67,7 @@
   function runQuery(confirmed = false) {
     if (state === "loading") return;
     if (KINDS[tab] && !confirmed && level() !== "none") { ask(tab); return; }
+    if (PAGED[tab]) off[tab] = 0;
     sub = "results"; state = "loading"; render();
     timer = setTimeout(() => {
       state = tab === "q3" && !q3Fixed ? "error" : KINDS[tab] ? "written" : "full";
@@ -58,6 +77,15 @@
     }, 700);
   }
   run.addEventListener("click", () => runQuery());
+  // a page is the same query run again with a skip; past the last document it says so
+  function page(o) {
+    if (state === "loading") return;
+    off[tab] = Math.max(0, o);
+    state = "loading"; render();
+    timer = setTimeout(() => { state = PAGED[tab].pages[off[tab]] ? "full" : "nomore"; render(); }, 500);
+  }
+  $("#q-prev").addEventListener("click", () => page(off[tab] - LIMIT));
+  $("#q-next").addEventListener("click", () => page(off[tab] + LIMIT));
   $("#cancel").addEventListener("click", () => { clearTimeout(timer); state = restState(tab); render(); });
   $("#reconnect").addEventListener("click", () => runQuery());
   document.addEventListener("keydown", (e) => { if (e.metaKey && e.key === "Enter") { e.preventDefault(); runQuery(); } });
@@ -72,10 +100,12 @@
     $(`.rail-item[data-rail="${k === "history" ? "history" : "schema"}"]`).click();
     $$("#guard-confirm-dlg, #guard-pass-dlg").forEach((d) => { d.hidden = true; });
     setLevel(k === "guard-pass" ? "strict" : "low");
-    q3Fixed = false; inn.textContent = "$inn";
-    tab = { find: "q2", table: "q2", error: "q3", "guard-confirm": "q4", "guard-pass": "q4", written: "q4", "guard-merge": "q5" }[k] || "q1";
+    const paged = k.startsWith("paged");
+    q3Fixed = paged; inn.textContent = paged ? "$in" : "$inn";
+    off.q1 = 0; off.q3 = { "paged-last": 20, "paged-none": 40 }[k] ?? 0;
+    tab = { paged: "q3", "paged-last": "q3", "paged-none": "q3", find: "q2", table: "q2", error: "q3", "guard-confirm": "q4", "guard-pass": "q4", written: "q4", "guard-merge": "q5" }[k] || "q1";
     as = k === "table" ? "table" : "json";
-    state = { running: "loading", empty: "empty", lost: "lost", written: "written" }[k] || restState(tab);
+    state = { running: "loading", empty: "empty", lost: "lost", written: "written", "paged-none": "nomore" }[k] || restState(tab);
     if (k === "written") { $("#w-title").textContent = "Deleted 312 documents from carts"; $("#w-raw").textContent = "{ acknowledged: true, deletedCount: 312 }"; }
     render();
     if (["guard-confirm", "guard-pass", "guard-merge"].includes(k)) ask(tab);

@@ -1,23 +1,63 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { DEFAULT_ROW_LIMIT, useCurrent, useStore } from "../store";
 import { estimate } from "../lib/cells";
 import { tableSelect } from "../lib/sql";
 import { targetOf } from "../lib/edit";
 import { duration } from "../lib/time";
-import type { TableTab } from "../types";
+import type { ColMeta, ResultSet, TableTab } from "../types";
 import { ErrorState, RunGroup } from "./QueryPane";
 import { ResultGrid, type ColKey, type GridEdit } from "./ResultGrid";
-import { ChevronLeft, ChevronRight, Key, Link, ico } from "./Icon";
+import { ChevronDown, ChevronLeft, ChevronRight, Key, Link, ico } from "./Icon";
+
+/**
+ * Rows (or documents) per page on a table or collection tab: just the number. The default is the connection's row
+ * limit, else Settings'; a pick holds for this tab (its `limit`) and reads from the first page again. Settings stay.
+ */
+export function RowPick({ tab, rowLimit, label }: { tab: TableTab; rowLimit: number; label: string }) {
+  const cur = Number(tab.limit) > 0 ? Number(tab.limit) : rowLimit;
+  const opts = [...new Set([rowLimit, cur, 50, 100, 200, 500, 1000])].sort((a, b) => a - b);
+  return (
+    // the number and its chevron are the face; the select lies over them, unseen, so the box hugs the number
+    <span className="row-pick">
+      <span className="row-pick-face" aria-hidden="true">
+        {cur.toLocaleString("en-US")}
+        <ChevronDown {...ico} />
+      </span>
+      <select
+          aria-label={`${label} per page for this tab`}
+          title={`${label} per page`}
+          value={cur}
+          disabled={tab.run.status === "running"}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            const st = useStore.getState();
+            st.updateTab(tab.id, { limit: n === rowLimit ? "" : String(n) });
+            void st.readTable(tab.id, { offset: 0 });
+          }}
+        >
+        {opts.map((n) => (
+          <option key={n} value={n}>
+            {n.toLocaleString("en-US")}
+          </option>
+        ))}
+      </select>
+    </span>
+  );
+}
 
 /** A table: its rows under a where filter (select … limit, no order by), its columns, its indexes and keys. */
 export function TablePane({ tab }: { tab: TableTab }) {
   const { conn, session } = useCurrent();
   const appLimit = useStore((s) => s.settings.rowLimit);
-  const limit = conn?.rowLimit || appLimit || DEFAULT_ROW_LIMIT;
+  const rowLimit = conn?.rowLimit || appLimit || DEFAULT_ROW_LIMIT;
+  const limit = Number(tab.limit) > 0 ? Number(tab.limit) : rowLimit;
   const st = useStore.getState();
   const busy = tab.run.status === "running";
   const o = tab.run.outcome;
   const set = o?.kind === "done" ? o.sets[o.sets.length - 1] : undefined;
+  // an empty page past the first shows the grid with the columns of the last page that had rows (none come with no rows)
+  const lastCols = useRef<{ id: string; cols: ColMeta[] }>(undefined);
+  if (set?.rows.length) lastCols.current = { id: tab.id, cols: set.columns };
   const est = session?.tree[tab.schema]?.data?.tables.find((t) => t.name === tab.table)?.estimate;
   const keys = useMemo(() => {
     const k: Record<string, ColKey> = {};
@@ -51,6 +91,9 @@ export function TablePane({ tab }: { tab: TableTab }) {
   const to = tab.offset + rows;
   const view = tab.view;
   const setView = (v: TableTab["view"]) => st.updateTab(tab.id, { view: v });
+  const emptyPage = o?.kind === "done" && tab.offset > 0 && rows === 0;
+  const cols = lastCols.current?.id === tab.id ? lastCols.current.cols : (tab.info?.columns ?? []).map((c) => ({ name: c.name, type: c.type }));
+  const shownSet: ResultSet | undefined = set && rows > 0 ? set : emptyPage ? { columns: cols, rows: [], truncated: false } : undefined;
   const edit: GridEdit = {
     target,
     connId: conn.id,
@@ -82,30 +125,32 @@ export function TablePane({ tab }: { tab: TableTab }) {
         </div>
       </div>
     );
-  else if (set && rows > 0)
+  else if (shownSet)
     rowsBody = (
       <div className="state">
         <ResultGrid
-          set={set}
+          set={shownSet}
           keys={keys}
-          edit={edit}
+          edit={rows > 0 ? edit : undefined}
           label={`Rows of ${tab.table}`}
           exportName={tab.table}
           lead={
-            <span className="muted">
-              Rows {from} to {to}
-            </span>
+            rows > 0 ? (
+              <span className="muted">
+                Rows {from} to {to}
+              </span>
+            ) : undefined
           }
           foot={
             <div className="grid-foot">
-              <span>
-                {from} to {to}
-              </span>
+              <RowPick tab={tab} rowLimit={rowLimit} label="Rows" />
+              {/* no totals: the page number only */}
+              <span>Page {Math.floor(tab.offset / limit) + 1}</span>
               <button type="button" className="icon-btn" aria-label="Previous page" disabled={tab.offset === 0} onClick={() => void st.readTable(tab.id, { offset: Math.max(0, tab.offset - limit) })}>
                 <ChevronLeft {...ico} />
               </button>
-              {/* no totals: a full page means there may be more */}
-              <button type="button" className="icon-btn" aria-label="Next page" disabled={rows < limit} onClick={() => void st.readTable(tab.id, { offset: tab.offset + limit })}>
+              {/* nothing is counted: Next stays on until a page comes back empty */}
+              <button type="button" className="icon-btn" aria-label="Next page" disabled={rows === 0} onClick={() => void st.readTable(tab.id, { offset: tab.offset + limit })}>
                 <ChevronRight {...ico} />
               </button>
             </div>
@@ -130,13 +175,6 @@ export function TablePane({ tab }: { tab: TableTab }) {
                 }}
               >
                 Clear the filter
-              </button>
-            </>
-          ) : tab.offset > 0 ? (
-            <>
-              <strong>No more rows</strong>
-              <button type="button" className="link" onClick={() => void st.readTable(tab.id, { offset: 0 })}>
-                Back to the first page
               </button>
             </>
           ) : (

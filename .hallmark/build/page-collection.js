@@ -66,6 +66,8 @@
   }
   run.addEventListener("click", reload);
   $("#t-refresh").addEventListener("click", reload);
+  // rows per page: a pick sets this tab's Limit and reads the first page again (the preview replays the sample)
+  $$("[data-row-pick]").forEach((x) => x.addEventListener("change", () => { $("[data-row-face]", x.parentElement).textContent = Number(x.value).toLocaleString("en-US"); reload(); }));
   $("#t-add").addEventListener("click", () => window.jvAdd());
   // Enter in a box is a new line; ⌘↵ runs (below). The one-line Skip and Limit run on Enter.
   [$("#skip"), $("#limit")].forEach((f) => f.addEventListener("keydown", (e) => { if (e.key === "Enter") reload(); }));

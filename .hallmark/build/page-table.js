@@ -18,6 +18,8 @@
     setTimeout(() => { state = /'lost'/.test(where.value) ? "empty" : "full"; render(); }, 500);
   }
   run.addEventListener("click", reload);
+  // rows per page: a pick reads this tab's first page again (the preview replays the sample)
+  $$("[data-row-pick]").forEach((s) => s.addEventListener("change", () => { $("[data-row-face]", s.parentElement).textContent = Number(s.value).toLocaleString("en-US"); reload(); }));
   where.addEventListener("keydown", (e) => { if (e.key === "Enter") reload(); });
   document.addEventListener("keydown", (e) => { if (e.metaKey && e.key === "Enter") { e.preventDefault(); reload(); } });
   $("#t-clear").addEventListener("click", () => { where.value = DEFAULT_WHERE; reload(); where.focus(); });

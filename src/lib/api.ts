@@ -27,7 +27,7 @@ export const api = {
   schemaDiagram: (id: string, database: string, schema: string, tables: string[]) => invoke<SchemaDiagram>("schema_diagram", { id, database, schema, tables }),
   /** the diagram picker's Add linked tables: [referencing, referenced] table pairs within the schema, one catalog read */
   schemaLinks: (id: string, database: string, schema: string) => invoke<[string, string][]>("schema_links", { id, database, schema }),
-  runQuery: (req: { runId: string; connId: string; database?: string; schema?: string; sql: string; addLimit: boolean; approval?: Approval; history: boolean }) =>
+  runQuery: (req: { runId: string; connId: string; database?: string; schema?: string; sql: string; addLimit: boolean; offset?: number; approval?: Approval; history: boolean }) =>
     invoke<RunOutcome>("run_query", { req }),
   cancelQuery: (runId: string) => invoke<void>("cancel_query", { runId }),
   /** MongoDB's collection tab: find(filter, projection).sort().skip().limit(); boxes are read in Rust first */

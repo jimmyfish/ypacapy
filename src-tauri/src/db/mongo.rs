@@ -438,8 +438,9 @@ async fn collect(mut cursor: mongodb::Cursor<Document>, cap: usize) -> Result<(V
     Ok((out, false))
 }
 
-/// One statement, on one database. `row_limit` is added to a find or aggregate without a limit of its own.
-async fn exec(db: &Database, client: &Client, cmd: &Command, row_limit: usize, max_time: Duration) -> Result<Result<Out, String>, MError> {
+/// One statement, on one database. `row_limit` is added to a find or aggregate without a limit of its own;
+/// `offset` (the console's Next) skips that many more documents first, only where the row limit was added.
+async fn exec(db: &Database, client: &Client, cmd: &Command, row_limit: usize, offset: u64, max_time: Duration) -> Result<Result<Out, String>, MError> {
     let a = Args { method: &cmd.call.name, args: &cmd.call.args };
     let Target::Coll(name) = &cmd.target else {
         return exec_db(db, client, cmd, &a, max_time).await;
@@ -518,6 +519,8 @@ async fn exec(db: &Database, client: &Client, cmd: &Command, row_limit: usize, m
             if let Some(p) = projection {
                 f = f.projection(p);
             }
+            // a page past the first: the find's own skip, then the pages before this one
+            let skip = if added && offset > 0 { Some(skip.unwrap_or(0) + offset) } else { skip };
             if let Some(s) = skip {
                 f = f.skip(s);
             }
@@ -571,6 +574,9 @@ async fn exec(db: &Database, client: &Client, cmd: &Command, row_limit: usize, m
             let writes = mongo_shell::writes_out(&pipeline);
             let added = !writes && row_limit > 0 && !stages.iter().any(|s| s.contains_key("$limit"));
             if added {
+                if offset > 0 {
+                    stages.push(doc! { "$skip": offset as i64 });
+                }
                 stages.push(doc! { "$limit": row_limit as i64 });
             }
             let mut ag = coll.aggregate(stages).max_time(max_time);
@@ -911,7 +917,7 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
             let db = open.client.database(&database);
             // the server stops at maxTimeMS; the wait here stops a little later, or on Cancel
             let max_time = Duration::from_secs(if timeout_s > 0 { timeout_s } else { 24 * 3600 });
-            let fut = exec(&db, &open.client, &cmd, row_limit, max_time);
+            let fut = exec(&db, &open.client, &cmd, row_limit, req.offset, max_time);
             tokio::pin!(fut);
             let sleep = async {
                 if timeout_s > 0 {
@@ -1186,7 +1192,7 @@ mod tests {
     async fn run(state: &DbState, c: &Conn, src: &str, limit: usize) -> Result<Result<Out, String>, MError> {
         let open = state.mongo(c).await.unwrap();
         let cmd = mongo_shell::parse_command(src).unwrap();
-        exec(&open.client.database("ypacapy_test"), &open.client, &cmd, limit, Duration::from_secs(10)).await
+        exec(&open.client.database("ypacapy_test"), &open.client, &cmd, limit, 0, Duration::from_secs(10)).await
     }
 
     #[tokio::test]

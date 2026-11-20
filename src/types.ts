@@ -394,6 +394,10 @@ export interface QueryTab {
   savedSql?: string;
   /** kept with the connection (a restart, a reconnect), first in the row, and not closed until unpinned */
   pinned?: boolean;
+  /** paging a run ypacapy added the row limit to: rows skipped before the page shown (0 or unset: the first page) */
+  offset?: number;
+  /** the columns of the last page that had rows, so an empty page still shows its header */
+  pageCols?: ColMeta[];
   run: RunState;
 }
 
@@ -404,7 +408,8 @@ export interface TableTab {
   table: string;
   where: string;
   offset: number;
-  /** MongoDB's query bar: Filter is `where`; these are the other boxes. Limit empty = the row limit */
+  /** MongoDB's query bar: Filter is `where`; these are the other boxes. Limit empty = the row limit.
+   *  `limit` is also the rows per page picked on a table tab (SQL and MongoDB) */
   project?: string;
   sort?: string;
   limit?: string;

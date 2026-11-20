@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DEFAULT_ROW_LIMIT, uid, useCurrent, useStore } from "../store";
 import { api } from "../lib/api";
 import { estimate } from "../lib/cells";
 import { docsToSet, fieldsOf } from "../lib/bson";
 import { duration } from "../lib/time";
-import type { TableTab } from "../types";
+import type { ColMeta, TableTab } from "../types";
 import { ErrorState, RunGroup } from "./QueryPane";
+import { RowPick } from "./TablePane";
 import { DocsActions, ResultGrid } from "./ResultGrid";
 import { DocCards } from "./DocCards";
 import { mongoColl } from "./Sidebar";
@@ -53,6 +54,9 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
   const raw = o?.kind === "done" ? o.sets[o.sets.length - 1] : undefined;
   const set = useMemo(() => (raw?.docs ? docsToSet(raw.docs, raw.truncated) : undefined), [raw]);
   const fields = useMemo(() => (set?.docs ? fieldsOf(set.docs) : []), [set]);
+  // an empty page past the first: Table keeps the fields of the last page that had documents (an empty page has none)
+  const lastCols = useRef<{ id: string; cols: ColMeta[] }>(undefined);
+  if (set?.rows.length) lastCols.current = { id: tab.id, cols: set.columns };
   const est = session?.tree[tab.schema]?.data?.tables.find((t) => t.name === tab.table)?.estimate;
   // JSON first: a MongoDB collection holds documents
   const as = tab.as ?? "json";
@@ -88,6 +92,7 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
   const n = docs.length;
   const from = tab.offset + 1;
   const to = tab.offset + n;
+  const emptyPage = o?.kind === "done" && tab.offset > 0 && n === 0;
   const view = tab.view;
   const setView = (v: TableTab["view"]) => put({ view: v });
 
@@ -149,6 +154,7 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
   );
   const pager = (
     <div className="pager" role="group" aria-label="Pages">
+      <RowPick tab={tab} rowLimit={rowLimit} label="Documents" />
       <span className="pager-n" aria-live="polite">
         {n ? `${from} – ${to}` : "No documents"}
         {n > 0 && total !== null && <> of {total}</>}
@@ -159,8 +165,8 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
       <button type="button" className="icon-btn" title="Previous page" aria-label="Previous page" disabled={tab.offset === 0} onClick={() => read(Math.max(0, tab.offset - limit))}>
         <ChevronLeft {...ico} />
       </button>
-      {/* a full page means there may be more */}
-      <button type="button" className="icon-btn" title="Next page" aria-label="Next page" disabled={n < limit} onClick={() => read(tab.offset + limit)}>
+      {/* nothing is counted: Next stays on until a page comes back empty */}
+      <button type="button" className="icon-btn" title="Next page" aria-label="Next page" disabled={n === 0} onClick={() => read(tab.offset + limit)}>
         <ChevronRight {...ico} />
       </button>
     </div>
@@ -198,11 +204,11 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
         </div>
       </div>
     );
-  else if (set && (n > 0 || drafting || addKey > 0))
+  else if (set && (n > 0 || drafting || addKey > 0 || emptyPage))
     docsBody =
-      as === "table" && n > 0 ? (
+      as === "table" && (n > 0 || emptyPage) ? (
         <div className="state">
-          <ResultGrid set={set} label={`Documents of ${tab.table}`} exportName={tab.table} lead={<>{seg}{addBtn}</>} trail={pager} />
+          <ResultGrid set={n > 0 ? set : { ...set, columns: lastCols.current?.id === tab.id ? lastCols.current.cols : [] }} label={`Documents of ${tab.table}`} exportName={tab.table} lead={<>{seg}{addBtn}</>} trail={pager} />
         </div>
       ) : (
         <div className="state">
@@ -231,13 +237,6 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
               <strong>No document in {tab.table} matches this filter</strong>
               <button type="button" className="link" onClick={reset}>
                 Clear the filter
-              </button>
-            </>
-          ) : tab.offset > 0 ? (
-            <>
-              <strong>No more documents</strong>
-              <button type="button" className="link" onClick={() => read(0)}>
-                Back to the first page
               </button>
             </>
           ) : (

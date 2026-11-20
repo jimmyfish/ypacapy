@@ -88,11 +88,12 @@ const Q2 = [[10482, 4820], [10478, 1499], [10474, 64.2], [10473, 129.9], [10469,
 // Query 3: select * from customers, 21 columns, to show a wide result
 const CUST_COLS = [["id", "int8"], ["email", "text"], ["full_name", "text"], ["phone", "text"], ["is_vip", "bool"], ["country", "char(2)"], ["city", "text"], ["postal_code", "text"], ["address_line1", "text"], ["address_line2", "text"], ["marketing_opt_in", "bool"], ["signup_source", "text"], ["referred_by", "int8"], ["lifetime_value", "numeric(12,2)"], ["orders_count", "int4"], ["last_order_at", "timestamptz"], ["created_at", "timestamptz"], ["updated_at", "timestamptz"], ["deleted_at", "timestamptz"], ["preferences", "jsonb"], ["notes", "text"]];
 const PEOPLE = [["a.lindqvist@example.net", "Astrid Lindqvist", "+46 70 412 8890", "SE", "Göteborg", "411 05"], ["r.okonkwo@example.com", "Rotimi Okonkwo", "+234 803 555 0142", "NG", "Lagos", "101233"], ["mei.tanaka@example.org", "Mei Tanaka", "+81 90 2231 7754", "JP", "Osaka", "530-0001"], ["p.haddad@example.net", "Pierre Haddad", "+961 3 118 204", "LB", "Beirut", "1107"], ["s.ferreira@example.com", "Sofia Ferreira", "+351 912 004 771", "PT", "Porto", "4000-322"], ["k.nowak@example.org", "Kasia Nowak", "+48 601 220 914", "PL", "Kraków", "31-008"], ["d.mensah@example.net", "Daniel Mensah", "+233 24 771 0093", "GH", "Accra", "GA-183"], ["l.bianchi@example.com", "Luca Bianchi", "+39 333 810 2245", "IT", "Torino", "10121"], ["t.nguyen@example.org", "Thao Nguyen", "+84 90 318 4471", "VN", "Hà Nội", "100000"], ["h.adeyemi@example.net", "Halima Adeyemi", "+234 805 661 3320", "NG", "Abuja", "900211"], ["j.moreau@example.com", "Julien Moreau", "+33 6 12 48 90 31", "FR", "Lyon", "69002"], ["n.kapoor@example.org", "Neha Kapoor", "+91 98201 44718", "IN", "Mumbai", "400001"]];
-const CUSTOMERS = PEOPLE.map(([email, name, phone, cc, city, zip], i) => tr(i + 1, [c.id(3100 + i * 7), c.text(email), c.text(name), c.text(phone), c.bool(i % 4 === 0), c.text(cc), c.text(city), c.text(zip),
+const custRows = (from, n) => Array.from({ length: n }, (_, k) => from + k).map((idx) => [PEOPLE[idx % 12], idx % 12, idx]).map(([[email, name, phone, cc, city, zip], i, idx]) => tr(idx + 1, [c.id(3100 + idx * 7), c.text(email), c.text(name), c.text(phone), c.bool(i % 4 === 0), c.text(cc), c.text(city), c.text(zip),
   c.text(`${12 + i * 9} ${["Harbour", "Station", "Market", "Garden"][i % 4]} Street`), c.text(i % 3 === 0 ? `Floor ${2 + i}` : null), c.bool(i % 3 !== 1), c.text(["web", "app", "referral", "pos"][i % 4]),
   i % 4 === 2 ? c.id(3100 + (i - 1) * 7) : NULLC(" num"), c.num(1800 - i * 117.35, true), c.num(24 - i), c.ts(`2026-11-${p2(16 - (i % 12))} ${p2(8 + i)}:${p2((i * 13) % 60)}:00+07`),
   c.ts(`2025-0${1 + (i % 9)}-${p2(3 + i)} 10:00:00+07`), c.ts(`2026-11-${p2(15 - (i % 10))} 09:${p2(i * 4)}:00+07`), i === 7 ? c.ts("2026-10-30 18:00:00+07") : c.ts(null),
-  c.json(i % 2 ? { lang: "en", newsletter: true } : { lang: ["sv", "yo", "ja", "ar"][i % 4], newsletter: false }), c.text(i % 5 === 0 ? "Prefers email over phone; ships to the office on weekdays" : null)], i === 0)).join("\n");
+  c.json(i % 2 ? { lang: "en", newsletter: true } : { lang: ["sv", "yo", "ja", "ar"][i % 4], newsletter: false }), c.text(i % 5 === 0 ? "Prefers email over phone; ships to the office on weekdays" : null)], idx === 0)).join("\n");
+const CUSTOMERS = custRows(0, 20), CUSTOMERS_P2 = custRows(20, 12);
 // Query 4: one column of long, multi-line text
 const TICKETS = [
   [812, "open", "Refund not received", "Hi, I returned order 10474 on 2 November and the courier confirmed delivery to your warehouse.\nIt has been two weeks and the refund still shows as pending in my account.\nCould you check whether the parcel was scanned in? Tracking number JX204-55-187.\nThanks, Mei"],
@@ -268,6 +269,9 @@ const app = ({ current, side = "", work, overlay = "", chip = "", conns }) => `
   </div>
 </div>${overlay}`;
 
+// Table and collection tabs: rows per page. The default is the connection's row limit, else Settings' (20 in the
+// preview); a pick holds for this tab only and reads from the first page again. Settings stay as they are.
+const rowPick = (dflt, what = "Rows") => `<span class="row-pick"><span class="row-pick-face" aria-hidden="true"><span data-row-face>${dflt}</span>${ic("chevron-down")}</span><select data-row-pick aria-label="${what} per page for this tab" title="${what} per page">${[...new Set([dflt, 50, 100, 200, 500, 1000])].sort((a, b) => a - b).map((n) => `<option value="${n}"${n === dflt ? " selected" : ""}>${n.toLocaleString("en-US")}</option>`).join("")}</select></span>`;
 const sel = (label, opts) => `<span class="ctx-select"><select aria-label="${label}">${opts.map((o) => `<option>${o}</option>`).join("")}</select>${ic("chevron-down")}</span>`;
 // Query 5's autocomplete: the tables are what the schema tree already loaded; the columns stand in for the
 // one catalog read per table that the app makes the first time a statement needs that table
@@ -304,7 +308,7 @@ const queryWork = `${tabsbar("q1", ["q1", "q2", "q3", "q4", "q5"])}
               <div class="editor-bar"><button type="button" class="btn btn--quiet">${ic("wand-sparkles")}Format</button></div>
 <pre class="code" id="code-q1" tabindex="0" aria-label="SQL editor, Query 1"><span class="l"><span class="q-c">-- Refunds in the last 30 days, by customer</span></span><span class="l"><span class="q-k">select</span> c.email, c.is_vip,</span><span class="l"><span class="ind">       </span><span class="q-f">count</span>(*) <span class="q-k">as</span> refunds,</span><span class="l"><span class="ind">       </span><span class="q-f">sum</span>(o.total) <span class="q-k">as</span> refunded,</span><span class="l"><span class="ind">       </span><span class="q-f">max</span>(o.created_at) <span class="q-k">as</span> last_refund</span><span class="l"><span class="q-k">from</span> <span class="q-tb">orders</span> o</span><span class="l"><span class="q-k">join</span> <span class="q-tb">customers</span> c <span class="q-k">on</span> c.id = o.customer_id</span><span class="l"><span class="q-k">where</span> o.status = <span class="q-s">'refunded'</span></span><span class="l"><span class="ind">  </span><span class="q-k">and</span> o.created_at &gt; <span class="q-f">now</span>() - <span class="q-k">interval</span> <span class="q-s">'30 days'</span></span><span class="l cur"><span class="q-k">group by</span> c.email, c.is_vip <span class="q-k">order by</span> refunded <span class="q-k">desc</span></span><span class="l"><span class="q-k">limit</span> <span class="q-n">500</span>;</span></pre>
 <pre class="code" id="code-q2" tabindex="0" aria-label="SQL editor, Query 2" hidden><span class="l cur"><span class="q-k">select</span> id, <span class="q-err" id="q2-col">totl</span> <span class="q-k">from</span> <span class="q-tb">orders</span> <span class="q-k">where</span> status = <span class="q-s">'paid'</span> <span class="q-k">limit</span> <span class="q-n">500</span>;</span></pre>
-<pre class="code" id="code-q3" tabindex="0" aria-label="SQL editor, Query 3" hidden><span class="l cur"><span class="q-k">select</span> * <span class="q-k">from</span> <span class="q-tb">customers</span> <span class="q-k">limit</span> <span class="q-n">50</span>;</span></pre>
+<pre class="code" id="code-q3" tabindex="0" aria-label="SQL editor, Query 3" hidden><span class="l cur"><span class="q-k">select</span> * <span class="q-k">from</span> <span class="q-tb">customers</span>;</span></pre>
 <pre class="code" id="code-q4" tabindex="0" aria-label="SQL editor, Query 4" hidden><span class="l"><span class="q-k">select</span> id, status, subject, body</span><span class="l"><span class="q-k">from</span> <span class="q-tb">support_tickets</span></span><span class="l cur"><span class="q-k">limit</span> <span class="q-n">50</span>;</span></pre>
 <div class="code-edit" id="code-q5" hidden><div class="code-edit-grid"><pre class="code" id="q5-code" aria-hidden="true"></pre><textarea class="code-input" id="q5-input" aria-label="SQL editor, Query 5" spellcheck="false" autocorrect="off" autocapitalize="off" wrap="off" aria-autocomplete="list" aria-controls="ac-menu"></textarea></div></div>
             </div>
@@ -315,7 +319,7 @@ const queryWork = `${tabsbar("q1", ["q1", "q2", "q3", "q4", "q5"])}
           <nav class="subtabs" aria-label="Results">
             <button type="button" class="subtab" data-sub="results" aria-pressed="true">Results<span class="n" id="r-n">14</span></button>
             <button type="button" class="subtab" data-sub="messages" aria-pressed="false">Messages</button>
-            <span class="push meta" id="r-meta"><span class="ok">OK</span><span class="dim">38&nbsp;ms</span><span class="dim">limit 500</span></span>
+            <span class="push meta" id="r-meta"><span class="ok">OK</span><span class="dim">38&nbsp;ms</span></span>
           </nav>
           <div class="res-tools">${resActions("q")}</div>
           <div class="state" data-when="full" data-for="q1">
@@ -332,12 +336,19 @@ ${Q2}
               </tbody></table>
             </div>${inspector("id", "int8", 1, "10482")}
           </div>
-          <div class="state" data-when="full" data-for="q3" hidden>
+          <div class="state" data-when="full" data-for="q3" data-page="0" hidden>
             <div class="grid-wrap" tabindex="0" aria-label="Results of Query 3">
               <table class="grid pin"><thead><tr>${ROWHEAD}${CUST_COLS.map(([n, t]) => th(n, t, { num: /^(int|numeric)/.test(t) })).join("")}</tr></thead><tbody>
 ${CUSTOMERS}
               </tbody></table>
             </div>${inspector("id", "int8", 1, "3100")}
+          </div>
+          <div class="state" data-when="full" data-for="q3" data-page="20" hidden>
+            <div class="grid-wrap" tabindex="0" aria-label="Results of Query 3, rows 21 to 32">
+              <table class="grid pin"><thead><tr>${ROWHEAD}${CUST_COLS.map(([n, t]) => th(n, t, { num: /^(int|numeric)/.test(t) })).join("")}</tr></thead><tbody>
+${CUSTOMERS_P2}
+              </tbody></table>
+            </div>
           </div>
           <div class="state" data-when="full" data-for="q4" hidden>
             <div class="grid-wrap" tabindex="0" aria-label="Results of Query 4">
@@ -349,6 +360,12 @@ ${TICKET_ROWS}
           <div class="state" data-when="full" data-for="q5" hidden><div class="empty"><strong>Not run yet</strong><span>Type in the editor: table and column names come up as you go. Ctrl+Space asks for them.</span></div></div>
           <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Running on shop_prod</strong><span>Started 0.4&nbsp;s ago</span><button type="button" class="btn" id="cancel">Cancel</button></div></div>
           <div class="state" data-when="empty" hidden><div class="empty"><strong>The query returned no rows</strong></div></div>
+          <div class="state" data-when="nomore" data-for="q3" hidden>
+            <div class="grid-wrap" tabindex="0" aria-label="Results of Query 3, page 3: no rows">
+              <table class="grid pin"><thead><tr>${ROWHEAD}${CUST_COLS.map(([n, t]) => th(n, t, { num: /^(int|numeric)/.test(t) })).join("")}</tr></thead><tbody></tbody></table>
+            </div>
+          </div>
+          <div class="grid-foot q-pager" id="q-pager" role="group" aria-label="Pages" hidden><span class="pager-hint" id="q-hint" hidden></span><span id="q-range"></span><button type="button" class="icon-btn" id="q-prev" aria-label="Previous page" title="Previous page">${ic("chevron-left")}</button><button type="button" class="icon-btn" id="q-next" aria-label="Next page" title="Next page">${ic("chevron-right")}</button></div>
           <div class="state" data-when="error" hidden><div class="error-box">
             <strong>Column totl does not exist</strong>
             <span class="hint-line">PostgreSQL stopped at line 1 and suggests the column you may have meant.</span>
@@ -710,7 +727,7 @@ const guardDialogs = `
 pages["index.html"] = page({
   title: "ypacapy preview",
   desc: "Design preview of ypacapy, a local-only database explorer for macOS: the query console and its result grid.",
-  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["wide", "Many columns"], ["long", "Long text"], ["cell-menu", "Cell menu"], ["row-menu", "Sidebar menu"], ["level-menu", "Security level menu"], ["tab-menu", "Tab menu"], ["guard-confirm", "Low: confirm"], ["guard-pass", "Strict: passphrase"], ["guard-pass-touch", "Strict with Touch ID"], ["guard-pass-wrong", "Strict: wrong passphrase"], ["warn-limit", "Warning: more than 100 rows"], ["warn-update", "Warning: UPDATE without WHERE"], ["warn-update-strict", "Strict + UPDATE without WHERE"], ["history", "History"], ["history-clear", "Clear history"], ["history-none", "History, none yet"], ["ac-tables", "Complete: tables"], ["ac-columns", "Complete: columns"], ["ac-mixed", "Complete: two tables"], ["ac-loading", "Complete: reading columns"], ["ac-schema", "Complete: schema not loaded"]], true),
+  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["wide", "Many columns"], ["paged", "Paged: page 1"], ["paged-last", "Paged: page 2"], ["paged-none", "Paged: empty page"], ["long", "Long text"], ["cell-menu", "Cell menu"], ["row-menu", "Sidebar menu"], ["level-menu", "Security level menu"], ["tab-menu", "Tab menu"], ["guard-confirm", "Low: confirm"], ["guard-pass", "Strict: passphrase"], ["guard-pass-touch", "Strict with Touch ID"], ["guard-pass-wrong", "Strict: wrong passphrase"], ["warn-limit", "Warning: more than 100 rows"], ["warn-update", "Warning: UPDATE without WHERE"], ["warn-update-strict", "Strict + UPDATE without WHERE"], ["history", "History"], ["history-clear", "Clear history"], ["history-none", "History, none yet"], ["ac-tables", "Complete: tables"], ["ac-columns", "Complete: columns"], ["ac-mixed", "Complete: two tables"], ["ac-loading", "Complete: reading columns"], ["ac-schema", "Complete: schema not loaded"]], true),
   body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: guardDialogs + histClearDlg + acOverlay }),
   script: js("page-index.js") + js("page-index-ac.js"),
 });
@@ -765,7 +782,7 @@ pages["table.html"] = page({
 ${ORDERS}
               </tbody></table>
             </div>${inspector("id", "int8", 1, "10463")}
-            <div class="grid-foot"><span>1 to 20</span><button type="button" class="icon-btn" aria-label="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page">${ic("chevron-right")}</button></div>
+            <div class="grid-foot">${rowPick(20)}<span>Page 1</span><button type="button" class="icon-btn" aria-label="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page">${ic("chevron-right")}</button></div>
           </div>
           <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Reading orders</strong><span>shop_prod, public.orders</span></div></div>
           <div class="state" data-when="empty" hidden><div class="empty"><strong>No row of orders matches this filter</strong><span>No order has the status lost. Status holds paid, shipped, refunded or pending.</span><button type="button" class="link" id="t-clear">Clear the filter</button></div></div>${structure}
@@ -1611,6 +1628,8 @@ const MDOCS = Array.from({ length: 20 }, (_, i) => {
     meta: i % 5 === 2 ? null : i % 5 === 4 ? undefined : META[i % 5],
   };
 });
+// Query 3 (find, no limit, no sort): 28 paid or shipped orders, read in pages of the row limit (20 in the preview)
+const PAIDDOCS = Array.from({ length: 28 }, (_, i) => ({ ...MDOCS[i % 20], _id: OID(40 + i), status: i % 3 ? "paid" : "shipped" }));
 // Query 2's find: paid or shipped, 100 or more, items left out by the projection
 const Q2DOCS = MDOCS.filter((d) => /paid|shipped/.test(d.status) && d.total.$dec >= 100).map(({ items, ...d }) => d);
 // Query 1's aggregate: one document per customer
@@ -1775,15 +1794,27 @@ ${mq("q5", 5, MQ5)}
           </div>
           <div class="state" data-when="full" data-for="q2" data-as="json" hidden>${jdocs("Documents of Query 2", Q2DOCS)}
           </div>
-          <div class="state" data-when="full" data-for="q3" data-as="table" hidden>${mgrid("q3", "Results of Query 3", MDOCS.filter((d) => /paid|shipped/.test(d.status)), 0)}
+          <div class="state" data-when="full" data-for="q3" data-page="0" data-as="table" hidden>${mgrid("q3", "Results of Query 3", PAIDDOCS.slice(0, 20), 0)}
           </div>
-          <div class="state" data-when="full" data-for="q3" data-as="json" hidden>${jdocs("Documents of Query 3", MDOCS.filter((d) => /paid|shipped/.test(d.status)))}
+          <div class="state" data-when="full" data-for="q3" data-page="0" data-as="json" hidden>${jdocs("Documents of Query 3", PAIDDOCS.slice(0, 20))}
+          </div>
+          <div class="state" data-when="full" data-for="q3" data-page="20" data-as="table" hidden>${mgrid("q3p2", "Results of Query 3, documents 21 to 28", PAIDDOCS.slice(20), 0)}
+          </div>
+          <div class="state" data-when="full" data-for="q3" data-page="20" data-as="json" hidden>${jdocs("Documents of Query 3, 21 to 28", PAIDDOCS.slice(20))}
           </div>
           <div class="state" data-when="idle" data-for="q4" hidden><div class="empty"><strong>Not run yet</strong><span>deleteMany changes data on ${MCONN}, so Run asks first.</span></div></div>
           <div class="state" data-when="idle" data-for="q5" hidden><div class="empty"><strong>Not run yet</strong><span>It ends in $merge, so it writes to daily_revenue. Run asks first.</span></div></div>
           <div class="state" data-when="written" hidden><div class="empty write-res">${ic("circle-check", "ok-ico")}<strong id="w-title">Deleted 312 documents from carts</strong><pre class="db-says" id="w-raw">{ acknowledged: true, deletedCount: 312 }</pre></div></div>
           <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Running on ${MCONN}</strong><span>Started 0.4&nbsp;s ago</span><button type="button" class="btn" id="cancel">Cancel</button></div></div>
           <div class="state" data-when="empty" hidden><div class="empty"><strong>The query returned no documents</strong></div></div>
+          <div class="state" data-when="nomore" data-as="table" hidden>
+            <div class="grid-wrap" tabindex="0" aria-label="Results of Query 3, page 3: no documents">
+              <table class="grid"><thead><tr>${ROWHEAD}${mcols(PAIDDOCS.slice(20)).map((x) => th(x.k, x.type, { num: x.num, key: x.k === "_id" ? "Primary key" : "" })).join("")}</tr></thead><tbody></tbody></table>
+            </div>
+          </div>
+          <div class="state" data-when="nomore" data-as="json" hidden>${jdocs("Documents, page 3: none", [])}
+          </div>
+          <div class="grid-foot q-pager" id="q-pager" role="group" aria-label="Pages" hidden><span class="pager-hint" id="q-hint" hidden></span><span id="q-range"></span><button type="button" class="icon-btn" id="q-prev" aria-label="Previous page" title="Previous page">${ic("chevron-left")}</button><button type="button" class="icon-btn" id="q-next" aria-label="Next page" title="Next page">${ic("chevron-right")}</button></div>
           <div class="state" data-when="error" hidden><div class="error-box">
             <strong>MongoDB does not know the operator $inn</strong>
             <span class="hint-line">The server rejected the filter before reading anything. $in matches any value in a list.</span>
@@ -1797,13 +1828,13 @@ code: 2, codeName: 'BadValue'</pre>
             <span class="hint-line">None of the 3 hosts in atlas-x1y2z-shard-0 answered as primary. The replica set may be electing one. Nothing was changed.</span>
             <div class="actions"><button type="button" class="btn" id="reconnect">Reconnect</button></div>
           </div></div>
-          <div class="state" data-when="messages" hidden><pre class="code messages" aria-label="Messages"><span class="l">9 documents in 41 ms, from ${MCONN} (MongoDB 7.0.14, primary atlas-x1y2z-shard-00-01)</span><span class="l">The pipeline had no $limit, so ypacapy added { $limit: 500 } at its end.</span></pre></div>
+          <div class="state" data-when="messages" hidden><pre class="code messages" aria-label="Messages"><span class="l">9 documents in 41 ms, from ${MCONN} (MongoDB 7.0.14, primary atlas-x1y2z-shard-00-01)</span><span class="l">The pipeline had no $limit, so ypacapy added { $limit: 20 } at its end.</span></pre></div>
         </section>
       </div>`;
 pages["mongo.html"] = page({
   title: "ypacapy preview, MongoDB",
   desc: "Design preview of a MongoDB connection in ypacapy: mongosh queries, documents as a table or as JSON, and the write guard on MongoDB's write methods.",
-  barHtml: bar("mongo", [["results", "Aggregate"], ["find", "Find, nested fields"], ["table", "Table view"], ["messages", "Messages"], ["running", "Running"], ["empty", "No documents"], ["error", "Server error"], ["lost", "No primary"], ["guard-confirm", "Low: deleteMany"], ["guard-merge", "Low: $merge"], ["guard-pass", "Strict: passphrase"], ["written", "Write result"], ["row-menu", "Sidebar menu"], ["info", "Info"], ["info-loading", "Info, reading"], ["history", "History"]]),
+  barHtml: bar("mongo", [["results", "Aggregate"], ["find", "Find, nested fields"], ["table", "Table view"], ["paged", "Paged: page 1"], ["paged-last", "Paged: page 2"], ["paged-none", "Paged: empty page"], ["messages", "Messages"], ["running", "Running"], ["empty", "No documents"], ["error", "Server error"], ["lost", "No primary"], ["guard-confirm", "Low: deleteMany"], ["guard-merge", "Low: $merge"], ["guard-pass", "Strict: passphrase"], ["written", "Write result"], ["row-menu", "Sidebar menu"], ["info", "Info"], ["info-loading", "Info, reading"], ["history", "History"]]),
   body: app({ current: MCONN, conns: MCONNS, side: mongoSide("") + mongoHistory + savedSide, work: mongoWork, overlay: mguardDialogs + mInfoDlg }),
   script: js("page-mongo.js") + js("page-jv.js") + js("page-mongo-info.js"),
 });
@@ -1875,7 +1906,7 @@ pages["collection.html"] = page({
             <span class="push meta"><span class="dim" id="t-ms">7&nbsp;ms</span></span>
           </nav>
           <div class="state" data-when="full" data-view-of="docs">
-            <div class="res-tools">${asSeg}<button type="button" class="btn btn--quiet res-add" id="t-add" title="Add a document" aria-label="Add a document">${ic("plus")}<span class="btn-label">Add document</span></button>${mresActions("t")}<div class="pager" role="group" aria-label="Pages"><span class="pager-n" id="t-pager" aria-live="polite"></span><button type="button" class="icon-btn" id="t-refresh" title="Read this page again  ⌘↵" aria-label="Refresh">${ic("refresh-cw")}</button><button type="button" class="icon-btn" aria-label="Previous page" title="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page" title="Next page">${ic("chevron-right")}</button></div></div>
+            <div class="res-tools">${asSeg}<button type="button" class="btn btn--quiet res-add" id="t-add" title="Add a document" aria-label="Add a document">${ic("plus")}<span class="btn-label">Add document</span></button>${mresActions("t")}<div class="pager" role="group" aria-label="Pages">${rowPick(20, "Documents")}<span class="pager-n" id="t-pager" aria-live="polite"></span><button type="button" class="icon-btn" id="t-refresh" title="Read this page again  ⌘↵" aria-label="Refresh">${ic("refresh-cw")}</button><button type="button" class="icon-btn" aria-label="Previous page" title="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page" title="Next page">${ic("chevron-right")}</button></div></div>
             <div class="as-pane" data-as="json">${jdocs("Documents of orders", MDOCS, true)}</div>
             <div class="as-pane" data-as="table" hidden>${mgrid("t", "Documents of orders", MDOCS, 0)}</div>
           </div>

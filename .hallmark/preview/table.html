@@ -313,7 +313,7 @@
               <div class="ins-value">10463</div>
               <button type="button" class="icon-btn ins-copy" title="Copy value" aria-label="Copy value"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg></button>
             </div>
-            <div class="grid-foot"><span>1 to 20</span><button type="button" class="icon-btn" aria-label="Previous page" disabled><svg aria-hidden="true" class="ico"><use href="#i-chevron-left"/></svg></button><button type="button" class="icon-btn" aria-label="Next page"><svg aria-hidden="true" class="ico"><use href="#i-chevron-right"/></svg></button></div>
+            <div class="grid-foot"><span class="row-pick"><span class="row-pick-face" aria-hidden="true"><span data-row-face>20</span><svg aria-hidden="true" class="ico"><use href="#i-chevron-down"/></svg></span><select data-row-pick aria-label="Rows per page for this tab" title="Rows per page"><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="500">500</option><option value="1000">1,000</option></select></span><span>Page 1</span><button type="button" class="icon-btn" aria-label="Previous page" disabled><svg aria-hidden="true" class="ico"><use href="#i-chevron-left"/></svg></button><button type="button" class="icon-btn" aria-label="Next page"><svg aria-hidden="true" class="ico"><use href="#i-chevron-right"/></svg></button></div>
           </div>
           <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Reading orders</strong><span>shop_prod, public.orders</span></div></div>
           <div class="state" data-when="empty" hidden><div class="empty"><strong>No row of orders matches this filter</strong><span>No order has the status lost. Status holds paid, shipped, refunded or pending.</span><button type="button" class="link" id="t-clear">Clear the filter</button></div></div>
@@ -748,6 +748,8 @@
     setTimeout(() => { state = /'lost'/.test(where.value) ? "empty" : "full"; render(); }, 500);
   }
   run.addEventListener("click", reload);
+  // rows per page: a pick reads this tab's first page again (the preview replays the sample)
+  $$("[data-row-pick]").forEach((s) => s.addEventListener("change", () => { $("[data-row-face]", s.parentElement).textContent = Number(s.value).toLocaleString("en-US"); reload(); }));
   where.addEventListener("keydown", (e) => { if (e.key === "Enter") reload(); });
   document.addEventListener("keydown", (e) => { if (e.metaKey && e.key === "Enter") { e.preventDefault(); reload(); } });
   $("#t-clear").addEventListener("click", () => { where.value = DEFAULT_WHERE; reload(); where.focus(); });

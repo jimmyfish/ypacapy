@@ -11,7 +11,7 @@ import type { QueryTab, ResultSet, RunOutcome, RunState } from "../types";
 import { ResultGrid, type GridEdit } from "./ResultGrid";
 import { SqlEditor, type Completer } from "./SqlEditor";
 import { useDismiss } from "./useDismiss";
-import { Braces, ChevronDown, CircleCheck, LoaderCircle, Play, Table2, WandSparkles, ico, icoC } from "./Icon";
+import { Braces, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, LoaderCircle, Play, Table2, WandSparkles, ico, icoC } from "./Icon";
 import { DocCards } from "./DocCards";
 
 /** The connection's database and schema pickers, inside the query line's filled field. */
@@ -248,6 +248,16 @@ function QueryResults({ tab }: { tab: QueryTab }) {
   const shown = sets.length ? sets[shownIdx] : undefined;
   // a save replaces a set in place (same run): the picked set stays
   useEffect(() => setSetIdx(null), [run.runId]);
+  // Paging, only on a run ypacapy added the row limit to (o.limit): Next is that run again with an offset.
+  // Nothing is counted, so the bar says the page number and Next stays on until a page comes back empty.
+  const limit = o?.kind === "done" && !redis ? o.limit : null;
+  const offset = tab.offset ?? 0;
+  const pageRows = shown?.rows.length ?? 0;
+  // an empty page: the grid keeps the last page's columns (none come with no rows)
+  const emptyPage: ResultSet | undefined = limit !== null && offset > 0 && pageRows === 0 ? { columns: tab.pageCols ?? [], rows: [], truncated: false } : undefined;
+  const gridSet = emptyPage ?? shown;
+  // the hint: without an order the database may hand back rows in a different order on each run
+  const ordered = mongo ? /\.sort\s*\(|\$sort\b/.test(run.sql ?? "") : /\border\s+by\b/i.test(run.sql ?? "");
   const target = useEditTarget(tab, mongo || redis ? undefined : shown, shownIdx);
   // no grid editing on MongoDB documents or Redis replies yet
   const edit: GridEdit | undefined = conn && session && shown && !mongo && !redis ? { target, connId: conn.id, connName: conn.name, database: session.database, key: `${tab.id}:${shownIdx}`, onSaved: (rs) => st.replaceSet(tab.id, shownIdx, rs) } : undefined;
@@ -419,11 +429,11 @@ function QueryResults({ tab }: { tab: QueryTab }) {
         <DocCards docs={shown.docs ?? []} label={`Documents of ${tab.title}`} />
       </div>
     );
-  else if (o.kind === "done" && shown)
+  else if (o.kind === "done" && gridSet)
     body = (
       <div className="state">
         <ResultGrid
-          set={shown}
+          set={gridSet}
           edit={edit}
           label={`Results of ${tab.title}`}
           exportName={tab.title}
@@ -440,10 +450,10 @@ function QueryResults({ tab }: { tab: QueryTab }) {
                 </div>
                 {redis && asSeg}
               </>
-            ) : shown.truncated ? (
+            ) : gridSet.truncated ? (
               <>
                 {mongo && asSeg}
-                <span className="muted">First {shown.rows.length} rows; the rest were left unread</span>
+                <span className="muted">First {gridSet.rows.length} rows; the rest were left unread</span>
                 {redis && asSeg}
               </>
             ) : (
@@ -484,6 +494,18 @@ function QueryResults({ tab }: { tab: QueryTab }) {
         <RunMeta run={run} />
       </nav>
       {session && body}
+      {session && limit !== null && limit > 0 && sub === "results" && run.status !== "running" && (
+        <div className="grid-foot q-pager" role="group" aria-label="Pages">
+          {!ordered && <span className="pager-hint">{mongo ? "No sort, so documents can shift between pages" : "No order by, so rows can shift between pages"}</span>}
+          <span>Page {Math.floor(offset / limit) + 1}</span>
+          <button type="button" className="icon-btn" title="Previous page" aria-label="Previous page" disabled={offset === 0} onClick={() => void st.page(tab.id, offset - limit)}>
+            <ChevronLeft {...ico} />
+          </button>
+          <button type="button" className="icon-btn" title="Next page" aria-label="Next page" disabled={pageRows === 0} onClick={() => void st.page(tab.id, offset + limit)}>
+            <ChevronRight {...ico} />
+          </button>
+        </div>
+      )}
     </section>
   );
 }

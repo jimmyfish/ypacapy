@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { api, errText } from "./lib/api";
 import { tableSelect } from "./lib/sql";
 import { editCount, type Edits } from "./lib/edit";
+import { docsToSet } from "./lib/bson";
 import { positionsOf, withLinked } from "./lib/diagram";
 import { diagramCanSave, diagramChanged, diagramKey, diagramLayoutOf, diagramModelOf, diagramViews, mergeDiagram } from "./lib/diagramTab";
 import type { Approval, Ask, ColumnsEntry, Conn, DiagramTab, Engine, HistoryEntry, KeyTab, SavedDiagram, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
@@ -109,7 +110,10 @@ interface State {
   /** pins or unpins a tab; a pinned tab moves to the end of the pinned ones at the left */
   pinTab(id: string, on: boolean): void;
   updateTab(id: string, patch: Partial<QueryTab> | Partial<TableTab> | Partial<KeyTab> | Partial<DiagramTab>): void;
-  run(tabId: string, opts?: { sql?: string; approval?: Approval; discard?: boolean }): Promise<void>;
+  /** `page`: Next or Previous, the last run again `offset` rows on, kept out of history */
+  run(tabId: string, opts?: { sql?: string; approval?: Approval; discard?: boolean; offset?: number; page?: boolean }): Promise<void>;
+  /** a query tab's Next and Previous: the run that gave the results, again from `offset` (only where ypacapy added the row limit) */
+  page(tabId: string, offset: number): Promise<void>;
   cancel(tabId: string): void;
   readTable(tabId: string, opts?: { offset?: number; approval?: Approval; discard?: boolean }): Promise<void>;
   /**
@@ -876,7 +880,7 @@ export const useStore = create<State>()((set, get) => {
       const prev = tab.run;
       patchTab(tabId, { run: { status: "running", runId, startedAt: Date.now(), outcome: prev.outcome } });
       const out = await api
-        .runQuery({ runId, connId, database: s.database, schema: s.schema, sql, addLimit: true, approval: opts.approval, history: true })
+        .runQuery({ runId, connId, database: s.database, schema: s.schema, sql, addLimit: true, offset: opts.offset ?? 0, approval: opts.approval, history: !opts.page })
         .catch(failed);
       const now = sessionOfTab(tabId)?.[2];
       if (!now || now.run.runId !== runId) return;
@@ -898,10 +902,22 @@ export const useStore = create<State>()((set, get) => {
         return;
       }
       dropEdits(tabId);
-      patchTab(tabId, { run: { status: "done", runId, outcome: out, sql } });
+      // a new run starts on the first page; a page keeps the columns of the last page that had rows
+      patchTab(tabId, { run: { status: "done", runId, outcome: out, sql }, offset: opts.offset ?? 0, ...(opts.page ? {} : { pageCols: undefined }) });
       if (out.kind === "done" && out.ddl) get().refreshTree(connId);
       if (out.kind === "error" && out.lost) patchSession(connId, () => ({ tree: {}, columns: {} }));
       if (get().side === "history") void get().loadHistory();
+    },
+
+    page(tabId, offset) {
+      const t = sessionOfTab(tabId)?.[2];
+      if (t?.kind !== "query" || t.run.status !== "done" || !t.run.sql) return Promise.resolve();
+      // an empty page has no columns of its own (SQL sends none with no rows, MongoDB has no documents): it keeps these
+      const o = t.run.outcome;
+      const last = o?.kind === "done" ? o.sets[o.sets.length - 1] : undefined;
+      const cols = last ? (last.docs ? docsToSet(last.docs, false).columns : last.columns) : [];
+      if (cols.length) patchTab(tabId, { pageCols: cols });
+      return get().run(tabId, { sql: t.run.sql, offset: Math.max(0, offset), page: true });
     },
 
     cancel(tabId) {
@@ -919,8 +935,8 @@ export const useStore = create<State>()((set, get) => {
       const offset = opts.offset ?? 0;
       if (!opts.discard && askDiscard(tabId, () => void get().readTable(tabId, { ...opts, discard: true }))) return;
       const rowLimit = conn.rowLimit || get().settings.rowLimit || DEFAULT_ROW_LIMIT;
-      // MongoDB: the query bar's Limit, when set, is the page size
-      const limit = conn.engine === "mongo" && Number(tab.limit) > 0 ? Number(tab.limit) : rowLimit;
+      // the tab's rows per page (MongoDB: also the query bar's Limit), when set, is the page size
+      const limit = Number(tab.limit) > 0 ? Number(tab.limit) : rowLimit;
       const mongo = conn.engine === "mongo";
       const sql = mongo ? `find(${tab.where.trim() || "{}"})` : tableSelect(conn.engine, tab.schema, tab.table, tab.where, limit, offset);
       const runId = uid();

@@ -934,6 +934,10 @@ pub struct RunRequest {
     sql: String,
     /// add Settings > Queries > Row limit to a query without a limit of its own
     add_limit: bool,
+    /// the console's Next and Previous: rows to skip before the page, used only where ypacapy adds the row limit.
+    /// A page is the same query run again; it neither warns about size again nor goes into history.
+    #[serde(default)]
+    offset: u64,
     approval: Option<Approval>,
     /// record the run in history (the console does; table reads do not)
     history: bool,
@@ -1167,12 +1171,14 @@ pub async fn run_query(
     let c = guard::classify(&req.sql, conn.engine);
     let row_limit = conn.row_limit.map(u64::from).unwrap_or_else(|| settings.u64("rowLimit", 100)) as usize;
     let adds_limit = req.add_limit && c.limitable && row_limit > 0;
-    // the console's runs (add_limit) warn about size; table tabs read a page at a time
-    if let Some(ask) = guard::check_sql(&c, &conn, &settings, req.add_limit, adds_limit.then_some(row_limit as u64), req.approval, &guard_state).await? {
+    // the console's runs (add_limit) warn about size; table tabs and the console's later pages read a page at a time
+    let console = req.add_limit && req.offset == 0;
+    if let Some(ask) = guard::check_sql(&c, &conn, &settings, console, adds_limit.then_some(row_limit as u64), req.approval, &guard_state).await? {
         return Ok(RunOutcome::Ask(ask));
     }
     let (sql, limit) = if adds_limit {
-        (format!("{}\nlimit {row_limit}", &req.sql[..c.end]), Some(row_limit))
+        let offset = if req.offset > 0 { format!(" offset {}", req.offset) } else { String::new() };
+        (format!("{}\nlimit {row_limit}{offset}", &req.sql[..c.end]), Some(row_limit))
     } else {
         (req.sql.clone(), None)
     };

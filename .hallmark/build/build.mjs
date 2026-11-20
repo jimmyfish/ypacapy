@@ -18,7 +18,7 @@ const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "hous
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus", "pin", "pin-off",
   "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check", "timer",
-  "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down", "arrow-right", "chevrons-up-down", "chevrons-down-up", "circle-plus", "copy-plus", "sliders-horizontal", "rotate-ccw", "funnel"];
+  "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down", "arrow-right", "chevrons-up-down", "chevrons-down-up", "circle-plus", "copy-plus", "sliders-horizontal", "rotate-ccw", "funnel", "unplug"];
 // Lucide 1.x renamed fingerprint; the old name is what the pages use
 const RENAMED = { fingerprint: "fingerprint-pattern" };
 // Lucide 1.x has no brand icons: GitHub's mark as lucide-react 0.460.0 drew it (ISC), the same as src/components/Icon.tsx
@@ -119,6 +119,13 @@ const inspector = (col, type, row, value) => `
 const openHref = (engine) => `./${{ mongo: "collection", redis: "redis" }[engine] || "index"}.html`;
 const CONNS = [["shop_prod", "server", 6, "postgres"], ["analytics.sqlite", "hard-drive", 2, "sqlite"], ["legacy_cms", "server", 3, "mysql"]];
 const tile = (icon, n, sm = true) => `<span class="proj-tile${sm ? " proj-tile--sm" : ""}" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)">${ic(icon)}</span>`;
+// Connection heartbeat on (Settings > Queries, or the connection's own Advanced choice): the sidebar ends in the
+// connection's status, the word only, and every such connection's tab carries the same mark, so a drop shows while
+// another tab is in front. Off, or SQLite (never pinged): neither. The preview has it on for shop_prod and legacy_cms.
+const HB = { shop_prod: "localhost:5432", legacy_cms: "10.0.4.12:3306" };
+const tabStatus = (name) => (HB[name] ? `<span class="cs-mark cs-tab" data-cs="connected" data-cs-conn="${name}" role="img" aria-label="${name}: Connected" title="Connected">${ic("refresh-cw", "cs-spin")}</span>` : "");
+const connStatus = (name) => `
+      <div class="conn-status" data-cs="connected" role="status" title="Heartbeat: select 1 answered 8 s ago"><span class="cs-mark" aria-hidden="true">${ic("refresh-cw", "cs-spin")}</span><span class="cs-label">Connected</span></div>`;
 const strip = (current, chip = "", conns = CONNS.slice(0, 2)) => `
   <!-- title strip: the native macOS traffic lights sit in the empty 84px on the left (not drawn here) -->
   <!-- a connection tab carries its colour (--fg/--bg) on the tab itself; the tile inside inherits it, so tab, ring and
@@ -128,7 +135,7 @@ const strip = (current, chip = "", conns = CONNS.slice(0, 2)) => `
       <button type="button" class="ptab" data-href="./home.html"${current === "home" ? ' aria-current="page"' : ""}>${ic("house")}Home</button>
       <span class="ptab-sep" aria-hidden="true"></span>
 ${conns.map(([name, , n, engine]) => `      <div class="ptab ptab--project" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)"${current === name ? ' aria-current="page"' : ""}>
-        <button type="button" class="ptab-main" data-href="${openHref(engine)}"><span class="proj-tile proj-tile--sm">${engIco(engine, 13)}</span>${name}</button>
+        <button type="button" class="ptab-main" data-href="${openHref(engine)}"><span class="proj-tile proj-tile--sm">${engIco(engine, 13)}</span>${name}${tabStatus(name)}</button>
         <button type="button" class="icon-btn ptab-close" aria-label="Close ${name}">${ic("x")}</button>
       </div>`).join("\n")}
     </nav>
@@ -263,7 +270,7 @@ const runGroup = `
 
 const app = ({ current, side = "", work, overlay = "", chip = "", conns }) => `
 <div class="app">${strip(current, chip, conns)}${rail}
-  <div class="panel">${side}
+  <div class="panel">${HB[current] ? side.replace(/\n\s*<\/aside>/g, `${connStatus(current)}\n    </aside>`) : side}
     <main class="work">${work}
     </main>
   </div>
@@ -295,7 +302,17 @@ const AC_DATA = {
 const acOverlay = `
 <div class="menu ac-menu" id="ac-menu" role="listbox" aria-label="Suggestions" hidden></div>
 <script type="application/json" id="ac-data">${JSON.stringify(AC_DATA).replace(/</g, "\\u003c")}</script>`;
-const queryWork = `${tabsbar("q1", ["q1", "q2", "q3", "q4", "q5"])}
+// heartbeat got no answer while nothing ran: a bar over the tab, until a ping answers again or Reconnect works
+const hbBanner = (conn, where) => `
+      <div class="hb-bar" id="hb-bar" role="status" hidden>
+        ${ic("unplug", "hb-bar-ico")}
+        <div class="hb-bar-text">
+          <strong data-hb-say="down">${conn} stopped answering</strong><strong data-hb-say="retry" hidden>Checking ${conn} again…</strong>
+          <span data-hb-say="down">No reply from ${where} since 14:32. Trying again every 30 s.</span><span data-hb-say="retry" hidden>Pinging ${where}. Nothing you typed is lost.</span>
+        </div>
+        <button type="button" class="btn" id="hb-reconnect">Reconnect</button>
+      </div>`;
+const queryWork = `${tabsbar("q1", ["q1", "q2", "q3", "q4", "q5"])}${hbBanner("shop_prod", "localhost:5432")}
       <div class="work-body">
         <div class="req-pane" id="req-pane">
           <div class="request-line">
@@ -379,6 +396,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
             <strong>Lost the connection to shop_prod</strong>
             <span class="msg">server closed the connection unexpectedly</span>
             <span class="hint-line">localhost:5432 stopped answering while the query ran. Nothing was changed.</span>
+            <span class="hint-line hb-note" hidden>Heartbeat keeps trying every 30 s. The sidebar says Connected when the server's back.</span>
             <div class="actions"><button type="button" class="btn" id="reconnect">Reconnect</button></div>
           </div></div>
           <div class="state" data-when="messages" hidden><pre class="code messages" aria-label="Messages"><span class="l">14 rows in 38 ms, from shop_prod (PostgreSQL 16.4)</span><span class="l">NOTICE: none</span></pre></div>
@@ -727,8 +745,8 @@ const guardDialogs = `
 pages["index.html"] = page({
   title: "ypacapy preview",
   desc: "Design preview of ypacapy, a local-only database explorer for macOS: the query console and its result grid.",
-  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["wide", "Many columns"], ["paged", "Paged: page 1"], ["paged-last", "Paged: page 2"], ["paged-none", "Paged: empty page"], ["long", "Long text"], ["cell-menu", "Cell menu"], ["row-menu", "Sidebar menu"], ["level-menu", "Security level menu"], ["tab-menu", "Tab menu"], ["guard-confirm", "Low: confirm"], ["guard-pass", "Strict: passphrase"], ["guard-pass-touch", "Strict with Touch ID"], ["guard-pass-wrong", "Strict: wrong passphrase"], ["warn-limit", "Warning: more than 100 rows"], ["warn-update", "Warning: UPDATE without WHERE"], ["warn-update-strict", "Strict + UPDATE without WHERE"], ["history", "History"], ["history-clear", "Clear history"], ["history-none", "History, none yet"], ["ac-tables", "Complete: tables"], ["ac-columns", "Complete: columns"], ["ac-mixed", "Complete: two tables"], ["ac-loading", "Complete: reading columns"], ["ac-schema", "Complete: schema not loaded"]], true),
-  body: app({ current: "shop_prod", side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: guardDialogs + histClearDlg + acOverlay }),
+  barHtml: bar("index", [["results", "Results"], ["running", "Running"], ["empty", "No rows"], ["sql-error", "SQL error"], ["lost", "Connection lost"], ["hb-connecting", "Status: connecting"], ["hb-live", "Status: connected"], ["hb-run", "Status: drop mid-run"], ["hb-idle", "Status: drop while idle"], ["hb-retry", "Status: reconnecting"], ["hb-bg", "Status: other tab dropped"], ["wide", "Many columns"], ["paged", "Paged: page 1"], ["paged-last", "Paged: page 2"], ["paged-none", "Paged: empty page"], ["long", "Long text"], ["cell-menu", "Cell menu"], ["row-menu", "Sidebar menu"], ["level-menu", "Security level menu"], ["tab-menu", "Tab menu"], ["guard-confirm", "Low: confirm"], ["guard-pass", "Strict: passphrase"], ["guard-pass-touch", "Strict with Touch ID"], ["guard-pass-wrong", "Strict: wrong passphrase"], ["warn-limit", "Warning: more than 100 rows"], ["warn-update", "Warning: UPDATE without WHERE"], ["warn-update-strict", "Strict + UPDATE without WHERE"], ["history", "History"], ["history-clear", "Clear history"], ["history-none", "History, none yet"], ["ac-tables", "Complete: tables"], ["ac-columns", "Complete: columns"], ["ac-mixed", "Complete: two tables"], ["ac-loading", "Complete: reading columns"], ["ac-schema", "Complete: schema not loaded"]], true),
+  body: app({ current: "shop_prod", conns: CONNS, side: schemaSide("") + historySide + savedSide, work: queryWork, overlay: guardDialogs + histClearDlg + acOverlay }),
   script: js("page-index.js") + js("page-index-ac.js"),
 });
 

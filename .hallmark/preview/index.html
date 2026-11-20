@@ -108,6 +108,7 @@
   <symbol id="i-sliders-horizontal" viewBox="0 0 24 24"><path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/></symbol>
   <symbol id="i-rotate-ccw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
   <symbol id="i-funnel" viewBox="0 0 24 24"><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"/></symbol>
+  <symbol id="i-unplug" viewBox="0 0 24 24"><path d="m19 5 3-3"/><path d="m2 22 3-3"/><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m12 6 6 6 2.3-2.3a2.4 2.4 0 0 0 0-3.4l-2.6-2.6a2.4 2.4 0 0 0-3.4 0Z"/></symbol>
 </svg>
 
 <header class="pv-bar">
@@ -132,6 +133,12 @@
     <button type="button" data-show="empty" aria-pressed="false">No rows</button>
     <button type="button" data-show="sql-error" aria-pressed="false">SQL error</button>
     <button type="button" data-show="lost" aria-pressed="false">Connection lost</button>
+    <button type="button" data-show="hb-connecting" aria-pressed="false">Status: connecting</button>
+    <button type="button" data-show="hb-live" aria-pressed="false">Status: connected</button>
+    <button type="button" data-show="hb-run" aria-pressed="false">Status: drop mid-run</button>
+    <button type="button" data-show="hb-idle" aria-pressed="false">Status: drop while idle</button>
+    <button type="button" data-show="hb-retry" aria-pressed="false">Status: reconnecting</button>
+    <button type="button" data-show="hb-bg" aria-pressed="false">Status: other tab dropped</button>
     <button type="button" data-show="wide" aria-pressed="false">Many columns</button>
     <button type="button" data-show="paged" aria-pressed="false">Paged: page 1</button>
     <button type="button" data-show="paged-last" aria-pressed="false">Paged: page 2</button>
@@ -183,12 +190,16 @@
       <button type="button" class="ptab" data-href="./home.html"><svg aria-hidden="true" class="ico"><use href="#i-house"/></svg>Home</button>
       <span class="ptab-sep" aria-hidden="true"></span>
       <div class="ptab ptab--project" style="--fg: var(--proj-6-fg); --bg: var(--proj-6-bg)" aria-current="page">
-        <button type="button" class="ptab-main" data-href="./index.html"><span class="proj-tile proj-tile--sm"><svg class="engine-ico" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M4.2 3C5.4 1.9 7.6 1.5 9.6 1.9C12.4 2.5 14 4.5 13.7 7.4C13.5 9.2 12.6 10.4 11.3 10.7L11.5 13.2C11.5 14 10.7 14.5 10 14L9.1 13.3V11C7.8 11.1 6.6 10.8 5.7 10.1C5.4 11.2 4.8 12.2 3.8 12.5C3 12.7 2.4 11.9 2.8 11.2C3.4 10.1 3.3 8.8 2.9 7.6C2.4 5.9 2.8 4.2 4.2 3Z" style="fill:light-dark(#336791, #4c82b5);stroke:light-dark(#ffffff, #e6eef5)" stroke-width="0.8" stroke-linejoin="round"/><path d="M9.6 4.5C10.8 5.3 11.3 6.8 10.8 8.4" style="stroke:light-dark(#ffffff, #e6eef5)" stroke-width="0.8" stroke-linecap="round"/><circle cx="7.6" cy="5.4" r="0.8" style="fill:light-dark(#ffffff, #e6eef5)"/></svg></span>shop_prod</button>
+        <button type="button" class="ptab-main" data-href="./index.html"><span class="proj-tile proj-tile--sm"><svg class="engine-ico" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M4.2 3C5.4 1.9 7.6 1.5 9.6 1.9C12.4 2.5 14 4.5 13.7 7.4C13.5 9.2 12.6 10.4 11.3 10.7L11.5 13.2C11.5 14 10.7 14.5 10 14L9.1 13.3V11C7.8 11.1 6.6 10.8 5.7 10.1C5.4 11.2 4.8 12.2 3.8 12.5C3 12.7 2.4 11.9 2.8 11.2C3.4 10.1 3.3 8.8 2.9 7.6C2.4 5.9 2.8 4.2 4.2 3Z" style="fill:light-dark(#336791, #4c82b5);stroke:light-dark(#ffffff, #e6eef5)" stroke-width="0.8" stroke-linejoin="round"/><path d="M9.6 4.5C10.8 5.3 11.3 6.8 10.8 8.4" style="stroke:light-dark(#ffffff, #e6eef5)" stroke-width="0.8" stroke-linecap="round"/><circle cx="7.6" cy="5.4" r="0.8" style="fill:light-dark(#ffffff, #e6eef5)"/></svg></span>shop_prod<span class="cs-mark cs-tab" data-cs="connected" data-cs-conn="shop_prod" role="img" aria-label="shop_prod: Connected" title="Connected"><svg aria-hidden="true" class="ico cs-spin"><use href="#i-refresh-cw"/></svg></span></button>
         <button type="button" class="icon-btn ptab-close" aria-label="Close shop_prod"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button>
       </div>
       <div class="ptab ptab--project" style="--fg: var(--proj-2-fg); --bg: var(--proj-2-bg)">
         <button type="button" class="ptab-main" data-href="./index.html"><span class="proj-tile proj-tile--sm"><svg class="engine-ico" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M2 3.5C2 2.67 2.67 2 3.5 2H10.2L7.6 14H3.5C2.67 14 2 13.33 2 12.5V3.5Z" style="fill:light-dark(#0f80cc, #3d8fd1)"/><path d="M14.2 1.4C11.3 2.4 9.3 5.4 8.6 9.3L8 14H8.9L9.5 9.7C12.6 8.6 14.5 5.4 14.2 1.4Z" style="fill:light-dark(#0b4f82, #9ccbf0)"/><path d="M13.4 2.9C11.7 4.6 10.4 6.9 9.5 9.6" style="stroke:light-dark(#bfe0f7, #1e3a52)" stroke-width="0.7" stroke-linecap="round"/></svg></span>analytics.sqlite</button>
         <button type="button" class="icon-btn ptab-close" aria-label="Close analytics.sqlite"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="ptab ptab--project" style="--fg: var(--proj-3-fg); --bg: var(--proj-3-bg)">
+        <button type="button" class="ptab-main" data-href="./index.html"><span class="proj-tile proj-tile--sm"><svg class="engine-ico" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M1.5 12C3.1 8.3 6.3 5.7 10.2 5.2C11 4.1 12.1 3.3 13.6 3.1C13.2 4 13.1 4.9 13.4 5.7C14.2 6.6 14.6 7.9 14.4 9.3C13.8 8.5 12.8 8 11.7 8C8.7 8 5.4 9.6 1.5 12Z" style="fill:light-dark(#00758f, #2a9bb5)"/><path d="M11.8 9.7C12.4 10.9 12.3 12.4 11.5 13.7C11.3 12.5 10.6 11.6 9.7 11.1" style="stroke:light-dark(#f29111, #f5a742)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>legacy_cms<span class="cs-mark cs-tab" data-cs="connected" data-cs-conn="legacy_cms" role="img" aria-label="legacy_cms: Connected" title="Connected"><svg aria-hidden="true" class="ico cs-spin"><use href="#i-refresh-cw"/></svg></span></button>
+        <button type="button" class="icon-btn ptab-close" aria-label="Close legacy_cms"><svg aria-hidden="true" class="ico"><use href="#i-x"/></svg></button>
       </div>
     </nav>
     <div class="strip-end">
@@ -244,6 +255,7 @@
           <button type="button" role="menuitem" data-erd-open="schema" data-href="./diagram.html"><svg aria-hidden="true" class="ico"><use href="#i-network"/></svg>Show diagram</button>
         </div>
       </div>
+      <div class="conn-status" data-cs="connected" role="status" title="Heartbeat: select 1 answered 8 s ago"><span class="cs-mark" aria-hidden="true"><svg aria-hidden="true" class="ico cs-spin"><use href="#i-refresh-cw"/></svg></span><span class="cs-label">Connected</span></div>
     </aside>
     <aside class="sidebar" data-side="history" hidden>
       <div class="side-head"><h2>History</h2><button type="button" class="btn btn--quiet" id="hist-clear">Clear</button></div>
@@ -261,6 +273,7 @@
       <div class="tree" id="hist-none" hidden>
         <div class="empty"><strong>No queries on shop_prod yet</strong><span>Each query you run is kept here, on this Mac.</span></div>
       </div>
+      <div class="conn-status" data-cs="connected" role="status" title="Heartbeat: select 1 answered 8 s ago"><span class="cs-mark" aria-hidden="true"><svg aria-hidden="true" class="ico cs-spin"><use href="#i-refresh-cw"/></svg></span><span class="cs-label">Connected</span></div>
     </aside>
     <aside class="sidebar" data-side="saved" hidden>
       <div class="side-head"><h2>Saved queries</h2></div>
@@ -274,6 +287,7 @@
         <div class="row" style="--indent:24px"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Stuck shipments</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Stuck shipments" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
         <div class="row" style="--indent:24px"><button type="button" class="row-main"><svg aria-hidden="true" class="ico kind"><use href="#i-square-code"/></svg><span class="name">Long-running queries</span></button><button type="button" class="icon-btn row-more" aria-label="More actions for Long-running queries" aria-haspopup="menu" title="More actions"><svg aria-hidden="true" class="ico"><use href="#i-ellipsis"/></svg></button></div>
       </div>
+      <div class="conn-status" data-cs="connected" role="status" title="Heartbeat: select 1 answered 8 s ago"><span class="cs-mark" aria-hidden="true"><svg aria-hidden="true" class="ico cs-spin"><use href="#i-refresh-cw"/></svg></span><span class="cs-label">Connected</span></div>
     </aside>
     <main class="work">
       <div class="tabsbar">
@@ -296,6 +310,14 @@
             <button type="button" role="menuitemradio" aria-checked="false" data-guard="strict" data-icon="lock"><svg aria-hidden="true" class="ico"><use href="#i-lock"/></svg><span class="gm-text"><span>Strict</span><small>Passphrase for the picked statements</small></span><svg aria-hidden="true" class="ico tick"><use href="#i-check"/></svg></button>
           </div>
         </div>
+      </div>
+      <div class="hb-bar" id="hb-bar" role="status" hidden>
+        <svg aria-hidden="true" class="ico hb-bar-ico"><use href="#i-unplug"/></svg>
+        <div class="hb-bar-text">
+          <strong data-hb-say="down">shop_prod stopped answering</strong><strong data-hb-say="retry" hidden>Checking shop_prod again…</strong>
+          <span data-hb-say="down">No reply from localhost:5432 since 14:32. Trying again every 30 s.</span><span data-hb-say="retry" hidden>Pinging localhost:5432. Nothing you typed is lost.</span>
+        </div>
+        <button type="button" class="btn" id="hb-reconnect">Reconnect</button>
       </div>
       <div class="work-body">
         <div class="req-pane" id="req-pane">
@@ -466,6 +488,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
             <strong>Lost the connection to shop_prod</strong>
             <span class="msg">server closed the connection unexpectedly</span>
             <span class="hint-line">localhost:5432 stopped answering while the query ran. Nothing was changed.</span>
+            <span class="hint-line hb-note" hidden>Heartbeat keeps trying every 30 s. The sidebar says Connected when the server's back.</span>
             <div class="actions"><button type="button" class="btn" id="reconnect">Reconnect</button></div>
           </div></div>
           <div class="state" data-when="messages" hidden><pre class="code messages" aria-label="Messages"><span class="l">14 rows in 38 ms, from shop_prod (PostgreSQL 16.4)</span><span class="l">NOTICE: none</span></pre></div>
@@ -984,11 +1007,12 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
     if (state === "loading") return;
     if (PAGED[tab]) off[tab] = 0;
     sub = "results"; state = "loading"; render();
-    timer = setTimeout(() => { state = tab === "q2" && $("#q2-col").textContent === "totl" ? "error" : "full"; render(); }, 700);
+    // a run opens a fresh connection if the pool lost its own: when it gets through, the badge and the bar clear
+    timer = setTimeout(() => { state = tab === "q2" && $("#q2-col").textContent === "totl" ? "error" : "full"; if (hbState() && hbState() !== "live") hb("live", false); render(); }, 700);
   }
   run.addEventListener("click", runQuery);
   $("#cancel").addEventListener("click", () => { clearTimeout(timer); state = PAGED[tab] && !PAGED[tab].pages[off[tab]] ? "nomore" : "full"; render(); });
-  $("#reconnect").addEventListener("click", runQuery);
+  $("#reconnect").addEventListener("click", () => { if (hbState() === "down") hb("live", false); runQuery(); });
   document.addEventListener("keydown", (e) => { if (e.metaKey && e.key === "Enter") { e.preventDefault(); runQuery(); } });
   // Query 2: take the hint, rewrite the column, run again
   $("#q2-fix").addEventListener("click", () => { const c = $("#q2-col"); c.textContent = "total"; c.classList.remove("q-err"); runQuery(); });
@@ -1001,8 +1025,44 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
   $("#hist-clear").addEventListener("click", () => { hcDlg.hidden = false; });
   $$("[data-hc-close]").forEach((b) => b.addEventListener("click", () => { hcDlg.hidden = true; }));
   $("#hist-clear-dlg form").addEventListener("submit", (e) => { e.preventDefault(); hcDlg.hidden = true; histEmpty(true); });
+  // Connection status at the foot of the sidebar (heartbeat on only), and the idle-drop bar.
+  // connecting: first open; connected: the last ping answered; down: no answer (a lost run says so too);
+  // retry: reconnecting. Off (the plain "Connection lost" state): no status line at all.
+  const CS = {
+    connecting: ["Connecting", "Opening a connection to localhost:5432"],
+    live: ["Connected", "Heartbeat: select 1 answered 8 s ago"],
+    down: ["Disconnected", "Heartbeat: no answer from localhost:5432"],
+    retry: ["Reconnecting", "Reconnecting to localhost:5432"],
+  };
+  const CS_KEY = { connecting: "connecting", live: "connected", down: "disconnected", retry: "reconnecting" };
+  // the same mark on a connection's tab in the title strip, front or not
+  function tabCs(name, st) {
+    const m = $(`.cs-tab[data-cs-conn="${name}"]`);
+    if (!m) return;
+    m.dataset.cs = CS_KEY[st]; m.title = CS[st][0]; m.setAttribute("aria-label", `${name}: ${CS[st][0]}`);
+  }
+  function hb(st, bar) {
+    $$(".conn-status").forEach((el) => {
+      el.dataset.cs = CS_KEY[st]; el.title = CS[st][1];
+      $(".cs-label", el).textContent = CS[st][0];
+    });
+    tabCs("shop_prod", st);
+    $("#hb-bar").hidden = !bar;
+    $$("#hb-bar [data-hb-say]").forEach((x) => { x.hidden = x.dataset.hbSay !== st; });
+    $("#hb-reconnect").disabled = st === "retry";
+    $(".hb-note").hidden = st !== "down" || bar;
+  }
+  const hbState = () => ({ connected: "live", disconnected: "down", reconnecting: "retry", connecting: "connecting" })[$(".conn-status")?.dataset.cs];
+  let hbTimer;
+  $("#hb-reconnect").addEventListener("click", () => { hb("retry", true); hbTimer = setTimeout(() => hb("live", false), 900); });
   window.pvShow = (k) => {
-    clearTimeout(timer); sub = "results";
+    clearTimeout(timer); clearTimeout(hbTimer); sub = "results";
+    hb({ "hb-run": "down", "hb-idle": "down", "hb-retry": "retry", "hb-connecting": "connecting" }[k] ?? "live", k === "hb-idle" || k === "hb-retry");
+    // "Connection lost" is the heartbeat-off case: no status line at all
+    $$(".conn-status").forEach((el) => { el.hidden = k === "lost"; });
+    const front = $('.cs-tab[data-cs-conn="shop_prod"]'); if (front) front.hidden = k === "lost";
+    // legacy_cms, open behind shop_prod: its tab is the only place its drop shows
+    tabCs("legacy_cms", k === "hb-bg" ? "down" : "live");
     const hist = k.startsWith("history");
     $(`.rail-item[data-rail="${hist ? "history" : "schema"}"]`).click();
     histEmpty(k === "history-none");
@@ -1023,7 +1083,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
     const pin = $("#guard-pass-in"), wrong = k === "guard-pass-wrong";
     pin.value = wrong ? "hunter2" : ""; wrong ? pin.setAttribute("aria-invalid", "true") : pin.removeAttribute("aria-invalid");
     $("#guard-pass-err").hidden = !wrong;
-    state = { history: "full", "history-clear": "full", "history-none": "full", "level-menu": "full", "guard-confirm": "full", "guard-pass": "full", "guard-pass-touch": "full", "guard-pass-wrong": "full", "warn-limit": "full", "warn-update": "full", "warn-update-strict": "full", "cell-menu": "full", "row-menu": "full", results: "full", running: "loading", empty: "empty", "sql-error": "error", lost: "lost", wide: "full", long: "full", "paged-none": "nomore" }[k] ?? "full";
+    state = { history: "full", "history-clear": "full", "history-none": "full", "level-menu": "full", "guard-confirm": "full", "guard-pass": "full", "guard-pass-touch": "full", "guard-pass-wrong": "full", "warn-limit": "full", "warn-update": "full", "warn-update-strict": "full", "cell-menu": "full", "row-menu": "full", results: "full", running: "loading", empty: "empty", "sql-error": "error", lost: "lost", "hb-run": "lost", "hb-live": "full", "hb-idle": "full", "hb-retry": "full", wide: "full", long: "full", "paged-none": "nomore" }[k] ?? "full";
     render();
     if (k.startsWith("ac-")) window.acShow(k);
     // the two right-click menus, opened as a right-click would

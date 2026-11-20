@@ -61,11 +61,12 @@
     if (state === "loading") return;
     if (PAGED[tab]) off[tab] = 0;
     sub = "results"; state = "loading"; render();
-    timer = setTimeout(() => { state = tab === "q2" && $("#q2-col").textContent === "totl" ? "error" : "full"; render(); }, 700);
+    // a run opens a fresh connection if the pool lost its own: when it gets through, the badge and the bar clear
+    timer = setTimeout(() => { state = tab === "q2" && $("#q2-col").textContent === "totl" ? "error" : "full"; if (hbState() && hbState() !== "live") hb("live", false); render(); }, 700);
   }
   run.addEventListener("click", runQuery);
   $("#cancel").addEventListener("click", () => { clearTimeout(timer); state = PAGED[tab] && !PAGED[tab].pages[off[tab]] ? "nomore" : "full"; render(); });
-  $("#reconnect").addEventListener("click", runQuery);
+  $("#reconnect").addEventListener("click", () => { if (hbState() === "down") hb("live", false); runQuery(); });
   document.addEventListener("keydown", (e) => { if (e.metaKey && e.key === "Enter") { e.preventDefault(); runQuery(); } });
   // Query 2: take the hint, rewrite the column, run again
   $("#q2-fix").addEventListener("click", () => { const c = $("#q2-col"); c.textContent = "total"; c.classList.remove("q-err"); runQuery(); });
@@ -78,8 +79,44 @@
   $("#hist-clear").addEventListener("click", () => { hcDlg.hidden = false; });
   $$("[data-hc-close]").forEach((b) => b.addEventListener("click", () => { hcDlg.hidden = true; }));
   $("#hist-clear-dlg form").addEventListener("submit", (e) => { e.preventDefault(); hcDlg.hidden = true; histEmpty(true); });
+  // Connection status at the foot of the sidebar (heartbeat on only), and the idle-drop bar.
+  // connecting: first open; connected: the last ping answered; down: no answer (a lost run says so too);
+  // retry: reconnecting. Off (the plain "Connection lost" state): no status line at all.
+  const CS = {
+    connecting: ["Connecting", "Opening a connection to localhost:5432"],
+    live: ["Connected", "Heartbeat: select 1 answered 8 s ago"],
+    down: ["Disconnected", "Heartbeat: no answer from localhost:5432"],
+    retry: ["Reconnecting", "Reconnecting to localhost:5432"],
+  };
+  const CS_KEY = { connecting: "connecting", live: "connected", down: "disconnected", retry: "reconnecting" };
+  // the same mark on a connection's tab in the title strip, front or not
+  function tabCs(name, st) {
+    const m = $(`.cs-tab[data-cs-conn="${name}"]`);
+    if (!m) return;
+    m.dataset.cs = CS_KEY[st]; m.title = CS[st][0]; m.setAttribute("aria-label", `${name}: ${CS[st][0]}`);
+  }
+  function hb(st, bar) {
+    $$(".conn-status").forEach((el) => {
+      el.dataset.cs = CS_KEY[st]; el.title = CS[st][1];
+      $(".cs-label", el).textContent = CS[st][0];
+    });
+    tabCs("shop_prod", st);
+    $("#hb-bar").hidden = !bar;
+    $$("#hb-bar [data-hb-say]").forEach((x) => { x.hidden = x.dataset.hbSay !== st; });
+    $("#hb-reconnect").disabled = st === "retry";
+    $(".hb-note").hidden = st !== "down" || bar;
+  }
+  const hbState = () => ({ connected: "live", disconnected: "down", reconnecting: "retry", connecting: "connecting" })[$(".conn-status")?.dataset.cs];
+  let hbTimer;
+  $("#hb-reconnect").addEventListener("click", () => { hb("retry", true); hbTimer = setTimeout(() => hb("live", false), 900); });
   window.pvShow = (k) => {
-    clearTimeout(timer); sub = "results";
+    clearTimeout(timer); clearTimeout(hbTimer); sub = "results";
+    hb({ "hb-run": "down", "hb-idle": "down", "hb-retry": "retry", "hb-connecting": "connecting" }[k] ?? "live", k === "hb-idle" || k === "hb-retry");
+    // "Connection lost" is the heartbeat-off case: no status line at all
+    $$(".conn-status").forEach((el) => { el.hidden = k === "lost"; });
+    const front = $('.cs-tab[data-cs-conn="shop_prod"]'); if (front) front.hidden = k === "lost";
+    // legacy_cms, open behind shop_prod: its tab is the only place its drop shows
+    tabCs("legacy_cms", k === "hb-bg" ? "down" : "live");
     const hist = k.startsWith("history");
     $(`.rail-item[data-rail="${hist ? "history" : "schema"}"]`).click();
     histEmpty(k === "history-none");
@@ -100,7 +137,7 @@
     const pin = $("#guard-pass-in"), wrong = k === "guard-pass-wrong";
     pin.value = wrong ? "hunter2" : ""; wrong ? pin.setAttribute("aria-invalid", "true") : pin.removeAttribute("aria-invalid");
     $("#guard-pass-err").hidden = !wrong;
-    state = { history: "full", "history-clear": "full", "history-none": "full", "level-menu": "full", "guard-confirm": "full", "guard-pass": "full", "guard-pass-touch": "full", "guard-pass-wrong": "full", "warn-limit": "full", "warn-update": "full", "warn-update-strict": "full", "cell-menu": "full", "row-menu": "full", results: "full", running: "loading", empty: "empty", "sql-error": "error", lost: "lost", wide: "full", long: "full", "paged-none": "nomore" }[k] ?? "full";
+    state = { history: "full", "history-clear": "full", "history-none": "full", "level-menu": "full", "guard-confirm": "full", "guard-pass": "full", "guard-pass-touch": "full", "guard-pass-wrong": "full", "warn-limit": "full", "warn-update": "full", "warn-update-strict": "full", "cell-menu": "full", "row-menu": "full", results: "full", running: "loading", empty: "empty", "sql-error": "error", lost: "lost", "hb-run": "lost", "hb-live": "full", "hb-idle": "full", "hb-retry": "full", wide: "full", long: "full", "paged-none": "nomore" }[k] ?? "full";
     render();
     if (k.startsWith("ac-")) window.acShow(k);
     // the two right-click menus, opened as a right-click would

@@ -151,6 +151,7 @@ pub fn run() {
             db::run_query,
             db::cancel_query,
             db::apply_edits,
+            db::guard_ask,
             db::mongo::mongo_find,
             db::mongo::mongo_stats,
             db::redis::redis_scan,

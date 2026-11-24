@@ -1356,7 +1356,7 @@ body.cards-dragging .group-drop-new { display: flex; }
 .btn--run .run-ico, .btn--run .run-spin { width: 15px; height: 15px; stroke-width: 2; }
 .btn--run .run-spin { display: none; }
 .btn--run[aria-busy] .run-ico { display: none; }
-.btn--run[aria-busy] .run-spin { display: block; animation: spin 0.8s linear infinite; }
+.btn--run[aria-busy] .run-spin { display: block; animation: upd-spin 0.8s linear infinite; }
 .btn--run[aria-busy]:disabled { opacity: 0.8; cursor: progress; }
 @media (prefers-reduced-motion: reduce) { .btn--run[aria-busy] .run-spin { animation-duration: 2.4s; } }
 .btn--run .run-kbd { margin-left: var(--space-xs); font: 500 var(--text-sm) / 1 var(--font-ui); letter-spacing: 0.04em; opacity: 0.85; }
@@ -1935,3 +1935,48 @@ body.cards-dragging .group-drop-new { display: flex; }
 .dialog.auth .ask-alt { width: 100%; background: var(--color-paper-2); border-color: var(--color-rule); color: var(--color-ink); }
 .dialog.auth .ask-alt:hover { background: var(--color-paper-3); }
 .dialog.auth .ask-input .field { padding-right: 12px; letter-spacing: 0; }
+
+/* ---- table › Columns, edited in place: quiet fields in the cells. Changed cells green, a dropped column red and
+   struck through, a new one green: the same marks as hash editing. Review SQL opens the guard's .ask dialog. ---- */
+.col-ed .res-tools { padding: var(--space-xs) 0; }
+.col-ed .grid-wrap { margin: 0; }
+.col-grid { width: 100%; table-layout: fixed; }
+.col-grid .cg-name { width: 22%; }
+.col-grid .cg-type { width: 18%; }
+.col-grid .cg-null { width: 96px; }
+.col-grid .cg-def { width: auto; }
+.col-grid .cg-key { width: 17%; }
+.col-grid .cg-act { width: 44px; }
+.col-ed .col-grid td { max-width: none; padding: 0 var(--space-3xs); }
+.col-ed .col-grid th { padding: 0 var(--space-sm); }
+.col-in { display: block; width: 100%; height: 28px; padding: 0 calc(var(--space-sm) - var(--space-3xs) - 1px); border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--color-ink); font: inherit; text-overflow: ellipsis; transition: border-color 0.12s, box-shadow 0.12s, background 0.12s; }
+.col-in.mono { font-family: var(--font-table); font-size: var(--font-size-table, inherit); }
+.col-in::placeholder { color: var(--color-placeholder); }
+.col-in:hover:not(:disabled) { border-color: var(--color-rule); background: var(--color-paper); }
+.col-in:focus { outline: none; border-color: var(--color-focus); background: var(--color-paper); box-shadow: 0 0 0 3px var(--color-accent-soft); }
+.col-in[aria-invalid="true"] { border-color: var(--color-error); }
+.col-in[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 16%, transparent); }
+.col-in:disabled { cursor: default; }
+.col-lock .col-in:disabled { color: var(--color-muted); }
+.grid tr.row-del .col-in { color: var(--color-ink-2); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--color-error) 70%, transparent); }
+.col-chk { display: flex; align-items: center; gap: var(--space-2xs); padding: 0 calc(var(--space-sm) - var(--space-3xs)); cursor: pointer; }
+.col-chk input { width: 15px; height: 15px; margin: 0; accent-color: var(--color-accent); cursor: inherit; }
+.col-chk:has(input:disabled) { cursor: default; color: var(--color-muted); }
+.col-ed .col-grid td .key { padding: 0 calc(var(--space-sm) - var(--space-3xs)); }
+.col-act { text-align: right; }
+.col-act .icon-btn { min-width: 28px; min-height: 28px; border-radius: 6px; }
+/* the shredder shows on the row's hover or focus; undo and remove stay, since the row is already marked */
+.col-act .col-shred { opacity: 0; transition: opacity 0.12s; }
+.col-grid tr:hover .col-shred, .col-grid tr:focus-within .col-shred { opacity: 1; }
+.col-shred:not(:disabled):hover { color: var(--color-error); }
+.col-grid tr:hover .col-shred:disabled, .col-grid tr:focus-within .col-shred:disabled { opacity: 0.35; }
+.col-note { display: flex; align-items: flex-start; gap: var(--space-2xs); margin: 0 0 var(--space-xs); padding: var(--space-xs) var(--space-sm); border: 1px solid var(--color-rule); border-radius: var(--radius-control); background: var(--color-paper-2); color: var(--color-ink-2); font-size: var(--text-sm); line-height: 1.45; }
+.col-note .ico { width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px; color: var(--color-link); }
+.col-ed .col-foot { justify-content: flex-start; gap: var(--space-sm); margin: var(--space-xs) 0 0; font-family: var(--font-ui); }
+.col-ed .col-foot .grid-add { margin-right: 0; }
+.col-ed .col-foot .edit-what { margin-right: 0; }
+.col-ed .col-foot .edit-what.err { color: var(--color-error); }
+.col-ed.col-reading .col-grid { opacity: 0.45; transition: opacity 0.15s; }
+.dialog.col-ask { width: 540px; }
+.col-ask .ask-cmd { max-height: 240px; }
+.col-ask .auth-btn[aria-busy="true"] .col-apply-ico .ico { animation: upd-spin 0.8s linear infinite; }

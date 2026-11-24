@@ -812,7 +812,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
         </div>
       )}
       <div className="grid-wrap" tabIndex={0} aria-label={label} ref={wrap} onKeyDown={onKey} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu}>
-        <table className={`grid${pin ? " pin" : ""}`} ref={table}>
+        <table className={`grid${pin ? " pin" : ""}${view.length === 1 ? " one" : ""}`} ref={table}>
           <thead>
             <tr>
               <th className="rownum" scope="col">

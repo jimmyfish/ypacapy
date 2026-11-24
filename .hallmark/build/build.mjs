@@ -752,17 +752,12 @@ pages["index.html"] = page({
 
 // Table
 const structure = `
-          <div class="structure" data-view-of="columns" hidden>
-            <h3>Columns</h3>
-            <div class="grid-wrap"><table class="grid"><thead><tr><th scope="col">Column</th><th scope="col">Type</th><th scope="col">Nullable</th><th scope="col">Default</th><th scope="col">Key</th></tr></thead><tbody>
-              <tr><td>id</td><td>int8</td><td>no</td><td>nextval('orders_id_seq'::regclass)</td><td><span class="key">${ic("key")}Primary</span></td></tr>
-              <tr><td>customer_id</td><td>int8</td><td>no</td><td class="null">none</td><td><span class="key">${ic("link")}customers.id</span></td></tr>
-              <tr><td>status</td><td>text</td><td>no</td><td>'pending'::text</td><td></td></tr>
-              <tr><td>total</td><td>numeric(12,2)</td><td>no</td><td class="null">none</td><td></td></tr>
-              <tr><td>currency</td><td>char(3)</td><td>no</td><td>'USD'::bpchar</td><td></td></tr>
-              <tr><td>created_at</td><td>timestamptz</td><td>no</td><td>now()</td><td></td></tr>
-              <tr><td>shipped_at</td><td>timestamptz</td><td>yes</td><td class="null">none</td><td></td></tr>
-            </tbody></table></div>
+          <div class="structure col-ed" data-view-of="columns" hidden>
+            <div class="res-tools col-tools"><span class="muted" id="col-hint">Click a cell to change it</span><div class="edit-bar" role="group" aria-label="Unsaved changes" id="col-bar" hidden><span class="edit-n" id="col-n">0 changes</span><button type="button" class="btn btn--primary" id="col-review" title="See the SQL, then apply it  ⌘S">Review SQL</button><button type="button" class="btn" id="col-discard" title="Drop the changes">Discard</button></div></div>
+            <p class="col-note" id="col-sqlite" hidden>${ic("info")}<span>SQLite can rename, add and drop columns. Changing a type, nullable or default means rebuilding the table, so do that one in a console.</span></p>
+            <div class="grid-wrap"><table class="grid col-grid"><colgroup><col class="cg-name"><col class="cg-type"><col class="cg-null"><col class="cg-def"><col class="cg-key"><col class="cg-act"></colgroup><thead><tr><th scope="col">Column</th><th scope="col">Type</th><th scope="col">Nullable</th><th scope="col">Default</th><th scope="col">Key</th><th scope="col"><span class="visually-hidden">Drop</span></th></tr></thead><tbody id="col-body"></tbody></table></div>
+            <datalist id="col-types"></datalist>
+            <div class="grid-foot col-foot"><button type="button" class="btn btn--quiet grid-add" id="col-add">${ic("plus")}Add column</button><span class="edit-what" id="col-what"></span></div>
           </div>
           <div class="structure" data-view-of="indexes" hidden>
             <h3>Indexes</h3>
@@ -776,20 +771,43 @@ const structure = `
               <tr><td>orders_customer_id_fkey</td><td>customer_id</td><td>customers.id</td><td>restrict</td></tr>
             </tbody></table></div>
           </div>`;
+// Columns editing: Review SQL shows what runs, in the write guard's own dialog. It stands in for the guard's ask
+// (Low: this is the confirm; Strict: the passphrase well shows here). Dropping a column adds the shredder line.
+const colReview = `
+<div class="backdrop" id="col-dlg" hidden>
+  <div class="dialog auth ask col-ask" role="dialog" aria-modal="true" aria-labelledby="col-dlg-t">
+    <div class="auth-head"><span class="auth-badge auth-badge--warn">${ic("shield")}</span><div class="auth-head-text"><h2 id="col-dlg-t">Change orders on shop_prod?</h2><p id="col-dlg-sub"></p></div></div>
+    <div class="ask-what"><div class="ask-kinds"><code class="ask-chip">ALTER</code></div><pre class="ask-cmd" id="col-sql"></pre></div>
+    <ul class="auth-scope ask-warns" id="col-warns" hidden></ul>
+    <p class="auth-note" id="col-strict" hidden>${ic("lock")}<span>shop_prod is Strict, so it needs the passphrase.</span></p>
+    <form id="col-form">
+      <p class="ask-final" id="col-final" hidden>${ic("shredder")}<span></span></p>
+      <label class="auth-field" id="col-pass" hidden>Passphrase
+        <span class="auth-input">${ic("key-round")}<input class="field" type="password" placeholder="Capy's passphrase" autocomplete="off" spellcheck="false"></span>
+      </label>
+      <p class="auth-err" role="alert" id="col-err" hidden>${ic("circle-alert")}<span></span></p>
+      <div class="auth-or" aria-hidden="true"><span>or</span></div><button type="button" class="btn auth-btn ask-alt" id="col-console">${ic("square-code")}Open in a console instead</button>
+      <footer class="auth-actions"><button type="button" class="btn auth-btn" id="col-cancel">Cancel</button><button type="submit" class="btn auth-btn auth-btn--primary" id="col-apply"><span class="col-apply-ico">${ic("play")}</span><span id="col-apply-l">Apply</span></button></footer>
+    </form>
+  </div>
+</div>
+<div class="toast" role="status" id="col-toast" hidden></div>
+<!-- icons the columns script clones into rows -->
+<template id="col-ico">${ic("shredder")}${ic("undo-2")}${ic("x")}${ic("key")}${ic("link")}${ic("lock")}${ic("lock-open")}${ic("play")}${ic("loader-circle")}</template>`;
 pages["table.html"] = page({
   title: "ypacapy preview, table",
-  desc: "Design preview of a table in ypacapy: its rows under a where filter, its columns, and its indexes and keys.",
-  barHtml: bar("table", [["rows", "Rows"], ["columns", "Columns"], ["indexes", "Indexes"], ["no-match", "Filter matches nothing"], ["loading", "Loading"]]),
+  desc: "Design preview of a table in ypacapy: its rows under a where filter, its columns (edited in place, applied after a SQL review), and its indexes and keys.",
+  barHtml: bar("table", [["rows", "Rows"], ["columns", "Columns"], ["col-edit", "Columns: editing"], ["col-review", "Review SQL"], ["col-strict", "Review: Strict"], ["col-fail", "Apply failed"], ["col-mysql", "MySQL: review"], ["col-sqlite", "SQLite"], ["col-sqlite-bad", "SQLite: NOT NULL, no default"], ["indexes", "Indexes"], ["no-match", "Filter matches nothing"], ["loading", "Loading"]]),
   body: app({ current: "shop_prod", side: schemaSide("orders") + historySide + savedSide, work: `${tabsbar("orders", ["orders"])}
       <div class="work-body">
         <div class="request-line">
           <div class="url-field"><span class="where-k">where</span><input class="where-in" id="where" aria-label="Where clause for orders" value="status in ('paid', 'shipped', 'refunded')" spellcheck="false" autocomplete="off"></div>${runGroup}
         </div>
-        <div class="req-title"><span class="name name--static">orders</span><span class="path">shop_prod / shop / public</span></div>
+        <div class="req-title"><span class="name name--static">orders</span><span class="path" id="t-path">shop_prod / shop / public</span></div>
         <section class="response" aria-label="orders">
           <nav class="subtabs" aria-label="Table">
             <button type="button" class="subtab" data-view="rows" aria-pressed="true">Rows<span class="n" id="t-n" title="Estimate from table statistics">~12k</span></button>
-            <button type="button" class="subtab" data-view="columns" aria-pressed="false">Columns<span class="n">7</span></button>
+            <button type="button" class="subtab" data-view="columns" aria-pressed="false">Columns<span class="n" id="col-count">8</span></button>
             <button type="button" class="subtab" data-view="indexes" aria-pressed="false">Indexes<span class="n">3</span></button>
             <span class="push meta"><span class="dim" id="t-ms">6&nbsp;ms</span></span>
           </nav>
@@ -805,7 +823,7 @@ ${ORDERS}
           <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Reading orders</strong><span>shop_prod, public.orders</span></div></div>
           <div class="state" data-when="empty" hidden><div class="empty"><strong>No row of orders matches this filter</strong><span>No order has the status lost. Status holds paid, shipped, refunded or pending.</span><button type="button" class="link" id="t-clear">Clear the filter</button></div></div>${structure}
         </section>
-      </div>` }),
+      </div>`, overlay: colReview }),
   script: js("page-table.js"),
 });
 

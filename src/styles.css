@@ -615,6 +615,12 @@ th[aria-sort="ascending"] .sort-ico, th[aria-sort="descending"] .sort-ico { colo
 .menu button:disabled:hover { background: none; }
 .grid tr.row-edit .rownum { color: var(--color-ok); font-weight: 600; }
 .grid tr.row-del .rownum { color: var(--color-error); text-decoration: none; }
+/* edit marks, shared by the result grid and the Columns editor: changed green, dropped red and struck through, the bar of changes */
+.edit-bar { display: flex; align-items: center; gap: var(--space-2xs); }
+.edit-bar .btn { min-height: 28px; padding-block: 0; }
+.edit-n { margin-right: var(--space-2xs); color: var(--color-ok); font: 600 var(--text-sm) var(--font-ui); font-variant-numeric: tabular-nums; }
+.grid td.cell-edit, .grid tbody tr:hover td.cell-edit { background: color-mix(in srgb, var(--color-ok) 18%, var(--color-paper)); }
+.grid tr.row-del td, .grid tbody tr.row-del:hover td { background: color-mix(in srgb, var(--color-error) 14%, var(--color-paper)); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--color-error) 70%, transparent); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .upd-chip .ico { width: 14px; height: 14px; }
 .upd-spin { animation: upd-spin 0.9s linear infinite; }

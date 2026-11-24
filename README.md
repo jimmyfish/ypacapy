@@ -88,7 +88,7 @@ After that, the app updates itself. A little chip shows up in the title strip wh
 - **Result grid:** sort, frozen primary-key columns, typed cells (numbers, timestamps, booleans, coloured JSON, bytes), a cell inspector, and `⌘C`.
 - **Export** rows as CSV, JSON, Markdown table or plain text.
 - **Edit in place.** A result that reads one table plainly (no join, group, union or distinct), with its full primary key, can be edited. Type over a cell, `⌘⌫` a row, then `⌘S`. All changes go in one transaction, one `UPDATE` or `DELETE` per row keyed by the primary key. If any statement touches more or fewer than one row, the whole thing rolls back.
-- **Table tabs:** rows with a `WHERE` filter and paging (pick the rows per page right in the pager), plus the table's columns, indexes and foreign keys from the catalog.
+- **Table tabs:** rows with a `WHERE` filter and paging (pick the rows per page right in the pager), plus the table's columns, indexes and foreign keys from the catalog. Edit the columns in place (rename, type, nullable, default, add, drop), review the `ALTER` SQL, then apply it through the write guard.
 
 ### <img src="docs/assets/icons/leaf.svg" width="20" height="20" align="top" alt="" /> MongoDB
 

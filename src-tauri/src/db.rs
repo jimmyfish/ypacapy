@@ -698,6 +698,41 @@ pub struct TableColumn {
     default: Option<String>,
     primary: bool,
     references: Option<String>,
+    /// MySQL/MariaDB: what MODIFY COLUMN has to say again, or the column loses it
+    #[serde(skip_serializing_if = "Option::is_none")]
+    mysql: Option<MysqlCol>,
+}
+
+/// A MySQL column's attributes beyond type, null and default. MODIFY / CHANGE COLUMN restate the whole column:
+/// whatever the statement leaves out (comment, charset, auto_increment, on update) is dropped.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MysqlCol {
+    /// information_schema EXTRA, lower case: auto_increment, on update current_timestamp, virtual generated …
+    extra: String,
+    comment: String,
+    charset: Option<String>,
+    collation: Option<String>,
+}
+
+/// A MySQL default as SQL, the way the column editor shows and sends it. MariaDB's COLUMN_DEFAULT is SQL already
+/// ('pending', NULL, current_timestamp()). MySQL's is the bare value: an expression when EXTRA says
+/// DEFAULT_GENERATED, a literal otherwise, quoted unless the column is a number.
+fn mysql_default(raw: Option<String>, data_type: &str, extra: &str, mariadb: bool) -> Option<String> {
+    let v = raw?;
+    if mariadb {
+        return (v != "NULL").then_some(v);
+    }
+    if extra.to_lowercase().contains("default_generated") {
+        let l = v.to_lowercase();
+        let bare = l.starts_with("current_timestamp") || l.starts_with("now(") || l.starts_with("localtime") || l.starts_with("current_date") || l.starts_with("current_time");
+        return Some(if bare || v.starts_with('(') { v } else { format!("({v})") });
+    }
+    let numeric = matches!(data_type.to_lowercase().as_str(), "tinyint" | "smallint" | "mediumint" | "int" | "integer" | "bigint" | "decimal" | "numeric" | "float" | "double" | "real" | "bit" | "year");
+    if numeric || v.starts_with("b'") {
+        return Some(v);
+    }
+    Some(format!("'{}'", v.replace('\\', "\\\\").replace('\'', "''")))
 }
 
 #[derive(Serialize)]
@@ -809,10 +844,10 @@ pub async fn table_info(
     }
     check_schema(&conn, &schema)?;
     let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
-    table_catalog(&open.pool, conn.engine, &schema, &table).await
+    table_catalog(&open.pool, conn.engine, &schema, &table, open.server.starts_with("MariaDB")).await
 }
 
-async fn table_catalog(pool: &Pool, engine: Engine, s: &str, t: &str) -> Result<TableInfo, String> {
+async fn table_catalog(pool: &Pool, engine: Engine, s: &str, t: &str, mariadb: bool) -> Result<TableInfo, String> {
     let r = async {
         Ok::<_, sqlx::Error>(match engine {
             Engine::Postgres => {
@@ -852,12 +887,13 @@ async fn table_catalog(pool: &Pool, engine: Engine, s: &str, t: &str) -> Result<
                     &[s, t],
                 )
                 .await?;
-                (cols.iter().map(|r| (col(r, 0), col(r, 1), truthy(&col(r, 2)), r.get(3).cloned().flatten())).collect::<Vec<_>>(), idx.iter().map(|r| (col(r, 0), col(r, 1), col(r, 2), truthy(&col(r, 3)), truthy(&col(r, 4)))).collect::<Vec<_>>(), fks.iter().map(|r| (col(r, 0), col(r, 1), col(r, 2), col(r, 3))).collect::<Vec<_>>())
+                (cols.iter().map(|r| (col(r, 0), col(r, 1), truthy(&col(r, 2)), r.get(3).cloned().flatten(), None)).collect::<Vec<_>>(), idx.iter().map(|r| (col(r, 0), col(r, 1), col(r, 2), truthy(&col(r, 3)), truthy(&col(r, 4)))).collect::<Vec<_>>(), fks.iter().map(|r| (col(r, 0), col(r, 1), col(r, 2), col(r, 3))).collect::<Vec<_>>())
             }
             Engine::Mysql => {
                 let cols = catalog(
                     pool,
-                    "select cast(COLUMN_NAME as char), cast(COLUMN_TYPE as char), cast(IS_NULLABLE as char), cast(COLUMN_DEFAULT as char) \
+                    "select cast(COLUMN_NAME as char), cast(COLUMN_TYPE as char), cast(IS_NULLABLE as char), cast(COLUMN_DEFAULT as char), \
+                     cast(DATA_TYPE as char), cast(EXTRA as char), cast(COLUMN_COMMENT as char), cast(CHARACTER_SET_NAME as char), cast(COLLATION_NAME as char) \
                      from information_schema.COLUMNS where TABLE_SCHEMA = ? and TABLE_NAME = ? order by ORDINAL_POSITION",
                     &[s, t],
                 )
@@ -882,7 +918,14 @@ async fn table_catalog(pool: &Pool, engine: Engine, s: &str, t: &str) -> Result<
                 )
                 .await?;
                 (
-                    cols.iter().map(|r| (col(r, 0), col(r, 1), col(r, 2) == "YES", r.get(3).cloned().flatten())).collect(),
+                    cols.iter()
+                        .map(|r| {
+                            let extra = col(r, 5);
+                            let default = mysql_default(r.get(3).cloned().flatten(), &col(r, 4), &extra, mariadb);
+                            let my = MysqlCol { extra: extra.to_lowercase(), comment: col(r, 6), charset: r.get(7).cloned().flatten(), collation: r.get(8).cloned().flatten() };
+                            (col(r, 0), col(r, 1), col(r, 2) == "YES", default, Some(my))
+                        })
+                        .collect(),
                     idx.iter().map(|r| (col(r, 0), col(r, 1), col(r, 2).to_lowercase(), col(r, 3) == "0", col(r, 0) == "PRIMARY")).collect(),
                     fks.iter().map(|r| (col(r, 0), col(r, 1), col(r, 2), col(r, 3))).collect(),
                 )
@@ -917,7 +960,7 @@ async fn table_catalog(pool: &Pool, engine: Engine, s: &str, t: &str) -> Result<
                         None => fks.push((format!("fk_{id}"), col(r, 1), format!("{}.{}", col(r, 2), col(r, 3)), col(r, 4).to_lowercase())),
                     }
                 }
-                (cols.iter().map(|r| (col(r, 0), col(r, 1).to_lowercase(), col(r, 2) == "0", r.get(3).cloned().flatten())).collect(), idx, fks)
+                (cols.iter().map(|r| (col(r, 0), col(r, 1).to_lowercase(), col(r, 2) == "0", r.get(3).cloned().flatten(), None)).collect(), idx, fks)
             }
             Engine::Mongo | Engine::Redis => return Err(sqlx::Error::Configuration("MongoDB indexes are read in mongo.rs".into())),
         })
@@ -927,7 +970,8 @@ async fn table_catalog(pool: &Pool, engine: Engine, s: &str, t: &str) -> Result<
     let pk_cols: Vec<String> = idx.iter().filter(|i| i.4).flat_map(|i| i.1.split(", ").map(str::to_string).collect::<Vec<_>>()).collect();
     let columns = cols
         .into_iter()
-        .map(|(name, ty, nullable, default)| TableColumn {
+        .map(|(name, ty, nullable, default, mysql)| TableColumn {
+            mysql,
             primary: pk_cols.contains(&name),
             references: fks.iter().find(|f| f.1 == name).map(|f| f.2.clone()),
             name,
@@ -1273,6 +1317,9 @@ pub struct EditRequest {
     database: Option<String>,
     statements: Vec<String>,
     approval: Option<Approval>,
+    /// a table's structure (Columns › Review SQL): statements change no rows, and the schema tree is stale after
+    #[serde(default)]
+    ddl: bool,
 }
 
 enum Applied {
@@ -1283,14 +1330,16 @@ enum Applied {
     TimedOut,
 }
 
-/// All statements in one transaction; each must change exactly one row, or nothing is kept.
-async fn apply(open: &Open, stmts: &[String], timeout_s: u64) -> Result<Applied, sqlx::Error> {
+/// All statements in one transaction; each must change exactly one row, or nothing is kept. DDL changes no
+/// rows: it only has to run. (MySQL commits DDL on its own; the column editor sends it one ALTER.)
+async fn apply(open: &Open, stmts: &[String], timeout_s: u64, ddl: bool) -> Result<Applied, sqlx::Error> {
     let work = async {
         on_pool!(&open.pool, p => {
             let mut tx = p.begin().await?;
             let mut total = 0;
             for (index, s) in stmts.iter().enumerate() {
                 match RawExec::changed(&mut *tx, s).await {
+                    Ok(_) if ddl => total += 1,
                     Ok(1) => total += 1,
                     // dropping the transaction rolls it back
                     Ok(n) => return Ok(Applied::Miss { index, n }),
@@ -1335,7 +1384,7 @@ pub async fn apply_edits(
     let database = req.database.clone().unwrap_or_default();
     let timeout_s = conn.statement_timeout.map(u64::from).unwrap_or_else(|| settings.u64("statementTimeout", 30));
     let res = match state.get(&conn, &database).await {
-        Ok(open) => apply(&open, &req.statements, timeout_s).await.map(|a| (a, open.server.clone())),
+        Ok(open) => apply(&open, &req.statements, timeout_s, req.ddl).await.map(|a| (a, open.server.clone())),
         Err(e) => Err(e),
     };
     let ms = t.elapsed().as_millis() as u64;
@@ -1343,11 +1392,11 @@ pub async fn apply_edits(
     let outcome = match res {
         Ok((Applied::Done(n), server)) => RunOutcome::Done {
             sets: vec![],
-            messages: vec![format!("{} changed", plural(n as usize, "row"))],
+            messages: vec![if req.ddl { format!("{} ran", plural(n as usize, "statement")) } else { format!("{} changed", plural(n as usize, "row")) }],
             ms,
             limit: None,
-            affected: Some(n),
-            ddl: false,
+            affected: if req.ddl { None } else { Some(n) },
+            ddl: req.ddl,
             last_is_query: false,
             server,
         },
@@ -1389,6 +1438,16 @@ pub async fn apply_edits(
             .await;
     }
     Ok(outcome)
+}
+
+/// What the write guard would ask before this SQL runs, without running it or touching the database: None when
+/// it runs as is (level None, nothing protected, or Strict still unlocked). The column editor's Review shows the
+/// passphrase well from this, and then sends its approval with apply_edits.
+#[tauri::command]
+pub async fn guard_ask(conn_id: String, sql: String, guard_state: State<'_, GuardState>) -> Result<Option<guard::Ask>, String> {
+    let conn = conns::find(&conn_id)?;
+    let c = guard::classify(&sql, conn.engine);
+    guard::check(&c, &conn, None, &guard_state).await
 }
 
 #[tauri::command]
@@ -1548,6 +1607,19 @@ pub fn start_heartbeat(app: AppHandle) {
 mod tests {
     use super::*;
 
+    #[test]
+    fn mysql_defaults_read_as_sql() {
+        let d = |v: Option<&str>, ty: &str, extra: &str, maria: bool| mysql_default(v.map(str::to_string), ty, extra, maria);
+        assert_eq!(d(Some("pending"), "varchar", "", false).as_deref(), Some("'pending'"));
+        assert_eq!(d(Some("it's"), "text", "", false).as_deref(), Some("'it''s'"));
+        assert_eq!(d(Some("0"), "int", "", false).as_deref(), Some("0"));
+        assert_eq!(d(Some("CURRENT_TIMESTAMP"), "datetime", "DEFAULT_GENERATED on update CURRENT_TIMESTAMP", false).as_deref(), Some("CURRENT_TIMESTAMP"));
+        assert_eq!(d(Some("rand()"), "double", "DEFAULT_GENERATED", false).as_deref(), Some("(rand())"));
+        assert_eq!(d(None, "int", "", false), None);
+        assert_eq!(d(Some("'pending'"), "varchar", "", true).as_deref(), Some("'pending'"));
+        assert_eq!(d(Some("NULL"), "varchar", "", true), None);
+    }
+
     fn conn(engine: Engine) -> Conn {
         Conn {
             id: String::new(),
@@ -1670,7 +1742,7 @@ mod tests {
         let names: Vec<&str> = objs.tables.iter().map(|t| t.name.as_str()).collect();
         assert_eq!(names, ["cust", "ord"]);
         assert_eq!(objs.tables[1].estimate, Some(0));
-        let info = table_catalog(&pool, Engine::Postgres, &schema, "ord").await.unwrap();
+        let info = table_catalog(&pool, Engine::Postgres, &schema, "ord", false).await.unwrap();
         let cols: Vec<(&str, &str, bool)> = info.columns.iter().map(|c| (c.name.as_str(), c.ty.as_str(), c.nullable)).collect();
         assert_eq!(cols[0], ("id", "bigint", false));
         assert!(info.columns[0].primary);
@@ -1750,20 +1822,28 @@ mod tests {
         assert_eq!(r.affected, Some(1));
         // grid edits: one transaction, each statement exactly one row, else nothing is kept
         let stmts = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        assert!(matches!(apply(&o, &stmts(&["update \"t\" set \"name\" = 'x' where \"id\" = '1'", "delete from \"t\" where \"id\" = '2'"]), 10).await.unwrap(), Applied::Done(2)));
+        assert!(matches!(apply(&o, &stmts(&["update \"t\" set \"name\" = 'x' where \"id\" = '1'", "delete from \"t\" where \"id\" = '2'"]), 10, false).await.unwrap(), Applied::Done(2)));
         assert_eq!(raw_rows(&o.pool, "select name, (select count(*) from t) from t").await.unwrap(), vec![vec![Some("x".into()), Some("1".into())]]);
-        assert!(matches!(apply(&o, &stmts(&["update t set name = 'y' where id = 1", "update t set name = 'z' where id = 9"]), 10).await.unwrap(), Applied::Miss { index: 1, n: 0 }));
-        assert!(matches!(apply(&o, &stmts(&["update t set name = 'y' where id = 1", "update t set nope = 1 where id = 1"]), 10).await.unwrap(), Applied::Failed { index: 1, .. }));
+        assert!(matches!(apply(&o, &stmts(&["update t set name = 'y' where id = 1", "update t set name = 'z' where id = 9"]), 10, false).await.unwrap(), Applied::Miss { index: 1, n: 0 }));
+        assert!(matches!(apply(&o, &stmts(&["update t set name = 'y' where id = 1", "update t set nope = 1 where id = 1"]), 10, false).await.unwrap(), Applied::Failed { index: 1, .. }));
         assert_eq!(first(&raw_rows(&o.pool, "select name from t").await.unwrap()), "x");
         raw_rows(&o.pool, "insert into t (id, name) values (2, 'b')").await.unwrap();
         raw_rows(&o.pool, "create table c (id integer primary key); create table o (id integer primary key, c_id integer references c (id) on delete cascade, s text); create index o_s on o (s desc)").await.unwrap();
         let objs = schema_objects(&o.pool, Engine::Sqlite, "main").await.unwrap();
         assert_eq!(objs.tables.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(), ["c", "o", "t"]);
-        let info = table_catalog(&o.pool, Engine::Sqlite, "main", "o").await.unwrap();
+        let info = table_catalog(&o.pool, Engine::Sqlite, "main", "o", false).await.unwrap();
         assert!(info.columns[0].primary);
         assert_eq!(info.columns[1].references.as_deref(), Some("c.id"));
         assert_eq!(info.foreign_keys[0].on_delete, "cascade");
         assert!(info.indexes.iter().any(|i| i.name == "o_s" && i.columns == "s"));
+        // the column editor: DDL changes no rows; one that fails rolls the ones before it back
+        let ddl = stmts(&["ALTER TABLE t RENAME COLUMN name TO label", "ALTER TABLE t ADD COLUMN region TEXT NOT NULL DEFAULT 'eu'", "ALTER TABLE t DROP COLUMN blob"]);
+        assert!(matches!(apply(&o, &ddl, 10, true).await.unwrap(), Applied::Done(3)));
+        let cols = |info: TableInfo| info.columns.into_iter().map(|c| c.name).collect::<Vec<_>>();
+        assert_eq!(cols(table_catalog(&o.pool, Engine::Sqlite, "main", "t", false).await.unwrap()), ["id", "label", "price", "ok", "region"]);
+        let bad = stmts(&["ALTER TABLE t RENAME COLUMN label TO title", "ALTER TABLE t DROP COLUMN nope"]);
+        assert!(matches!(apply(&o, &bad, 10, true).await.unwrap(), Applied::Failed { index: 1, .. }));
+        assert_eq!(cols(table_catalog(&o.pool, Engine::Sqlite, "main", "t", false).await.unwrap()), ["id", "label", "price", "ok", "region"]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

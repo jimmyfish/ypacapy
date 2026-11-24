@@ -226,6 +226,8 @@ export interface TableColumn {
   default: string | null;
   primary: boolean;
   references: string | null;
+  /** MySQL/MariaDB: what MODIFY COLUMN has to say again, or the column loses it */
+  mysql?: { extra: string; comment: string; charset: string | null; collation: string | null };
 }
 
 /** a column for the editor's autocomplete */

@@ -1,0 +1,45 @@
+/* ColumnEditor.tsx: a table's Columns, edited in place. Quiet fields in the cells; the marks (green changed, red
+   struck-through dropped, the bar of changes) are the shared ones in styles.css. Review SQL is the .ask dialog. */
+.col-ed .res-tools { padding: var(--space-xs) 0; }
+.col-ed .col-tools .edit-bar { margin-left: auto; }
+.col-ed .grid-wrap { margin: 0; }
+.col-grid { width: 100%; table-layout: fixed; }
+.col-grid .cg-name { width: 22%; }
+.col-grid .cg-type { width: 18%; }
+.col-grid .cg-null { width: 96px; }
+.col-grid .cg-key { width: 17%; }
+.col-grid .cg-act { width: 44px; }
+.col-ed .col-grid td { max-width: none; padding: 0 var(--space-3xs); }
+.col-ed .col-grid th { padding: 0 var(--space-sm); }
+.col-in { display: block; box-sizing: border-box; width: 100%; height: 28px; margin: 0; padding: 0 calc(var(--space-sm) - var(--space-3xs) - 1px); border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--color-ink); font: inherit; text-overflow: ellipsis; transition: border-color 0.12s, box-shadow 0.12s, background 0.12s; }
+.col-in.mono { font-family: var(--font-table); }
+.col-in::placeholder { color: var(--color-placeholder); }
+.col-in:hover:not(:disabled) { border-color: var(--color-rule); background: var(--color-paper); }
+.col-in:focus { outline: none; border-color: var(--color-focus); background: var(--color-paper); box-shadow: 0 0 0 3px var(--color-accent-soft); }
+.col-in[aria-invalid="true"] { border-color: var(--color-error); }
+.col-in[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 16%, transparent); }
+.col-in:disabled { cursor: default; }
+.col-ed .col-lock .col-in:disabled { color: var(--color-muted); }
+/* text-decoration doesn't reach into a field: a dropped column's fields strike through on their own */
+.col-ed .grid tr.row-del .col-in { color: var(--color-ink-2); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--color-error) 70%, transparent); }
+.col-chk { display: flex; align-items: center; gap: var(--space-2xs); padding: 0 calc(var(--space-sm) - var(--space-3xs)); cursor: pointer; }
+.col-chk input { width: 15px; height: 15px; margin: 0; accent-color: var(--color-accent); cursor: inherit; }
+.col-chk:has(input:disabled) { cursor: default; color: var(--color-muted); }
+.col-ed .col-grid td .key { padding: 0 calc(var(--space-sm) - var(--space-3xs)); }
+.col-act { text-align: right; }
+.col-ed .col-act .icon-btn { min-width: 28px; min-height: 28px; border-radius: 6px; }
+/* the shredder shows on the row's hover or focus; undo and remove stay, since the row is already marked */
+.col-ed .col-act .col-shred { opacity: 0; transition: opacity 0.12s; }
+.col-ed .col-grid tr:hover .col-shred, .col-ed .col-grid tr:focus-within .col-shred { opacity: 1; }
+.col-ed .col-grid tr:hover .col-shred:disabled, .col-ed .col-grid tr:focus-within .col-shred:disabled { opacity: 0.35; }
+.col-ed .col-shred:not(:disabled):hover { color: var(--color-error); }
+.col-note { display: flex; align-items: flex-start; gap: var(--space-2xs); margin: 0 0 var(--space-xs); padding: var(--space-xs) var(--space-sm); border: 1px solid var(--color-rule); border-radius: var(--radius-control); background: var(--color-paper-2); color: var(--color-ink-2); font-size: var(--text-sm); line-height: 1.45; }
+.col-note .ico { width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px; color: var(--color-link); }
+.col-ed .col-foot { display: flex; align-items: center; justify-content: flex-start; gap: var(--space-sm); margin: var(--space-xs) 0 0; color: var(--color-muted); font: var(--text-sm) var(--font-ui); }
+.col-ed .col-foot .grid-add { min-height: 28px; }
+.col-ed .col-foot .edit-what.err { color: var(--color-error); }
+/* Review SQL */
+.dialog.ask:has(.col-form) { width: 540px; }
+.dialog.ask .col-sql { max-height: 240px; }
+.col-busy { animation: upd-spin 0.8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .col-busy { animation: none; } }

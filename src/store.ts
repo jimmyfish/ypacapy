@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { api, errText } from "./lib/api";
 import { tableSelect } from "./lib/sql";
 import { editCount, type Edits } from "./lib/edit";
+import { changeCount, type ColDraft } from "./lib/alter";
 import { docsToSet } from "./lib/bson";
 import { positionsOf, withLinked } from "./lib/diagram";
 import { diagramCanSave, diagramChanged, diagramKey, diagramLayoutOf, diagramModelOf, diagramViews, mergeDiagram } from "./lib/diagramTab";
@@ -82,6 +83,8 @@ export type Modal =
     }
   /** lowering a Strict connection from the tabs bar: the passphrase or Touch ID (AuthDialog); submit rejects with the reason */
   | { kind: "lower"; connName: string; engine: Engine; to: SecurityLevel; touch: boolean; submit: (a: Approval) => Promise<void> }
+  /** a table's Columns › Review SQL: the ALTER statements, then Apply (behind the write guard) */
+  | { kind: "alterColumns"; tabId: string }
   /** MongoDB: a collection's sizes and shape, read with $collStats when it opens */
   | { kind: "collInfo"; connId: string; database: string; collection: string }
   /** Redis: a key's type, encoding, length, TTL and memory, read when it opens */
@@ -120,6 +123,9 @@ interface State {
   /** result grid changes not yet saved, by tab id and result set index (kept while the tab is away) */
   edits: Record<string, Edits>;
   setEdits(key: string, e: Edits | null): void;
+  /** a table tab's Columns, edited and not yet applied, by tab id (kept while the tab is away) */
+  colEdits: Record<string, ColDraft[]>;
+  setColEdits(tabId: string, d: ColDraft[] | null): void;
   /** a result set as it is after its edits were saved */
   replaceSet(tabId: string, index: number, set: ResultSet): void;
 
@@ -396,6 +402,16 @@ export const useStore = create<State>()((set, get) => {
     saved: [],
     pass: { set: false, touchIdAvailable: false },
     edits: {},
+    colEdits: {},
+
+    setColEdits(tabId, d) {
+      set((st) => {
+        const colEdits = { ...st.colEdits };
+        if (d && changeCount(d)) colEdits[tabId] = d;
+        else delete colEdits[tabId];
+        return { colEdits };
+      });
+    },
 
     setEdits(key, e) {
       set((st) => {
@@ -929,12 +945,14 @@ export const useStore = create<State>()((set, get) => {
         });
         return;
       }
-      const pending = pendingIn(tabId);
+      const rowsPending = pendingIn(tabId);
+      const colsPending = changeCount(get().colEdits[tabId] ?? []);
+      const pending = rowsPending + colsPending;
       if (!force && pending) {
         get().openModal({
           kind: "confirm",
           title: `Close ${tab.kind === "query" ? tab.title : tab.kind === "key" ? tab.key : tab.kind === "table" ? tab.table : (tab.origin ?? tab.schema)}?`,
-          message: `You lose ${pending} unsaved change${pending === 1 ? "" : "s"} to its rows.`,
+          message: `You lose ${pending} unsaved change${pending === 1 ? "" : "s"}${!colsPending ? " to its rows" : !rowsPending ? " to its columns" : ""}.`,
           confirmLabel: "Close",
           icon: tabSubject(tab).icon,
           actionIcon: "x",
@@ -944,6 +962,7 @@ export const useStore = create<State>()((set, get) => {
         return;
       }
       dropEdits(tabId);
+      get().setColEdits(tabId, null);
       if (tab.run.status === "running" && tab.run.runId) void api.cancelQuery(tab.run.runId);
       patchSession(id, (s) => {
         const i = s.tabs.findIndex((t) => t.id === tabId);

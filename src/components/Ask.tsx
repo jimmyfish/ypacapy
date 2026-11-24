@@ -73,7 +73,7 @@ const Ico = ({ name }: { name?: AskIcon }) => {
 
 const CANT_UNDO = "It can't be undone.";
 
-function Shell({ title, sub, tone, badge, onClose, children }: { title: string; sub?: string; tone?: AskTone; badge: ReactNode; onClose: () => void; children: ReactNode }) {
+export function Shell({ title, sub, tone, badge, onClose, children }: { title: string; sub?: string; tone?: AskTone; badge: ReactNode; onClose: () => void; children: ReactNode }) {
   return (
     <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog auth ask" role="dialog" aria-modal="true" aria-labelledby="ask-t" aria-describedby={sub ? "ask-d" : undefined}>
@@ -124,7 +124,7 @@ function Effects({ rows }: { rows: AskEffect[] }) {
 }
 
 /** the red line before an action that can't be undone */
-function FinalLine({ text }: { text: string }) {
+export function FinalLine({ text }: { text: string }) {
   return (
     <p className="ask-final">
       <Shredder {...ico} />
@@ -147,7 +147,7 @@ function Alt({ alt, onClose }: { alt: AskAlt; onClose: () => void }) {
   );
 }
 
-function Actions({ onClose, danger, icon, label, autoFocus, disabled }: { onClose: () => void; danger?: boolean; icon: ReactNode; label: string; autoFocus?: boolean; disabled?: boolean }) {
+export function Actions({ onClose, danger, icon, label, autoFocus, disabled }: { onClose: () => void; danger?: boolean; icon: ReactNode; label: string; autoFocus?: boolean; disabled?: boolean }) {
   return (
     <footer className="auth-actions">
       <button type="button" className="btn auth-btn" onClick={onClose}>

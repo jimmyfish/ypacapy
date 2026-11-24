@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Approval, CollInfo, ColumnBrief, Conn, HistoryEntry, KeyInfo, KeyPage, OpenInfo, RunOutcome, Saved, ScanKey, SchemaDiagram, SchemaObjects, SecurityLevel, Settings, TableInfo } from "../types";
+import type { Approval, Ask, CollInfo, ColumnBrief, Conn, HistoryEntry, KeyInfo, KeyPage, OpenInfo, RunOutcome, Saved, ScanKey, SchemaDiagram, SchemaObjects, SecurityLevel, Settings, TableInfo } from "../types";
 
 /** Every Tauri command, typed. Rust errors arrive as strings. */
 export const api = {
@@ -42,7 +42,10 @@ export const api = {
   /** Redis Info: TYPE, OBJECT, PTTL, MEMORY USAGE, once */
   redisKeyInfo: (id: string, key: string) => invoke<KeyInfo>("redis_key_info", { id, key }),
   /** one transaction; every statement must change exactly one row */
-  applyEdits: (req: { connId: string; database?: string; statements: string[]; approval?: Approval }) => invoke<RunOutcome>("apply_edits", { req }),
+  /** ddl: a table's structure (the Columns editor): one transaction, no row counts, the schema tree is stale after */
+  applyEdits: (req: { connId: string; database?: string; statements: string[]; approval?: Approval; ddl?: boolean }) => invoke<RunOutcome>("apply_edits", { req }),
+  /** what the write guard would ask before this SQL runs, without running it; null: it runs as is */
+  guardAsk: (connId: string, sql: string) => invoke<Omit<Ask, "kind"> | null>("guard_ask", { connId, sql }),
   passphraseStatus: () => invoke<{ set: boolean; touchIdAvailable: boolean }>("passphrase_status"),
   setPassphrase: (newPass: string, current?: string) => invoke<void>("set_passphrase", { new: newPass, current }),
   disablePassphrase: (current: string) => invoke<void>("disable_passphrase", { current }),

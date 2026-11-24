@@ -21,6 +21,7 @@ import { DEV_BUILD } from "../build";
 import { AboutModal } from "./AboutModal";
 import { AuthDialog, PassphraseDialog, type PassKind } from "./AuthDialog";
 import { ConfirmAsk, GuardAsk, PromptAsk, SaveQueryAsk } from "./Ask";
+import { AlterColumnsAsk } from "./ColumnEditor";
 import type { CollInfo, KeyInfo } from "../types";
 import {
   CircleAlert,
@@ -65,6 +66,8 @@ export function Modals() {
       return <SettingsModal section={modal.section} onClose={close} />;
     case "guard":
       return <GuardAsk m={modal} onClose={close} />;
+    case "alterColumns":
+      return <AlterColumnsAsk m={modal} onClose={close} />;
     case "lower":
       return <AuthDialog kind="lower" connName={modal.connName} engine={modal.engine} to={modal.to} touch={modal.touch} submit={modal.submit} onClose={close} />;
     case "about":

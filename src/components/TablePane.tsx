@@ -8,7 +8,8 @@ import { duration } from "../lib/time";
 import type { ColMeta, ResultSet, TableTab } from "../types";
 import { ErrorState, RunGroup } from "./QueryPane";
 import { ResultGrid, type ColKey, type GridEdit } from "./ResultGrid";
-import { ChevronDown, ChevronLeft, ChevronRight, Key, Link, ico } from "./Icon";
+import { ColumnEditor } from "./ColumnEditor";
+import { ChevronDown, ChevronLeft, ChevronRight, ico } from "./Icon";
 
 /**
  * Rows (or documents) per page on a table or collection tab: just the number. The default is the connection's row
@@ -46,7 +47,7 @@ export function RowPick({ tab, rowLimit, label }: { tab: TableTab; rowLimit: num
   );
 }
 
-/** A table: its rows under a where filter (select … limit, no order by), its columns, its indexes and keys. */
+/** A table: its rows under a where filter (select … limit, no order by), its columns (edited in ColumnEditor), its indexes and keys. */
 export function TablePane({ tab }: { tab: TableTab }) {
   const { conn, session } = useCurrent();
   const appLimit = useStore((s) => s.settings.rowLimit);
@@ -202,45 +203,7 @@ export function TablePane({ tab }: { tab: TableTab }) {
         )}
       </div>
     ) : view === "columns" ? (
-      <div className="structure">
-        <h3>Columns</h3>
-        <div className="grid-wrap">
-          <table className="grid">
-            <thead>
-              <tr>
-                <th scope="col">Column</th>
-                <th scope="col">Type</th>
-                <th scope="col">Nullable</th>
-                <th scope="col">Default</th>
-                <th scope="col">Key</th>
-              </tr>
-            </thead>
-            <tbody>
-              {info.columns.map((c) => (
-                <tr key={c.name}>
-                  <td>{c.name}</td>
-                  <td>{c.type}</td>
-                  <td>{c.nullable ? "yes" : "no"}</td>
-                  {c.default === null ? <td className="null">none</td> : <td>{c.default}</td>}
-                  <td>
-                    {c.primary ? (
-                      <span className="key">
-                        <Key {...ico} />
-                        Primary
-                      </span>
-                    ) : c.references ? (
-                      <span className="key">
-                        <Link {...ico} />
-                        {c.references}
-                      </span>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <ColumnEditor tab={tab} engine={conn.engine} />
     ) : (
       <div className="structure">
         <h3>Indexes</h3>

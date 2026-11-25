@@ -2131,6 +2131,21 @@
     }
   }
 
+  // Modal exit, preview flavour of src/lib/modalExit.ts: pages close a dialog by setting `hidden`, so a hidden
+  // .backdrop gets an inert copy beside it that plays .closing and removes itself.
+  new MutationObserver((records) => {
+    for (const r of records) {
+      const d = r.target;
+      if (r.oldValue !== null || !d.hidden || !d.classList.contains("backdrop") || d.classList.contains("closing")) continue;
+      const g = d.cloneNode(true);
+      g.removeAttribute("id"); g.hidden = false; g.inert = true; g.classList.add("closing");
+      d.after(g);
+      const rm = () => g.remove();
+      g.addEventListener("animationend", (e) => e.target === g && rm());
+      setTimeout(rm, 600);
+    }
+  }).observe(document.body, { attributes: true, attributeFilter: ["hidden"], attributeOldValue: true, subtree: true });
+
 // Modals gallery: the bar's states show one group of dialogs, or all of them; the side list follows.
 // The dialogs are drawn at rest. Nothing submits, nothing closes: a click only moves focus.
 window.pvShow = (k) => {

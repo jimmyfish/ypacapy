@@ -283,7 +283,22 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 .spinner { width: 18px; height: 18px; border: 2px solid var(--color-rule); border-top-color: var(--color-accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 /* ---------- dialogs ---------- */
-.backdrop { position: fixed; inset: 0; display: grid; place-items: center; background: var(--color-overlay); z-index: var(--z-modal); }
+.backdrop { position: fixed; inset: 0; display: grid; place-items: center; background: var(--color-overlay); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); z-index: var(--z-modal); }
+/* modal entrance: backdrop fades in, dialog rises and settles. `backwards` so no transform stays on the dialog afterwards (keeps fixed-position menus inside it anchored to the viewport). */
+.backdrop { animation: backdrop-in var(--dur-short) var(--ease-out) backwards; }
+.backdrop > .dialog { animation: dialog-in var(--dur-long) var(--ease-out) backwards; }
+@keyframes backdrop-in { from { opacity: 0; } }
+@keyframes dialog-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } }
+/* modal exit: src/lib/modalExit.ts puts a closed .backdrop back as an inert ghost with .closing, and removes it when this ends */
+.backdrop.closing { animation: backdrop-out var(--dur-short) var(--ease-in-out) forwards; pointer-events: none; }
+.backdrop.closing > .dialog { animation: dialog-out var(--dur-short) var(--ease-in-out) forwards; }
+@keyframes backdrop-out { to { opacity: 0; } }
+@keyframes dialog-out { to { opacity: 0; transform: translateY(6px) scale(0.98); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop, .backdrop > .dialog, .backdrop.closing, .backdrop.closing > .dialog { animation-duration: 1ms; }
+}
+
 .dialog { width: 440px; max-width: calc(100vw - 32px); padding: var(--space-lg); border-radius: var(--radius-card); background: var(--color-paper); border: 1px solid var(--color-rule); }
 .dialog.wide { width: 820px; }
 .dialog h3 { font-size: var(--text-xl); font-weight: 600; margin-bottom: var(--space-md); }

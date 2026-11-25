@@ -755,6 +755,21 @@
     }
   }
 
+  // Modal exit, preview flavour of src/lib/modalExit.ts: pages close a dialog by setting `hidden`, so a hidden
+  // .backdrop gets an inert copy beside it that plays .closing and removes itself.
+  new MutationObserver((records) => {
+    for (const r of records) {
+      const d = r.target;
+      if (r.oldValue !== null || !d.hidden || !d.classList.contains("backdrop") || d.classList.contains("closing")) continue;
+      const g = d.cloneNode(true);
+      g.removeAttribute("id"); g.hidden = false; g.inert = true; g.classList.add("closing");
+      d.after(g);
+      const rm = () => g.remove();
+      g.addEventListener("animationend", (e) => e.target === g && rm());
+      setTimeout(rm, 600);
+    }
+  }).observe(document.body, { attributes: true, attributeFilter: ["hidden"], attributeOldValue: true, subtree: true });
+
 // Table: rows under a where filter, its columns, its indexes and keys; Run re-reads the rows with the filter
   const run = $("#run"), where = $("#where");
   const DEFAULT_WHERE = "status in ('paid', 'shipped', 'refunded')";

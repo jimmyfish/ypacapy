@@ -1099,6 +1099,21 @@
     }
   }
 
+  // Modal exit, preview flavour of src/lib/modalExit.ts: pages close a dialog by setting `hidden`, so a hidden
+  // .backdrop gets an inert copy beside it that plays .closing and removes itself.
+  new MutationObserver((records) => {
+    for (const r of records) {
+      const d = r.target;
+      if (r.oldValue !== null || !d.hidden || !d.classList.contains("backdrop") || d.classList.contains("closing")) continue;
+      const g = d.cloneNode(true);
+      g.removeAttribute("id"); g.hidden = false; g.inert = true; g.classList.add("closing");
+      d.after(g);
+      const rm = () => g.remove();
+      g.addEventListener("animationend", (e) => e.target === g && rm());
+      setTimeout(rm, 600);
+    }
+  }).observe(document.body, { attributes: true, attributeFilter: ["hidden"], attributeOldValue: true, subtree: true });
+
 window.RKEYS = {"hash":{"key":"user:3107","type":"hash","len":"12 fields","ttl":"","enc":"listpack","what":"Fields","badge":"<span class=\"rtype\" style=\"--fg: var(--proj-4-fg); --bg: var(--proj-4-bg)\" title=\"hash\">HASH</span>"},"string":{"key":"session:7f3a91c2","type":"string","len":"412 bytes","ttl":"Expires in 23 min","enc":"embstr","what":"Value","badge":"<span class=\"rtype\" style=\"--fg: var(--proj-1-fg); --bg: var(--proj-1-bg)\" title=\"string\">STR</span>"},"list":{"key":"queue:emails","type":"list","len":"1,284 items","ttl":"","enc":"quicklist","what":"Items","badge":"<span class=\"rtype\" style=\"--fg: var(--proj-2-fg); --bg: var(--proj-2-bg)\" title=\"list\">LIST</span>"},"set":{"key":"tags:sale","type":"set","len":"86 members","ttl":"","enc":"listpack","what":"Members","badge":"<span class=\"rtype\" style=\"--fg: var(--proj-3-fg); --bg: var(--proj-3-bg)\" title=\"set\">SET</span>"},"zset":{"key":"leaderboard:weekly","type":"zset","len":"12,408 members","ttl":"Expires in 3 days","enc":"skiplist","what":"Members","badge":"<span class=\"rtype\" style=\"--fg: var(--proj-7-fg); --bg: var(--proj-7-bg)\" title=\"zset\">ZSET</span>"},"stream":{"key":"events:orders","type":"stream","len":"2,113,940 entries","ttl":"","enc":"stream","what":"Entries","badge":"<span class=\"rtype\" style=\"--fg: var(--proj-5-fg); --bg: var(--proj-5-bg)\" title=\"stream\">STREAM</span>"}};
   // Redis tree: Expiring only keeps the keys that have a TTL, out of the keys read so far, with their folders opened.
   // The TTLs came with the scan (one TTL per key, pipelined with TYPE); toggling sends nothing.

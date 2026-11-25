@@ -902,6 +902,21 @@
     }
   }
 
+  // Modal exit, preview flavour of src/lib/modalExit.ts: pages close a dialog by setting `hidden`, so a hidden
+  // .backdrop gets an inert copy beside it that plays .closing and removes itself.
+  new MutationObserver((records) => {
+    for (const r of records) {
+      const d = r.target;
+      if (r.oldValue !== null || !d.hidden || !d.classList.contains("backdrop") || d.classList.contains("closing")) continue;
+      const g = d.cloneNode(true);
+      g.removeAttribute("id"); g.hidden = false; g.inert = true; g.classList.add("closing");
+      d.after(g);
+      const rm = () => g.remove();
+      g.addEventListener("animationend", (e) => e.target === g && rm());
+      setTimeout(rm, 600);
+    }
+  }).observe(document.body, { attributes: true, attributeFilter: ["hidden"], attributeOldValue: true, subtree: true });
+
 // Redis tree: Expiring only keeps the keys that have a TTL, out of the keys read so far, with their folders opened.
   // The TTLs came with the scan (one TTL per key, pipelined with TYPE); toggling sends nothing.
   // It runs after the shared tree layout (filter typing, folder clicks), so the two filters combine.

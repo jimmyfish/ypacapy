@@ -317,6 +317,18 @@ export interface GridEdit {
   key: string;
   /** the rows as they are after a save */
   onSaved: (set: ResultSet) => void;
+  /**
+   * writes the changes itself instead of the SQL transaction (a Redis hash's HSET and HDEL). Resolves to the error
+   * to show, null when they were written, undefined when the write guard's ask was cancelled.
+   */
+  save?: (base: ResultSet, edits: Edits) => Promise<string | null | undefined>;
+  /** why a cell cannot be edited (beyond the target's columns), or null */
+  lockCell?: (r: number, c: number) => string | null;
+  /** the Save button's tooltip */
+  saveTitle?: string;
+  /** what a row is called in the right-click menu (a hash's "field"); and whether its values can be NULL */
+  rowWord?: string;
+  noNull?: boolean;
 }
 
 type SaveError = Extract<RunOutcome, { kind: "error" }>;
@@ -481,9 +493,9 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
     if (!edit) return "These rows cannot be edited.";
     if (edit.target === null) return "Still reading the table's columns; try again in a moment.";
     if (typeof edit.target === "string") return edit.target;
-    if (edit.target.cols[c] === null) return `${set.columns[c].name} is not a plain column of the table, so it cannot be edited.`;
+    if (edit.target.cols[c] === null) return edit.save ? `${set.columns[c].name} can't be changed here.` : `${set.columns[c].name} is not a plain column of the table, so it cannot be edited.`;
     if (latest().deleted[r]) return "This row is marked for deletion. Restore it to edit it.";
-    return null;
+    return edit.lockCell?.(r, c) ?? null;
   };
   const setCell = (r: number, c: number, v: string | null) => {
     const e = latest();
@@ -550,6 +562,24 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
     if (editingRef.current) finishEdit(true, undefined, true);
     const base = set;
     const e = latest();
+    if (edit.save) {
+      if (!editCount(e)) return;
+      setSaving(true);
+      setSaveErr(null);
+      const err = await edit.save(base, e);
+      setSaving(false);
+      if (err === undefined) return;
+      if (err !== null) {
+        setSaveErr({ kind: "error", title: "Nothing was saved", says: null, message: err, hint: null, lost: false, ms: 0 });
+        return;
+      }
+      const n = editCount(e);
+      useStore.getState().setEdits(edit.key, null);
+      edit.onSaved(applied(base, e));
+      showToast(`Saved ${n} change${n === 1 ? "" : "s"}`);
+      wrap.current?.focus();
+      return;
+    }
     const statements = editStatements(target, base, e);
     if (!statements.length) return;
     setSaving(true);
@@ -724,9 +754,9 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
     };
     return [
       { label: "Edit value", kbd: "↵", disabled: locked, run: close(() => startEdit(dr, c)) },
-      { label: "Set to NULL", disabled: locked || cur(r, c) === null, run: close(() => setCell(r, c, null)) },
+      ...(edit.noNull ? [] : [{ label: "Set to NULL", disabled: locked || cur(r, c) === null, run: close(() => setCell(r, c, null)) }]),
       ...(changed ? [{ label: "Revert value", run: close(() => setCell(r, c, set.rows[r][c])) }] : []),
-      { label: edits.deleted[r] ? "Restore row" : "Delete row", kbd: "⌘⌫", disabled: !target, run: close(() => toggleDelete(r)) },
+      { label: `${edits.deleted[r] ? "Restore" : "Delete"} ${edit.rowWord ?? "row"}`, kbd: "⌘⌫", disabled: !target, run: close(() => toggleDelete(r)) },
     ];
   };
 
@@ -739,7 +769,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
             <span className="edit-n">
               {pending} change{pending === 1 ? "" : "s"}
             </span>
-            <button type="button" className="btn btn--primary" aria-busy={saving || undefined} disabled={saving} title="Write the changes in one transaction  ⌘S" onClick={() => void submit()}>
+            <button type="button" className="btn btn--primary" aria-busy={saving || undefined} disabled={saving} title={edit.saveTitle ?? "Write the changes in one transaction  ⌘S"} onClick={() => void submit()}>
               {saving && <span className="spinner" />}
               Save
             </button>

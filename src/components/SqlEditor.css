@@ -4,17 +4,22 @@
 .editor-bar .btn { font-size: var(--text-sm); }
 /* ---- voidHTTP lines 498-518: editable code, the highlighted layer under a transparent textarea, one scroll for both ---- */
 .code-edit { flex: 1; min-height: 0; overflow: auto; }
-.code-edit-grid { display: grid; min-height: 100%; }
+.code-edit-grid { position: relative; display: grid; min-height: 100%; }
 .code-edit-grid > * { grid-area: 1 / 1; }
 .code-edit .code { flex: none; overflow: visible; border: none; border-radius: 0; background: transparent; }
 .code-edit .code .l { white-space: pre; word-break: normal; }
 .code-input {
   margin: 0; border: 0; outline: 0; resize: none; overflow: hidden; background: transparent;
-  color: transparent; caret-color: var(--color-ink); tab-size: 2; white-space: pre;
+  color: transparent; caret-color: transparent; tab-size: 2; white-space: pre;
   font: var(--text-code)/1.65 var(--font-mono); padding: var(--space-xs) var(--space-md) var(--space-xs) 52px;
 }
 .code-input::placeholder { color: var(--color-placeholder); }
 .code-input::selection { background: var(--color-accent-soft); color: transparent; }
+/* WebKit (the app's web view) lays a textarea's lines on whole pixels but the coloured layer's on fractions, so with
+   a fractional line height (12px × 1.65 = 19.8px) the caret climbs a little more on every line. Both layers get the
+   same whole-pixel line height; the indent guides match it so they never make a line taller. */
+.code-edit .code, .code-edit .code-input { line-height: round(calc(var(--text-code) * 1.65), 1px); }
+.code-edit .code .ind { height: round(calc(var(--text-code) * 1.65), 1px); }
 /* ---- query editor autocomplete: voidHTTP's .menu as a listbox under the caret ---- */
 .menu.ac-menu { position: fixed; top: 0; left: 0; right: auto; z-index: var(--z-modal); min-width: 280px; max-width: min(460px, calc(100vw - 16px)); padding: 0; overflow: hidden; }
 .ac-head { display: flex; align-items: baseline; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm) var(--space-2xs); }
@@ -40,3 +45,7 @@
   padding: var(--space-lg); color: var(--color-muted); text-align: center; pointer-events: none;
 }
 .editor-empty strong { color: var(--color-ink); font-weight: 600; }
+/* the caret drawn in place of the textarea's (SqlEditor.tsx says why): blinks, and starts solid after each move */
+.code-edit-grid > .code-caret { position: absolute; z-index: 1; width: 2px; border-radius: 1px; background: var(--color-ink); pointer-events: none; animation: code-caret 1.06s steps(1) infinite; }
+@keyframes code-caret { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .code-edit-grid > .code-caret { animation: none; } }

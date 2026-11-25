@@ -16,3 +16,35 @@
 .rk-bar .mq-row { grid-column: 1 / -1; }
 .rk-match-h { grid-column: 1 / -1; margin: 0; }
 .str-val .l { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* editing a string: the value in a text box, the bar of changes on the toolbar's right */
+.res-tools .str-check + .edit-bar { margin-left: auto; }
+.res-tools .seg + .btn--quiet { margin-left: var(--space-xs); }
+/* the value in the query editor (coloured layer under a transparent textarea), flush with the pane: no box of its own */
+.rk-edit { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.rk-edit .editor { border: 0; border-top: 1px solid var(--color-rule); border-radius: 0; }
+/* .response .code's margin would shift the coloured layer off the textarea's caret; both must start at the same spot */
+.response .rk-edit .code { margin: 0; }
+/* no side borders here, so the ring is all drawn inside */
+.rk-edit .editor:focus-within { border-color: var(--color-rule); }
+.rk-edit .editor:focus-within::after { border-width: 2px; }
+.str-note { margin: 0; padding: var(--space-2xs) var(--space-md) var(--space-xs); }
+/* the expiry in the head is a button: the timer, the time left, a pencil on hover */
+.rk-ttl-anchor { position: relative; }
+.rk-ttl-btn { display: inline-flex; align-items: center; gap: var(--space-3xs); margin: -2px -6px; padding: 2px 6px; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.rk-ttl-btn:hover:not(:disabled), .rk-ttl-btn[aria-expanded="true"] { background: var(--color-paper-2); color: var(--color-ink); }
+.rk-ttl-btn:disabled { cursor: default; }
+.rk-meta .rk-ttl-btn.has-ttl { color: var(--color-warn); }
+.rk-meta .rk-ttl-btn .rk-ttl-pen { width: 12px; height: 12px; opacity: 0; }
+.rk-meta .rk-ttl-btn:hover:not(:disabled) .rk-ttl-pen, .rk-meta .rk-ttl-btn:focus-visible .rk-ttl-pen { opacity: 1; }
+/* the popover is the update chip's card (.upd-pop), opening from the left under the button */
+.rk-ttl-anchor .ttl-pop { left: -6px; right: auto; width: 340px; }
+.ttl-pop .upd-title code { min-width: 0; font: 600 var(--text-sm) var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ttl-pop label.check { position: static; display: flex; align-items: center; gap: var(--space-2xs); margin: 0; padding: 0; color: var(--color-ink); }
+.ttl-pop label.check input { position: static; flex: 0 0 16px; width: 16px; height: 16px; margin: 0; accent-color: var(--color-accent); }
+.ttl-in { display: flex; align-items: center; gap: var(--space-xs); }
+.ttl-in .field.ttl-n { width: 64px; text-align: right; }
+.ttl-in .select-wrap { flex: 1; }
+.ttl-pop .ttl-cmd { margin: 0; overflow-wrap: anywhere; font-family: var(--font-mono); }
+.ttl-pop .ttl-err { margin: 0; color: var(--color-error); font-size: var(--text-sm); }
+.ttl-actions { display: flex; justify-content: flex-end; gap: var(--space-xs); }
+.edit-bar .edit-n--none { color: var(--color-muted); font-weight: 400; }

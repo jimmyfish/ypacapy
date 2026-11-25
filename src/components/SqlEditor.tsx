@@ -59,6 +59,56 @@ export const SqlEditor = forwardRef<HTMLTextAreaElement, Props>(function SqlEdit
   const input = useRef<HTMLTextAreaElement>(null);
   useImperativeHandle(ref, () => input.current!, []);
 
+  // ---- the caret ----
+  // WebKit draws a textarea's caret from the bottom of the line above on every line but the first, so with this
+  // editor's line height it floats up into the gap. The native caret is hidden and this one is drawn instead, at
+  // the same offset in the coloured layer (which holds the same text), the same height on every line.
+  const pre = useRef<HTMLPreElement>(null);
+  const grid = useRef<HTMLDivElement>(null);
+  const [caret, setCaret] = useState<{ x: number; y: number; h: number; n: number } | null>(null);
+  const caretN = useRef(0);
+  const placeCaret = () => {
+    const el = input.current;
+    const p = pre.current;
+    const g = grid.current;
+    if (!el || !p || !g || document.activeElement !== el || el.selectionStart !== el.selectionEnd) return setCaret(null);
+    const before = el.value.slice(0, el.selectionStart);
+    const row = before.split("\n").length - 1;
+    let col = before.length - before.lastIndexOf("\n") - 1;
+    const line = p.querySelectorAll<HTMLElement>(".l")[row];
+    if (!line) return setCaret(null);
+    const gr = g.getBoundingClientRect();
+    const lr = line.getBoundingClientRect();
+    const cs = getComputedStyle(line);
+    const lh = parseFloat(cs.lineHeight) || lr.height;
+    const h = Math.round(parseFloat(cs.fontSize) * 1.3);
+    // the text node and offset the column falls in; at a line's start (or an empty line) the text's left edge
+    let x = lr.left + parseFloat(cs.paddingLeft);
+    const walk = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+    for (let t = walk.nextNode() as Text | null; t; t = walk.nextNode() as Text | null) {
+      if (col <= t.length) {
+        const r = document.createRange();
+        r.setStart(t, col);
+        r.setEnd(t, col);
+        const rect = r.getClientRects()[0] ?? r.getBoundingClientRect();
+        if (rect && (rect.left || rect.top)) x = rect.left;
+        break;
+      }
+      col -= t.length;
+    }
+    caretN.current++;
+    setCaret({ x: x - gr.left, y: lr.top - gr.top + (lh - h) / 2, h, n: caretN.current });
+  };
+  // a move restarts the blink; the coloured layer is drawn before this runs
+  useLayoutEffect(() => {
+    if (document.activeElement === input.current) placeCaret();
+  }, [value, html]);
+  useEffect(() => {
+    const on = () => document.activeElement === input.current && placeCaret();
+    document.addEventListener("selectionchange", on);
+    return () => document.removeEventListener("selectionchange", on);
+  });
+
   // ---- autocomplete ----
   const [ac, setAc] = useState<{ ctx: Ctx; sel: number } | null>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -224,9 +274,9 @@ export const SqlEditor = forwardRef<HTMLTextAreaElement, Props>(function SqlEdit
       {tools && <div className="editor-bar">{tools}</div>}
       {empty && !value && <div className="editor-empty">{empty}</div>}
       <div className="code-edit" onScroll={() => shown && place()}>
-        <div className="code-edit-grid">
+        <div className="code-edit-grid" ref={grid}>
           {plain ? (
-            <pre className="code" aria-hidden="true">
+            <pre className="code" aria-hidden="true" ref={pre}>
               {value.split("\n").map((l, i) => (
                 <span className="l" key={i}>
                   {l}
@@ -234,7 +284,7 @@ export const SqlEditor = forwardRef<HTMLTextAreaElement, Props>(function SqlEdit
               ))}
             </pre>
           ) : (
-            <pre className="code" aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />
+            <pre className="code" aria-hidden="true" ref={pre} dangerouslySetInnerHTML={{ __html: html }} />
           )}
           <textarea
             ref={input}
@@ -258,8 +308,10 @@ export const SqlEditor = forwardRef<HTMLTextAreaElement, Props>(function SqlEdit
             onSelect={(e) => track(e.currentTarget)}
             onKeyDown={onKeyDown}
             onMouseDown={() => setAc(null)}
-            onBlur={() => setAc(null)}
+            onFocus={placeCaret}
+            onBlur={() => (setAc(null), setCaret(null))}
           />
+          {caret && <span className="code-caret" key={caret.n} aria-hidden="true" style={{ left: caret.x, top: caret.y, height: caret.h }} />}
         </div>
       </div>
       {shown &&

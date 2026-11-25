@@ -164,7 +164,7 @@ interface State {
   /** Redis: a key in its own tab */
   openKey(key: string): void;
   /** Redis: a page of the key tab's key; page indexes the starts read so far, one past the last for the next */
-  readKey(tabId: string, opts?: { page?: number }): Promise<void>;
+  readKey(tabId: string, opts?: { page?: number; discard?: boolean }): Promise<void>;
 
   newQueryTab(sql?: string, title?: string, saved?: Saved): string;
   openTable(schema: string, table: string): void;
@@ -198,6 +198,12 @@ interface State {
    * write guard. On success the key leaves the keys read and its tab closes; an error shows as a toast.
    */
   deleteKey(key: string, cmd: string, approval?: Approval): Promise<void>;
+  /**
+   * Redis, the key tab's edits (a string's SET … KEEPTTL, a hash's HSET and HDEL, EXPIRE or PERSIST): runs cmd as the
+   * console runs it, so the write guard asks first. On success the page is read again and the sidebar's TTL for the
+   * key follows. Resolves to the error to show, null when it was written, undefined when the ask was cancelled.
+   */
+  writeKey(tabId: string, cmd: string, what: { help: string; label: string; safe?: boolean }, approval?: Approval): Promise<string | null | undefined>;
   loadTableInfo(tabId: string): Promise<void>;
   saveTab(tabId: string, name?: string, folder?: string): Promise<void>;
 
@@ -760,6 +766,9 @@ export const useStore = create<State>()((set, get) => {
       if (!hit) return;
       const [connId, , tab] = hit;
       if (tab.kind !== "key" || tab.run.status === "running") return;
+      // a hash's unsaved changes are on this page's rows: ask before reading over them
+      if (!opts.discard && askDiscard(tabId, () => void get().readKey(tabId, { ...opts, discard: true }))) return;
+      dropEdits(tabId);
       const page = Math.max(0, Math.min(opts.page ?? 0, tab.starts.length - 1));
       const start = tab.starts[page] ?? "";
       const runId = uid();
@@ -1149,6 +1158,48 @@ export const useStore = create<State>()((set, get) => {
       for (const t of get().sessions[connId]?.tabs ?? []) if (t.kind === "key" && t.key === key) get().closeTab(t.id, true);
       if (get().side === "history") void get().loadHistory();
       get().showToast(`Deleted ${key}`);
+    },
+
+    async writeKey(tabId, cmd, what, approval) {
+      const hit = sessionOfTab(tabId);
+      if (!hit) return "The tab is gone";
+      const [connId, s, tab] = hit;
+      if (tab.kind !== "key") return "Not a key";
+      const conn = get().conns.find((c) => c.id === connId);
+      if (!conn) return "The connection is gone";
+      const out = await api.runQuery({ runId: uid(), connId, database: s.database, schema: s.schema, sql: cmd, addLimit: false, approval, history: true }).catch(failed);
+      if (out.kind === "ask")
+        return new Promise((resolve) => {
+          let approved = false;
+          get().openModal({
+            kind: "guard",
+            ask: out,
+            connName: conn.name,
+            write: { ...what, cmd },
+            onApprove: (a) => {
+              approved = true;
+              void get().writeKey(tabId, cmd, what, a).then(resolve);
+            },
+          });
+          // the ask closes before onApprove runs; closed and not approved is a Cancel: the edit stays open
+          const off = useStore.subscribe((st) => {
+            if (st.modal?.kind === "guard") return;
+            off();
+            setTimeout(() => !approved && resolve(undefined), 0);
+          });
+        });
+      if (out.kind === "error") {
+        if (out.lost) patchSession(connId, (x) => ({ tree: {}, columns: {}, ...lostLink(x) }));
+        return [out.title, out.message].filter(Boolean).join(". ");
+      }
+      if (out.kind === "cancelled") return out.timeout ? "Stopped by the statement timeout" : "Cancelled";
+      if (get().side === "history") void get().loadHistory();
+      await get().readKey(tabId, { page: tab.page, discard: true });
+      // the sidebar's timer follows the new TTL
+      const now = sessionOfTab(tabId)?.[2];
+      const ttlMs = now?.kind === "key" ? now.data?.ttlMs : undefined;
+      if (ttlMs !== undefined) patchSession(connId, (x) => (x.keys ? { keys: { ...x.keys, keys: x.keys.keys.map((k) => (k.key === tab.key ? { ...k, ttlMs } : k)) } } : {}));
+      return null;
     },
 
     async loadTableInfo(tabId) {

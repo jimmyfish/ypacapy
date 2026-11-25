@@ -138,9 +138,9 @@
     "semantic_hash": ""
   },
   "src/components/ResultGrid.tsx": {
-    "mtime": 1795487299.5415366,
-    "seen": 1795487302.447505,
-    "ast_hash": "8d9c7d63f2717dfc0081e8a8cafbcf25",
+    "mtime": 1795583798.0906885,
+    "seen": 1795583844.0348978,
+    "ast_hash": "3b48c56a9be02fa9c776f261992e7cb3",
     "semantic_hash": ""
   },
   "src/components/Select.tsx": {
@@ -156,9 +156,9 @@
     "semantic_hash": ""
   },
   "src/components/SqlEditor.tsx": {
-    "mtime": 1795190251.3060403,
-    "seen": 1795375035.595253,
-    "ast_hash": "c4c31ee12630e1b704e70adeb9092fee",
+    "mtime": 1795586393.161198,
+    "seen": 1795586409.4395862,
+    "ast_hash": "98c86358de802f208d1017674ba4909f",
     "semantic_hash": ""
   },
   "src/components/TablePane.tsx": {
@@ -222,9 +222,9 @@
     "semantic_hash": ""
   },
   "src/store.ts": {
-    "mtime": 1795374894.3022964,
-    "seen": 1795375035.595267,
-    "ast_hash": "5861ab8e25d1fb03c956432bee73a997",
+    "mtime": 1795583690.489777,
+    "seen": 1795583844.0349162,
+    "ast_hash": "d46ec650b7684d51c8f9d9d8a6bb7964",
     "semantic_hash": ""
   },
   "src/types.ts": {
@@ -396,15 +396,15 @@
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1795375050.0842736,
-    "seen": 1795487302.447534,
-    "ast_hash": "7d50bfa1f3be367b3bcf76ea7b0997a1",
+    "mtime": 1795583843.1753652,
+    "seen": 1795583844.03493,
+    "ast_hash": "9aa36f9b9b1ad96cbfde6c6aa871f0f7",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795487518.2083642,
-    "seen": 1795487522.367973,
-    "ast_hash": "c2bbad5205f24cc5c7a77facc377fcf4",
+    "mtime": 1795583843.1757061,
+    "seen": 1795583844.034931,
+    "ast_hash": "f4d2fc743df0f23f20a300c1486c608e",
     "semantic_hash": ""
   },
   "docs/assets/icons/ban.svg": {
@@ -606,9 +606,9 @@
     "semantic_hash": ""
   },
   "src/components/KeyPane.tsx": {
-    "mtime": 1795190251.3014035,
-    "seen": 1795375035.5952482,
-    "ast_hash": "010c1bce065e7916edbbb1b64108a9b7",
+    "mtime": 1795585195.4744608,
+    "seen": 1795585201.832243,
+    "ast_hash": "4b364e325d3d9390b8876c0219341655",
     "semantic_hash": ""
   },
   "src/lib/rediscli.ts": {
@@ -717,6 +717,18 @@
     "mtime": 1795374871.0281062,
     "seen": 1795375035.595256,
     "ast_hash": "1144418c1b30d0e46e55bd7dfac573e0",
+    "semantic_hash": ""
+  },
+  ".agents/todos/linux-build.md": {
+    "mtime": 1795571227.2034004,
+    "seen": 1795583844.034919,
+    "ast_hash": "6d85d3a0737f11cf8b6d185f636c66ea",
+    "semantic_hash": ""
+  },
+  ".agents/todos/windows-build.md": {
+    "mtime": 1795572807.576631,
+    "seen": 1795583844.03492,
+    "ast_hash": "1b5e4eb3377a6a6dd7045252fdec65fc",
     "semantic_hash": ""
   }
 }

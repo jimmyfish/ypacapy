@@ -105,6 +105,7 @@ After that, the app updates itself. A little chip shows up in the title strip wh
 - **Connect** with host, port, user (ACL) and database number, or paste a `redis://` or `rediss://` URL. TLS with a CA file or a client certificate.
 - **Keys in the sidebar,** read with `SCAN` about 1,000 at a time, in folders on the key separator (`:` by default, per connection), with a type badge and a timer on keys that expire. Enter in the filter scans for matching keys.
 - **Key tabs** open on the key's type, length and TTL over one page of its value: hash fields (`HSCAN`), list items, set members, sorted-set members by score, a stream's newest entries, or a string as text or pretty JSON.
+- **Edit in the key tab.** Change a string's value (`SET … KEEPTTL`, so the expiry stays) or a hash's values and fields (`HSET`, `HDEL`). Click the expiry to set it or take it off (`EXPIRE`, `PERSIST`). Each write goes through the write guard.
 - **redis-cli console:** one command per line, quoted as redis-cli quotes. Replies show as a table or as redis-cli prints them. A `WRONGTYPE` error offers the command that reads the key's real type.
 
 ### <img src="docs/assets/icons/network.svg" width="20" height="20" align="top" alt="" /> ER diagrams

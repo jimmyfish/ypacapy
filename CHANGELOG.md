@@ -7,6 +7,11 @@ All notable changes to ypacapy are listed here. The format follows [Keep a Chang
 ### Added
 
 - **Edit a table's columns.** On a table tab's Columns view (PostgreSQL, MySQL/MariaDB, SQLite), click a cell to rename a column or change its type, nullable or default. The shredder marks a column to drop, and Add column adds one. Changed cells are green and a dropped column is red until you apply or discard. Review SQL (`⌘S`) shows the exact `ALTER` statements and warns about table rewrites, `NOT NULL` on columns that hold nulls, and keys or indexes that go with a dropped column. Apply runs them through the write guard: on Strict it asks for the passphrase right there. PostgreSQL and SQLite run them in one transaction; MySQL gets one `ALTER`, which restates each changed column's charset, `auto_increment`, `ON UPDATE` and comment so it keeps them. If anything fails, nothing changes and your edits stay. SQLite can only rename, add and drop columns, so the other cells are locked there. Open in a console instead puts the SQL in a new query tab.
+- **Edit Redis keys in their tab.** A string's Edit opens its value in a text box (pretty JSON when it's JSON) and Save writes `SET … KEEPTTL`, so the expiry stays. JSON that was compact goes back compact, and numbers are kept exactly as written. In a hash, double-click a value to change it, or press `⌘⌫` to mark a field for deletion. Save writes them with `HSET` and `HDEL`. Click the expiry in the key's head to set it (`EXPIRE`, in seconds, minutes, hours or days) or remove it (`PERSIST`). Every write goes through the write guard, and the ask shows the exact command. Values with raw bytes (shown as `\xHH`) and strings longer than the 1 MB read are locked.
+
+### Fixed
+
+- **A string's JSON view no longer rounds big numbers.** It used to show `12345678901234567890` as `12345678901234567000`.
 
 ## [0.1.1] - 2026-11-20
 

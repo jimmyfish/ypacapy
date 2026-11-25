@@ -12,15 +12,15 @@
     "semantic_hash": "55276547315d43414b01c6da5d7f4253"
   },
   "package.json": {
-    "mtime": 1795190251.2888052,
-    "seen": 1795375035.595225,
-    "ast_hash": "5ee1e59181c8d83d7f2455c230a084ec",
+    "mtime": 1795596905.223774,
+    "seen": 1795596920.910922,
+    "ast_hash": "d9626b68885db9137a40412e1458709b",
     "semantic_hash": ""
   },
   "src-tauri/Cargo.toml": {
-    "mtime": 1795190251.2902753,
-    "seen": 1795375035.595226,
-    "ast_hash": "2af9e38248a0192c46ef94398c5ccaaa",
+    "mtime": 1795596905.2269304,
+    "seen": 1795596920.910923,
+    "ast_hash": "3203c56e7cb1f562b72cc9dc75309b3b",
     "semantic_hash": ""
   },
   "src-tauri/build.rs": {
@@ -96,9 +96,9 @@
     "semantic_hash": "fafff2463276b9db5b132e8a9839aaef"
   },
   "src-tauri/tauri.conf.json": {
-    "mtime": 1795190251.2948685,
-    "seen": 1795375035.595238,
-    "ast_hash": "c83fb12dbb38f297d80e6c0c1807c47f",
+    "mtime": 1795596905.224104,
+    "seen": 1795596920.910935,
+    "ast_hash": "72b3a33032e73dd0ceb0cfce94458e59",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -396,9 +396,9 @@
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1795583843.1753652,
-    "seen": 1795583844.03493,
-    "ast_hash": "9aa36f9b9b1ad96cbfde6c6aa871f0f7",
+    "mtime": 1795594286.6005487,
+    "seen": 1795596920.91098,
+    "ast_hash": "ed7d27eb827a4feaf0b69efc6f9cd439",
     "semantic_hash": ""
   },
   "README.md": {

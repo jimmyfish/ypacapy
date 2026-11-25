@@ -4,14 +4,25 @@ All notable changes to ypacapy are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-25
+
 ### Added
 
-- **Edit a table's columns.** On a table tab's Columns view (PostgreSQL, MySQL/MariaDB, SQLite), click a cell to rename a column or change its type, nullable or default. The shredder marks a column to drop, and Add column adds one. Changed cells are green and a dropped column is red until you apply or discard. Review SQL (`⌘S`) shows the exact `ALTER` statements and warns about table rewrites, `NOT NULL` on columns that hold nulls, and keys or indexes that go with a dropped column. Apply runs them through the write guard: on Strict it asks for the passphrase right there. PostgreSQL and SQLite run them in one transaction; MySQL gets one `ALTER`, which restates each changed column's charset, `auto_increment`, `ON UPDATE` and comment so it keeps them. If anything fails, nothing changes and your edits stay. SQLite can only rename, add and drop columns, so the other cells are locked there. Open in a console instead puts the SQL in a new query tab.
-- **Edit Redis keys in their tab.** A string's Edit opens its value in a text box (pretty JSON when it's JSON) and Save writes `SET … KEEPTTL`, so the expiry stays. JSON that was compact goes back compact, and numbers are kept exactly as written. In a hash, double-click a value to change it, or press `⌘⌫` to mark a field for deletion. Save writes them with `HSET` and `HDEL`. Click the expiry in the key's head to set it (`EXPIRE`, in seconds, minutes, hours or days) or remove it (`PERSIST`). Every write goes through the write guard, and the ask shows the exact command. Values with raw bytes (shown as `\xHH`) and strings longer than the 1 MB read are locked.
+- **Edit a table's columns.** On a table tab's Columns view (PostgreSQL, MySQL/MariaDB, SQLite), click a cell to rename a column or change its type, nullable or default. The shredder marks a column to drop, and Add column adds one. Changed cells are green and a dropped column is red until you apply or discard. Your changes stay while you're on another tab, and closing the tab asks first. Review SQL (`⌘S`) shows the exact `ALTER` statements and warns about table rewrites, a column becoming `NOT NULL` (it fails if any row holds null), a new `NOT NULL` column with no default on PostgreSQL, and keys or indexes that go with a dropped column. Apply runs them through the write guard: on Strict it asks for the passphrase (or Touch ID) right there. PostgreSQL and SQLite run them in one transaction; MySQL gets one `ALTER`, which restates each changed column's charset, `auto_increment`, `ON UPDATE`, `INVISIBLE` and comment so it keeps them. If anything fails, nothing changes and your edits stay. The one exception is a MySQL `ALTER` stopped by the statement timeout: the server may still finish it, so refresh the columns to see where it ended up. SQLite can only rename, add and drop columns, so the other cells are locked there, and it won't drop a column that's a key or indexed. MySQL generated columns are locked, and MySQL won't drop a column while a foreign key uses it. Open in a console instead puts the SQL in a new query tab.
+- **Edit Redis keys in their tab.** A string's Edit opens its value in a text box (pretty JSON when it's JSON) and Save writes `SET … KEEPTTL`, so the expiry stays. JSON that was compact goes back compact, and numbers are kept exactly as written. In a hash, double-click a value to change it, or press `⌘⌫` to mark a field for deletion. Save writes them with `HSET` and `HDEL`. Refresh or another page asks before it reads over unsaved hash changes. Click the expiry in the key's head to set it (`EXPIRE`, in seconds, minutes, hours or days) or remove it (`PERSIST`). Every write goes through the write guard, the ask shows the exact command, and the command lands in History. Values with raw bytes (shown as `\xHH`) and strings longer than the 1 MB read are locked.
+
+### Changed
+
+- **Dialogs ease in and out.** A dialog fades and rises in over a blurred backdrop, and fades out when it closes, however it closes. Reduce motion in macOS turns it off.
+- **A single-column result hugs its column** (a count, a list of ids) instead of stretching across the pane.
+- **MySQL defaults show as SQL** in a table's Columns view: `'pending'` instead of `pending`, and an expression in parentheses. A MariaDB column with no default says none instead of `NULL`.
+- **Dev builds keep their own workspace.** `bun tauri dev` uses `~/.config/ypacapy_dev` and the Keychain service `ypacapy_dev`, so hacking on the app never touches your real connections or passphrase.
 
 ### Fixed
 
 - **A string's JSON view no longer rounds big numbers.** It used to show `12345678901234567890` as `12345678901234567000`.
+- **The editor's caret stays on its line.** WebKit drew it a little higher on every line further down. The caret is now drawn by the editor itself, the same height on every line.
+- **The editor's focus ring shows over its lines.** The caret line's band used to cover it.
 
 ## [0.1.1] - 2026-11-20
 
@@ -99,7 +110,8 @@ First release.
 - **About dialog.** Shows the version, the update state and, in dev builds, the git commit, branch and tag.
 - **Release pipeline.** GitHub Actions builds Apple silicon and Intel bundles from a version tag into a draft release, with `latest.json` for the updater. The notes are taken from this file.
 
-[Unreleased]: https://github.com/jimmyfish/ypacapy/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/jimmyfish/ypacapy/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/jimmyfish/ypacapy/releases/tag/v0.1.2
 [0.1.1]: https://github.com/jimmyfish/ypacapy/releases/tag/v0.1.1
 [0.1.0]: https://github.com/jimmyfish/ypacapy/releases/tag/v0.1.0
 [0.0.1]: https://github.com/jimmyfish/ypacapy/releases/tag/v0.0.1

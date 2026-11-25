@@ -11,7 +11,8 @@ import { RowPick } from "./TablePane";
 import { DocsActions, ResultGrid } from "./ResultGrid";
 import { DocCards } from "./DocCards";
 import { mongoColl } from "./Sidebar";
-import { Braces, ChevronLeft, ChevronRight, Funnel, Key, Link, Plus, RefreshCw, RotateCcw, SlidersHorizontal, SquareCode, Table2, ico, icoC } from "./Icon";
+import { Braces, ChevronLeft, ChevronRight, Funnel, Key, KeyRound, Link, Plus, RefreshCw, RotateCcw, SearchX, SlidersHorizontal, SquareCode, Table2, ico, icoC } from "./Icon";
+import { EmptyRow, EmptyState, Obj, QueryChip } from "./EmptyState";
 
 /** a query bar box that grows with its text, one line to eight, then scrolls */
 /** icon: stands in for the label when the bar is narrow (the filter's funnel) */
@@ -232,23 +233,34 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
   else if (o?.kind === "done")
     docsBody = (
       <div className="state">
-        <div className="empty">
-          {tab.where.trim() && tab.where.trim() !== "{}" ? (
-            <>
-              <strong>No document in {tab.table} matches this filter</strong>
-              <button type="button" className="link" onClick={reset}>
-                Clear the filter
-              </button>
-            </>
-          ) : (
-            <>
-              <strong>{tab.table} has no documents</strong>
-              <button type="button" className="link" onClick={add}>
+        {tab.where.trim() && tab.where.trim() !== "{}" ? (
+          <EmptyState
+            tone="match"
+            icon={SearchX}
+            title={
+              <>
+                No document in <Obj>{tab.table}</Obj> matches this filter
+              </>
+            }
+            actions={<QueryChip q={tab.where.trim()} onClear={reset} />}
+          />
+        ) : (
+          <EmptyState
+            tone="empty"
+            icon={Braces}
+            title={
+              <>
+                <Obj>{tab.table}</Obj> has no documents
+              </>
+            }
+            actions={
+              <button type="button" className="btn" onClick={add}>
+                <Plus {...ico} />
                 Add a document
               </button>
-            </>
-          )}
-        </div>
+            }
+          />
+        )}
       </div>
     );
 
@@ -302,7 +314,7 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
             </table>
           </div>
         ) : (
-          <p className="muted">Read some documents first: Fields come from the page.</p>
+          <EmptyRow icon={Braces} title="Read some documents first." line="Fields come from the page." />
         )}
       </div>
     ) : !info ? (
@@ -346,7 +358,7 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
             </table>
           </div>
         ) : (
-          <p className="muted">No indexes. A view has none of its own.</p>
+          <EmptyRow icon={KeyRound} title="No indexes." line="A view has none of its own." />
         )}
       </div>
     );

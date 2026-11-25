@@ -97,6 +97,9 @@ pub struct Conn {
     /// Home groups connections under this name; missing = ungrouped
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
+    /// Home shows it in Pinned, above every group, whatever group it's in
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub pinned: bool,
     #[serde(default)]
     pub level: SecurityLevel,
     /// Before security levels: the write guard and Protect with passphrase. load() turns them into
@@ -359,7 +362,8 @@ pub async fn save_connection(mut conn: Conn, password: Option<String>, lock: Sta
     let saved = conn.clone();
     update(&lock, move |all| {
         match all.iter_mut().find(|c| c.id == conn.id) {
-            Some(c) => *c = Conn { last_opened: c.last_opened, created_at: c.created_at, ..conn },
+            // the dialog doesn't edit the pin; Home does (set_pinned)
+            Some(c) => *c = Conn { last_opened: c.last_opened, created_at: c.created_at, pinned: c.pinned, ..conn },
             None => all.push(conn),
         }
         Ok(())
@@ -392,7 +396,7 @@ pub async fn duplicate_connection(id: String, lock: State<'_, ConnLock>) -> Resu
     })
     .await
     .map_err(|e| e.to_string())??;
-    let mut copy = Conn { id: new_id, created_at: Some(now_ms()), last_opened: None, ..src };
+    let mut copy = Conn { id: new_id, created_at: Some(now_ms()), last_opened: None, pinned: false, ..src };
     let saved = update(&lock, |all| {
         copy.name = copy_name(&copy.name, all);
         all.push(copy.clone());
@@ -430,6 +434,18 @@ pub fn set_group(ids: Vec<String>, group: Option<String>, lock: State<'_, ConnLo
     update(&lock, |all| {
         for c in all.iter_mut().filter(|c| ids.contains(&c.id)) {
             c.group = group.clone();
+        }
+        Ok(())
+    })?;
+    Ok(())
+}
+
+/// Pins a connection to the top of Home, or unpins it. Its group stays as it is.
+#[tauri::command]
+pub fn set_pinned(id: String, pinned: bool, lock: State<'_, ConnLock>) -> Result<(), String> {
+    update(&lock, |all| {
+        if let Some(c) = all.iter_mut().find(|c| c.id == id) {
+            c.pinned = pinned;
         }
         Ok(())
     })?;

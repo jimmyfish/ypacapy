@@ -1,12 +1,14 @@
 import "./Home.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
-import { ENGINE_LABEL } from "../lib/sql";
+import { ENGINE_LABEL, ENGINE_NAME } from "../lib/sql";
 import { when } from "../lib/time";
 import type { Conn } from "../types";
 import { ConnTile } from "./ConnTile";
+import { EmptyState, QueryChip } from "./EmptyState";
+import { EngineIcon } from "./EngineIcon";
 import { useDismiss } from "./useDismiss";
-import { Check, ChevronDown, ChevronRight, Copy, Ellipsis, EllipsisVertical, Folder, FolderInput, FolderMinus, FolderPlus, Pencil, PlugZap, Plus, Search, Settings2, Shredder, X, ico, icoC } from "./Icon";
+import { Check, ChevronDown, ChevronRight, Copy, Ellipsis, EllipsisVertical, Folder, FolderInput, FolderMinus, FolderPlus, Pencil, Pin, PinOff, PlugZap, Plus, Search, SearchX, Settings2, Shredder, X, ico, icoC } from "./Icon";
 
 /** host or folder (gives way with an ellipsis) and the tail that always shows: port and database, or the file name */
 function address(c: Conn): [string, string] {
@@ -31,11 +33,11 @@ const haystack = (c: Conn) => {
   return `${c.name} ${head}${tail} ${c.user ?? ""} ${ENGINE_WORDS[c.engine]} ${c.group ?? ""}`.toLowerCase();
 };
 
-/** Where a dragged card lands: a group by name, out of every group, or into a new one. */
-type DropKey = { kind: "group"; name: string } | { kind: "none" } | { kind: "new" };
+/** Where a dragged card lands: a group by name, out of every group, into a new one, or Pinned. */
+type DropKey = { kind: "group"; name: string } | { kind: "none" } | { kind: "new" } | { kind: "pinned" };
 const dropAttr = (d: DropKey) => (d.kind === "group" ? `group:${d.name}` : d.kind);
 const parseDrop = (v: string | undefined): DropKey | null =>
-  !v ? null : v === "none" ? { kind: "none" } : v === "new" ? { kind: "new" } : v.startsWith("group:") ? { kind: "group", name: v.slice(6) } : null;
+  !v ? null : v === "none" || v === "new" || v === "pinned" ? { kind: v } : v.startsWith("group:") ? { kind: "group", name: v.slice(6) } : null;
 
 interface MenuItem {
   label: string;
@@ -130,7 +132,8 @@ function GroupRename({ initial, onDone }: { initial: string; onDone: (name: stri
   );
 }
 
-/** Home: every connection on this Mac, in groups you can open, fold, rename and ungroup, with a search over all of them. */
+/** Home: every connection on this Mac, in groups you can open, fold, rename and ungroup, with a search over all of them.
+ *  Pinned ones sit above every group, whatever group they're in. */
 export function Home() {
   const conns = useStore((s) => s.conns);
   const openIds = useStore((s) => s.openIds);
@@ -149,22 +152,25 @@ export function Home() {
   const needle = q.trim().toLowerCase();
 
   // oldest first; connections without createdAt predate it and keep their file order, which is creation order.
-  // Groups by name; Ungrouped comes last.
-  const { groups, ungrouped } = useMemo(() => {
+  // Pinned first, then groups by name; Ungrouped comes last. A group's list keeps its pinned members (Open all,
+  // rename and ungroup take them too); its grid shows only the unpinned ones, so a fully pinned group stays.
+  const { groups, ungrouped, pinned } = useMemo(() => {
     const sorted = [...conns].sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
     const m = new Map<string, Conn[]>();
     const none: Conn[] = [];
     for (const c of sorted) {
       if (c.group) m.set(c.group, [...(m.get(c.group) ?? []), c]);
-      else none.push(c);
+      else if (!c.pinned) none.push(c);
     }
-    return { groups: [...m.entries()].sort(([a], [b]) => a.localeCompare(b)), ungrouped: none };
+    return { groups: [...m.entries()].sort(([a], [b]) => a.localeCompare(b)), ungrouped: none, pinned: sorted.filter((c) => c.pinned) };
   }, [conns]);
   const groupNames = groups.map(([g]) => g);
+  const unpinned = (list: Conn[]) => list.filter((c) => !c.pinned);
 
-  // a group's name matching shows all of it; otherwise only the connections that match
+  // a group's name matching shows all of it; otherwise only the connections that match (a pinned one's group is in its haystack)
   const shown = (list: Conn[], group?: string) => (!needle || group?.toLowerCase().includes(needle) ? list : list.filter((c) => haystack(c).includes(needle)));
-  const visible = [...groups.flatMap(([g, list]) => shown(list, g)), ...shown(ungrouped)];
+  const shownPinned = shown(pinned);
+  const visible = [...shownPinned, ...groups.flatMap(([g, list]) => shown(unpinned(list), g)), ...shown(ungrouped)];
 
   // ⌘F finds, while Home is showing
   useEffect(() => {
@@ -202,7 +208,8 @@ export function Home() {
       onConfirm: () => void st.deleteConn(c.id),
     });
 
-  const newGroupFor = (c: Conn) =>
+  // dropped on the "new group" zone, a pinned card leaves Pinned too
+  const newGroupFor = (c: Conn, unpin = false) =>
     st.openModal({
       kind: "prompt",
       title: `Move ${c.name} to a new group`,
@@ -214,7 +221,7 @@ export function Home() {
       confirmLabel: "Move",
       actionIcon: "folder-input",
       initial: "",
-      onSubmit: (name) => void st.setGroup([c.id], name),
+      onSubmit: (name) => void st.setGroup([c.id], name).then(() => (unpin ? st.setPinned(c.id, false) : undefined)),
     });
 
   // renaming onto an existing group joins the two; a folded group stays folded under its new name
@@ -244,7 +251,8 @@ export function Home() {
     if (e.button !== 0 || (e.target as HTMLElement).closest(".card-actions")) return;
     const x0 = e.clientX;
     const y0 = e.clientY;
-    const from = c.group ? dropAttr({ kind: "group", name: c.group }) : "none";
+    // a pinned card comes from Pinned, so its own group is a target: dropping it there unpins it
+    const from = c.pinned ? "pinned" : c.group ? dropAttr({ kind: "group", name: c.group }) : "none";
     let active = false;
     let target: string | null = null;
     const place = (x: number, y: number) => {
@@ -283,9 +291,17 @@ export function Home() {
       document.body.classList.remove("cards-dragging");
       setDragId(null);
       setDrop(null);
+      // the card goes where it's dropped: onto Pinned it's pinned, in its group; out of Pinned it's unpinned
       const d = commit ? parseDrop(target ?? undefined) : null;
-      if (d?.kind === "new") newGroupFor(c);
-      else if (d) void st.setGroup([c.id], d.kind === "group" ? d.name : null);
+      if (d?.kind === "pinned") void st.setPinned(c.id, true);
+      else if (d?.kind === "new") newGroupFor(c, c.pinned);
+      else if (d) {
+        const group = d.kind === "group" ? d.name : null;
+        void (async () => {
+          if (group !== (c.group ?? null)) await st.setGroup([c.id], group);
+          if (c.pinned) await st.setPinned(c.id, false);
+        })();
+      }
     };
     const up = () => end(true);
     // Escape drops nothing
@@ -316,9 +332,13 @@ export function Home() {
             </span>
           </span>
         </span>
-        <span className="proj-when">{c.lastOpened ? `Opened ${when(c.lastOpened)}` : "Not opened yet"}</span>
+        <span className="proj-when">
+          {/* in Pinned the footer names the group it belongs to */}
+          {c.pinned && c.group && <span className="pin-from">{c.group} · </span>}
+          {c.lastOpened ? `Opened ${when(c.lastOpened)}` : "Not opened yet"}
+        </span>
         <span className="card-actions">
-          {/* every action in one "…": Edit, Duplicate, Move to group, Remove */}
+          {/* every action in one "…": Edit, Duplicate, Pin, Move to group, Remove */}
           <MenuButton
             label={`More actions for ${c.name}`}
             title="More actions"
@@ -328,6 +348,7 @@ export function Home() {
             items={[
               { label: "Edit connection", icon: <Settings2 {...ico} />, run: () => st.openModal({ kind: "connect", conn: c }) },
               { label: "Duplicate", icon: <Copy {...ico} />, run: () => void st.duplicateConn(c.id) },
+              c.pinned ? { label: "Unpin", icon: <PinOff {...ico} />, run: () => void st.setPinned(c.id, false) } : { label: "Pin to top", icon: <Pin {...ico} />, run: () => void st.setPinned(c.id, true) },
               { label: "sep", icon: null, sep: true, run: () => {} },
               { label: "Move to group", icon: null, heading: true, run: () => {} },
               ...groupNames.map((g) => ({ label: g, icon: <Folder {...ico} />, checked: g === c.group, run: () => void (g !== c.group && st.setGroup([c.id], g)) })),
@@ -405,28 +426,74 @@ export function Home() {
                 )}
               </div>
             )}
-            <button type="button" className="btn btn--primary" onClick={() => st.openModal({ kind: "connect" })}>
-              <Plus {...ico} />
-              New connection
-            </button>
+            {/* with no connections the welcome below has the button */}
+            {conns.length > 0 && (
+              <button type="button" className="btn btn--primary" onClick={() => st.openModal({ kind: "connect" })}>
+                <Plus {...ico} />
+                New connection
+              </button>
+            )}
           </div>
         </div>
         <p className="sr-only" id="home-q-h">
           Enter opens the first match. Escape clears the search.
         </p>
 
-        {needle && !visible.length ? (
-          <div className="empty home-empty">
-            <strong>No connection matches "{q.trim()}"</strong>
-            <span>Searches names, hosts, users, databases, files, engines and groups.</span>
-            <button type="button" className="link" onClick={() => (setQ(""), searchRef.current?.focus())}>
-              Clear the search
-            </button>
-          </div>
+        {!conns.length ? (
+          <EmptyState
+            size="xl"
+            capy
+            title="No connections yet"
+            line="Add a database and Capy keeps it here. Passwords stay in the macOS keychain."
+            actions={
+              <>
+                <button type="button" className="btn btn--primary" onClick={() => st.openModal({ kind: "connect" })}>
+                  <Plus {...ico} />
+                  New connection
+                </button>
+                <ul className="es-engines" aria-label="Engines">
+                  {(["postgres", "mysql", "sqlite", "mongo", "redis"] as const).map((e) => (
+                    <li key={e}>
+                      <EngineIcon engine={e} />
+                      {ENGINE_NAME[e]}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            }
+          />
+        ) : needle && !visible.length ? (
+          <EmptyState
+            size="xl"
+            tone="match"
+            icon={SearchX}
+            title={
+              <>
+                No connection matches <QueryChip q={q.trim()} label="Clear the search" onClear={() => (setQ(""), searchRef.current?.focus())} />
+              </>
+            }
+            line="Searches names, hosts, users, databases, files, engines and groups."
+          />
         ) : (
           <div className="conn-groups">
+            {/* Pinned: above every group, while something is pinned (and, during a search, matches) */}
+            {shownPinned.length > 0 && (
+              <section className={`conn-group conn-pinned${drop === "pinned" ? " drop-target" : ""}`} data-drop="pinned" aria-label="Pinned">
+                <div className="group-head">
+                  <h2>
+                    <Pin {...icoC("pin-mark")} />
+                    Pinned
+                  </h2>
+                  <span className="group-count">{needle ? `${shownPinned.length} of ${pinned.length}` : pinned.length}</span>
+                  <span className="drop-note">Drop to pin</span>
+                </div>
+                <div className="projects">{shownPinned.map(card)}</div>
+              </section>
+            )}
+
             {groups.map(([g, list]) => {
-              const cards = shown(list, g);
+              const rest = unpinned(list);
+              const cards = shown(rest, g);
               if (needle && !cards.length) return null;
               const folded = closed.has(g) && !needle;
               const live = list.filter((c) => openIds.includes(c.id));
@@ -440,7 +507,7 @@ export function Home() {
                       <button type="button" className="group-toggle" aria-expanded={!folded} onClick={() => !needle && setFold(g, !folded)}>
                         {folded ? <ChevronRight {...icoC("g-caret")} /> : <ChevronDown {...icoC("g-caret")} />}
                         <h2>{g}</h2>
-                        <span className="group-count">{needle ? `${cards.length} of ${list.length}` : list.length}</span>
+                        <span className="group-count">{needle ? `${cards.length} of ${rest.length}` : rest.length}</span>
                       </button>
                     )}
                     {live.length > 0 && (
@@ -480,7 +547,7 @@ export function Home() {
             })}
 
             {/* Ungrouped (or, before any group exists, the one list) shows while it has connections, and as a drop target while a grouped card is dragged */}
-            {(shownUngrouped.length > 0 || (!needle && !hasGroups) || (dragged?.group && !needle)) && (
+            {(shownUngrouped.length > 0 || (!needle && !hasGroups) || ((dragged?.group || dragged?.pinned) && !needle)) && (
               <section className={`conn-group${drop === "none" ? " drop-target" : ""}`} data-drop="none" aria-label={hasGroups ? "Ungrouped" : "On this Mac"}>
                 <div className="group-head">
                   <h2>{hasGroups ? "Ungrouped" : "On this Mac"}</h2>

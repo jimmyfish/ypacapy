@@ -19,7 +19,8 @@ import { useUpdates } from "./updates";
 import { UpdateChip } from "./components/UpdateChip";
 import { LinkBar, TabLink } from "./components/ConnStatus";
 import type { Link } from "./types";
-import { Bookmark, Database, HistoryIcon, House, ListTree, Settings2, X, ico, icoLg } from "./components/Icon";
+import { Bookmark, Database, HistoryIcon, House, ListTree, Settings2, SquareCode, X, ico, icoLg } from "./components/Icon";
+import { EmptyState, Keys } from "./components/EmptyState";
 
 export const SIDEBAR_DEFAULT = 296;
 const SIDEBAR_MIN = 220;
@@ -167,13 +168,22 @@ function ConnWork() {
   if (!tab)
     return (
       <div className="state">
-        <div className="empty">
-          <strong>No tab open</strong>
-          <span>{conn?.engine === "mongo" ? "Open a collection from the databases, or start a query." : "Open a table from the schema, or start a query."}</span>
-          <button type="button" className="btn" onClick={() => st.newQueryTab()}>
-            New query
-          </button>
-        </div>
+        <EmptyState
+          capy
+          title="No tab open"
+          line={conn?.engine === "mongo" ? "Open a collection from the databases, or start a query." : "Open a table from the schema, or start a query."}
+          actions={
+            <>
+              <button type="button" className="btn btn--primary" onClick={() => st.newQueryTab()}>
+                <SquareCode {...ico} />
+                New query
+              </button>
+              <span className="es-hint" title="New query">
+                <Keys k="⌘T" />
+              </span>
+            </>
+          }
+        />
       </div>
     );
   if (tab.kind === "query") return <QueryPane key={tab.id} tab={tab} />;

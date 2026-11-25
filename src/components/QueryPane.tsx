@@ -12,7 +12,8 @@ import type { QueryTab, ResultSet, RunOutcome, RunState } from "../types";
 import { ResultGrid, type GridEdit } from "./ResultGrid";
 import { SqlEditor, type Completer } from "./SqlEditor";
 import { useDismiss } from "./useDismiss";
-import { Braces, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, LoaderCircle, Play, Table2, WandSparkles, ico, icoC } from "./Icon";
+import { Braces, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, CircleSlash, Inbox, LoaderCircle, MessageSquareText, Play, Table2, WandSparkles, ico, icoC } from "./Icon";
+import { EmptyState, Obj } from "./EmptyState";
 import { DocCards } from "./DocCards";
 import { LinkNote } from "./ConnStatus";
 
@@ -297,17 +298,17 @@ function QueryResults({ tab }: { tab: QueryTab }) {
     const lines = o?.kind === "done" ? [...o.messages, `${duration(o.ms).replace(/ /g, " ")} on ${name} (${o.server})`] : o?.kind === "error" ? (o.says ?? o.message).split("\n") : o?.kind === "cancelled" ? [o.timeout ? "Stopped by the statement timeout" : "Cancelled"] : [];
     body = (
       <div className="state">
-        <pre className="code messages" aria-label="Messages">
-          {lines.length ? (
-            lines.map((l, i) => (
+        {lines.length ? (
+          <pre className="code messages" aria-label="Messages">
+            {lines.map((l, i) => (
               <span className="l" key={i}>
                 {l}
               </span>
-            ))
-          ) : (
-            <span className="l">No messages yet</span>
-          )}
-        </pre>
+            ))}
+          </pre>
+        ) : (
+          <EmptyState icon={MessageSquareText} title="No messages yet" line="Notices and timings land here after a run." />
+        )}
       </div>
     );
   } else if (run.status === "running")
@@ -326,10 +327,23 @@ function QueryResults({ tab }: { tab: QueryTab }) {
   else if (!o)
     body = (
       <div className="state">
-        <div className="empty">
-          <strong>Run a query to see its rows here</strong>
-          <span>{redis ? "⌘↵ runs the command on the cursor's line, ⇧⌘↵ every line in order." : mongo ? "⌘↵ runs the selection or the statement at the cursor." : "⌘↵ runs the selection or the statement at the cursor, ⇧⌘↵ the whole editor."}</span>
-        </div>
+        <EmptyState
+          icon={Play}
+          title="Run a query to see its rows here"
+          keys={
+            redis
+              ? [
+                  ["⌘↵", "the command on the cursor's line"],
+                  ["⇧⌘↵", "every line, in order"],
+                ]
+              : mongo
+                ? [["⌘↵", "the selection, or the statement at the cursor"]]
+                : [
+                    ["⌘↵", "the selection, or the statement at the cursor"],
+                    ["⇧⌘↵", "the whole editor"],
+                  ]
+          }
+        />
       </div>
     );
   else if (o.kind === "error")
@@ -375,10 +389,7 @@ function QueryResults({ tab }: { tab: QueryTab }) {
   else if (o.kind === "done" && nil)
     body = (
       <div className="state">
-        <div className="empty">
-          <strong>(nil)</strong>
-          <span>No value: the key does not exist, or it expired.</span>
-        </div>
+        <EmptyState tone="empty" icon={CircleSlash} title={<Obj>(nil)</Obj>} line="No value: the key does not exist, or it expired." />
       </div>
     );
   else if (o.kind === "done" && shown && redis && as === "raw")
@@ -466,20 +477,18 @@ function QueryResults({ tab }: { tab: QueryTab }) {
         />
       </div>
     );
+  else if (o.kind === "done" && o.lastIsQuery)
+    body = (
+      <div className="state">
+        <EmptyState tone="empty" icon={Inbox} title={mongo ? "The query returned no documents" : "The query returned no rows"} />
+      </div>
+    );
   else if (o.kind === "done")
     body = (
       <div className="state">
         <div className="empty">
-          {o.lastIsQuery ? (
-            <>
-              <strong>{mongo ? "The query returned no documents" : "The query returned no rows"}</strong>
-            </>
-          ) : (
-            <>
-              <strong>Done</strong>
-              <span>{o.affected !== null ? `${o.affected} row${o.affected === 1 ? "" : "s"} affected.` : o.messages.join(", ")}</span>
-            </>
-          )}
+          <strong>Done</strong>
+          <span>{o.affected !== null ? `${o.affected} row${o.affected === 1 ? "" : "s"} affected.` : o.messages.join(", ")}</span>
         </div>
       </div>
     );

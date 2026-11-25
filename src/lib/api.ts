@@ -13,6 +13,7 @@ export const api = {
   duplicateConnection: (id: string) => invoke<Conn>("duplicate_connection", { id }),
   /** group null takes them out of every group */
   setGroup: (ids: string[], group: string | null) => invoke<void>("set_group", { ids, group }),
+  setPinned: (id: string, pinned: boolean) => invoke<void>("set_pinned", { id, pinned }),
   touchConnection: (id: string) => invoke<void>("touch_connection", { id }),
   setLevel: (id: string, level: SecurityLevel, approval?: Approval) => invoke<void>("set_level", { id, level, approval }),
   /** with testId, cancelQuery(testId) stops the test */

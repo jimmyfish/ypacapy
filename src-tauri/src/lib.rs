@@ -140,6 +140,7 @@ pub fn run() {
             conns::touch_connection,
             conns::set_level,
             conns::set_group,
+            conns::set_pinned,
             db::test_connection,
             db::open_connection,
             db::close_connection,

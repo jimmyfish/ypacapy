@@ -49,7 +49,8 @@
         let n = 0;
         cards.forEach((c) => { const hit = !v || groupHit || c.dataset.q.includes(v); c.hidden = !hit; if (hit) n++; });
         $$(".project-card--new", sec).forEach((c) => { c.hidden = !!v; });
-        sec.hidden = !!v && !n;
+        // Pinned hides while nothing is pinned
+        sec.hidden = (!!v && !n) || (sec.matches(".conn-pinned") && !cards.length);
         const count = $(".group-count", sec); if (count) count.textContent = v ? `${n} of ${cards.length}` : String(cards.length);
         const t = $(".group-toggle", sec);
         const open = !t || t.getAttribute("aria-expanded") === "true";
@@ -79,8 +80,11 @@
   const recount = () => {
     $$(".conn-group").forEach((sec) => {
       const n = $$(".conn-card[data-q]", sec).length, c = $(".group-count", sec);
-      // a group exists only through its connections: the last one out takes the group with it
-      if (!n && sec.querySelector(".group-toggle")) return sec.remove();
+      // a group exists only through its connections: the last one out takes the group with it (a pinned one still counts)
+      const name = $("[data-group-name]", sec)?.textContent;
+      const pinnedHere = !!name && $$(".conn-pinned .conn-card[data-q]", sec.parentElement).some((p) => p.dataset.group === name);
+      if (!n && sec.querySelector(".group-toggle") && !pinnedHere) return sec.remove();
+      if (sec.matches(".conn-pinned")) sec.hidden = !n;
       if (c) c.textContent = String(n);
     });
     if (qIn.value.trim()) search();
@@ -103,8 +107,11 @@
   };
   const dropOn = (t, card) => {
     if (t.matches(".group-drop-new")) { $("#ng-who").textContent = $(".proj-name", card).textContent; return newGroup(true); }
+    // onto Pinned: pinned, in the group it was in. Onto a group (its own too, from Pinned): unpinned and in that group
+    if (!t.matches(".conn-pinned")) setGroupOf(card, $("[data-group-name]", t)?.textContent ?? "");
     const list = $(".projects", t);
     list.insertBefore(card, $(".project-card--new", list));
+    pinLabel(card);
     recount();
   };
   $$(".conn-card[data-q]").forEach((card) => card.addEventListener("mousedown", (e) => {
@@ -140,6 +147,33 @@
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
   }));
+  // Pin to top: the card leaves its group for Pinned, whatever group it's in; Unpin puts it back at the end of its group
+  const setGroupOf = (card, g) => { card.dataset.group = g; $(".pin-from", card).textContent = g ? `${g} · ` : ""; };
+  const homeOf = (card) => {
+    const root = card.closest(".conn-groups"), g = card.dataset.group;
+    return (g && $$(".conn-group", root).find((s) => $("[data-group-name]", s)?.textContent === g)) || $('[data-group-id$="none"]', root);
+  };
+  const pinLabel = (card) => {
+    const on = !!card.closest(".conn-pinned"), b = $("[data-pin]", card);
+    if (!b) return;
+    $("use", b).setAttribute("href", on ? "#i-pin-off" : "#i-pin");
+    $(".menu-name", b).textContent = on ? "Unpin" : "Pin to top";
+  };
+  const pin = (card, on) => {
+    const sec = on ? $(".conn-pinned", card.closest(".conn-groups")) : homeOf(card);
+    if (!sec || card.closest(".conn-group") === sec) return;
+    const list = $(".projects", sec);
+    list.insertBefore(card, $(".project-card--new", list));
+    pinLabel(card);
+    recount();
+  };
+  $$("[data-pin]").forEach((b) => b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    b.closest(".menu").hidden = true;
+    const card = b.closest(".conn-card");
+    pin(card, !card.closest(".conn-pinned"));
+  }));
+
   // Escape drops nothing
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && ghost) { endDrag(); } });
 
@@ -169,6 +203,7 @@
   }));
   window.pvShow = (k) => {
     endDrag();
+    $$(".conn-pinned .conn-card").forEach((c) => pin(c, false));
     dup(k === "duplicated");
     if (k === "remove") $("#rm-title").textContent = "Remove shop_prod?";
     rmDlg.hidden = k !== "remove";
@@ -189,6 +224,19 @@
     if (k === "card-menu") openMenu("cm-shop");
     if (k === "rename") rename($('[data-group-id="staging"]'), true);
     if (k === "new-group") { $("#ng-who").textContent = "shop_prod"; newGroup(true); }
+    // Pinned: shop_prod from Production and production.sqlite from Ungrouped sit on top
+    if (k.startsWith("pinned") || k === "drag-pin") { pin($('[data-card="shop"]'), true); pin($('[data-card="backup"]'), true); }
+    // every Staging connection pinned: the group stays, holding only its New connection card
+    if (k === "pinned-all") pin($('[data-card="staging"]'), true);
+    if (k === "pinned-menu") openMenu("cm-shop");
+    // mid-drag: analytics.sqlite held over Pinned
+    if (k === "drag-pin") {
+      startDrag($('[data-card="analytics"]'));
+      const pn = $('[data-group-id="pinned"]');
+      setTarget(pn);
+      const r = $(".projects", pn).getBoundingClientRect();
+      placeGhost(r.left + r.width * 0.7, r.top + 40);
+    }
     // mid-drag: shop_prod held over Staging
     if (k === "dragging") {
       startDrag($('[data-card="shop"]'));

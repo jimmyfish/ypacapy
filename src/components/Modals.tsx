@@ -40,7 +40,9 @@ import {
   Type,
   ico,
   RefreshCw,
+  TimerOff,
 } from "./Icon";
+import { EmptyState, Obj } from "./EmptyState";
 
 export function Modals() {
   const modal = useStore((s) => s.modal);
@@ -135,10 +137,16 @@ function KeyInfoModal({ m, onClose }: { m: Extract<Modal, { kind: "keyInfo" }>; 
           </div>
         ) : info?.type === "none" ? (
           <div className="info-body">
-            <div className="empty">
-              <strong>{m.key} is gone</strong>
-              <span>It expired or was deleted.</span>
-            </div>
+            <EmptyState
+              tone="empty"
+              icon={TimerOff}
+              title={
+                <>
+                  <Obj>{m.key}</Obj> is gone
+                </>
+              }
+              line="It expired or was deleted."
+            />
           </div>
         ) : info ? (
           <div className="info-body" aria-busy={busy || undefined}>

@@ -91,9 +91,11 @@
 .home-search .search-clear .ico { position: static; transform: none; width: 14px; height: 14px; }
 .home-search .search-clear:hover { background: var(--color-paper-2); color: var(--color-ink); }
 .home-search .search-clear[hidden] { display: none; }
-.project-card[hidden], .conn-group[hidden], .home-empty[hidden] { display: none; }
-.home-empty { padding: var(--space-xl) 0; }
-.home-empty .link { padding: 0; border: none; background: none; color: var(--color-link); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.project-card[hidden], .conn-group[hidden] { display: none; }
+/* Pinned: the section above every group. Its head carries a pin; a pinned card's footer names its group ("Production · Opened …") */
+.conn-pinned .group-head h2 { display: inline-flex; align-items: center; gap: var(--space-2xs); }
+.conn-pinned .pin-mark { color: var(--color-muted); }
+.conn-pinned.drop-target .pin-mark { color: var(--color-link); }
 @media (max-width: 720px) { .home-actions { width: 100%; } .home-search { flex: 1; width: auto; } }
 /* Drag a card onto a group to move it (voidHTTP's pointer drag: HTML5 drag and drop is unreliable in the webview).
    The card fades, a ghost follows the pointer, the group under it lights up, and a "new group" zone opens at the end.

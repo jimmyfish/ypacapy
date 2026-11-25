@@ -18,7 +18,8 @@ const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "hous
   "columns-2", "play", "circle-check", "copy", "download", "circle-alert", "key-round", "key", "link", "folder-open", "type", "terminal",
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus", "pin", "pin-off",
   "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check", "timer",
-  "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down", "arrow-right", "chevrons-up-down", "chevrons-down-up", "circle-plus", "copy-plus", "sliders-horizontal", "rotate-ccw", "funnel", "unplug"];
+  "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down", "arrow-right", "chevrons-up-down", "chevrons-down-up", "circle-plus", "copy-plus", "sliders-horizontal", "rotate-ccw", "funnel", "unplug",
+  "search-x", "timer-off", "inbox", "circle-slash", "message-square-text", "chevrons-left", "rows-3", "unlink"];
 // Lucide 1.x renamed fingerprint; the old name is what the pages use
 const RENAMED = { fingerprint: "fingerprint-pattern" };
 // Lucide 1.x has no brand icons: GitHub's mark as lucide-react 0.460.0 drew it (ISC), the same as src/components/Icon.tsx
@@ -404,7 +405,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
       </div>`;
 
 // ---------- preview bar ----------
-const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["diagram", "Diagram"], ["mongo", "MongoDB"], ["collection", "Collection"], ["redis", "Redis"], ["key", "Key"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["about", "About"], ["modals", "Modals"]];
+const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["diagram", "Diagram"], ["mongo", "MongoDB"], ["collection", "Collection"], ["redis", "Redis"], ["key", "Key"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["about", "About"], ["modals", "Modals"], ["empty", "Empty states"]];
 const UI_FONTS = `<option value="">System</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option><option value="Avenir Next, Avenir, sans-serif">Avenir</option><option value="Georgia, serif">Georgia</option>`;
 const MONO_FONTS = `<option value="">System mono</option><option value="Menlo, monospace">Menlo</option><option value="'Courier New', monospace">Courier</option><option value="Monaco, monospace">Monaco</option>`;
 // preview-only: recolour the first connection tab (shop_prod) to try each connection colour on the title strip
@@ -479,20 +480,22 @@ const ENGINE_GLYPH = {
 const engIco = (engine, size = 14) => `<svg class="engine-ico" width="${size}" height="${size}" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">${ENGINE_GLYPH[engine]}</svg>`;
 
 // Home
-// A connection card. Its "…" shows on hover and holds every action: Edit, Duplicate, Move to group, Remove.
+// A connection card. Its "…" shows on hover and holds every action: Edit, Duplicate, Pin to top, Move to group, Remove.
+// In Pinned its footer also names the group it belongs to (.pin-from).
 const GROUPS = ["Production", "Staging"];
 const card = ([name, icon, n, engine], [head, tail], when, o = {}) => `
-          <div class="project-card conn-card"${o.id ? ` data-card="${o.id}"` : ""} data-q="${esc(`${name} ${head}${tail} ${{ postgres: "postgresql pg", mysql: "mysql", sqlite: "sqlite", mongo: "mongodb mongo", redis: "redis cache" }[engine]} ${o.group || ""}`.toLowerCase())}">
+          <div class="project-card conn-card"${o.id ? ` data-card="${o.id}"` : ""} data-group="${esc(o.group || "")}" data-q="${esc(`${name} ${head}${tail} ${{ postgres: "postgresql pg", mysql: "mysql", sqlite: "sqlite", mongo: "mongodb mongo", redis: "redis cache" }[engine]} ${o.group || ""}`.toLowerCase())}">
             <button type="button" class="project-open" aria-label="Open ${name}, ${head}${tail}" data-href="${openHref(engine)}"></button>
             <span class="proj-tile" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)">${engIco(engine, 22)}</span>
             <span class="conn-id"><span class="proj-name">${name}</span><span class="proj-cols"><span class="sr-only">${ENGINE_NAME[engine]}</span><span class="addr"><span class="addr-head">${head}</span><span class="addr-tail">${tail}</span></span></span></span>
-            <span class="proj-when">${when}</span>${o.id ? `
+            <span class="proj-when"><span class="pin-from">${o.group ? `${o.group} · ` : ""}</span>${when}</span>${o.id ? `
             <span class="card-actions">
               <span class="menu-anchor">
                 <button type="button" class="icon-btn" title="More actions" aria-label="More actions for ${name}" aria-haspopup="menu" aria-expanded="false" data-menu="cm-${o.id}">${ic("ellipsis-vertical")}</button>
                 <div class="menu card-menu" id="cm-${o.id}" role="menu" aria-label="Actions for ${name}" hidden>
                   <button type="button" role="menuitem" data-href="./connect.html">${ic("settings-2")}<span class="menu-name">Edit connection</span></button>
                   <button type="button" role="menuitem" data-duplicate>${ic("copy")}<span class="menu-name">Duplicate</span></button>
+                  <button type="button" role="menuitem" data-pin>${ic("pin")}<span class="menu-name">Pin to top</span></button>
                   <hr>
                   <p class="menu-note">Move to group</p>
 ${(o.groups || GROUPS).map((g) => `                  <button type="button" role="menuitemradio" aria-checked="${g === o.group}">${ic("folder")}<span class="menu-name">${g}</span>${ic("check", "tick")}</button>`).join("\n")}
@@ -531,6 +534,13 @@ const groupSection = (id, name, cards, { open = 0 } = {}) => `
         </div>
         <div class="projects" id="g-${id}">${cards.join("")}${newCard(name)}
         </div>
+      </section>`;
+// Pinned: at the top, above every group. A pinned card leaves its group's grid and sits here, whatever group it's in.
+// Hidden while nothing is pinned; dropping a card on it pins it.
+const pinnedSection = (id) => `
+      <section class="conn-group conn-pinned" data-group-id="${id}" aria-label="Pinned" hidden>
+        <div class="group-head"><h2>${ic("pin", "pin-mark")}Pinned</h2><span class="group-count">0</span><span class="drop-note">Drop to pin</span></div>
+        <div class="projects"></div>
       </section>`;
 const C = {
   shop: card(CONNS[0], ["localhost", ":5432 / shop"], "Opened today at 09:41", { id: "shop", group: "Production" }),
@@ -611,7 +621,7 @@ const manyCard = ([name, engine, n, head, tail, when], group, i) =>
   card([name, engine === "sqlite" ? "hard-drive" : "server", n, engine], [head, tail], when, { id: `m${i}`, group, groups: MANY_GROUPS });
 let mi = 0;
 const manyHtml = `
-      <div class="conn-groups" data-when="many" hidden>${MANY.map(([g, open, list]) => groupSection(`m-${g.toLowerCase().replace(/\W+/g, "-")}`, g, list.map((c) => manyCard(c, g, mi++)), { open })).join("")}
+      <div class="conn-groups" data-when="many" hidden>${pinnedSection("m-pinned")}${MANY.map(([g, open, list]) => groupSection(`m-${g.toLowerCase().replace(/\W+/g, "-")}`, g, list.map((c) => manyCard(c, g, mi++)), { open })).join("")}
       <section class="conn-group" data-group-id="m-none">
         <div class="group-head"><h2>Ungrouped</h2><span class="group-count">${STRAYS.length}</span><span class="drop-note">Drop to remove from its group</span></div>
         <div class="projects">${STRAYS.map((c) => manyCard(c, undefined, mi++)).join("")}${newCard("")}
@@ -621,8 +631,8 @@ const manyHtml = `
       </div>`;
 pages["home.html"] = page({
   title: "ypacapy preview, home",
-  desc: "Design preview of ypacapy's Home: every connection on this Mac, gathered into groups you can open, fold, rename and ungroup.",
-  barHtml: bar("home", [["grouped", "Groups"], ["folded", "Group folded"], ["group-menu", "Group menu"], ["card-menu", "Card menu"], ["duplicated", "Duplicated"], ["rename", "Renaming a group"], ["new-group", "New group"], ["no-groups", "No groups yet"], ["many", "40 connections"], ["search", "Search"], ["search-empty", "Search, no match"], ["dragging", "Dragging a card"], ["remove", "Remove connection"]]),
+  desc: "Design preview of ypacapy's Home: every connection on this Mac, gathered into groups you can open, fold, rename and ungroup, with pinned ones on top.",
+  barHtml: bar("home", [["grouped", "Groups"], ["folded", "Group folded"], ["group-menu", "Group menu"], ["card-menu", "Card menu"], ["duplicated", "Duplicated"], ["rename", "Renaming a group"], ["new-group", "New group"], ["no-groups", "No groups yet"], ["many", "40 connections"], ["search", "Search"], ["search-empty", "Search, no match"], ["dragging", "Dragging a card"], ["pinned", "Pinned"], ["pinned-menu", "Pinned card menu"], ["pinned-all", "Whole group pinned"], ["drag-pin", "Dragging to Pinned"], ["remove", "Remove connection"]]),
   body: `
 <div class="app">${strip("home")}
   <div class="home">
@@ -636,7 +646,7 @@ pages["home.html"] = page({
       </div>
       <p class="sr-only" id="home-q-h">Enter opens the first match. Escape clears the search.</p>
       <div class="empty home-empty" id="home-empty" hidden><strong>No connection matches <span id="home-empty-q"></span></strong><span>Searches names, hosts, users, databases, files, engines and groups.</span><button type="button" class="link" id="home-clear">Clear the search</button></div>
-      <div class="conn-groups" data-when="grouped">${groupSection("prod", "Production", [C.shop, C.shopCopy, C.events, C.cache, C.cms], { open: 2 })}${groupSection("staging", "Staging", [C.staging])}
+      <div class="conn-groups" data-when="grouped">${pinnedSection("pinned")}${groupSection("prod", "Production", [C.shop, C.shopCopy, C.events, C.cache, C.cms], { open: 2 })}${groupSection("staging", "Staging", [C.staging])}
       <section class="conn-group" data-group-id="none">
         <div class="group-head"><h2>Ungrouped</h2><span class="group-count">2</span><span class="drop-note">Drop to remove from its group</span></div>
         <div class="projects">${C.analytics}${C.backup}${newCard("")}
@@ -2537,6 +2547,170 @@ pages["modals.html"] = page({
   </main>
 </div>`,
   script: js("page-modals.js"),
+});
+
+// ---------- Empty states: every one in src/, drawn at rest in the box it fills in the app ----------
+// The copy is the app's (src/components), with the preview's sample names filled in. Variants that differ in copy
+// (engine, a filter or not, more to scan or not) are separate cards. Only states with nothing to show: no loading
+// (spinner), no outcome of a run (Done, a write, Cancelled, timeout), no error box, no unsupported type.
+const eE = (strong, span = "", extra = "") => `<div class="empty">${strong ? `<strong>${strong}</strong>` : ""}${span ? `<span>${span}</span>` : ""}${extra}</div>`;
+const eLink = (t) => `<button type="button" class="link">${t}</button>`;
+const eBtn = (t, cls = "", icon = "") => `<button type="button" class="btn${cls}">${icon ? ic(icon) : ""}${t}</button>`;
+// the box each one fills: the work area under a tab, a sidebar, a dialog, Home
+const sPane = (html) => `<div class="eg-pane"><div class="state">${html}</div></div>`;
+const sSide = (title, q, tree, ph = "Filter") => `<aside class="sidebar eg-side"><div class="side-head"><h2>${title}</h2></div><div class="side-tools"><div class="search">${ic("search")}<input class="field" value="${esc(q)}" placeholder="${ph}" aria-label="${ph}" autocomplete="off" spellcheck="false"></div></div><div class="tree">${tree}</div></aside>`;
+const sDlg = (title, body, foot = "") => `<div class="backdrop"><div class="dialog eg-dlg" role="dialog" aria-label="${esc(title)}"><h2>${title}</h2>${body}${foot ? `<footer>${foot}</footer>` : ""}</div></div>`;
+const sPick = (q, line) => sDlg("Tables to draw", `<p class="help">Tables of <strong>public</strong> on shop_prod. Only the tables you pick are read from the catalog and drawn.</p><div class="search">${ic("search")}<input class="field" type="search" value="${esc(q)}" placeholder="Filter tables" aria-label="Filter tables"></div><div class="ep-list eg-ep">${line}</div>`, `<span class="ep-n">0 picked</span><button type="button" class="btn">Cancel</button><button type="button" class="btn btn--primary" disabled>Show diagram</button>`).replace('class="dialog eg-dlg"', 'class="dialog eg-dlg erd-pick"');
+const sInfo = (title, empty) => sDlg(title, `<div class="info-body">${empty}</div>`, `<button type="button" class="btn" disabled>${ic("refresh-cw")}Refresh</button><button type="button" class="btn btn--primary">Close</button>`).replace('class="dialog eg-dlg"', 'class="dialog eg-dlg info-dlg"');
+const sHome = (q, inner) => `<div class="home eg-home"><div class="home-inner"><div class="eg-home-bar"><div class="search">${ic("search")}<input class="field" value="${esc(q)}" placeholder="Search connections" aria-label="Search connections"></div><button type="button" class="btn btn--primary">${ic("plus")}New connection</button></div>${inner}</div></div>`;
+const sStruct = (html) => `<div class="eg-pane"><div class="structure">${html}</div></div>`;
+const RUN_HINT = { sql: "⌘↵ runs the selection or the statement at the cursor, ⇧⌘↵ the whole editor.", mongo: "⌘↵ runs the selection or the statement at the cursor.", redis: "⌘↵ runs the command on the cursor's line, ⇧⌘↵ every line in order." };
+// [id, title, component, when it shows, stage]
+const EMPTY_GROUPS = [
+  ["first", "Nothing yet", "Before there is anything to show: no tab, no run, nothing typed, nothing kept.", [
+    ["no-tab", "No tab open", "App.tsx", "A connection is open and every tab is closed. SQL engines.", sPane(eE("No tab open", "Open a table from the schema, or start a query.", eBtn("New query")))],
+    ["no-tab-mongo", "No tab open, MongoDB", "App.tsx", "The same, on a MongoDB connection.", sPane(eE("No tab open", "Open a collection from the databases, or start a query.", eBtn("New query")))],
+    ["run-sql", "Run a query", "QueryPane.tsx", "A query tab that hasn't run yet. SQL engines.", sPane(eE("Run a query to see its rows here", RUN_HINT.sql))],
+    ["run-mongo", "Run a query, MongoDB", "QueryPane.tsx", "The same on MongoDB: no ⇧⌘↵.", sPane(eE("Run a query to see its rows here", RUN_HINT.mongo))],
+    ["run-redis", "Run a query, Redis", "QueryPane.tsx", "The same on Redis: lines, not statements.", sPane(eE("Run a query to see its rows here", RUN_HINT.redis))],
+    ["messages", "No messages yet", "QueryPane.tsx", "The Messages sub-tab before the first run.", `<div class="eg-pane"><div class="state"><pre class="code messages" aria-label="Messages"><span class="l">No messages yet</span></pre></div></div>`],
+    ["history-none", "No history", "Sidebar.tsx", "History rail, nothing run on this connection yet.", sSide("History", "", eE("No queries on shop_prod yet", "Each query you run is kept here, on this Mac."), "Search shop_prod history")],
+    ["saved-none", "No saved queries", "Sidebar.tsx", "Saved rail, nothing saved yet.", sSide("Saved queries", "", eE("No saved queries", "Save a query from its tab (⌘S) to keep it here."), "Search saved queries")],
+    ["erd-none", "No tables picked", "DiagramPane.tsx", "A diagram tab before its first Show. The button hides while the picker is open.", sPane(eE("No tables picked", "Pick the tables of public to draw. Only those are read from the catalog.", eBtn("Pick tables", " btn--primary", "list-checks")))],
+    ["fields-none", "No fields", "CollectionPane.tsx", "The Fields tab of a collection before a page of documents is read.", sStruct(`<h3>Fields</h3><p class="muted">Read some documents first: Fields come from the page.</p>`)],
+    ["home-zero", "No connections", "Home.tsx", "Home on a fresh install: the one list, holding only the New connection card. No search box until there's a connection.", `<div class="home eg-home"><div class="home-inner"><section class="conn-group" aria-label="On this Mac"><div class="group-head"><h2>On this Mac</h2></div><div class="projects">${newCard()}</div></section></div></div>`],
+  ]],
+  ["data", "Nothing in it", "The read worked and came back empty.", [
+    ["table-none", "Table has no rows", "TablePane.tsx", "A table tab, no where filter, zero rows.", sPane(eE("orders has no rows"))],
+    ["coll-none", "Collection has no documents", "CollectionPane.tsx", "A collection tab, empty filter, zero documents.", sPane(eE("carts has no documents", "", eLink("Add a document")))],
+    ["query-rows", "Query returned no rows", "QueryPane.tsx", "A select that ran and returned nothing. SQL and Redis.", sPane(eE("The query returned no rows"))],
+    ["query-docs", "Query returned no documents", "QueryPane.tsx", "A find or aggregate that returned nothing.", sPane(eE("The query returned no documents"))],
+    ["nil", "(nil)", "QueryPane.tsx", "Redis: a read whose reply is nil.", sPane(eE("(nil)", "No value: the key does not exist, or it expired."))],
+    ["key-empty", "Key is empty", "KeyPane.tsx", "A key tab of a hash, list, set, zset or stream with nothing in it.", sPane(eE("cart:3107 is empty"))],
+    ["key-more", "Nothing more", "KeyPane.tsx", "A key tab paged past its last item.", sPane(eE("Nothing more", "", eLink("Back to the first page")))],
+    ["tree-nokeys", "Database has no keys", "Sidebar.tsx", "Redis sidebar: the scan finished and the database is empty. A one-line note, not an .empty block.", sSide("Keys", "", `<div class="tree-note">db3 has no keys</div>`, "Filter keys")],
+    ["info-gone", "Key is gone", "Modals.tsx", "Info on a Redis key that expired or was deleted after the tree read it.", sInfo("session:9a61c7b2", eE("session:9a61c7b2 is gone", "It expired or was deleted."))],
+    ["struct-none", "No indexes, no foreign keys", "TablePane.tsx", "The table's Indexes view when it has neither.", sStruct(`<h3>Indexes</h3><p class="muted">No indexes.</p><h3>Foreign keys</h3><p class="muted">No foreign keys.</p>`)],
+    ["coll-noidx", "No indexes, view", "CollectionPane.tsx", "The Indexes view of a MongoDB view.", sStruct(`<h3>Indexes</h3><p class="muted">No indexes. A view has none of its own.</p>`)],
+    ["erd-gone", "Picked tables gone", "DiagramPane.tsx", "A saved diagram whose tables were dropped or renamed since.", sPane(eE("The picked tables are not in public any more", "They were dropped or renamed. Pick the tables to draw again.", eBtn("Pick tables", " btn--primary", "list-checks")))],
+    ["erd-schema", "Schema has no tables", "DiagramPane.tsx", "The table picker on a schema with no tables.", sPick("", `<p class="ep-empty">audit has no tables</p>`).replace("<strong>public</strong>", "<strong>audit</strong>")],
+  ]],
+  ["match", "No match", "A filter or a search found nothing. Most offer a way back.", [
+    ["home-q", "Home search", "Home.tsx", "Home's search over every connection.", sHome("stagng", `<div class="empty home-empty"><strong>No connection matches "stagng"</strong><span>Searches names, hosts, users, databases, files, engines and groups.</span>${eLink("Clear the search")}</div>`)],
+    ["tree-sql", "Schema filter", "Sidebar.tsx", "Schema sidebar filter. SQL engines.", sSide("Schema", "invoce", eE(`Nothing matches "invoce"`, "Searches table, view and function names in the schemas loaded so far.", eLink("Clear the filter")), "Filter tables")],
+    ["tree-mongo", "Databases filter", "Sidebar.tsx", "The same filter on MongoDB.", sSide("Databases", "invoce", eE(`Nothing matches "invoce"`, "Searches collection and view names in the databases loaded so far.", eLink("Clear the filter")), "Filter collections")],
+    ["tree-redis", "Keys filter", "Sidebar.tsx", "Redis keys filter: matches the keys read so far; Enter scans the database.", sSide("Keys", "sesion:*", eE(`Nothing matches "sesion:*"`, "Searches the keys read so far. Press Enter to scan db0 for keys that match.", eLink("Clear the filter")), "Filter keys")],
+    ["tree-ttl-more", "TTL only, more to scan", "Sidebar.tsx", "Redis: Expiring only is on, none read so far has a TTL, the scan isn't done.", sSide("Keys", "", eE("No key read so far expires", "Scan more to read more keys."), "Filter keys")],
+    ["tree-ttl-all", "TTL only, all scanned", "Sidebar.tsx", "The same, once every key has been read.", sSide("Keys", "", eE("No key read so far expires", "None of the keys has a TTL."), "Filter keys")],
+    ["history-q", "History search", "Sidebar.tsx", "History rail search.", sSide("History", "pg_locks", eE("Nothing matches", "Searches the SQL text."), "Search shop_prod history")],
+    ["saved-q", "Saved search", "Sidebar.tsx", "Saved rail search.", sSide("Saved queries", "churn", eE("Nothing matches", "Searches names and SQL."), "Search saved queries")],
+    ["table-q", "Table where filter", "TablePane.tsx", "A table tab with a where clause that matches no row.", sPane(eE("No row of orders matches this filter", "The where clause is sent as you typed it.", eLink("Clear the filter")))],
+    ["coll-q", "Collection filter", "CollectionPane.tsx", "A collection tab with a filter that matches no document.", sPane(eE("No document in orders matches this filter", "", eLink("Clear the filter")))],
+    ["key-q-more", "Hash pattern, more to scan", "KeyPane.tsx", "A hash key tab with a pattern; HSCAN hasn't finished.", sPane(eE("No field in user:3107 matches addr*", "HSCAN has more to read: the next page may hold some.", eLink("Clear the pattern")))],
+    ["key-q-set", "Set pattern", "KeyPane.tsx", "A set key tab with a pattern; SSCAN read it all.", sPane(eE("No member in tags:7 matches vip*", "", eLink("Clear the pattern")))],
+    ["erd-q", "Table picker filter", "DiagramPane.tsx", "The diagram's table picker, filter typed.", sPick("invoce", `<p class="ep-empty">No table matches invoce</p>`)],
+  ]],
+];
+// ---------- the redesign: what each one becomes (shown by default; the bar's Current shows the app as it is) ----------
+// One family, three sizes. A tinted mark in water rings (the onsen of the icon), the title with the thing's name in
+// mono, one line, then the way out as a real button. Colour says why it is empty: Turquoise nothing yet, River
+// nothing in it, Carrot no match. A filter that found nothing shows what was typed as a chip; its × clears it.
+// Keys are drawn as keys. The capybara itself only greets: no connections, no tab open.
+const kb = (k) => `<kbd>${k}</kbd>`;
+const ob = (n) => `<code class="es-obj">${esc(n)}</code>`;
+const qc = (q, label = "Clear the filter") => `<span class="es-q"><code>${esc(q)}</code><button type="button" class="es-q-x" aria-label="${label}" title="${label}">${ic("x")}</button></span>`;
+const es = ({ tone = "yet", icon, art = "", title, line = "", keys, actions = "", size = "" }) =>
+  `<div class="es${size ? ` es--${size}` : ""}" data-tone="${tone}">${art || `<span class="es-mark" aria-hidden="true"><i></i><i></i>${ic(icon)}</span>`}<strong class="es-title">${title}</strong>${line ? `<p class="es-line">${line}</p>` : ""}${keys ? `<dl class="es-keys">${keys.map(([k, d]) => `<div><dt>${k}</dt><dd>${d}</dd></div>`).join("")}</dl>` : ""}${actions ? `<div class="es-actions">${actions}</div>` : ""}</div>`;
+const esRow = (icon, title, line = "") => `<div class="es-row">${ic(icon)}<p><strong>${title}</strong>${line ? ` ${line}` : ""}</p></div>`;
+const capy = `<span class="es-capy about-onsen ping" aria-hidden="true"><span class="steam"><b></b><b></b><b></b></span><i></i><i></i><i></i><img src="../../public/app-icon.png" alt=""></span>`;
+const nBtn = (t, icon = "", cls = "") => eBtn(t, cls, icon);
+const NKEYS = {
+  sql: [[`${kb("⌘")}${kb("↵")}`, "the selection, or the statement at the cursor"], [`${kb("⇧")}${kb("⌘")}${kb("↵")}`, "the whole editor"]],
+  mongo: [[`${kb("⌘")}${kb("↵")}`, "the selection, or the statement at the cursor"]],
+  redis: [[`${kb("⌘")}${kb("↵")}`, "the command on the cursor's line"], [`${kb("⇧")}${kb("⌘")}${kb("↵")}`, "every line, in order"]],
+};
+const ENGINES_ROW = `<ul class="es-engines" aria-label="Engines">${["postgres", "mysql", "sqlite", "mongo", "redis"].map((e) => `<li>${engIco(e, 16)}${ENGINE_NAME[e]}</li>`).join("")}</ul>`;
+const EMPTY_NEXT = {
+  // nothing yet
+  "no-tab": sPane(es({ art: capy, title: "No tab open", line: "Open a table from the schema, or start a query.", actions: `${nBtn("New query", "square-code", " btn--primary")}<span class="es-hint">${kb("⌘")}${kb("T")}</span>` })),
+  "no-tab-mongo": sPane(es({ art: capy, title: "No tab open", line: "Open a collection from the databases, or start a query.", actions: `${nBtn("New query", "square-code", " btn--primary")}<span class="es-hint">${kb("⌘")}${kb("T")}</span>` })),
+  "run-sql": sPane(es({ icon: "play", title: "Run a query to see its rows here", keys: NKEYS.sql })),
+  "run-mongo": sPane(es({ icon: "play", title: "Run a query to see its rows here", keys: NKEYS.mongo })),
+  "run-redis": sPane(es({ icon: "play", title: "Run a query to see its rows here", keys: NKEYS.redis })),
+  messages: sPane(es({ icon: "message-square-text", title: "No messages yet", line: "Notices and timings land here after a run." })),
+  "history-none": sSide("History", "", es({ size: "sm", icon: "history", title: `No queries on ${ob("shop_prod")} yet`, line: "Each query you run is kept here, on this Mac." }), "Search shop_prod history"),
+  "saved-none": sSide("Saved queries", "", es({ size: "sm", icon: "bookmark", title: "No saved queries", line: `Save a query from its tab with ${kb("⌘")}${kb("S")} to keep it here.` }), "Search saved queries"),
+  "erd-none": sPane(es({ icon: "network", title: "No tables picked", line: `Pick the tables of ${ob("public")} to draw. Only those are read from the catalog.`, actions: nBtn("Pick tables", "list-checks", " btn--primary") })),
+  "fields-none": sStruct(`<h3>Fields</h3>${esRow("braces", "Read some documents first.", "Fields come from the page.")}`),
+  "home-zero": `<div class="home eg-home"><div class="home-inner">${es({ size: "xl", art: capy, title: "No connections yet", line: "Add a database and Capy keeps it here. Passwords stay in the macOS keychain.", actions: newCard().replace('class="project-card project-card--new conn-card"', 'class="btn btn--primary"') + ENGINES_ROW })}</div></div>`,
+  // nothing in it
+  "table-none": sPane(es({ tone: "empty", icon: "rows-3", title: `${ob("orders")} has no rows` })),
+  "coll-none": sPane(es({ tone: "empty", icon: "braces", title: `${ob("carts")} has no documents`, actions: nBtn("Add a document", "plus") })),
+  "query-rows": sPane(es({ tone: "empty", icon: "inbox", title: "The query returned no rows" })),
+  "query-docs": sPane(es({ tone: "empty", icon: "inbox", title: "The query returned no documents" })),
+  nil: sPane(es({ tone: "empty", icon: "circle-slash", title: ob("(nil)"), line: "No value: the key does not exist, or it expired." })),
+  "key-empty": sPane(es({ tone: "empty", icon: "key-round", title: `${ob("cart:3107")} is empty` })),
+  "key-more": sPane(es({ tone: "empty", icon: "inbox", title: "Nothing more", actions: nBtn("Back to the first page", "chevrons-left") })),
+  "tree-nokeys": sSide("Keys", "", es({ size: "sm", tone: "empty", icon: "key-round", title: `${ob("db3")} has no keys` }), "Filter keys"),
+  "info-gone": sInfo("session:9a61c7b2", es({ tone: "empty", icon: "timer-off", title: `${ob("session:9a61c7b2")} is gone`, line: "It expired or was deleted." })),
+  "struct-none": sStruct(`<h3>Indexes</h3>${esRow("key-round", "No indexes.")}<h3>Foreign keys</h3>${esRow("link", "No foreign keys.")}`),
+  "coll-noidx": sStruct(`<h3>Indexes</h3>${esRow("key-round", "No indexes.", "A view has none of its own.")}`),
+  "erd-gone": sPane(es({ tone: "empty", icon: "unlink", title: `The picked tables are not in ${ob("public")} any more`, line: "They were dropped or renamed. Pick the tables to draw again.", actions: nBtn("Pick tables", "list-checks", " btn--primary") })),
+  "erd-schema": sPick("", es({ size: "sm", tone: "empty", icon: "table-2", title: `${ob("audit")} has no tables` })).replace("<strong>public</strong>", "<strong>audit</strong>"),
+  // no match
+  "home-q": sHome("stagng", es({ size: "xl", tone: "match", icon: "search-x", title: `No connection matches ${qc("stagng", "Clear the search")}`, line: "Searches names, hosts, users, databases, files, engines and groups." })),
+  "tree-sql": sSide("Schema", "invoce", es({ size: "sm", tone: "match", icon: "search-x", title: `Nothing matches ${qc("invoce")}`, line: "Searches table, view and function names in the schemas loaded so far." }), "Filter tables"),
+  "tree-mongo": sSide("Databases", "invoce", es({ size: "sm", tone: "match", icon: "search-x", title: `Nothing matches ${qc("invoce")}`, line: "Searches collection and view names in the databases loaded so far." }), "Filter collections"),
+  "tree-redis": sSide("Keys", "sesion:*", es({ size: "sm", tone: "match", icon: "search-x", title: `Nothing matches ${qc("sesion:*")}`, line: `Searches the keys read so far. ${kb("↵")} scans ${ob("db0")} for keys that match.` }), "Filter keys"),
+  "tree-ttl-more": sSide("Keys", "", es({ size: "sm", tone: "match", icon: "timer-off", title: "No key read so far expires", line: "Scan more to read more keys." }), "Filter keys"),
+  "tree-ttl-all": sSide("Keys", "", es({ size: "sm", tone: "match", icon: "timer-off", title: "No key read so far expires", line: "None of the keys has a TTL." }), "Filter keys"),
+  "history-q": sSide("History", "pg_locks", es({ size: "sm", tone: "match", icon: "search-x", title: `Nothing matches ${qc("pg_locks", "Clear the search")}`, line: "Searches the SQL text." }), "Search shop_prod history"),
+  "saved-q": sSide("Saved queries", "churn", es({ size: "sm", tone: "match", icon: "search-x", title: `Nothing matches ${qc("churn", "Clear the search")}`, line: "Searches names and SQL." }), "Search saved queries"),
+  "table-q": sPane(es({ tone: "match", icon: "search-x", title: `No row of ${ob("orders")} matches this filter`, line: "The where clause is sent as you typed it.", actions: qc("status = 'lost'") })),
+  "coll-q": sPane(es({ tone: "match", icon: "search-x", title: `No document in ${ob("orders")} matches this filter`, actions: qc('{ status: "lost" }') })),
+  "key-q-more": sPane(es({ tone: "match", icon: "search-x", title: `No field in ${ob("user:3107")} matches ${qc("addr*", "Clear the pattern")}`, line: "HSCAN has more to read: the next page may hold some." })),
+  "key-q-set": sPane(es({ tone: "match", icon: "search-x", title: `No member in ${ob("tags:7")} matches ${qc("vip*", "Clear the pattern")}` })),
+  "erd-q": sPick("invoce", es({ size: "sm", tone: "match", icon: "search-x", title: `No table matches ${qc("invoce")}` })),
+};
+for (const [, , , items] of EMPTY_GROUPS) for (const [id] of items) if (!EMPTY_NEXT[id]) throw new Error(`empty states: no redesign for ${id}`);
+
+// The page groups them by kind: where on screen the state sits. The groups above (why it's empty) ride on each card
+// as a tag. The kind is read from the box helper that drew the stage.
+const EMPTY_KINDS = [
+  ["page", "Page", "The work area under a tab: table, collection, key, query results, diagram, and their Columns, Indexes and Fields views."],
+  ["sidebar", "Sidebar", "The panel left of the work area: Schema or Databases or Keys, History, Saved queries."],
+  ["modal", "Modal", "Inside a dialog: Info, and the diagram's table picker."],
+  ["home", "Home", "Home, the connections screen."],
+];
+const kindOf = (stage) => stage.startsWith("<aside") ? "sidebar" : stage.startsWith('<div class="backdrop"') ? "modal" : stage.startsWith('<div class="home') ? "home" : "page";
+const EMPTY_BY_KIND = EMPTY_KINDS.map(([k, name, note]) => [k, name, note, EMPTY_GROUPS.flatMap(([, cat, , items]) => items.filter((it) => kindOf(it[4]) === k).map((it) => [...it, cat]))]);
+const EMPTY_COUNT = EMPTY_GROUPS.reduce((n, g) => n + g[3].length, 0);
+if (EMPTY_BY_KIND.reduce((n, g) => n + g[3].length, 0) !== EMPTY_COUNT) throw new Error("empty states: a card has no kind");
+const eItem = ([id, title, file, when, stage, cat]) => `
+      <article class="mg-item eg-item" id="e-${id}">
+        <header class="mg-cap"><h3><a href="#e-${id}">${title}</a></h3><span class="eg-cat">${cat}</span><span class="mg-kind">${file}</span><p class="mg-where">${when}</p></header>
+        <div class="mg-stage eg-stage"><div class="eg-v" data-v="new">${EMPTY_NEXT[id]}</div><div class="eg-v" data-v="cur" hidden>${stage}</div></div>
+      </article>`;
+pages["empty.html"] = page({
+  title: "ypacapy preview, empty states",
+  desc: "Design preview of every empty state in ypacapy on one page, by where it sits: the page under a tab, the sidebar, a modal and Home.",
+  barHtml: bar("empty", [["all", `All ${EMPTY_COUNT}`], ...EMPTY_BY_KIND.map(([g, name, , items]) => [g, `${name} ${items.length}`])]),
+  body: `
+<div class="mg">
+  <nav class="mg-toc" aria-label="Empty states">${EMPTY_BY_KIND.map(([g, name, , items]) => `
+    <p class="mg-toc-h" data-toc="${g}">${name}</p>
+    <ul data-toc="${g}">${items.map(([id, title]) => `<li><a href="#e-${id}">${title}</a></li>`).join("")}</ul>`).join("")}
+  </nav>
+  <main class="mg-main">
+    <div class="eg-ver"><div class="seg" role="group" aria-label="Design"><button type="button" data-ver="new" aria-pressed="true">Redesign</button><button type="button" data-ver="cur" aria-pressed="false">Current</button></div><p>Redesign: one family in three sizes. Turquoise is nothing yet, River nothing in it, Carrot no match.</p></div>${EMPTY_BY_KIND.map(([g, name, note, items]) => `
+    <section class="mg-group" data-group="${g}" aria-labelledby="eg-${g}">
+      <header class="mg-group-head"><h2 id="eg-${g}">${name}</h2><span class="mg-n">${items.length}</span><p>${note}</p></header>
+      <div class="mg-grid eg-grid">${items.map(eItem).join("")}
+      </div>
+    </section>`).join("")}
+  </main>
+</div>`,
+  script: js("page-empty.js"),
 });
 
 for (const old of ["table.css", "settings.css", "connect.css"]) fs.rmSync(`${OUT}/${old}`, { force: true });

@@ -1632,6 +1632,7 @@ mod tests {
             file: std::env::var("YPACAPY_TEST_SQLITE").ok(),
             color: 1,
             group: None,
+            pinned: false,
             level: Default::default(),
             guard: None,
             pass_protect: false,

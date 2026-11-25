@@ -32,6 +32,8 @@ export interface Conn {
   color: number;
   /** Home groups connections under this name; missing = ungrouped */
   group?: string;
+  /** Home shows it in Pinned, above every group; missing = not pinned */
+  pinned?: boolean;
   level: SecurityLevel;
   /** Low and Strict: the statements they ask about; missing = every kind */
   protect?: string[];

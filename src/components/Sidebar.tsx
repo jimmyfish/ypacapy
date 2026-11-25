@@ -9,7 +9,8 @@ import { ttlLeft } from "../lib/time";
 import type { Saved, ScanKey } from "../types";
 import { useDismiss } from "./useDismiss";
 import { SideLink } from "./ConnStatus";
-import { Braces, ChevronDown, ChevronRight, Copy, Database, Ellipsis, Eye, Folder, Info, Key, Network, RefreshCw, Search, Shredder, SquareCode, SquareFunction, Table2, Timer, icoC, ico } from "./Icon";
+import { Bookmark, Braces, ChevronDown, ChevronRight, Copy, Database, Ellipsis, Eye, Folder, HistoryIcon, Info, Key, KeyRound, Network, RefreshCw, Search, SearchX, Shredder, SquareCode, SquareFunction, Table2, Timer, TimerOff, icoC, ico } from "./Icon";
+import { EmptyState, Keys, Obj, QueryChip } from "./EmptyState";
 
 /** MongoDB's own databases: listed, but folded under one group at the end */
 const MONGO_SYSTEM = ["admin", "config", "local"];
@@ -303,13 +304,17 @@ function SchemaSide() {
         {session.status === "opening" && <div className="tree-note">Connecting…</div>}
         {body}
         {q && !anyLeaf && (
-          <div className="empty">
-            <strong>Nothing matches "{filter.trim()}"</strong>
-            <span>{mongo ? "Searches collection and view names in the databases loaded so far." : "Searches table, view and function names in the schemas loaded so far."}</span>
-            <button type="button" className="link" onClick={() => setFilter("")}>
-              Clear the filter
-            </button>
-          </div>
+          <EmptyState
+            size="sm"
+            tone="match"
+            icon={SearchX}
+            title={
+              <>
+                Nothing matches <QueryChip q={filter.trim()} onClear={() => setFilter("")} />
+              </>
+            }
+            line={mongo ? "Searches collection and view names in the databases loaded so far." : "Searches table, view and function names in the schemas loaded so far."}
+          />
         )}
       </div>
     </>
@@ -494,19 +499,46 @@ function RedisSide() {
           <>
             {tree.folders.map((f) => folder(f, 16))}
             {tree.keys.map((k) => leaf(k, 24))}
-            {keys.state === "loaded" && !keys.total && <div className="tree-note">{db} has no keys</div>}
+            {keys.state === "loaded" && !keys.total && (
+              <EmptyState
+                size="sm"
+                tone="empty"
+                icon={KeyRound}
+                title={
+                  <>
+                    <Obj>{db}</Obj> has no keys
+                  </>
+                }
+              />
+            )}
           </>
         )}
         {(q || ttlOnly) && keys?.state === "loaded" && n > 0 && !shown.length && (
-          <div className="empty">
-            <strong>{q ? `Nothing matches "${filter.trim()}"` : "No key read so far expires"}</strong>
-            <span>{q ? `Searches the keys read so far. Press Enter to scan ${db} for keys that match.` : more ? "Scan more to read more keys." : "None of the keys has a TTL."}</span>
-            {q && (
-              <button type="button" className="link" onClick={() => setFilter("")}>
-                Clear the filter
-              </button>
-            )}
-          </div>
+          <EmptyState
+            size="sm"
+            tone="match"
+            icon={q ? SearchX : TimerOff}
+            title={
+              q ? (
+                <>
+                  Nothing matches <QueryChip q={filter.trim()} onClear={() => setFilter("")} />
+                </>
+              ) : (
+                "No key read so far expires"
+              )
+            }
+            line={
+              q ? (
+                <>
+                  Searches the keys read so far. <Keys k="↵" /> scans <Obj>{db}</Obj> for keys that match.
+                </>
+              ) : more ? (
+                "Scan more to read more keys."
+              ) : (
+                "None of the keys has a TTL."
+              )
+            }
+          />
         )}
       </div>
       {/* what the scan has read, at the sidebar's foot whatever the tree's length */}
@@ -618,10 +650,23 @@ function HistorySide() {
       </div>
       <div className="tree">
         {!history.length && (
-          <div className="empty">
-            <strong>{search ? "Nothing matches" : `No queries on ${name} yet`}</strong>
-            <span>{search ? "Searches the SQL text." : "Each query you run is kept here, on this Mac."}</span>
-          </div>
+          <EmptyState
+            size="sm"
+            tone={search ? "match" : "yet"}
+            icon={search ? SearchX : HistoryIcon}
+            title={
+              search ? (
+                <>
+                  Nothing matches <QueryChip q={search.trim()} label="Clear the search" onClear={() => setSearch("")} />
+                </>
+              ) : (
+                <>
+                  No queries on <Obj>{name}</Obj> yet
+                </>
+              )
+            }
+            line={search ? "Searches the SQL text." : "Each query you run is kept here, on this Mac."}
+          />
         )}
         {days.map(([d, items]) => (
           <div key={d}>
@@ -699,10 +744,29 @@ function SavedSide() {
       </div>
       <div className="tree">
         {!folders.length && (
-          <div className="empty">
-            <strong>{q ? "Nothing matches" : "No saved queries"}</strong>
-            <span>{q ? "Searches names and SQL." : "Save a query from its tab (⌘S) to keep it here."}</span>
-          </div>
+          <EmptyState
+            size="sm"
+            tone={q ? "match" : "yet"}
+            icon={q ? SearchX : Bookmark}
+            title={
+              q ? (
+                <>
+                  Nothing matches <QueryChip q={search.trim()} label="Clear the search" onClear={() => setSearch("")} />
+                </>
+              ) : (
+                "No saved queries"
+              )
+            }
+            line={
+              q ? (
+                "Searches names and SQL."
+              ) : (
+                <>
+                  Save a query from its tab with <Keys k="⌘S" /> to keep it here.
+                </>
+              )
+            }
+          />
         )}
         {folders.map(([folder, items]) =>
           folder ? (

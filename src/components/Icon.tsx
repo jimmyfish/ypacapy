@@ -98,6 +98,15 @@ export {
   Undo2,
   ZoomIn,
   ZoomOut,
+  // empty states (EmptyState.tsx)
+  ChevronsLeft,
+  CircleSlash,
+  Inbox,
+  MessageSquareText,
+  Rows3,
+  SearchX,
+  TimerOff,
+  Unlink,
 } from "lucide-react";
 
 /** Lucide 1.x dropped brand icons; GitHub's mark kept from Lucide's last brand set (ISC). */

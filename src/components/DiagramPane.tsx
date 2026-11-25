@@ -50,9 +50,12 @@ import {
   Undo2,
   ZoomIn,
   ZoomOut,
+  SearchX,
+  Unlink,
   icoC,
   ico,
 } from "./Icon";
+import { EmptyState, Obj, QueryChip } from "./EmptyState";
 
 const DETAILS: { value: DiagramDetail; label: string }[] = [
   { value: "all", label: "All columns" },
@@ -347,16 +350,23 @@ export function DiagramPane({ tab }: { tab: DiagramTab }) {
       </button>
     </div>
   ) : !tab.tables.length ? (
-    <div className="empty">
-      <strong>No tables picked</strong>
-      <span>Pick the tables of {tab.schema} to draw. Only those are read from the catalog.</span>
-      {!tab.picking && (
-        <button type="button" className="btn btn--primary" onClick={() => st.updateTab(tab.id, { picking: true })}>
-          <ListChecks {...ico} />
-          Pick tables
-        </button>
-      )}
-    </div>
+    <EmptyState
+      icon={Network}
+      title="No tables picked"
+      line={
+        <>
+          Pick the tables of <Obj>{tab.schema}</Obj> to draw. Only those are read from the catalog.
+        </>
+      }
+      actions={
+        !tab.picking && (
+          <button type="button" className="btn btn--primary" onClick={() => st.updateTab(tab.id, { picking: true })}>
+            <ListChecks {...ico} />
+            Pick tables
+          </button>
+        )
+      }
+    />
   ) : !model || (tab.loading && !layout) ? (
     <div className="empty">
       <span className="spinner" />
@@ -364,14 +374,22 @@ export function DiagramPane({ tab }: { tab: DiagramTab }) {
       <span>Tables, columns and foreign keys. No row is read.</span>
     </div>
   ) : !model.tables.length ? (
-    <div className="empty">
-      <strong>The picked tables are not in {tab.schema} any more</strong>
-      <span>They were dropped or renamed. Pick the tables to draw again.</span>
-      <button type="button" className="btn btn--primary" onClick={() => st.updateTab(tab.id, { picking: true })}>
-        <ListChecks {...ico} />
-        Pick tables
-      </button>
-    </div>
+    <EmptyState
+      tone="empty"
+      icon={Unlink}
+      title={
+        <>
+          The picked tables are not in <Obj>{tab.schema}</Obj> any more
+        </>
+      }
+      line="They were dropped or renamed. Pick the tables to draw again."
+      actions={
+        <button type="button" className="btn btn--primary" onClick={() => st.updateTab(tab.id, { picking: true })}>
+          <ListChecks {...ico} />
+          Pick tables
+        </button>
+      }
+    />
   ) : (
     <>
       <div
@@ -676,9 +694,27 @@ function Picker({ tab, connId, allTables, loadingTree }: { tab: DiagramTab; conn
             {loadingTree !== "loaded" && !allTables.length ? (
               <p className="ep-empty">{loadingTree === "error" ? `Could not read the tables of ${tab.schema}` : <>Reading the tables of {tab.schema}…</>}</p>
             ) : !allTables.length ? (
-              <p className="ep-empty">{tab.schema} has no tables</p>
+              <EmptyState
+                size="sm"
+                tone="empty"
+                icon={Table2}
+                title={
+                  <>
+                    <Obj>{tab.schema}</Obj> has no tables
+                  </>
+                }
+              />
             ) : !shown.length ? (
-              <p className="ep-empty">No table matches {q.trim()}</p>
+              <EmptyState
+                size="sm"
+                tone="match"
+                icon={SearchX}
+                title={
+                  <>
+                    No table matches <QueryChip q={q.trim()} onClear={() => setQ("")} />
+                  </>
+                }
+              />
             ) : (
               shown.map((t) => (
                 <label key={t.name} className="check ep-row">

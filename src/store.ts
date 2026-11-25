@@ -142,6 +142,8 @@ interface State {
   duplicateConn(id: string): Promise<void>;
   /** moves connections into a group; null takes them out of every group */
   setGroup(ids: string[], group: string | null): Promise<void>;
+  /** pins a connection to the top of Home, whatever group it's in */
+  setPinned(id: string, pinned: boolean): Promise<void>;
   /** opens every connection given, leaving the first one in front */
   openConns(ids: string[]): void;
   openConn(id: string): Promise<void>;
@@ -516,6 +518,15 @@ export const useStore = create<State>()((set, get) => {
     async setGroup(ids, group) {
       try {
         await api.setGroup(ids, group);
+      } catch (e) {
+        get().showToast(errText(e));
+      }
+      await get().refreshConns();
+    },
+
+    async setPinned(id, pinned) {
+      try {
+        await api.setPinned(id, pinned);
       } catch (e) {
         get().showToast(errText(e));
       }

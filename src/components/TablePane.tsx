@@ -9,7 +9,8 @@ import type { ColMeta, ResultSet, TableTab } from "../types";
 import { ErrorState, RunGroup } from "./QueryPane";
 import { ResultGrid, type ColKey, type GridEdit } from "./ResultGrid";
 import { ColumnEditor } from "./ColumnEditor";
-import { ChevronDown, ChevronLeft, ChevronRight, ico } from "./Icon";
+import { ChevronDown, ChevronLeft, ChevronRight, KeyRound, Link, Rows3, SearchX, ico } from "./Icon";
+import { EmptyRow, EmptyState, Obj, QueryChip } from "./EmptyState";
 
 /**
  * Rows (or documents) per page on a table or collection tab: just the number. The default is the connection's row
@@ -163,26 +164,37 @@ export function TablePane({ tab }: { tab: TableTab }) {
   else if (o?.kind === "done")
     rowsBody = (
       <div className="state">
-        <div className="empty">
-          {tab.where.trim() ? (
-            <>
-              <strong>No row of {tab.table} matches this filter</strong>
-              <span>The where clause is sent as you typed it.</span>
-              <button
-                type="button"
-                className="link"
-                onClick={() => {
+        {tab.where.trim() ? (
+          <EmptyState
+            tone="match"
+            icon={SearchX}
+            title={
+              <>
+                No row of <Obj>{tab.table}</Obj> matches this filter
+              </>
+            }
+            line="The where clause is sent as you typed it."
+            actions={
+              <QueryChip
+                q={tab.where.trim()}
+                onClear={() => {
                   st.updateTab(tab.id, { where: "" });
                   setTimeout(() => void useStore.getState().readTable(tab.id), 0);
                 }}
-              >
-                Clear the filter
-              </button>
-            </>
-          ) : (
-            <strong>{tab.table} has no rows</strong>
-          )}
-        </div>
+              />
+            }
+          />
+        ) : (
+          <EmptyState
+            tone="empty"
+            icon={Rows3}
+            title={
+              <>
+                <Obj>{tab.table}</Obj> has no rows
+              </>
+            }
+          />
+        )}
       </div>
     );
 
@@ -231,7 +243,7 @@ export function TablePane({ tab }: { tab: TableTab }) {
             </table>
           </div>
         ) : (
-          <p className="muted">No indexes.</p>
+          <EmptyRow icon={KeyRound} title="No indexes." />
         )}
         <h3>Foreign keys</h3>
         {info.foreignKeys.length ? (
@@ -258,7 +270,7 @@ export function TablePane({ tab }: { tab: TableTab }) {
             </table>
           </div>
         ) : (
-          <p className="muted">No foreign keys.</p>
+          <EmptyRow icon={Link} title="No foreign keys." />
         )}
       </div>
     );

@@ -81,6 +81,8 @@
 .ep-row:hover { background: var(--color-paper-2); }
 .ep-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ep-est { color: var(--color-muted); font: var(--text-sm) var(--font-mono); }
+/* an empty state in the list (EmptyState.tsx) fills it, so it sits in the middle */
+.ep-list > .es { height: 100%; }
 .ep-empty { margin: 0; padding: var(--space-md); color: var(--color-muted); text-align: center; }
 .dialog.erd-pick footer { margin-top: var(--space-md); }
 /* diagram exports */

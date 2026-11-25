@@ -11,7 +11,8 @@ import { Select } from "./Select";
 import { useDismiss } from "./useDismiss";
 import { SqlEditor } from "./SqlEditor";
 import { esc } from "../lib/sql";
-import { ChevronLeft, ChevronRight, Copy, Info, Pencil, RefreshCw, SquareCode, Timer, ico, icoC } from "./Icon";
+import { ChevronLeft, ChevronRight, ChevronsLeft, Copy, Inbox, Info, KeyRound, Pencil, RefreshCw, SearchX, SquareCode, Timer, ico, icoC } from "./Icon";
+import { EmptyState, Obj, QueryChip } from "./EmptyState";
 
 /** what a key's value is made of, by type */
 const PARTS: Record<string, [string, string]> = { string: ["Value", "bytes"], hash: ["Fields", "fields"], list: ["Items", "items"], set: ["Members", "members"], zset: ["Members", "members"], stream: ["Entries", "entries"] };
@@ -558,28 +559,40 @@ export function KeyPane({ tab }: { tab: KeyTab }) {
   else if (d && PARTS[type])
     body = (
       <div className="state">
-        <div className="empty">
-          {canMatch && tab.pattern ? (
-            <>
-              <strong>
-                No {type === "hash" ? "field" : "member"} in {tab.key} matches {tab.pattern}
-              </strong>
-              {hasNext && <span>{type === "hash" ? "HSCAN" : "SSCAN"} has more to read: the next page may hold some.</span>}
-              <button type="button" className="link" onClick={() => restart({ pattern: "" })}>
-                Clear the pattern
-              </button>
-            </>
-          ) : tab.page > 0 ? (
-            <>
-              <strong>Nothing more</strong>
-              <button type="button" className="link" onClick={() => void st.readKey(tab.id, { page: 0 })}>
+        {canMatch && tab.pattern ? (
+          <EmptyState
+            tone="match"
+            icon={SearchX}
+            title={
+              <>
+                No {type === "hash" ? "field" : "member"} in <Obj>{tab.key}</Obj> matches <QueryChip q={tab.pattern} label="Clear the pattern" onClear={() => restart({ pattern: "" })} />
+              </>
+            }
+            line={hasNext ? `${type === "hash" ? "HSCAN" : "SSCAN"} has more to read: the next page may hold some.` : undefined}
+          />
+        ) : tab.page > 0 ? (
+          <EmptyState
+            tone="empty"
+            icon={Inbox}
+            title="Nothing more"
+            actions={
+              <button type="button" className="btn" onClick={() => void st.readKey(tab.id, { page: 0 })}>
+                <ChevronsLeft {...ico} />
                 Back to the first page
               </button>
-            </>
-          ) : (
-            <strong>{tab.key} is empty</strong>
-          )}
-        </div>
+            }
+          />
+        ) : (
+          <EmptyState
+            tone="empty"
+            icon={KeyRound}
+            title={
+              <>
+                <Obj>{tab.key}</Obj> is empty
+              </>
+            }
+          />
+        )}
         {hasNext && foot}
       </div>
     );

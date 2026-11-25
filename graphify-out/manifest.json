@@ -60,9 +60,9 @@
     "semantic_hash": ""
   },
   "src-tauri/src/keychain.rs": {
-    "mtime": 1795193102.2345476,
-    "seen": 1795375035.595233,
-    "ast_hash": "e11015b14ac89741f282cb077cf330c0",
+    "mtime": 1795487518.2081163,
+    "seen": 1795487522.367924,
+    "ast_hash": "dbe9febc38cc5e6c30dad219a4d47ed8",
     "semantic_hash": ""
   },
   "src-tauri/src/lib.rs": {
@@ -78,10 +78,10 @@
     "semantic_hash": "4796d6d5cd4fa52037d5befad938f05f"
   },
   "src-tauri/src/paths.rs": {
-    "mtime": 1795023144.1826236,
-    "seen": 1795080379.945418,
-    "ast_hash": "e3f5426c28a41af73ea30fe2226d7b30",
-    "semantic_hash": "e3f5426c28a41af73ea30fe2226d7b30"
+    "mtime": 1795487518.2076576,
+    "seen": 1795487522.367927,
+    "ast_hash": "0800fd012a586eae55812cbe3409ef12",
+    "semantic_hash": ""
   },
   "src-tauri/src/settings.rs": {
     "mtime": 1795190251.29464,
@@ -402,9 +402,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795375050.0844898,
-    "seen": 1795487302.447535,
-    "ast_hash": "ab486a89229c39b466804892d1da5770",
+    "mtime": 1795487518.2083642,
+    "seen": 1795487522.367973,
+    "ast_hash": "c2bbad5205f24cc5c7a77facc377fcf4",
     "semantic_hash": ""
   },
   "docs/assets/icons/ban.svg": {

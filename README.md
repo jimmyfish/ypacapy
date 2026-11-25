@@ -194,6 +194,8 @@ On your Mac, in one folder you can find, back up and delete:
 
 Files are written through a temp file and a rename, so a crash never leaves half a file. Settings › Data on this Mac › Show in Finder takes you there.
 
+Dev builds (`bun tauri dev`) keep a separate workspace: `~/.config/ypacapy_dev/` and Keychain service `ypacapy_dev`. Nothing you do while hacking touches your real connections.
+
 ## <img src="docs/assets/icons/code-xml.svg" width="24" height="24" align="top" alt="" /> Hack on it
 
 You'll need macOS, [Rust](https://rustup.rs), [Bun](https://bun.sh) and the Xcode Command Line Tools.
@@ -229,7 +231,7 @@ src-tauri/src/store.rs     ypacapy.db: history, saved queries, open tabs, saved 
 src-tauri/src/keychain.rs  connection passwords and the passphrase hash in the macOS Keychain
 src-tauri/src/settings.rs  settings.toml, and the parts Rust enforces (row limit, timeout, heartbeat)
 src-tauri/src/fonts.rs     installed system fonts for Settings
-src-tauri/src/paths.rs     ~/.config/ypacapy, atomic writes, export files (text and images)
+src-tauri/src/paths.rs     ~/.config/ypacapy (ypacapy_dev in dev), atomic writes, export files (text and images)
 src/store.ts               app state (zustand)
 src/types.ts               shared types, mirrored by the Rust structs
 src/lib/                   SQL, mongosh and redis-cli helpers, autocomplete, grid edits, cell formats,

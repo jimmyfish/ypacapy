@@ -1,14 +1,18 @@
 //! Where ypacapy keeps its files: `~/.config/ypacapy`, on macOS too (not Application Support),
-//! so the one folder is easy to find, back up and remove.
+//! so the one folder is easy to find, back up and remove. Debug builds (`bun tauri dev`) use
+//! `~/.config/ypacapy_dev` instead, so hacking on the app never touches the real workspace.
 
 use std::path::{Path, PathBuf};
+
+/// Folder name under `~/.config`, and the keychain service: `ypacapy_dev` in debug builds.
+pub const APP_DIR: &str = if cfg!(debug_assertions) { "ypacapy_dev" } else { "ypacapy" };
 
 pub fn config_dir() -> Result<PathBuf, String> {
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)
         .filter(|p| p.is_absolute())
         .ok_or("cannot find the home folder")?;
-    let dir = home.join(".config").join("ypacapy");
+    let dir = home.join(".config").join(APP_DIR);
     if !dir.exists() {
         std::fs::create_dir_all(&dir).map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
         // connection details are private to the user even without passwords

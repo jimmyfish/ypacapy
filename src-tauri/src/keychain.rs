@@ -1,8 +1,9 @@
 //! Secrets in the macOS login keychain: connection passwords and the app passphrase (as a salted
 //! PBKDF2 hash). Items are generic passwords under service "ypacapy", marked not synchronizable, so
 //! iCloud Keychain never copies them off this Mac. Nothing secret is ever written to a file.
+//! Debug builds use service "ypacapy_dev", so a dev passphrase never locks the real app.
 
-const SERVICE: &str = "ypacapy";
+const SERVICE: &str = crate::paths::APP_DIR;
 const PASSPHRASE: &str = "app-passphrase";
 const ITERATIONS: u32 = 210_000;
 

@@ -4,6 +4,8 @@ All notable changes to ypacapy are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-26
+
 ### Added
 
 - **Task manager.** See what ypacapy is running on every open connection, and stop it. While nothing runs, the title strip shows an Activity button that opens the Task manager. Once a query has run for 0.8 s, a chip takes its place showing how many are running and how long the oldest has gone. Click the chip for a popover of the runs: each shows its connection, tab and query text, with Stop and Stop all. The Task manager dialog shows the same runs as a table. `⌥⌘A` opens the popover while something runs and the dialog when nothing does. Stop is the result pane's Cancel (`pg_cancel_backend`, `KILL QUERY`). Writes get a tag, and a note says what stopping does: PostgreSQL and MySQL roll back the statement they're on, and MongoDB may still finish the write. The list comes from ypacapy's own tabs, so nothing is asked of the server.
@@ -121,7 +123,8 @@ First release.
 - **About dialog.** Shows the version, the update state and, in dev builds, the git commit, branch and tag.
 - **Release pipeline.** GitHub Actions builds Apple silicon and Intel bundles from a version tag into a draft release, with `latest.json` for the updater. The notes are taken from this file.
 
-[Unreleased]: https://github.com/jimmyfish/ypacapy/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/jimmyfish/ypacapy/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/jimmyfish/ypacapy/releases/tag/v0.1.3
 [0.1.2]: https://github.com/jimmyfish/ypacapy/releases/tag/v0.1.2
 [0.1.1]: https://github.com/jimmyfish/ypacapy/releases/tag/v0.1.1
 [0.1.0]: https://github.com/jimmyfish/ypacapy/releases/tag/v0.1.0

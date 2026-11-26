@@ -12,15 +12,15 @@
     "semantic_hash": "55276547315d43414b01c6da5d7f4253"
   },
   "package.json": {
-    "mtime": 1795597000.2269788,
-    "seen": 1795609530.96595,
-    "ast_hash": "d9626b68885db9137a40412e1458709b",
+    "mtime": 1795693678.445785,
+    "seen": 1795693685.0546198,
+    "ast_hash": "029510a5879930d6964acce4b31de5b9",
     "semantic_hash": ""
   },
   "src-tauri/Cargo.toml": {
-    "mtime": 1795597000.2282503,
-    "seen": 1795609530.965951,
-    "ast_hash": "3203c56e7cb1f562b72cc9dc75309b3b",
+    "mtime": 1795693678.4481912,
+    "seen": 1795693685.054621,
+    "ast_hash": "948a6249d96fc3bb3184df107e6ff3f3",
     "semantic_hash": ""
   },
   "src-tauri/build.rs": {
@@ -96,9 +96,9 @@
     "semantic_hash": "fafff2463276b9db5b132e8a9839aaef"
   },
   "src-tauri/tauri.conf.json": {
-    "mtime": 1795597000.2298234,
-    "seen": 1795609530.965964,
-    "ast_hash": "72b3a33032e73dd0ceb0cfce94458e59",
+    "mtime": 1795693678.4462748,
+    "seen": 1795693685.054634,
+    "ast_hash": "a8cf95df751abed4632ecf78b9e89603",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -396,15 +396,15 @@
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1795597000.2232645,
-    "seen": 1795609530.9660091,
-    "ast_hash": "ed7d27eb827a4feaf0b69efc6f9cd439",
+    "mtime": 1795693678.4656465,
+    "seen": 1795693685.054683,
+    "ast_hash": "82c740511902da0a7ea5f323d4296226",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795597000.2237308,
-    "seen": 1795609530.9660108,
-    "ast_hash": "f4d2fc743df0f23f20a300c1486c608e",
+    "mtime": 1795693454.7580147,
+    "seen": 1795693685.054684,
+    "ast_hash": "5318cd0b9b377c8724fb9c70d4280b45",
     "semantic_hash": ""
   },
   "docs/assets/icons/ban.svg": {

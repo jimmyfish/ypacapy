@@ -22,6 +22,7 @@ import { AboutModal } from "./AboutModal";
 import { AuthDialog, PassphraseDialog, type PassKind } from "./AuthDialog";
 import { ConfirmAsk, GuardAsk, PromptAsk, SaveQueryAsk } from "./Ask";
 import { AlterColumnsAsk } from "./ColumnEditor";
+import { TaskManagerModal } from "./TaskManager";
 import type { CollInfo, KeyInfo } from "../types";
 import {
   CircleAlert,
@@ -78,6 +79,8 @@ export function Modals() {
       return <CollInfoModal m={modal} onClose={close} />;
     case "keyInfo":
       return <KeyInfoModal m={modal} onClose={close} />;
+    case "tasks":
+      return <TaskManagerModal onClose={close} />;
   }
 }
 

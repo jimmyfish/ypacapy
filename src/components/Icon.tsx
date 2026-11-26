@@ -3,6 +3,9 @@ import { createLucideIcon } from "lucide-react";
 
 /** Icons: Lucide (lucide-react 1.75.0), one stroke weight everywhere. */
 export {
+  // the Task manager (TaskManager.tsx): its button, and Stop on a run
+  Activity,
+  CircleStop,
   ArrowDown,
   ArrowRight,
   ArrowUp,

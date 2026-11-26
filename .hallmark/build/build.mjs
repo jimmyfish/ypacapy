@@ -19,7 +19,7 @@ const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "hous
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus", "pin", "pin-off",
   "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check", "timer",
   "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down", "arrow-right", "chevrons-up-down", "chevrons-down-up", "circle-plus", "copy-plus", "sliders-horizontal", "rotate-ccw", "funnel", "unplug",
-  "search-x", "timer-off", "inbox", "circle-slash", "message-square-text", "chevrons-left", "rows-3", "unlink"];
+  "search-x", "timer-off", "inbox", "circle-slash", "message-square-text", "chevrons-left", "rows-3", "unlink", "circle-stop", "activity"];
 // Lucide 1.x renamed fingerprint; the old name is what the pages use
 const RENAMED = { fingerprint: "fingerprint-pattern" };
 // Lucide 1.x has no brand icons: GitHub's mark as lucide-react 0.460.0 drew it (ISC), the same as src/components/Icon.tsx
@@ -405,7 +405,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
       </div>`;
 
 // ---------- preview bar ----------
-const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["diagram", "Diagram"], ["mongo", "MongoDB"], ["collection", "Collection"], ["redis", "Redis"], ["key", "Key"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["about", "About"], ["modals", "Modals"], ["empty", "Empty states"]];
+const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["diagram", "Diagram"], ["mongo", "MongoDB"], ["collection", "Collection"], ["redis", "Redis"], ["key", "Key"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["tasks", "Task manager"], ["about", "About"], ["modals", "Modals"], ["empty", "Empty states"]];
 const UI_FONTS = `<option value="">System</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option><option value="Avenir Next, Avenir, sans-serif">Avenir</option><option value="Georgia, serif">Georgia</option>`;
 const MONO_FONTS = `<option value="">System mono</option><option value="Menlo, monospace">Menlo</option><option value="'Courier New', monospace">Courier</option><option value="Monaco, monospace">Monaco</option>`;
 // preview-only: recolour the first connection tab (shop_prod) to try each connection colour on the title strip
@@ -2711,6 +2711,91 @@ pages["empty.html"] = page({
   </main>
 </div>`,
   script: js("page-empty.js"),
+});
+
+// ---------- Task manager: what's running, and stopping it ----------
+// While any query runs on any connection, a chip shows in the title strip: how many, and how long the oldest has been
+// going. Nothing runs: an Activity button in its place. The chip opens a popover of ypacapy's own runs, each with Stop
+// (the same cancel as the result pane's: pg_cancel_backend, KILL QUERY, killOp). The popover's Task manager button, the
+// Activity button and ⌥⌘A (with nothing running) open the Task manager: the same runs as a table. Only ypacapy's runs:
+// it reads nothing from the server.
+// Beside the update chip it sits on the left, so the update chip keeps its place by the gear as runs come and go.
+const TM_CONN = { shop_prod: ["postgres", 6], legacy_cms: ["mysql", 3], "analytics.sqlite": ["sqlite", 2] };
+const tmTile = (conn, size = 13) => { const [engine, n] = TM_CONN[conn]; return `<span class="proj-tile proj-tile--sm tm-tile" style="--fg: var(--proj-${n}-fg); --bg: var(--proj-${n}-bg)">${engIco(engine, size)}</span>`; };
+const mmss = (s) => `${Math.floor(s / 60)}:${p2(s % 60)}`;
+// [id, connection, tab, sql, seconds, kind, note]
+const TM_RUNS = [
+  ["r1", "shop_prod", "Query 1", "select c.email, c.is_vip, count(*) as refunds, sum(o.total) as refunded from orders o join customers c on c.id = o.customer_id where o.status = 'refunded' group by 1, 2", 102, "read", ""],
+  ["r2", "legacy_cms", "Query 2", "update posts set slug = lower(slug) where slug <> lower(slug)", 19, "write", "Stopping rolls this statement back. Nothing else is touched."],
+  ["r3", "analytics.sqlite", "Query 1", "select date(ts) as day, count(*) from events group by 1 order by 1", 7, "read", "SQLite stops at the next row it reads."],
+];
+const tmStopVia = { shop_prod: "pg_cancel_backend(48211)", legacy_cms: "KILL QUERY 9113", "analytics.sqlite": "an interrupt" };
+const tmRun = ([id, conn, tab, sql, s, kind, note]) => `
+            <li class="tm-run" data-run="${id}"${kind === "write" ? ' data-kind="write"' : ""}>
+              ${tmTile(conn)}
+              <div class="tm-run-main">
+                <button type="button" class="tm-where" title="Go to ${tab} on ${conn}"><strong>${conn}</strong><span class="tm-tab">${tab}</span>${kind === "write" ? '<span class="tm-tag">write</span>' : ""}</button>
+                <code class="tm-sql" title="${esc(sql)}">${esc(sql)}</code>${note ? `
+                <span class="tm-note" data-note>${note}</span>` : ""}
+                <span class="tm-note tm-note--stop" data-stopping hidden>${ic("loader-circle", "upd-spin")}Asked ${conn} to stop it, with ${tmStopVia[conn]}</span>
+              </div>
+              <span class="tm-time" data-since="${s}">${mmss(s)}</span>
+              <button type="button" class="icon-btn tm-stop" aria-label="Stop ${tab} on ${conn}" title="Stop">${ic("circle-stop")}</button>
+            </li>`;
+const TM_ANCHOR = `
+      <div class="tm-anchor" data-tm-anchor>
+        <button type="button" class="icon-btn tm-idle" data-tm-idle title="Task manager  ⌥⌘A" aria-label="Task manager: nothing running">${ic("activity")}</button>
+        <button type="button" class="tm-chip" data-tm-chip aria-haspopup="dialog" aria-expanded="false" title="Running queries  ⌥⌘A"><span class="tm-pulse" aria-hidden="true"><i></i></span><span data-tm-count>3 running</span><span class="tm-chip-time" data-tm-oldest>1:42</span></button>
+        <div class="tm-pop" role="dialog" aria-label="Running queries" hidden>
+          <div class="tm-pop-head"><p class="upd-title" data-tm-title>3 queries running</p><span class="upd-sub" data-tm-sub>On 3 connections, from this Mac</span></div>
+          <ol class="tm-runs">${TM_RUNS.map(tmRun).join("")}
+          </ol>
+          <p class="tm-done" data-tm-done hidden>${ic("circle-check")}Nothing running now.</p>
+          <div class="tm-pop-foot">
+            <button type="button" class="btn btn--quiet" data-tm-open>${ic("activity")}Task manager</button>
+            <button type="button" class="btn" data-tm-stopall>${ic("circle-stop")}Stop all</button>
+          </div>
+        </div>
+      </div>`;
+// the Task manager: ypacapy's runs as a table, the same Stop
+const tmAppRow = ([id, conn, tab, sql, s, kind]) => `
+              <tr data-run="${id}">
+                <td><span class="tm-conn">${tmTile(conn)}${conn}</span></td>
+                <td><button type="button" class="tm-link">${tab}</button>${kind === "write" ? '<span class="tm-tag">write</span>' : ""}</td>
+                <td class="tm-q"><code title="${esc(sql)}">${esc(sql)}</code></td>
+                <td class="num"><span class="tm-time" data-since="${s}">${mmss(s)}</span></td>
+                <td class="tm-act"><button type="button" class="btn tm-row-stop">${ic("circle-stop")}Stop</button></td>
+              </tr>`;
+const TM_DLG = `
+<div class="backdrop" id="tm-dlg" hidden>
+  <div class="dialog wide tm" role="dialog" aria-modal="true" aria-labelledby="tm-h">
+    <header class="tm-head">
+      <h2 id="tm-h">Task manager</h2><span class="tm-n" data-tm-n>3</span>
+      <button type="button" class="icon-btn tm-x" data-tm-close aria-label="Close" title="Close  Esc">${ic("x")}</button>
+    </header>
+    <section class="tm-pane">
+      <p class="tm-lede">Queries ypacapy is running right now, on every open connection. Stop asks the server to cancel the statement. Its tab says Cancelled.</p>
+      <div class="tm-table-wrap">
+        <table class="tm-table">
+          <colgroup><col style="width:170px"><col style="width:128px"><col><col style="width:100px"><col style="width:96px"></colgroup>
+          <thead><tr><th scope="col">Connection</th><th scope="col">Tab</th><th scope="col">Query</th><th scope="col" class="num">Running</th><th scope="col"><span class="visually-hidden">Stop</span></th></tr></thead>
+          <tbody>${TM_RUNS.map(tmAppRow).join("")}
+          </tbody>
+        </table>
+      </div>
+      <div class="tm-none" data-tm-none hidden>${es({ size: "sm", icon: "circle-check", title: "Nothing running", line: "Queries show up here while they run." })}</div>
+    </section>
+    <footer class="tm-foot">
+      <button type="button" class="btn" data-tm-stopall2>${ic("circle-stop")}Stop all</button>
+    </footer>
+  </div>
+</div>`;
+pages["tasks.html"] = page({
+  title: "ypacapy preview, task manager",
+  desc: "Design preview of ypacapy's task manager: the running-queries chip in the title strip, its popover with Stop, the Task manager, and all of it beside the update chip.",
+  barHtml: bar("tasks", [["chip", "Running: chip"], ["pop", "Popover"], ["pop-stopping", "Popover: stopping"], ["pop-one", "Popover: one run"], ["idle", "Nothing running"], ["tm", "Task manager"], ["tm-stopping", "Task manager: stopping"], ["tm-none", "Task manager: nothing running"], ["upd", "With update"], ["upd-pop", "With update: running popover"], ["upd-open", "With update: update popover"], ["upd-dl", "With update: downloading"], ["upd-ready", "With update: restart"], ["upd-idle", "Update only, nothing running"]]),
+  body: app({ current: "shop_prod", conns: CONNS, side: schemaSide("") + historySide + savedSide, work: queryWork, chip: TM_ANCHOR + UPD_CHIP, overlay: TM_DLG }),
+  script: js("page-updates.js") + js("page-tasks.js"),
 });
 
 for (const old of ["table.css", "settings.css", "connect.css"]) fs.rmSync(`${OUT}/${old}`, { force: true });

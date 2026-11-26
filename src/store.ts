@@ -88,7 +88,9 @@ export type Modal =
   /** MongoDB: a collection's sizes and shape, read with $collStats when it opens */
   | { kind: "collInfo"; connId: string; database: string; collection: string }
   /** Redis: a key's type, encoding, length, TTL and memory, read when it opens */
-  | { kind: "keyInfo"; connId: string; key: string };
+  | { kind: "keyInfo"; connId: string; key: string }
+  /** every run on every open connection, with Stop (TaskManager.tsx) */
+  | { kind: "tasks" };
 
 /** A tab as an ask shows it: its icon, its name, and where it lives (a query's first line, a saved query's folder) */
 function tabSubject(tab: Tab): AskSubject {
@@ -783,7 +785,7 @@ export const useStore = create<State>()((set, get) => {
       const page = Math.max(0, Math.min(opts.page ?? 0, tab.starts.length - 1));
       const start = tab.starts[page] ?? "";
       const runId = uid();
-      patchTab(tabId, { page, run: { status: "running", runId, startedAt: Date.now() } });
+      patchTab(tabId, { page, run: { status: "running", runId, startedAt: Date.now(), text: tab.key } });
       // where the page starts, in the terms of the key's type (the type the page before had)
       const ty = tab.data?.type;
       const at = !start ? {} : ty === "list" || ty === "zset" ? { offset: Number(start) } : ty === "stream" ? { after: start } : { cursor: start };
@@ -1019,7 +1021,7 @@ export const useStore = create<State>()((set, get) => {
       if (!opts.discard && askDiscard(tabId, () => void get().run(tabId, { ...opts, discard: true }))) return;
       const runId = uid();
       const prev = tab.run;
-      patchTab(tabId, { run: { status: "running", runId, startedAt: Date.now(), outcome: prev.outcome } });
+      patchTab(tabId, { run: { status: "running", runId, startedAt: Date.now(), outcome: prev.outcome, text: sql } });
       const out = await api
         .runQuery({ runId, connId, database: s.database, schema: s.schema, sql, addLimit: true, offset: opts.offset ?? 0, approval: opts.approval, history: !opts.page })
         .catch(failed);
@@ -1084,7 +1086,7 @@ export const useStore = create<State>()((set, get) => {
       const sql = mongo ? `find(${tab.where.trim() || "{}"})` : tableSelect(conn.engine, tab.schema, tab.table, tab.where, limit, offset);
       const runId = uid();
       const prev = tab.run;
-      patchTab(tabId, { offset, view: "rows", run: { status: "running", runId, startedAt: Date.now(), outcome: prev.outcome } });
+      patchTab(tabId, { offset, view: "rows", run: { status: "running", runId, startedAt: Date.now(), outcome: prev.outcome, text: mongo ? `db.${tab.table}.${sql}` : sql } });
       // MongoDB: find on the collection (its "schema" is its database); the boxes are read in Rust before anything is sent
       const out = await (mongo
         ? api.mongoFind({ runId, connId, database: tab.schema, collection: tab.table, filter: tab.where, projection: tab.project ?? "", sort: tab.sort ?? "", skip: offset, limit })

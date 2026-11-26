@@ -380,6 +380,8 @@ export interface Saved {
 
 export interface RunState {
   status: "idle" | "running" | "done";
+  /** while running: what was sent (the SQL, the command, the key), for the Task manager */
+  text?: string;
   runId?: string;
   startedAt?: number;
   outcome?: RunOutcome;

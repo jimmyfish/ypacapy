@@ -17,6 +17,7 @@ import { schemeTokens } from "./lib/themes";
 import { connColorId } from "./lib/connColors";
 import { useUpdates } from "./updates";
 import { UpdateChip } from "./components/UpdateChip";
+import { RunsChip } from "./components/TaskManager";
 import { LinkBar, TabLink } from "./components/ConnStatus";
 import type { Link } from "./types";
 import { Bookmark, Database, HistoryIcon, House, ListTree, Settings2, SquareCode, X, ico, icoLg } from "./components/Icon";
@@ -128,6 +129,7 @@ function AppStrip() {
         })}
       </nav>
       <div className="strip-end">
+        <RunsChip />
         <UpdateChip />
         <button type="button" className="icon-btn strip-settings" title="Settings  ⌘," aria-label="Settings" aria-expanded={settingsOpen} onClick={() => st.openModal({ kind: "settings" })}>
           <Settings2 {...ico} />

@@ -41,3 +41,11 @@
 .guard .env-picker .guard-ico, .guard .env-picker[data-level="none"] .guard-ico { color: currentColor; }
 .guard .env-picker .ico:last-child { color: currentColor; opacity: 0.7; margin-left: 2px; }
 .ctx-menu .tm-wrap { max-width: 240px; white-space: normal; }
+/* drag to reorder (TabsBar startDrag): the held tab lifts above the row with the active tab's face and follows the
+   pointer; the others slide aside to show where it lands. Hairlines between inactive tabs hide while they move. */
+.tab { -webkit-user-select: none; user-select: none; }
+.tabsbar .tabs[data-dragging] { cursor: grabbing; }
+.tabsbar .tabs[data-dragging] .tab:not([data-dragging]) { transition: transform 160ms ease; }
+.tabsbar .tabs .tab[data-dragging] { z-index: 1; background: var(--color-paper); border-color: var(--color-rule); color: var(--color-ink); box-shadow: 0 -2px 8px color-mix(in srgb, var(--color-ink) 10%, transparent); }
+.tabsbar .tabs[data-dragging] .tab:not([aria-current="page"])::before { content: none; }
+@media (prefers-reduced-motion: reduce) { .tabsbar .tabs[data-dragging] .tab:not([data-dragging]) { transition: none; } }

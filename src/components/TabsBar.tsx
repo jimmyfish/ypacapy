@@ -104,6 +104,89 @@ export function TabsBar() {
   const tabCount = session?.tabs.length ?? 0;
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const menuTab = menu ? session?.tabs.find((t) => t.id === menu.id) : undefined;
+  // drag to reorder: the held tab follows the pointer inside its group (pinned ones, or the rest), the others slide
+  // aside to show where it lands. `base` is the group's first index in the row, `from` and `to` are group indices.
+  const [drag, setDrag] = useState<{ id: string; dx: number; base: number; from: number; to: number; step: number } | null>(null);
+  const startDrag = (e: React.PointerEvent<HTMLDivElement>, id: string) => {
+    const box = tabsRef.current;
+    const tabs = session?.tabs;
+    if (e.button !== 0 || !box || !tabs || (e.target as Element).closest(".close, .pin")) return;
+    const me = tabs.find((t) => t.id === id);
+    if (!me) return;
+    const pins = tabs.filter((t) => t.pinned).length;
+    const base = me.pinned ? 0 : pins;
+    const end = me.pinned ? pins : tabs.length;
+    const x0 = e.clientX + box.scrollLeft;
+    const pointer = e.pointerId;
+    let live: { from: number; lefts: number[]; widths: number[]; step: number; min: number; max: number; at: { dx: number; to: number } } | null = null;
+    const place = (clientX: number) => {
+      if (!live) return;
+      const b = box.getBoundingClientRect();
+      // near an edge of a scrolled row, the row scrolls under the pointer
+      if (clientX < b.left + 32) box.scrollLeft -= 10;
+      else if (clientX > b.right - 32) box.scrollLeft += 10;
+      const { from, lefts, widths, min, max } = live;
+      const dx = Math.min(max, Math.max(min, clientX + box.scrollLeft - x0));
+      const mid = lefts[from] + widths[from] / 2 + dx;
+      const to = lefts.filter((l, j) => j !== from && l + widths[j] / 2 < mid).length;
+      live.at = { dx, to };
+      setDrag({ id, dx, base, from, to, step: live.step });
+    };
+    const move = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointer) return;
+      if (!live) {
+        if (Math.abs(ev.clientX + box.scrollLeft - x0) < 5) return;
+        const els = [...box.querySelectorAll<HTMLElement>(":scope > .tab")].slice(base, end);
+        const from = els.findIndex((el) => el.dataset.id === id);
+        if (from < 0) return stop();
+        const lefts = els.map((el) => el.getBoundingClientRect().left + box.scrollLeft);
+        const widths = els.map((el) => el.getBoundingClientRect().width);
+        const last = els.length - 1;
+        const gap = parseFloat(getComputedStyle(box).columnGap) || 0;
+        live = { from, lefts, widths, step: widths[from] + gap, min: lefts[0] - lefts[from], max: lefts[last] + widths[last] - lefts[from] - widths[from], at: { dx: 0, to: from } };
+      }
+      place(ev.clientX);
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", stop);
+      window.removeEventListener("keydown", key, true);
+      setDrag(null);
+    };
+    const up = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointer) return;
+      const done = live;
+      stop();
+      if (!done) return;
+      // the click that ends a drag doesn't also pick a tab
+      const eat = (c: MouseEvent) => c.stopPropagation();
+      window.addEventListener("click", eat, { capture: true, once: true });
+      setTimeout(() => window.removeEventListener("click", eat, true), 0);
+      if (done.at.to !== done.from) st.moveTab(id, base + done.at.to);
+      st.setActiveTab(id);
+    };
+    // Escape puts the tab back
+    const key = (k: KeyboardEvent) => {
+      if (k.key !== "Escape" || !live) return;
+      k.preventDefault();
+      k.stopPropagation();
+      live = null;
+      stop();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", stop);
+    window.addEventListener("keydown", key, true);
+  };
+  const shift = (i: number, id: string) => {
+    if (!drag) return 0;
+    if (id === drag.id) return drag.dx;
+    const j = i - drag.base;
+    if (drag.from < j && j <= drag.to) return -drag.step;
+    if (drag.to <= j && j < drag.from) return drag.step;
+    return 0;
+  };
   useEffect(() => {
     const el = tabsRef.current;
     if (!el) return;
@@ -138,16 +221,21 @@ export function TabsBar() {
       >
         {sidebarHidden ? <PanelLeftOpen {...ico} /> : <PanelLeftClose {...ico} />}
       </button>
-      <div className="tabs" ref={tabsRef}>
-        {session?.tabs.map((t) => {
+      <div className="tabs" ref={tabsRef} data-dragging={drag ? true : undefined}>
+        {session?.tabs.map((t, i) => {
           const name = t.kind === "query" ? t.title : t.kind === "key" ? t.key : t.kind === "table" ? t.table : (t.origin ?? t.schema);
           const unsaved = t.kind === "query" ? isDirty(t) : t.kind === "diagram" && diagramChanged(t, session.diagrams?.[diagramKey(t)]);
+          const x = shift(i, t.id);
           return (
             <div
               key={t.id}
               className="tab"
+              data-id={t.id}
               aria-current={t.id === activeTabId ? "page" : undefined}
               data-pinned={t.pinned || undefined}
+              data-dragging={drag?.id === t.id || undefined}
+              style={x ? { transform: `translateX(${x}px)` } : undefined}
+              onPointerDown={(e) => startDrag(e, t.id)}
               onAuxClick={(e) => e.button === 1 && st.closeTab(t.id)}
               onContextMenu={(e) => {
                 e.preventDefault();

@@ -184,6 +184,8 @@ interface State {
   closeTab(id: string, force?: boolean): void;
   /** pins or unpins a tab; a pinned tab moves to the end of the pinned ones at the left */
   pinTab(id: string, on: boolean): void;
+  /** drag to reorder: puts a tab at index `to` of the tab row; a pinned tab stays among the pinned ones, an unpinned one after them */
+  moveTab(id: string, to: number): void;
   updateTab(id: string, patch: Partial<QueryTab> | Partial<TableTab> | Partial<KeyTab> | Partial<DiagramTab>): void;
   /** `page`: Next or Previous, the last run again `offset` rows on, kept out of history */
   run(tabId: string, opts?: { sql?: string; approval?: Approval; discard?: boolean; offset?: number; page?: boolean }): Promise<void>;
@@ -1004,6 +1006,21 @@ export const useStore = create<State>()((set, get) => {
         const at = rest.filter((t) => t.pinned).length;
         const moved = { ...tab, pinned: on || undefined } as Tab;
         return { tabs: [...rest.slice(0, at), moved, ...rest.slice(at)] };
+      });
+    },
+
+    moveTab(tabId, to) {
+      const hit = sessionOfTab(tabId);
+      if (!hit) return;
+      patchSession(hit[0], (s) => {
+        const from = s.tabs.findIndex((t) => t.id === tabId);
+        if (from < 0) return {};
+        const tab = s.tabs[from];
+        const rest = s.tabs.filter((t) => t.id !== tabId);
+        const pins = rest.filter((t) => t.pinned).length;
+        const at = tab.pinned ? Math.min(Math.max(to, 0), pins) : Math.min(Math.max(to, pins), rest.length);
+        if (at === from) return {};
+        return { tabs: [...rest.slice(0, at), tab, ...rest.slice(at)] };
       });
     },
 

@@ -7,6 +7,10 @@ export {
   Activity,
   CircleStop,
   ArrowDown,
+  // a tab's menu: Close tabs to the left / right, Close other tabs
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  CopyX,
   ArrowRight,
   ArrowUp,
   ArrowUpDown,

@@ -119,6 +119,9 @@
   <symbol id="i-unlink" viewBox="0 0 24 24"><path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/><line x1="8" x2="8" y1="2" y2="5"/><line x1="2" x2="5" y1="8" y2="8"/><line x1="16" x2="16" y1="19" y2="22"/><line x1="19" x2="22" y1="16" y2="16"/></symbol>
   <symbol id="i-circle-stop" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><rect x="9" y="9" width="6" height="6" rx="1"/></symbol>
   <symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></symbol>
+  <symbol id="i-copy-x" viewBox="0 0 24 24"><path d="M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"/><rect x="8" y="8" width="14" height="14" rx="2"/><path d="m12.5 12.5 5 5"/><path d="m12.5 17.5 5-5"/></symbol>
+  <symbol id="i-arrow-right-to-line" viewBox="0 0 24 24"><path d="M17 12H3"/><path d="m11 18 6-6-6-6"/><path d="M21 5v14"/></symbol>
+  <symbol id="i-arrow-left-to-line" viewBox="0 0 24 24"><path d="M3 19V5"/><path d="m13 6-6 6 6 6"/><path d="M7 12h14"/></symbol>
 </svg>
 
 <header class="pv-bar">
@@ -2319,7 +2322,8 @@
     el.addEventListener("wheel", (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) el.scrollLeft += e.deltaY; }, { passive: true });
     edges();
   });
-  // Tabs: right-click for Pin tab / Unpin tab and Close tab. A pinned tab joins the pinned ones at the left, keeps its
+  // Tabs: right-click for Pin tab / Unpin tab, Close tab, and Close other tabs / to the right / to the left (never a
+  // pinned tab; greyed out when there's none to close; in the app one ask covers the tabs with unsaved work). A pinned tab joins the pinned ones at the left, keeps its
   // width, and shows a pin where its close button was (click the pin to unpin). It stays open: Close and ⌘W skip it.
   // In the app a pinned tab is kept with its connection, across a restart and a reconnect. A tab marked
   // data-unpinnable (a diagram) has no Pin tab: once saved, Show diagram reopens it as saved.
@@ -2330,9 +2334,16 @@
       const menu = document.createElement("div");
       menu.className = "menu ctx-menu"; menu.id = "tab-menu"; menu.hidden = true;
       menu.setAttribute("role", "menu"); menu.setAttribute("aria-label", "Tab");
-      menu.innerHTML = `<button type="button" role="menuitem" data-tm="pin"></button><hr><button type="button" role="menuitem" data-tm="close">${icon("x")}Close tab<kbd>⌘W</kbd></button><p class="menu-note" data-tm-note hidden>Unpin the tab to close it</p><p class="menu-note tm-wrap" data-tm-unpin hidden>Diagrams are not pinned. Once saved, Show diagram reopens this one as saved.</p>`;
+      menu.innerHTML = `<button type="button" role="menuitem" data-tm="pin"></button><hr><button type="button" role="menuitem" data-tm="close">${icon("x")}Close tab<kbd>⌘W</kbd></button><button type="button" role="menuitem" data-tm="others">${icon("copy-x")}Close other tabs</button><button type="button" role="menuitem" data-tm="right">${icon("arrow-right-to-line")}Close tabs to the right</button><button type="button" role="menuitem" data-tm="left">${icon("arrow-left-to-line")}Close tabs to the left</button><p class="menu-note" data-tm-note hidden>Unpin the tab to close it</p><p class="menu-note tm-wrap" data-tm-unpin hidden>Diagrams are not pinned. Once saved, Show diagram reopens this one as saved.</p>`;
       document.body.append(menu);
       let cur = null;
+      // the tabs each bulk close takes: shown, unpinned, not the tab itself
+      const bulk = (t) => {
+        const all = $$(".tab", tabsEl).filter((x) => !x.hidden);
+        const i = all.indexOf(t);
+        const ids = (list) => list.filter((x) => x !== t && !x.hasAttribute("data-pinned"));
+        return { others: ids(all), right: ids(all.slice(i + 1)), left: ids(all.slice(0, i)) };
+      };
       const pinned = () => $$(".tab[data-pinned]", tabsEl);
       const setPinned = (t, on) => {
         t.toggleAttribute("data-pinned", on);
@@ -2350,6 +2361,7 @@
         $('[data-tm="pin"]', menu).innerHTML = on ? `${icon("pin-off")}Unpin tab` : `${icon("pin")}Pin tab`;
         $('[data-tm="close"]', menu).disabled = on;
         $("[data-tm-note]", menu).hidden = !on;
+        for (const [k, list] of Object.entries(bulk(t))) $(`[data-tm="${k}"]`, menu).disabled = !list.length;
         menu.hidden = false;
         const r = menu.getBoundingClientRect();
         menu.style.left = `${Math.max(8, Math.min(e.clientX, innerWidth - r.width - 8))}px`;
@@ -2358,6 +2370,7 @@
       }));
       $('[data-tm="pin"]', menu).addEventListener("click", () => { menu.hidden = true; if (cur) setPinned(cur, !cur.hasAttribute("data-pinned")); });
       $('[data-tm="close"]', menu).addEventListener("click", () => { menu.hidden = true; if (cur && !cur.hasAttribute("data-pinned")) cur.hidden = true; });
+      for (const k of ["others", "right", "left"]) $(`[data-tm="${k}"]`, menu).addEventListener("click", () => { menu.hidden = true; if (cur) bulk(cur)[k].forEach((x) => (x.hidden = true)); });
     }
   }
   // Security level of the open connection: None, Low or Strict; lowering from Strict asks for the passphrase first (in the app)

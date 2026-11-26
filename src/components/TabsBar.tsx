@@ -6,7 +6,7 @@ import { diagramChanged, diagramKey } from "../lib/diagramTab";
 import { LEVELS } from "../types";
 import { useDismiss } from "./useDismiss";
 import { LEVEL_ICON, LevelItems } from "./LevelPicker";
-import { Braces, ChevronDown, Key, Network, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Plus, ShieldOff, SquareCode, Table2, X, icoC, ico } from "./Icon";
+import { ArrowLeftToLine, ArrowRightToLine, Braces, ChevronDown, CopyX, Key, Network, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Plus, ShieldOff, SquareCode, Table2, X, icoC, ico } from "./Icon";
 
 /** The security level of the open connection: voidHTTP's environment picker and menu. Lowering from Strict asks for the passphrase (store.setLevel). */
 function GuardPicker() {
@@ -52,11 +52,15 @@ function GuardPicker() {
   );
 }
 
+/** The bulk closes of a tab's menu: tab ids to close, never a pinned tab nor the tab itself */
+type BulkClose = { others: string[]; right: string[]; left: string[] };
+
 /**
- * A tab's right-click menu: Pin tab / Unpin tab, and Close tab (off while pinned). Opens at the pointer. A diagram
- * can't be pinned (unpinnable): it has Close tab and a note that Show diagram reopens it once saved.
+ * A tab's right-click menu: Pin tab / Unpin tab, Close tab (off while pinned), and voidHTTP's Close other tabs, Close
+ * tabs to the right and Close tabs to the left, each greyed out when there's nothing to close. Opens at the pointer.
+ * A diagram can't be pinned (unpinnable): its note says Show diagram reopens it once saved.
  */
-function TabMenu({ x, y, pinned, unpinnable, onPin, onClose, onDismiss }: { x: number; y: number; pinned: boolean; unpinnable?: boolean; onPin: () => void; onClose: () => void; onDismiss: () => void }) {
+function TabMenu({ x, y, pinned, unpinnable, bulk, onPin, onClose, onCloseMany, onDismiss }: { x: number; y: number; pinned: boolean; unpinnable?: boolean; bulk: BulkClose; onPin: () => void; onClose: () => void; onCloseMany: (ids: string[]) => void; onDismiss: () => void }) {
   const ref = useDismiss(true, onDismiss);
   const [pos, setPos] = useState({ left: x, top: y });
   // kept inside the window: flips up or left near an edge
@@ -81,6 +85,18 @@ function TabMenu({ x, y, pinned, unpinnable, onPin, onClose, onDismiss }: { x: n
       <button type="button" role="menuitem" disabled={pinned} onClick={onClose}>
         <X {...ico} />
         Close tab<kbd>⌘W</kbd>
+      </button>
+      <button type="button" role="menuitem" disabled={!bulk.others.length} onClick={() => onCloseMany(bulk.others)}>
+        <CopyX {...ico} />
+        Close other tabs
+      </button>
+      <button type="button" role="menuitem" disabled={!bulk.right.length} onClick={() => onCloseMany(bulk.right)}>
+        <ArrowRightToLine {...ico} />
+        Close tabs to the right
+      </button>
+      <button type="button" role="menuitem" disabled={!bulk.left.length} onClick={() => onCloseMany(bulk.left)}>
+        <ArrowLeftToLine {...ico} />
+        Close tabs to the left
       </button>
       {pinned && <p className="menu-note">Unpin the tab to close it</p>}
       {unpinnable && <p className="menu-note tm-wrap">Diagrams are not pinned. Once saved, Show diagram reopens this one as saved.</p>}
@@ -179,6 +195,12 @@ export function TabsBar() {
     window.addEventListener("pointercancel", stop);
     window.addEventListener("keydown", key, true);
   };
+  const bulkOf = (id: string): BulkClose => {
+    const tabs = session?.tabs ?? [];
+    const i = tabs.findIndex((t) => t.id === id);
+    const ids = (list: typeof tabs) => list.filter((t) => !t.pinned && t.id !== id).map((t) => t.id);
+    return { others: ids(tabs), right: ids(tabs.slice(i + 1)), left: ids(tabs.slice(0, i)) };
+  };
   const shift = (i: number, id: string) => {
     if (!drag) return 0;
     if (id === drag.id) return drag.dx;
@@ -276,6 +298,7 @@ export function TabsBar() {
           y={menu.y}
           pinned={!!menuTab.pinned}
           unpinnable={menuTab.kind === "diagram"}
+          bulk={bulkOf(menuTab.id)}
           onDismiss={() => setMenu(null)}
           onPin={() => {
             setMenu(null);
@@ -284,6 +307,10 @@ export function TabsBar() {
           onClose={() => {
             setMenu(null);
             st.closeTab(menuTab.id);
+          }}
+          onCloseMany={(ids) => {
+            setMenu(null);
+            st.closeTabs(ids, menuTab.id);
           }}
         />
       )}

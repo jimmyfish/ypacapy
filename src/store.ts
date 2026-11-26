@@ -182,6 +182,9 @@ interface State {
   saveDiagram(tabId: string, view?: DiagramTab["view"]): void;
   setActiveTab(id: string): void;
   closeTab(id: string, force?: boolean): void;
+  /** a tab menu's Close other tabs / to the right / to the left: closes `ids` (never a pinned one) and picks `focus`.
+   * One ask covers every tab with unsaved work among them. */
+  closeTabs(ids: string[], focus?: string): void;
   /** pins or unpins a tab; a pinned tab moves to the end of the pinned ones at the left */
   pinTab(id: string, on: boolean): void;
   /** drag to reorder: puts a tab at index `to` of the tab row; a pinned tab stays among the pinned ones, an unpinned one after them */
@@ -993,6 +996,45 @@ export const useStore = create<State>()((set, get) => {
         const tabs = s.tabs.filter((t) => t.id !== tabId);
         const activeTabId = s.activeTabId === tabId ? (tabs[Math.min(i, tabs.length - 1)]?.id ?? null) : s.activeTabId;
         return { tabs, activeTabId };
+      });
+    },
+
+    closeTabs(ids, focus) {
+      const closing = ids.flatMap((tabId) => {
+        const hit = sessionOfTab(tabId);
+        return hit && !hit[2].pinned ? [hit] : [];
+      });
+      if (!closing.length) return;
+      const unsaved = closing.filter(([id, , tab]) =>
+        (tab.kind === "query" && isDirty(tab)) ||
+        (tab.kind === "diagram" && diagramChanged(tab, get().sessions[id]?.diagrams?.[diagramKey(tab)])) ||
+        pendingIn(tab.id) + changeCount(get().colEdits[tab.id] ?? []) > 0,
+      );
+      const go = () => {
+        for (const [, , tab] of closing) get().closeTab(tab.id, true);
+        if (focus) get().setActiveTab(focus);
+      };
+      if (!unsaved.length) return go();
+      const n = closing.length;
+      const m = unsaved.length;
+      // one unsaved tab: its card; more: a line each
+      const one = m === 1 ? unsaved[0][2] : undefined;
+      get().openModal({
+        kind: "confirm",
+        title: `Close ${n} tab${n === 1 ? "" : "s"}?`,
+        message:
+          n === 1
+            ? "It has unsaved changes. Close it and they're gone."
+            : m === 1
+              ? "One of them has unsaved changes. Close it and they're gone."
+              : `${m === n ? (n === 2 ? "Both" : "All") : m} of them have unsaved changes. Close them and those changes are gone.`,
+        confirmLabel: n === 1 ? "Close" : `Close ${n}`,
+        icon: one ? tabSubject(one).icon : "x",
+        actionIcon: "x",
+        ...(one
+          ? { subject: { ...tabSubject(one), meta: "Unsaved changes", mono: false } }
+          : { effects: unsaved.map(([, , t]): AskEffect => ["off", tabSubject(t).icon ?? "x", tabSubject(t).name, "loses its unsaved changes"]) }),
+        onConfirm: go,
       });
     },
 

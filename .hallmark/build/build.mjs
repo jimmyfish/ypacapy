@@ -19,7 +19,7 @@ const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "hous
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus", "pin", "pin-off",
   "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check", "timer",
   "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down", "arrow-right", "chevrons-up-down", "chevrons-down-up", "circle-plus", "copy-plus", "sliders-horizontal", "rotate-ccw", "funnel", "unplug",
-  "search-x", "timer-off", "inbox", "circle-slash", "message-square-text", "chevrons-left", "rows-3", "unlink", "circle-stop", "activity"];
+  "search-x", "timer-off", "inbox", "circle-slash", "message-square-text", "chevrons-left", "rows-3", "unlink", "circle-stop", "activity", "copy-x", "arrow-right-to-line", "arrow-left-to-line"];
 // Lucide 1.x renamed fingerprint; the old name is what the pages use
 const RENAMED = { fingerprint: "fingerprint-pattern" };
 // Lucide 1.x has no brand icons: GitHub's mark as lucide-react 0.460.0 drew it (ISC), the same as src/components/Icon.tsx

@@ -4,6 +4,17 @@ All notable changes to ypacapy are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Added
+
+- **Task manager.** See what ypacapy is running on every open connection, and stop it. While nothing runs, the title strip shows an Activity button that opens the Task manager. Once a query has run for 0.8 s, a chip takes its place showing how many are running and how long the oldest has gone. Click the chip for a popover of the runs: each shows its connection, tab and query text, with Stop and Stop all. The Task manager dialog shows the same runs as a table. `⌥⌘A` opens the popover while something runs and the dialog when nothing does. Stop is the result pane's Cancel (`pg_cancel_backend`, `KILL QUERY`). Writes get a tag, and a note says what stopping does: PostgreSQL and MySQL roll back the statement they're on, and MongoDB may still finish the write. The list comes from ypacapy's own tabs, so nothing is asked of the server.
+- **Pin connections on Home.** Pin to top in a card's menu puts the connection in Pinned, above every group. Unpin takes it back. Dragging a card onto Pinned pins it, and dragging it out unpins it. A pinned connection stays in its group (Open all, rename and ungroup still include it), and its card names that group. Duplicating a connection doesn't copy the pin.
+- **Drag tabs to reorder them.** A pinned tab moves among the pinned ones, and the others move after them. The other tabs slide aside to show where it lands. The row scrolls when you hold the tab near an edge, and `Esc` puts the tab back.
+- **Close several tabs at once.** A tab's right-click menu adds Close other tabs, Close tabs to the right and Close tabs to the left. Each is greyed out when there's nothing to close. Pinned tabs stay open. One ask covers every tab with unsaved changes among them.
+
+### Changed
+
+- **Empty states redesigned.** Panes, lists and dialogs with nothing to show share one look: a mark, a title, one line, and the way out as a button. The colour says why it's empty: nothing there yet, a read that came back empty, or a filter that found nothing (its chip clears the filter). The capy greets you when there are no connections or no tab open, and No tab open offers New query (`⌘T`).
+
 ## [0.1.2] - 2026-11-25
 
 ### Added

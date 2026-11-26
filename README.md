@@ -68,10 +68,11 @@ After that, the app updates itself. A little chip shows up in the title strip wh
 
 - **PostgreSQL, MySQL/MariaDB and SQLite**, one async driver family (`sqlx`). Column types come from each driver's own result metadata.
 - **MongoDB and Redis** too, each with its own sidebar, tabs and console. See [MongoDB](#mongodb) and [Redis](#redis) below.
-- **Home** shows connections as coloured tiles, in named groups you can fold, rename or ungroup. `⌘F` finds one, `Enter` opens it.
+- **Home** shows connections as coloured tiles, in named groups you can fold, rename or ungroup. Pin one to the top (Pin to top in its menu, or drag it onto Pinned) and it sits above every group while staying in its own. `⌘F` finds one, `Enter` opens it.
 - **Per connection:** SSL mode (`disable` through `verify-full`, with a CA file), connect timeout, PostgreSQL `application_name`, and its own row limit, statement timeout, warnings, history and heartbeat. Test checks it before you save. Open Settings from a connection's tab and that connection's own Security and Queries come first, above the app-wide ones under Global.
 - **Schema tree:** databases, schemas, tables, views, materialized views, foreign tables and functions. Each schema loads when you expand it and stays cached until Refresh. Pick the database and schema from the context picker.
 - **Open tabs come back.** Each connection's tabs, including unsaved SQL, are restored the next time you open it. Pin a tab (right-click it) to keep it at the left of the row; pinned table tabs come back too, with their `WHERE` filter. Tabs take the connection's colour, so prod doesn't have to look like staging.
+- **Tidy the tab row.** Drag a tab to move it (`Esc` puts it back). Right-click for Close other tabs, Close tabs to the right or Close tabs to the left. Pinned tabs stay open, and one ask covers any unsaved work.
 
 ### <img src="docs/assets/icons/code-xml.svg" width="20" height="20" align="top" alt="" /> The SQL console
 
@@ -80,6 +81,7 @@ After that, the app updates itself. A little chip shows up in the title strip wh
 - **Format** (via `sql-formatter`) and `⌘/` to comment lines. Both stay on the native undo stack, so `⌘Z` behaves.
 - **Row limit** (100 by default) is added to a query that has no `LIMIT` of its own. When it can't be added, ypacapy keeps at most 10,000 rows of a result set. When it was added, Next and Previous page through the rest: the same query again with an offset, kept out of History.
 - **Cancel** and the statement timeout (30 s by default) stop the query on the server too (`pg_cancel_backend`, `KILL QUERY`), so nothing keeps grinding after you've given up on it.
+- **Task manager** (`⌥⌘A`) lists what ypacapy is running on every open connection, how long each has run, and a Stop for each one. A chip in the title strip counts the running queries. It reads only ypacapy's own tabs and never asks the server.
 - **Errors read like your database's own client**, with `LINE n:` and a caret under the spot. Lost the connection? It says so and offers Reconnect.
 - `CREATE`, `ALTER` or `DROP` reloads the schema tree by itself.
 
@@ -177,6 +179,7 @@ Hands off the mouse.
 | `⌘\` | Show or hide the sidebar |
 | `⌘F` | Find a connection on Home |
 | `⌘,` | Settings |
+| `⌥⌘A` | Running queries, or the Task manager when nothing runs |
 | `⌘C` | Copy the selected cell |
 | `↵` / `F2` | Edit the selected cell (or just start typing) |
 | `⌘⌫` | Delete or restore the selected row |

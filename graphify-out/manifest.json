@@ -12,14 +12,14 @@
     "semantic_hash": "55276547315d43414b01c6da5d7f4253"
   },
   "package.json": {
-    "mtime": 1795693678.445785,
-    "seen": 1795693685.0546198,
+    "mtime": 1795693717.907657,
+    "seen": 1795768926.068887,
     "ast_hash": "029510a5879930d6964acce4b31de5b9",
     "semantic_hash": ""
   },
   "src-tauri/Cargo.toml": {
-    "mtime": 1795693678.4481912,
-    "seen": 1795693685.054621,
+    "mtime": 1795693717.9089608,
+    "seen": 1795768926.068888,
     "ast_hash": "948a6249d96fc3bb3184df107e6ff3f3",
     "semantic_hash": ""
   },
@@ -36,14 +36,14 @@
     "semantic_hash": "c2fd68df0010585fb056d581ef51bb87"
   },
   "src-tauri/src/conns.rs": {
-    "mtime": 1795609501.2398252,
-    "seen": 1795609530.965953,
+    "mtime": 1795693717.9095697,
+    "seen": 1795768926.06889,
     "ast_hash": "a8e29ea1fa4a58febb6b2cf07e7e588c",
     "semantic_hash": ""
   },
   "src-tauri/src/db.rs": {
-    "mtime": 1795609516.2921758,
-    "seen": 1795609530.965954,
+    "mtime": 1795693717.9100819,
+    "seen": 1795768926.0688908,
     "ast_hash": "a7278d2cf53e9b37f4b182719269e75c",
     "semantic_hash": ""
   },
@@ -66,8 +66,8 @@
     "semantic_hash": ""
   },
   "src-tauri/src/lib.rs": {
-    "mtime": 1795609501.2402594,
-    "seen": 1795609530.9659588,
+    "mtime": 1795693717.910363,
+    "seen": 1795768926.068896,
     "ast_hash": "b73383a3a7c7a0f33f50a2c1716d18f9",
     "semantic_hash": ""
   },
@@ -96,14 +96,14 @@
     "semantic_hash": "fafff2463276b9db5b132e8a9839aaef"
   },
   "src-tauri/tauri.conf.json": {
-    "mtime": 1795693678.4462748,
-    "seen": 1795693685.054634,
+    "mtime": 1795693717.910621,
+    "seen": 1795768926.068901,
     "ast_hash": "a8cf95df751abed4632ecf78b9e89603",
     "semantic_hash": ""
   },
   "src/App.tsx": {
-    "mtime": 1795692685.882091,
-    "seen": 1795692792.135896,
+    "mtime": 1795693717.911029,
+    "seen": 1795768926.0689018,
     "ast_hash": "80b14fb108b79b6201a2297e346cc9b0",
     "semantic_hash": ""
   },
@@ -114,33 +114,33 @@
     "semantic_hash": ""
   },
   "src/components/Home.tsx": {
-    "mtime": 1795610768.8082516,
-    "seen": 1795610796.9199061,
+    "mtime": 1795693717.9129803,
+    "seen": 1795768926.068911,
     "ast_hash": "d1c59e555b82f0ce15850e545f122fdc",
     "semantic_hash": ""
   },
   "src/components/Icon.tsx": {
-    "mtime": 1795693105.6341653,
-    "seen": 1795693215.2068648,
+    "mtime": 1795693717.9132125,
+    "seen": 1795768926.068912,
     "ast_hash": "3d21208e46d8c0eeca78544ac2351b21",
     "semantic_hash": ""
   },
   "src/components/Modals.tsx": {
-    "mtime": 1795692685.8816478,
-    "seen": 1795692792.135909,
+    "mtime": 1795693717.9143186,
+    "seen": 1795768926.068914,
     "ast_hash": "14a0d4c1bcf326e9cf84d671fa0cb730",
     "semantic_hash": ""
   },
   "src/components/QueryPane.tsx": {
-    "mtime": 1795610663.3279266,
-    "seen": 1795610796.9199092,
+    "mtime": 1795693717.914611,
+    "seen": 1795768926.068915,
     "ast_hash": "82eff35bb22666e4c912f2543c29409c",
     "semantic_hash": ""
   },
   "src/components/ResultGrid.tsx": {
-    "mtime": 1795597000.2322667,
-    "seen": 1795609530.9659781,
-    "ast_hash": "3b48c56a9be02fa9c776f261992e7cb3",
+    "mtime": 1795768922.7066982,
+    "seen": 1795768926.068915,
+    "ast_hash": "4dcff14ecae9326be7ff9c7449390c25",
     "semantic_hash": ""
   },
   "src/components/Select.tsx": {
@@ -150,8 +150,8 @@
     "semantic_hash": ""
   },
   "src/components/Sidebar.tsx": {
-    "mtime": 1795610720.3574643,
-    "seen": 1795610796.919911,
+    "mtime": 1795693717.9150438,
+    "seen": 1795768926.068917,
     "ast_hash": "fa0dfb232b5035dcbcdd438f12b2edaa",
     "semantic_hash": ""
   },
@@ -162,14 +162,14 @@
     "semantic_hash": ""
   },
   "src/components/TablePane.tsx": {
-    "mtime": 1795610678.1168842,
-    "seen": 1795610796.9199119,
+    "mtime": 1795693717.9154592,
+    "seen": 1795768926.068918,
     "ast_hash": "1744dd6cf107b60e14516eaf00d7d48b",
     "semantic_hash": ""
   },
   "src/components/TabsBar.tsx": {
-    "mtime": 1795693149.1905081,
-    "seen": 1795693215.206872,
+    "mtime": 1795693717.916101,
+    "seen": 1795768926.068918,
     "ast_hash": "6992838f53903515d26ddaac87d8930e",
     "semantic_hash": ""
   },
@@ -180,8 +180,8 @@
     "semantic_hash": "882b3f5a2e4c5d5b14a54ce76a066bbd"
   },
   "src/lib/api.ts": {
-    "mtime": 1795609501.2403438,
-    "seen": 1795609530.965983,
+    "mtime": 1795693717.916986,
+    "seen": 1795768926.068922,
     "ast_hash": "2b561781ea5bfce211c7077c6953ece4",
     "semantic_hash": ""
   },
@@ -222,14 +222,14 @@
     "semantic_hash": ""
   },
   "src/store.ts": {
-    "mtime": 1795693138.0004952,
-    "seen": 1795693215.2068858,
+    "mtime": 1795693717.9174166,
+    "seen": 1795768926.068934,
     "ast_hash": "1bb1801ff23c3084beaa4e67d8f5108b",
     "semantic_hash": ""
   },
   "src/types.ts": {
-    "mtime": 1795692685.8807273,
-    "seen": 1795692792.1359308,
+    "mtime": 1795693717.917726,
+    "seen": 1795768926.068934,
     "ast_hash": "51752fd9fb3c91602de5c6619906063c",
     "semantic_hash": ""
   },
@@ -246,32 +246,32 @@
     "semantic_hash": "1a7d9d3516bb18c6ff783e6432709d9f"
   },
   ".hallmark/preview/connect.html": {
-    "mtime": 1795693208.1753738,
-    "seen": 1795693215.206892,
+    "mtime": 1795693717.8922222,
+    "seen": 1795768926.068939,
     "ast_hash": "3a86d9678fa1c4dcb879c59becdd9c44",
     "semantic_hash": ""
   },
   ".hallmark/preview/home.html": {
-    "mtime": 1795693208.1734254,
-    "seen": 1795693215.206893,
+    "mtime": 1795693717.8946967,
+    "seen": 1795768926.068941,
     "ast_hash": "26f228e646777e168900be7dedecd3cf",
     "semantic_hash": ""
   },
   ".hallmark/preview/index.html": {
-    "mtime": 1795693208.1742964,
-    "seen": 1795693215.2068942,
+    "mtime": 1795693717.8956692,
+    "seen": 1795768926.068941,
     "ast_hash": "7f23db2a2dc8c1c112a4f9408abf0ae4",
     "semantic_hash": ""
   },
   ".hallmark/preview/settings.html": {
-    "mtime": 1795693208.175148,
-    "seen": 1795693215.2068968,
+    "mtime": 1795693717.9011216,
+    "seen": 1795768926.068944,
     "ast_hash": "c3076df16e97a51ad5079ea09d9d36d0",
     "semantic_hash": ""
   },
   ".hallmark/preview/table.html": {
-    "mtime": 1795693208.1745212,
-    "seen": 1795693215.2068968,
+    "mtime": 1795693717.9020534,
+    "seen": 1795768926.068945,
     "ast_hash": "736f72f4e19587981e4552cdb8cbaceb",
     "semantic_hash": ""
   },
@@ -372,14 +372,14 @@
     "semantic_hash": "16ea894353f2fa33d039fb2976ee8e92"
   },
   ".hallmark/preview/updates.html": {
-    "mtime": 1795693208.1757176,
-    "seen": 1795693215.206898,
+    "mtime": 1795693717.9039044,
+    "seen": 1795768926.068946,
     "ast_hash": "d4d5318547fbbe14280c2d14a1b841a4",
     "semantic_hash": ""
   },
   ".hallmark/preview/about.html": {
-    "mtime": 1795693208.1759834,
-    "seen": 1795693215.206891,
+    "mtime": 1795693717.8894053,
+    "seen": 1795768926.068938,
     "ast_hash": "6568e97db23c8248f2559a71472b18c5",
     "semantic_hash": ""
   },
@@ -396,14 +396,14 @@
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1795693678.4656465,
-    "seen": 1795693685.054683,
+    "mtime": 1795693717.904262,
+    "seen": 1795768926.0689468,
     "ast_hash": "82c740511902da0a7ea5f323d4296226",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795693454.7580147,
-    "seen": 1795693685.054684,
+    "mtime": 1795693717.90461,
+    "seen": 1795768926.068948,
     "ast_hash": "5318cd0b9b377c8724fb9c70d4280b45",
     "semantic_hash": ""
   },
@@ -540,14 +540,14 @@
     "semantic_hash": "3c972659f71ea3dda7b9d8bb3c2cf50d"
   },
   ".hallmark/preview/collection.html": {
-    "mtime": 1795693208.177655,
-    "seen": 1795693215.206891,
+    "mtime": 1795693717.8916416,
+    "seen": 1795768926.068939,
     "ast_hash": "e74df115699f983cd6792eeeeea70473",
     "semantic_hash": ""
   },
   ".hallmark/preview/mongo.html": {
-    "mtime": 1795693208.1767054,
-    "seen": 1795693215.206896,
+    "mtime": 1795693717.8987963,
+    "seen": 1795768926.068943,
     "ast_hash": "320aac712eebd928712732aab7059c2f",
     "semantic_hash": ""
   },
@@ -564,8 +564,8 @@
     "semantic_hash": ""
   },
   "src/components/CollectionPane.tsx": {
-    "mtime": 1795610689.9495387,
-    "seen": 1795610796.919899,
+    "mtime": 1795693717.91136,
+    "seen": 1795768926.0689049,
     "ast_hash": "21c01b6862f6497e873cab213627da4a",
     "semantic_hash": ""
   },
@@ -582,14 +582,14 @@
     "semantic_hash": "8c855bd3112f7bec38c6e87aa0f2ed5d"
   },
   ".hallmark/preview/key.html": {
-    "mtime": 1795693208.1786432,
-    "seen": 1795693215.206895,
+    "mtime": 1795693717.8965797,
+    "seen": 1795768926.068942,
     "ast_hash": "57561cd6bac16721e892b7ca29dca9bc",
     "semantic_hash": ""
   },
   ".hallmark/preview/redis.html": {
-    "mtime": 1795693208.1780233,
-    "seen": 1795693215.206896,
+    "mtime": 1795693717.9001997,
+    "seen": 1795768926.068944,
     "ast_hash": "13723818f4fdb9f5e487acc63f59fe2f",
     "semantic_hash": ""
   },
@@ -606,8 +606,8 @@
     "semantic_hash": ""
   },
   "src/components/KeyPane.tsx": {
-    "mtime": 1795610699.606018,
-    "seen": 1795610796.919907,
+    "mtime": 1795693717.913556,
+    "seen": 1795768926.068912,
     "ast_hash": "b61876d3dcb3c52d1026f8e032c72022",
     "semantic_hash": ""
   },
@@ -630,8 +630,8 @@
     "semantic_hash": "dcd011adb08288787155c12aa63a5045"
   },
   ".hallmark/preview/diagram.html": {
-    "mtime": 1795693208.1748202,
-    "seen": 1795693215.206892,
+    "mtime": 1795693717.8931735,
+    "seen": 1795768926.06894,
     "ast_hash": "30282147ee1ecc55bbd48c2b72eed744",
     "semantic_hash": ""
   },
@@ -642,8 +642,8 @@
     "semantic_hash": "9af5ca7f268546fa10c0b1b959b926fb"
   },
   "src/components/DiagramPane.tsx": {
-    "mtime": 1795610739.6677077,
-    "seen": 1795610796.9199018,
+    "mtime": 1795693717.9120746,
+    "seen": 1795768926.068908,
     "ast_hash": "b1cbbc6b1e9cc8c8771a282c02087d47",
     "semantic_hash": ""
   },
@@ -702,8 +702,8 @@
     "semantic_hash": ""
   },
   ".hallmark/preview/modals.html": {
-    "mtime": 1795693208.1789303,
-    "seen": 1795693215.206895,
+    "mtime": 1795693717.897626,
+    "seen": 1795768926.068942,
     "ast_hash": "82c02b06133aa04aa9351b39c82c0b70",
     "semantic_hash": ""
   },
@@ -738,26 +738,26 @@
     "semantic_hash": ""
   },
   ".hallmark/preview/empty.html": {
-    "mtime": 1795693208.1795094,
-    "seen": 1795693215.206893,
+    "mtime": 1795693717.8937223,
+    "seen": 1795768926.06894,
     "ast_hash": "a03e72927651a1407f7cfd1875f55036",
     "semantic_hash": ""
   },
   "src/components/EmptyState.tsx": {
-    "mtime": 1795610636.478333,
-    "seen": 1795610796.919904,
+    "mtime": 1795693717.9124668,
+    "seen": 1795768926.0689092,
     "ast_hash": "0d41ed1f837c547ac55cd81663eb0b63",
     "semantic_hash": ""
   },
   "src/components/TaskManager.tsx": {
-    "mtime": 1795692788.8346987,
-    "seen": 1795692792.135915,
+    "mtime": 1795693717.9167542,
+    "seen": 1795768926.068919,
     "ast_hash": "a63f910a841863b6cedec49e989153d4",
     "semantic_hash": ""
   },
   ".hallmark/preview/tasks.html": {
-    "mtime": 1795693208.1800466,
-    "seen": 1795693215.206898,
+    "mtime": 1795693717.90314,
+    "seen": 1795768926.068945,
     "ast_hash": "b086b2674e4f2da52af58b6adac98574",
     "semantic_hash": ""
   }

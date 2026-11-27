@@ -9,7 +9,7 @@ import { NO_EDITS, applied, editCount, editStatements, type EditTarget, type Edi
 import { useStore } from "../store";
 import type { Approval, ColMeta, ResultSet, RunOutcome } from "../types";
 import { useDismiss } from "./useDismiss";
-import { ArrowDown, ArrowUp, ArrowUpDown, Braces, Brackets, CalendarClock, Check, Columns3, Copy, Download, Hash, IdCard, KeyRound, Link, Minus, ToggleLeft, Type, X, icoC, ico } from "./Icon";
+import { ArrowDown, ArrowUp, ArrowUpDown, Braces, Brackets, CalendarClock, Check, Columns3, Copy, Download, Hash, IdCard, KeyRound, Link, ToggleLeft, Type, X, icoC, ico } from "./Icon";
 
 export interface ColKey {
   primary?: boolean;
@@ -111,8 +111,14 @@ function Cell({ v, kind, sel, ci, edited, editor, pin, missing }: { v: string | 
     if (b !== null)
       return (
         <td className={`bool${s}`} data-c={ci}>
-          {b ? <Check {...icoC("yes")} /> : <Minus {...icoC("no")} />}
-          <span className="visually-hidden">{String(b)}</span>
+          {b ? (
+            <>
+              <Check {...icoC("yes")} />
+              <span className="visually-hidden">true</span>
+            </>
+          ) : (
+            <span className="no">false</span>
+          )}
         </td>
       );
   }

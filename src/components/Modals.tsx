@@ -846,7 +846,7 @@ function ConnectModal({ conn, group: initialGroup, onClose }: { conn?: Conn; gro
               {!lite && (
                 <SetItem label="Connection heartbeat" desc={redis ? "Keeps idle connections open with PING" : mongo ? "Keeps idle connections open with a ping command" : "Keeps idle connections open with select 1"} htmlFor="c-beat">
                   <Select id="c-beat" className="field set-choice" value={heartbeat} onChange={(e) => setHeartbeat(e.target.value as "app" | "on" | "off")}>
-                    <option value="app">Use Global ({settings.heartbeat ? "on" : "off"})</option>
+                    <option value="app">Use Global ({settings.heartbeat !== false ? "on" : "off"})</option>
                     <option value="on">On</option>
                     <option value="off">Off</option>
                   </Select>
@@ -1277,7 +1277,7 @@ function ConnQueriesPane({ conn }: { conn: Conn }) {
                 );
               }}
             >
-              <option value="app">Use Global ({settings.heartbeat ? "on" : "off"})</option>
+              <option value="app">Use Global ({settings.heartbeat !== false ? "on" : "off"})</option>
               <option value="on">On</option>
               <option value="off">Off</option>
             </Select>
@@ -1473,9 +1473,9 @@ function QueriesPane() {
           <input id="set-hist" className="switch" type="checkbox" role="switch" checked={s.keepHistory !== false} onChange={(e) => void set({ keepHistory: e.target.checked ? undefined : false })} />
         </SetItem>
         <SetItem label="Connection heartbeat" desc="Keeps idle connections open, for servers that drop them" htmlFor="set-beat">
-          <input id="set-beat" className="switch" type="checkbox" role="switch" checked={s.heartbeat === true} onChange={(e) => void set({ heartbeat: e.target.checked || undefined })} />
+          <input id="set-beat" className="switch" type="checkbox" role="switch" checked={s.heartbeat !== false} onChange={(e) => void set({ heartbeat: e.target.checked ? undefined : false })} />
         </SetItem>
-        {s.heartbeat && (
+        {s.heartbeat !== false && (
           <SetItem label="Every" desc="Below the server idle timeout" htmlFor="set-beat-every" sub>
             <UnitField id="set-beat-every" value={s.heartbeatEvery ?? 30} unit="s" min={5} max={3600} onChange={(n) => void set({ heartbeatEvery: n === 30 ? undefined : n })} />
           </SetItem>

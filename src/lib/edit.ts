@@ -196,20 +196,26 @@ export function literal(engine: Engine, v: string | null): string {
   return `'${s}'`;
 }
 
-/** One UPDATE or DELETE per changed row, keyed by the row's primary key values as read. */
-export function editStatements(t: EditTarget, set: ResultSet, e: Edits): string[] {
+/** One UPDATE or DELETE per changed row, keyed by the row's primary key values as read, each with the row it
+ * changes (an index into set.rows), in the order they run. A failed save names its statement; this names the row. */
+export function editPlan(t: EditTarget, set: ResultSet, e: Edits): { sql: string; row: number }[] {
   const q = (i: number) => quoteIdent(t.engine, t.cols[i]!);
   const where = (row: (string | null)[]) => t.pk.map((i) => `${q(i)} = ${literal(t.engine, row[i])}`).join(" and ");
-  const out: string[] = [];
-  for (const r of Object.keys(e.deleted).map(Number).sort((a, b) => a - b)) out.push(`delete from ${t.from} where ${where(set.rows[r])}`);
+  const out: { sql: string; row: number }[] = [];
+  for (const r of Object.keys(e.deleted).map(Number).sort((a, b) => a - b)) out.push({ sql: `delete from ${t.from} where ${where(set.rows[r])}`, row: r });
   for (const [rs, cells] of Object.entries(e.cells)) {
     const r = Number(rs);
     const cs = Object.entries(cells);
     if (e.deleted[r] || !cs.length) continue;
     const sets = cs.map(([c, v]) => `${q(Number(c))} = ${literal(t.engine, v)}`).join(", ");
-    out.push(`update ${t.from} set ${sets} where ${where(set.rows[r])}`);
+    out.push({ sql: `update ${t.from} set ${sets} where ${where(set.rows[r])}`, row: r });
   }
   return out;
+}
+
+/** The statements of editPlan, SQL only. */
+export function editStatements(t: EditTarget, set: ResultSet, e: Edits): string[] {
+  return editPlan(t, set, e).map((p) => p.sql);
 }
 
 /** The result after the changes were saved: edited values in, deleted rows out. */

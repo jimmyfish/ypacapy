@@ -6,12 +6,16 @@
     $$(".subtab[data-view]").forEach((s) => s.setAttribute("aria-pressed", String(s.dataset.view === view)));
     $$(".response .state").forEach((s) => { s.hidden = view !== "rows" || s.dataset.when !== state; });
     $$("[data-view-of]").forEach((s) => { if (!s.classList.contains("state")) s.hidden = s.dataset.viewOf !== view; });
+    // paging and the row actions share the Rows line: shown with rows on screen only
+    $("#t-tools").hidden = view !== "rows" || state !== "full";
     const busy = state === "loading";
     run.toggleAttribute("aria-busy", busy); run.disabled = busy || view !== "rows";
+    $("#t-refresh").disabled = busy || view !== "rows";
     $("#t-n").textContent = state === "empty" ? "0" : "~12k";
     $("#t-ms").textContent = busy ? "reading" : "6 ms";
   }
   $$(".subtab[data-view]").forEach((s) => s.addEventListener("click", () => { view = s.dataset.view; if (state === "loading") state = "full"; render(); }));
+  $("#t-refresh").addEventListener("click", () => reload());
   function reload() {
     if (state === "loading") return;
     view = "rows"; state = "loading"; render();
@@ -291,6 +295,72 @@
     }, 700);
   });
 
+  // ---------- Rows: editing an enum cell, and a save that failed ----------
+  // status is order_status, a PostgreSQL enum. Double-click or Enter opens the box over the cell and the type's
+  // labels under it; typing narrows the list (prefix first, then anywhere), arrows move, Enter or a click sets,
+  // Esc keeps the old value. Only a label can be set, so the server never sees a typo.
+  const rowsWrap = $('.grid-wrap[aria-label="Rows of orders"]'), enumMenu = $("#enum-menu");
+  const enumCol = $$("thead th", rowsWrap).findIndex((th) => th.hasAttribute("data-enum"));
+  const items = $$(".enum-item", enumMenu);
+  let enumTd = null, enumWas = "", enumAt = 0;
+  const shown = () => items.filter((b) => !b.hidden);
+  const mark = (i) => { const v = shown(); enumAt = Math.max(0, Math.min(v.length - 1, i)); v.forEach((b, k) => b.setAttribute("aria-selected", String(k === enumAt))); v[enumAt]?.scrollIntoView({ block: "nearest" }); };
+  const place = () => { if (!enumTd) return; const r = enumTd.getBoundingClientRect(), m = enumMenu.getBoundingClientRect(); enumMenu.style.left = `${Math.min(r.left, innerWidth - m.width - 8)}px`; enumMenu.style.top = `${r.bottom + m.height > innerHeight - 8 ? r.top - m.height - 4 : r.bottom + 4}px`; };
+  function filter(q) {
+    q = q.trim().toLowerCase();
+    const starts = items.filter((b) => b.dataset.v.startsWith(q)), has = items.filter((b) => !starts.includes(b) && b.dataset.v.includes(q));
+    items.forEach((b) => { b.hidden = !!q && !starts.includes(b) && !has.includes(b); });
+    // prefix matches first, the rest after, each in declared order
+    const list = $("#enum-list"); [...starts, ...has, ...items.filter((b) => b.hidden)].forEach((b) => list.append(b));
+    $("#enum-none").hidden = shown().length > 0;
+    $("#enum-count").textContent = q ? `${shown().length} of ${items.length}` : `${items.length} values`;
+    mark(q ? 0 : Math.max(0, shown().findIndex((b) => b.dataset.v === enumWas)));
+    place();
+  }
+  function openEnum(td) {
+    closeEnum(false);
+    enumTd = td; enumWas = td.textContent;
+    td.classList.add("cell-editing"); td.classList.remove("cell-sel");
+    td.innerHTML = `<input class="cell-input enum-input" aria-label="status, one of order_status" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="enum-list"><svg aria-hidden="true" class="ico enum-chev"><use href="#i-chevron-down"/></svg>`;
+    const inp = $("input", td); inp.value = enumWas;
+    items.forEach((b) => b.setAttribute("aria-current", String(b.dataset.v === enumWas)));
+    enumMenu.hidden = false; filter("");
+    inp.focus(); inp.select();
+    inp.addEventListener("input", () => filter(inp.value));
+    inp.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); mark(enumAt + (e.key === "ArrowDown" ? 1 : -1)); }
+      else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); const b = shown()[enumAt]; closeEnum(true, b?.dataset.v); }
+      else if (e.key === "Escape") { e.preventDefault(); closeEnum(false); }
+    });
+    inp.addEventListener("blur", () => setTimeout(() => enumTd === td && closeEnum(false), 120));
+  }
+  function closeEnum(keep, v) {
+    if (!enumTd) return;
+    const td = enumTd, orig = td.dataset.orig ?? enumWas;
+    enumTd = null; enumMenu.hidden = true; filter("");
+    const val = keep && v ? v : enumWas;
+    td.dataset.orig = orig;
+    td.classList.remove("cell-editing"); td.textContent = val;
+    td.classList.toggle("cell-edit", val !== orig);
+    td.click(); rowsWrap.focus();
+  }
+  items.forEach((b) => b.addEventListener("mousedown", (e) => { e.preventDefault(); closeEnum(true, b.dataset.v); }));
+  rowsWrap.addEventListener("dblclick", (e) => { const td = e.target.closest("tbody td"); if (td && td.cellIndex === enumCol) openEnum(td); });
+  rowsWrap.addEventListener("keydown", (e) => { const td = $("td.cell-sel", rowsWrap); if (e.key === "Enter" && td && td.cellIndex === enumCol) { e.preventDefault(); openEnum(td); } });
+  addEventListener("resize", () => enumTd && place());
+  rowsWrap.addEventListener("scroll", () => enumTd && place());
+
+  // Save failed: the failed row keeps its edits in red. On that row the inspector says why; Details shows the
+  // server's text and the statement. Save failed in the edit bar goes to the row.
+  const insFail = $("#t-ins-fail"), saveMore = $("#t-save-more"), failBar = $("#t-fail-bar");
+  saveMore.addEventListener("click", () => { const open = saveMore.getAttribute("aria-expanded") !== "true"; saveMore.setAttribute("aria-expanded", String(open)); saveMore.textContent = open ? "Hide details" : "Details"; $("#t-save-says").hidden = !open; });
+  const syncFail = () => { const td = $("td.cell-sel", rowsWrap); insFail.hidden = !td?.parentElement.classList.contains("row-fail"); };
+  ["click", "keydown"].forEach((t) => rowsWrap.addEventListener(t, () => setTimeout(syncFail, 0)));
+  $("#t-fail-go").addEventListener("click", () => { const tr = $("tr.row-fail", rowsWrap); if (tr) { tr.cells[totalCol].click(); rowsWrap.focus(); } });
+  const firstRow = () => $("tbody tr", rowsWrap), totalCol = 3;
+  const TB0 = $("tbody", rowsWrap).innerHTML;
+
   load("postgres");
   const BASE = structuredClone(ENGINES);
   window.pvShow = (k) => {
@@ -317,6 +387,20 @@
     }
     strict = k === "col-strict"; failNext = k === "col-fail";
     draw(); render();
+    // rows: put the first row back, then the state's edits
+    closeEnum(false); $("tbody", rowsWrap).innerHTML = TB0;
+    const fail = k.startsWith("save-error");
+    firstRow().classList.toggle("row-fail", fail); failBar.hidden = !fail;
+    saveMore.setAttribute("aria-expanded", String(k === "save-error-open")); saveMore.textContent = k === "save-error-open" ? "Hide details" : "Details"; $("#t-save-says").hidden = k !== "save-error-open";
+    if (fail) {
+      const [st, tot] = [firstRow().cells[enumCol], firstRow().cells[totalCol]];
+      st.dataset.orig = st.textContent; st.textContent = "shipped"; st.classList.add("cell-edit");
+      tot.textContent = "-12.00"; tot.classList.add("cell-edit");
+      // a second, fine edit further down stays green
+      const ok = $$("tbody tr", rowsWrap)[3].cells[enumCol]; ok.textContent = "refunded"; ok.classList.add("cell-edit");
+      setTimeout(() => { (k === "save-error-away" ? $$("tbody tr", rowsWrap)[5] : firstRow()).cells[totalCol].click(); syncFail(); }, 0);
+    } else setTimeout(syncFail, 0);
+    if (k === "enum-pick") setTimeout(() => { const td = firstRow().cells[enumCol]; td.click(); openEnum(td); }, 0);
     if (["col-review", "col-strict", "col-fail", "col-mysql"].includes(k)) review();
     if (k === "col-fail") $("#col-form").requestSubmit();
   };

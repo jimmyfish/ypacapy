@@ -21,7 +21,7 @@
 @media (prefers-reduced-motion: reduce) { .tm-pulse i { animation: none; opacity: 0; } }
 
 .tm-pop {
-  position: absolute; top: calc(100% + 8px); right: 0; z-index: var(--z-dropdown); width: 400px;
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: var(--z-sticky-nav); width: 400px;
   display: grid; gap: var(--space-sm); padding: var(--space-md) var(--space-md) var(--space-sm); border-radius: 10px;
   background: var(--color-paper); box-shadow: 0 0 0 1px var(--color-rule), 0 8px 24px var(--color-shadow);
   color: var(--color-ink); font-size: var(--text-md);

@@ -253,7 +253,7 @@
         const th = heads()[td.cellIndex];
         $(".ins-col", ins).textContent = $(".col-name", th).textContent;
         $(".ins-type", ins).textContent = $(".col-type", th).textContent;
-        $(".ins-row", ins).textContent = `row ${$(".rownum", td.parentElement).textContent}`;
+        $(".ins-row", ins).textContent = `row ${td.parentElement.sectionRowIndex + 1}`;
         // MongoDB: a missing field is not null; the document has no such field
         const v = $(".ins-value", ins), isNull = td.classList.contains("null"), isMissing = td.classList.contains("missing");
         v.textContent = isMissing ? "missing, this document has no such field" : isNull ? "null, no value" : td.dataset.full ?? td.textContent;

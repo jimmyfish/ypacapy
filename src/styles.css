@@ -498,6 +498,9 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 .grid-wrap:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
 .grid { border-collapse: separate; border-spacing: 0; min-width: 100%; font: var(--text-table)/1.2 var(--font-table); font-variant-numeric: tabular-nums; }
 .grid th, .grid td { height: var(--control); padding: 0 var(--space-sm); border-bottom: 1px solid var(--color-rule); text-align: left; white-space: nowrap; max-width: 36ch; overflow: hidden; text-overflow: ellipsis; }
+/* lines between columns, the same rule as the row lines; the last column has none (the grid's edge). A frozen
+   column's own edge is this line too, so it moves with the column as the rest scrolls under it. */
+.grid th:not(:last-child), .grid td:not(:last-child) { border-right: 1px solid var(--color-rule); }
 .grid thead th { position: sticky; top: 0; z-index: var(--z-sticky); height: auto; padding-block: var(--space-xs); background: var(--color-paper-3); vertical-align: bottom; font: 400 var(--text-sm)/1.2 var(--font-ui); color: var(--color-muted); }
 .grid td { color: var(--color-ink); }
 .grid td.num, .grid th.num { text-align: right; }
@@ -561,6 +564,11 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 .res-actions .menu { min-width: 200px; }
 /* the results toolbar sits above the grid, so its menus open over the sticky column heads */
 .res-tools { position: relative; z-index: calc(var(--z-sticky) + 1); }
+/* the results toolbar now shares the Rows / Results line, right under the tabs bar and the Run line: their menus
+   (security level, Run ▾, a tab's menu) open over it, so both sit above it */
+.request-line { position: relative; z-index: calc(var(--z-sticky) + 2); }
+/* the tabs bar above the Run line too: the security menu drops down over Run */
+.tabsbar { position: relative; z-index: calc(var(--z-sticky) + 3); }
 /* ======================================================================
    The result grid, second pass: values read by their type; a cell is the unit; the inspector holds the full value.
    ====================================================================== */
@@ -575,19 +583,18 @@ th[aria-sort="ascending"] .sort-ico, th[aria-sort="descending"] .sort-ico { colo
 .grid td.ts .t { color: var(--color-ink-2); }
 .grid td.ts .tz { color: var(--color-placeholder); }
 .grid td.null { font-style: normal; }
-.grid td.bool .ico { width: 15px; height: 15px; }
+/* booleans as words, bold: True green, False Alizarin */
+.grid td.bool :is(.yes, .no) { font-weight: 700; }
 .grid td.bool .yes { color: var(--color-ok); }
-.grid td.bool .no { color: var(--color-placeholder); }
+.grid td.bool .no { color: var(--tag-alizarin); }
 .grid td.json { max-width: 44ch; color: var(--color-ink-2); }
 .js { color: var(--j-str); }
 .jn { color: var(--j-bool); }
 .inspector { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: var(--space-md); padding: var(--space-sm) var(--space-md); border-top: 1px solid var(--color-rule); background: var(--color-paper-3); }
 .state > .grid-foot { margin: 0; padding: var(--space-2xs) var(--space-md); border-top: 1px solid var(--color-rule); }
-/* wide results: the row number and the primary key's columns (drawn first) stay on screen while the rest scrolls */
-:root { --rownum-w: 52px; }
+/* wide results: the primary key's columns (drawn first) stay on screen while the rest scrolls */
 /* lowest priority, so hover, the selected row and cell, edits and deletions still colour a frozen cell */
 :where(.grid.pin) td:where(.pin-0, .pin-1, .pin-2, .pin-3) { background: var(--color-paper); }
-:where(.grid.pin) :where(.pin-last) { box-shadow: inset -1px 0 0 var(--color-rule); }
 /* long text: the first line, cut, and how many more lines there are; the inspector holds all of it */
 .grid td.long { max-width: 60ch; }
 .grid td.long .first { display: inline-block; max-width: calc(100% - 8ch); overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
@@ -630,8 +637,6 @@ th[aria-sort="ascending"] .sort-ico, th[aria-sort="descending"] .sort-ico { colo
 .ctx-menu kbd { margin-left: auto; }
 .menu button:disabled { color: var(--color-muted); cursor: default; }
 .menu button:disabled:hover { background: none; }
-.grid tr.row-edit .rownum { color: var(--color-ok); font-weight: 600; }
-.grid tr.row-del .rownum { color: var(--color-error); text-decoration: none; }
 /* edit marks, shared by the result grid and the Columns editor: changed green, dropped red and struck through, the bar of changes */
 .edit-bar { display: flex; align-items: center; gap: var(--space-2xs); }
 .edit-bar .btn { min-height: 28px; padding-block: 0; }
@@ -782,6 +787,21 @@ th[aria-sort="ascending"] .sort-ico, th[aria-sort="descending"] .sort-ico { colo
 }
 .pager { display: flex; align-items: center; gap: var(--space-3xs); margin-left: auto; }
 .pager .icon-btn { min-width: 28px; min-height: 28px; border-radius: 6px; }
+/* paging | actions: a pager before Columns, Copy and Export gets a rule after it */
+.res-tools .pager + .res-actions { margin-left: var(--space-sm); padding-left: var(--space-sm); border-left: 1px solid var(--color-rule); }
+.pager-n { margin-right: var(--space-2xs); color: var(--color-muted); font: var(--text-sm) var(--font-ui); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pager-hint { min-width: 0; margin-right: var(--space-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-muted); font: var(--text-xs) var(--font-ui); }
+/* A query's and a table's toolbar ride on the Results / Rows line, after the time: one line, not two. At any width
+   the line stays one: the pager's hint and a note give way first (ellipsis); the tabs, the time and the buttons keep theirs. */
+.subtabs .sub-tools { flex: 0 1 auto; min-width: 0; padding: 0; margin-left: calc(var(--space-md) - var(--space-lg)); }
+.subtabs .sub-tools:empty { display: none; }
+.subtabs .subtab, .subtabs .meta { flex-shrink: 0; white-space: nowrap; }
+.sub-tools > *:not(.pager, .muted), .sub-tools .pager > *:not(.pager-hint) { flex-shrink: 0; }
+.sub-tools .pager { min-width: 0; }
+.sub-tools > .muted { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Refresh, just left of Run: a square the height of Run. It reads the page on screen again; Run starts over */
+.btn-refresh { width: 32px; min-width: 32px; height: 32px; min-height: 32px; padding: 0; flex-shrink: 0; align-self: center; }
+.btn-refresh .ico { width: 15px; height: 15px; }
 /* narrow: Add document keeps its plus, the view switch its icons */
 .response { container: res / inline-size; }
 @container res (max-width: 640px) { .seg--lead button { font-size: 0; gap: 0; } .seg--lead button .ico { width: 15px; height: 15px; } }

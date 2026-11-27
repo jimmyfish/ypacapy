@@ -19,6 +19,8 @@ import { useUpdates } from "./updates";
 import { UpdateChip } from "./components/UpdateChip";
 import { RunsChip } from "./components/TaskManager";
 import { LinkBar, TabLink } from "./components/ConnStatus";
+import { ConsoleHistory } from "./components/ConsoleHistory";
+import { listenConsole } from "./lib/consoleLog";
 import type { Link } from "./types";
 import { Bookmark, Database, HistoryIcon, House, ListTree, Settings2, SquareCode, X, ico, icoLg } from "./components/Icon";
 import { EmptyState, Keys } from "./components/EmptyState";
@@ -213,6 +215,8 @@ export default function App() {
   useEffect(() => {
     void useStore.getState().init();
   }, []);
+  // every statement Rust sends, for the console history bar
+  useEffect(() => listenConsole(), []);
 
   // Updates: one quiet check once settings have loaded (autoUpdateCheck: false turns it off).
   // Dev builds never check (src/updates.ts). The title-strip chip shows what it finds.
@@ -321,6 +325,7 @@ export default function App() {
               <TabsBar />
               <LinkBar />
               <ConnWork />
+              <ConsoleHistory />
             </main>
           </div>
         </>

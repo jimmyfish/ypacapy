@@ -5,11 +5,11 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { FORMATS, FORMAT_EXT, boolOf, kindOf, render, tsParts, type Format, type Kind } from "../lib/cells";
 import { MONGO_EXT, MONGO_FORMATS, cellValue, renderDocs, shellTokens, type MongoFormat } from "../lib/bson";
 import { api, errText } from "../lib/api";
-import { NO_EDITS, applied, editCount, editStatements, type EditTarget, type Edits } from "../lib/edit";
+import { NO_EDITS, applied, editCount, editPlan, type EditTarget, type Edits } from "../lib/edit";
 import { useStore } from "../store";
 import type { Approval, ColMeta, ResultSet, RunOutcome } from "../types";
 import { useDismiss } from "./useDismiss";
-import { ArrowDown, ArrowUp, ArrowUpDown, Braces, Brackets, CalendarClock, Check, Columns3, Copy, Download, Hash, IdCard, KeyRound, Link, ToggleLeft, Type, X, icoC, ico } from "./Icon";
+import { ArrowDown, ArrowUp, ArrowUpDown, Braces, Brackets, CalendarClock, Check, ChevronDown, CircleAlert, CircleDot, Columns3, Copy, Download, Hash, IdCard, KeyRound, Link, ToggleLeft, Type, icoC, ico } from "./Icon";
 
 export interface ColKey {
   primary?: boolean;
@@ -111,14 +111,8 @@ function Cell({ v, kind, sel, ci, edited, editor, pin, missing }: { v: string | 
     if (b !== null)
       return (
         <td className={`bool${s}`} data-c={ci}>
-          {b ? (
-            <>
-              <Check {...icoC("yes")} />
-              <span className="visually-hidden">true</span>
-            </>
-          ) : (
-            <span className="no">false</span>
-          )}
+          {/* both as words: an icon for one and a word for the other read as two kinds of value */}
+          <span className={b ? "yes" : "no"}>{b ? "True" : "False"}</span>
         </td>
       );
   }
@@ -176,6 +170,7 @@ const GridRow = memo(function GridRow({
   view,
   pins,
   missing,
+  failed,
 }: {
   row: (string | null)[];
   /** MongoDB: the cells whose document has no such field */
@@ -192,10 +187,12 @@ const GridRow = memo(function GridRow({
   deleted?: boolean;
   editCol: number;
   editor?: ReactNode;
+  /** the last save stopped at this row's statement */
+  failed?: boolean;
 }) {
+  const cls = [deleted ? "row-del" : changed ? "row-edit" : "", failed ? "row-fail" : ""].join(" ").trim();
   return (
-    <tr aria-selected={selCol >= 0 ? true : undefined} data-n={n} className={deleted ? "row-del" : changed ? "row-edit" : undefined}>
-      <td className="rownum">{n + 1}</td>
+    <tr aria-selected={selCol >= 0 ? true : undefined} data-n={n} className={cls || undefined}>
       {view.map((i) => {
         const ed = !!changed && i in changed;
         return <Cell key={i} v={ed ? changed![i] : row[i]} kind={kinds[i]} sel={i === selCol} ci={i} edited={ed} editor={i === editCol ? editor : undefined} pin={pins[i]} missing={missing?.[i]} />;
@@ -242,6 +239,130 @@ function CellEditor({ value, onChange, onDone }: { value: string; onChange: (v: 
       onDoubleClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.stopPropagation()}
     />
+  );
+}
+
+/**
+ * Editing an enum cell: the box filters the type's labels (prefix matches first, then the rest that contain the
+ * text, each in declared order) and the list under the cell picks one. Arrows move, Enter or a click sets, Tab
+ * sets and moves on, Esc or leaving keeps the old value. Only a label can be set, so a typo never reaches the
+ * server. The current value has the check.
+ */
+function EnumEditor({ value, orig, typed, values, type, onDone }: { value: string; orig: string | null; typed: boolean; values: string[]; type: string; onDone: (keep: boolean, move?: number, blurred?: boolean, pick?: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+  const [text, setText] = useState(value);
+  const [q, setQ] = useState(typed ? value : "");
+  const shown = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return values;
+    const starts = values.filter((v) => v.toLowerCase().startsWith(s));
+    return [...starts, ...values.filter((v) => !starts.includes(v) && v.toLowerCase().includes(s))];
+  }, [q, values]);
+  const [at, setAt] = useState(() => (typed ? 0 : Math.max(0, values.indexOf(orig ?? ""))));
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const t = ref.current;
+    if (!t) return;
+    t.focus();
+    if (typed) t.setSelectionRange(t.value.length, t.value.length);
+    else t.select();
+  }, []);
+  // the list sits under the cell (above it near the window's bottom), fixed, so the grid's overflow doesn't cut it
+  useLayoutEffect(() => {
+    const place = () => {
+      const td = ref.current?.closest("td");
+      const m = list.current?.parentElement;
+      if (!td || !m) return;
+      const r = td.getBoundingClientRect();
+      const h = m.offsetHeight;
+      const w = m.offsetWidth;
+      setPos({ left: Math.max(8, Math.min(r.left, innerWidth - w - 8)), top: r.bottom + h > innerHeight - 8 ? Math.max(8, r.top - h - 4) : r.bottom + 4 });
+    };
+    place();
+    window.addEventListener("resize", place);
+    document.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      document.removeEventListener("scroll", place, true);
+    };
+  }, [shown.length]);
+  useEffect(() => {
+    list.current?.querySelector<HTMLElement>(`[data-i="${at}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [at, shown]);
+  const pick = (v: string | undefined, move?: number) => (v === undefined ? onDone(false) : onDone(true, move, undefined, v));
+  return (
+    <>
+      <input
+        ref={ref}
+        className="cell-input enum-input"
+        role="combobox"
+        aria-expanded="true"
+        aria-controls="enum-list"
+        aria-label={`Cell value, one of ${type}`}
+        spellCheck={false}
+        autoComplete="off"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setQ(e.target.value);
+          setAt(0);
+        }}
+        onKeyDown={(e) => {
+          if (e.metaKey && e.key === "s") return;
+          e.stopPropagation();
+          if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault();
+            setAt((i) => Math.max(0, Math.min(shown.length - 1, i + (e.key === "ArrowDown" ? 1 : -1))));
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            pick(shown[at]);
+          } else if (e.key === "Tab") {
+            e.preventDefault();
+            pick(shown[at] ?? orig ?? undefined, e.shiftKey ? -1 : 1);
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            onDone(false);
+          }
+        }}
+        onBlur={() => onDone(false, undefined, true)}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+        onContextMenu={(e) => e.stopPropagation()}
+      />
+      <ChevronDown {...icoC("enum-chev")} />
+      {createPortal(
+        <div className="menu enum-menu" style={pos ? { left: pos.left, top: pos.top } : { visibility: "hidden" }}>
+          <div className="enum-head">
+            <b>{type}</b>
+            <span className="enum-count">{q.trim() ? `${shown.length} of ${values.length}` : `${values.length} values`}</span>
+          </div>
+          <div className="enum-list" id="enum-list" role="listbox" aria-label={`Values of ${type}`} ref={list}>
+            {shown.map((v, i) => (
+              <button
+                key={v}
+                type="button"
+                role="option"
+                tabIndex={-1}
+                data-i={i}
+                className="enum-item"
+                aria-selected={i === at}
+                aria-current={v === orig || undefined}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  pick(v);
+                }}
+              >
+                <Check {...icoC("enum-cur")} />
+                <span className="enum-name">{v}</span>
+              </button>
+            ))}
+          </div>
+          {!shown.length && <p className="enum-none">No value of {type} has that</p>}
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 
@@ -341,8 +462,10 @@ type SaveError = Extract<RunOutcome, { kind: "error" }>;
 
 /**
  * The result grid: values read by their column type, a cell is the unit (click or arrow keys), the inspector
- * under the grid holds the selected cell's full value. A head sorts the rows already on screen (no new query);
- * the row numbers keep the order the database returned. When the rows come from one table with its primary
+ * under the grid holds the selected cell's full value. A head sorts the rows already on screen (no new query),
+ * unless the caller takes the click (onOrderBy: a table tab reads its rows again with order by). There is no
+ * row-number column: a number beside the rows read as a value (beside id, as the id); the inspector says which
+ * row. When the rows come from one table with its primary
  * key, a double-click (or Enter, or typing) edits a cell; changes stay on screen (green, deleted rows red)
  * until Save (⌘S) writes them in one transaction, or Revert drops them.
  */
@@ -397,8 +520,12 @@ export function DocsActions({ set, exportName }: { set: ResultSet; exportName: s
   );
 }
 
-/** trail: after Copy and Export, at the toolbar's right end (a collection's pager) */
-export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, edit }: { set: ResultSet; keys?: Record<string, ColKey>; label: string; exportName: string; lead?: ReactNode; trail?: ReactNode; foot?: ReactNode; edit?: GridEdit }) {
+/**
+ * pager: before Columns, Copy and Export (paging | actions). trail: after them, at the toolbar's right end.
+ * toolsIn: the toolbar's place when the caller keeps it elsewhere (the Results or Rows line, so the toolbar and the
+ * subtabs are one line); null while that place is not mounted yet.
+ */
+export function ResultGrid({ set, keys, label, exportName, lead, pager, trail, foot, edit, orderBy, onOrderBy, toolsIn }: { set: ResultSet; keys?: Record<string, ColKey>; label: string; exportName: string; lead?: ReactNode; pager?: ReactNode; trail?: ReactNode; foot?: ReactNode; edit?: GridEdit; orderBy?: { col: string; desc?: boolean }; onOrderBy?: (col: string) => void; toolsIn?: HTMLElement | null }) {
   const kinds = useMemo(() => set.columns.map((c) => kindOf(c.type)), [set]);
   const target = edit && edit.target && typeof edit.target === "object" ? edit.target : null;
 
@@ -427,12 +554,18 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
   const editingRef = useRef(editing);
   editingRef.current = editing;
   const [saving, setSaving] = useState(false);
-  const [saveErr, setSaveErr] = useState<SaveError | null>(null);
+  /** the last save's error; row: the row (index into set.rows) whose statement failed, when the error names one */
+  const [saveErr, setSaveErr] = useState<{ err: SaveError; row: number | null } | null>(null);
+  const [failOpen, setFailOpen] = useState(false);
+  const failWith = (err: SaveError, row: number | null = null) => {
+    setFailOpen(false);
+    setSaveErr({ err, row });
+  };
 
   // display order: indexes into set.rows
   const order = useMemo(() => {
     const idx = set.rows.map((_, i) => i);
-    if (!sort) return idx;
+    if (!sort || onOrderBy) return idx;
     const { col, dir } = sort;
     const num = kinds[col] === "num";
     const key = (i: number) => {
@@ -452,7 +585,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
       const r = typeof p === "number" && typeof q === "number" ? p - q : String(p).localeCompare(String(q), undefined, { numeric: true });
       return r * dir;
     });
-  }, [set, sort, kinds]);
+  }, [set, sort, kinds, onOrderBy]);
 
   // a new result (other columns) starts over; the same one after a save keeps its sort and place
   useEffect(() => {
@@ -461,8 +594,13 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
   }, [set.columns]);
   useEffect(() => {
     setEditing(null);
+    setSaveErr(null);
     setSel((s) => (s && set.rows.length ? { r: Math.min(s.r, set.rows.length - 1), c: s.c } : null));
   }, [set]);
+  // every change dropped one by one: nothing is left to fail
+  useEffect(() => {
+    if (!pending) setSaveErr(null);
+  }, [pending]);
 
   // keep the selected cell in view
   useEffect(() => {
@@ -537,12 +675,14 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
     setEditing({ r, c, draft: typed ?? v ?? "", orig: v });
   };
   /** keep (or drop) the textbox's text; move: a column step after Tab; blurred: focus went elsewhere, leave it there */
-  const finishEdit = (keep: boolean, move?: number, blurred?: boolean) => {
+  /** pick: the value an enum list set, in place of the textbox's text */
+  const finishEdit = (keep: boolean, move?: number, blurred?: boolean, pick?: string) => {
     const e = editingRef.current;
     if (!e) return;
     editingRef.current = null;
     setEditing(null);
-    if (keep && (e.orig === null ? e.draft !== "" : e.draft !== e.orig)) setCell(e.r, e.c, e.draft);
+    const draft = pick ?? e.draft;
+    if (keep && (e.orig === null ? pick !== undefined || draft !== "" : draft !== e.orig)) setCell(e.r, e.c, draft);
     if (move !== undefined) {
       const dr = order.indexOf(e.r);
       const c = view[Math.max(0, Math.min(view.length - 1, view.indexOf(e.c) + move))];
@@ -576,7 +716,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
       setSaving(false);
       if (err === undefined) return;
       if (err !== null) {
-        setSaveErr({ kind: "error", title: "Nothing was saved", says: null, message: err, hint: null, lost: false, ms: 0 });
+        failWith({ kind: "error", title: err, says: null, message: err, hint: null, lost: false, ms: 0 });
         return;
       }
       const n = editCount(e);
@@ -586,13 +726,13 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
       wrap.current?.focus();
       return;
     }
-    const statements = editStatements(target, base, e);
-    if (!statements.length) return;
+    const plan = editPlan(target, base, e);
+    if (!plan.length) return;
     setSaving(true);
     setSaveErr(null);
-    const out: RunOutcome = await api
-      .applyEdits({ connId: edit.connId, database: edit.database, statements, approval })
-      .catch((err) => ({ kind: "error", title: "Nothing was saved", says: null, message: errText(err), hint: null, lost: false, ms: 0 }));
+    const out: RunOutcome & { statement?: number } = await api
+      .applyEdits({ connId: edit.connId, database: edit.database, statements: plan.map((p) => p.sql), approval })
+      .catch((err) => ({ kind: "error", title: errText(err), says: null, message: errText(err), hint: null, lost: false, ms: 0 }));
     setSaving(false);
     if (out.kind === "ask") {
       useStore.getState().openModal({ kind: "guard", ask: out, connName: edit.connName, onApprove: (a) => void submit(a) });
@@ -605,8 +745,8 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
       showToast(`Saved ${n} change${n === 1 ? "" : "s"}`);
       wrap.current?.focus();
     } else if (out.kind === "cancelled") {
-      setSaveErr({ kind: "error", title: "Stopped by the statement timeout", says: null, message: "The transaction was rolled back, so nothing was saved.", hint: null, lost: false, ms: out.ms });
-    } else setSaveErr(out);
+      failWith({ kind: "error", title: "Stopped by the statement timeout", says: null, message: "The transaction was rolled back, so nothing was saved.", hint: null, lost: false, ms: out.ms });
+    } else failWith(out, out.statement === undefined ? null : (plan[out.statement]?.row ?? null));
   };
 
   // ⌘S submits the changes; in a query tab the SQL editor keeps ⌘S for saving the query
@@ -661,12 +801,12 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
     setSel({ r, c });
   };
 
-  /** the body cell under the pointer, as display row and column; the row number picks the selected column */
+  /** the body cell under the pointer, as display row and column */
   const cellAt = (e: React.MouseEvent) => {
     const td = (e.target as HTMLElement).closest("td");
     const tr = td?.closest("tr");
-    if (!td || !tr || !tr.parentElement || tr.parentElement.tagName !== "TBODY") return null;
-    return { r: [...tr.parentElement.children].indexOf(tr), c: td.classList.contains("rownum") ? (sel?.c ?? 0) : Number(td.dataset.c), rownum: td.classList.contains("rownum") };
+    if (!td || !tr || !tr.parentElement || tr.parentElement.tagName !== "TBODY" || td.dataset.c === undefined) return null;
+    return { r: [...tr.parentElement.children].indexOf(tr), c: Number(td.dataset.c) };
   };
   const onClick = (e: React.MouseEvent) => {
     const at = cellAt(e);
@@ -674,7 +814,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
   };
   const onDoubleClick = (e: React.MouseEvent) => {
     const at = cellAt(e);
-    if (!at || at.rownum) return;
+    if (!at) return;
     window.getSelection()?.removeAllRanges();
     startEdit(at.r, at.c);
   };
@@ -717,7 +857,7 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
     if (!t || !w || !pk.length || pk.length > MAX_PINNED) return;
     const heads = () => pk.map((c) => t.querySelector<HTMLElement>(`thead th[data-c="${c}"]`));
     const measure = () => {
-      let left = t.querySelector<HTMLElement>("thead th.rownum")?.getBoundingClientRect().width ?? 52;
+      let left = 0;
       const cap = Math.floor((w.clientWidth / 2 - left) / pk.length);
       if (cap < MIN_PIN_W) {
         w.style.scrollPaddingLeft = "";
@@ -743,9 +883,54 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
     };
   }, [pk, set]);
   const pin = pk.length > 0 && pk.length <= MAX_PINNED && fits;
-  const editor = editing && (
-    <CellEditor value={editing.draft} onChange={(draft) => setEditing((x) => (x ? { ...x, draft } : x))} onDone={finishEdit} />
-  );
+  const enumOf = editing ? set.columns[editing.c]?.enumValues : undefined;
+  const editor =
+    editing &&
+    (enumOf?.length ? (
+      <EnumEditor key={`${editing.r}:${editing.c}`} value={editing.draft} orig={editing.orig} typed={editing.draft !== (editing.orig ?? "")} values={enumOf} type={set.columns[editing.c].type} onDone={finishEdit} />
+    ) : (
+      <CellEditor value={editing.draft} onChange={(draft) => setEditing((x) => (x ? { ...x, draft } : x))} onDone={finishEdit} />
+    ));
+
+  // A failed save marks its row and says why in the inspector while that row is selected (always, when the error
+  // names no row). Save failed in the edit bar goes to the row.
+  const failRow = saveErr?.row ?? null;
+  const showFail = !!saveErr && (failRow === null || (!!sel && order[sel.r] === failRow));
+  const goToFail = () => {
+    if (failRow === null) return;
+    const dr = order.indexOf(failRow);
+    if (dr < 0) return;
+    const ed = edits.cells[failRow];
+    const c = ed ? (view.find((i) => i in ed) ?? view[0]) : (sel?.c ?? view[0]);
+    setSel({ r: dr, c });
+    wrap.current?.focus();
+  };
+  const failBlock = saveErr && showFail && (() => {
+    const { err } = saveErr;
+    const pkVals = failRow !== null && target ? target.pk.map((i) => set.rows[failRow]?.[i]).filter((v) => v != null) : [];
+    const who = failRow === null ? null : pkVals.length ? `Row ${pkVals.join(", ")}` : `Row ${failRow + 1}`;
+    const what = failRow !== null && edits.deleted[failRow] ? "wasn't deleted" : "wasn't saved";
+    // "stopped at line 1" points into one generated statement: no help on a row
+    const hint = err.hint && !/stopped at line \d+/i.test(err.hint) ? err.hint : null;
+    return (
+      <div className="ins-fail" role="alert">
+        <p className="ins-fail-head">
+          <CircleAlert {...icoC("ins-fail-ico")} />
+          <strong>{who ? `${who} ${what}.` : "Nothing was saved."}</strong> <span>{err.title || err.message}</span>
+          {hint && <span className="ins-fail-hint"> {hint}</span>}
+          {err.says && (
+            <>
+              {" "}
+              <button type="button" className="ins-fail-more" aria-expanded={failOpen} onClick={() => setFailOpen((o) => !o)}>
+                {failOpen ? "Hide details" : "Details"}
+              </button>
+            </>
+          )}
+        </p>
+        {failOpen && err.says && <pre className="db-says">{err.says}</pre>}
+      </div>
+    );
+  })();
 
   /** the right-click menu's edit items for display row dr, column c */
   const editItems = (dr: number, c: number): MenuItem[] => {
@@ -766,102 +951,106 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
     ];
   };
 
-  return (
+  const tools = (
     <>
-      <div className="res-tools">
-        {lead}
-        {edit && (pending > 0 || saving) && (
-          <div className="edit-bar" role="group" aria-label="Unsaved changes">
+      {lead}
+      {edit && (pending > 0 || saving) && (
+        <div className="edit-bar" role="group" aria-label="Unsaved changes">
+          {saveErr && !saving ? (
+            failRow !== null ? (
+              <button type="button" className="edit-fail" title="Go to the row that wasn't saved" onClick={goToFail}>
+                <CircleAlert {...icoC("edit-fail-ico")} />
+                Save failed
+              </button>
+            ) : (
+              <span className="edit-fail">
+                <CircleAlert {...icoC("edit-fail-ico")} />
+                Save failed
+              </span>
+            )
+          ) : (
             <span className="edit-n">
               {pending} change{pending === 1 ? "" : "s"}
             </span>
-            <button type="button" className="btn btn--primary" aria-busy={saving || undefined} disabled={saving} title={edit.saveTitle ?? "Write the changes in one transaction  ⌘S"} onClick={() => void submit()}>
-              {saving && <span className="spinner" />}
-              Save
-            </button>
-            <button type="button" className="btn" disabled={saving} title="Discard the changes" onClick={revertAll}>
-              Discard
-            </button>
-          </div>
-        )}
-        <div className="res-actions">
-          <MenuButton label="Go to a column" title="Columns" icon={<Columns3 {...ico} />}>
+          )}
+          <button type="button" className="btn btn--primary" aria-busy={saving || undefined} disabled={saving} title={edit.saveTitle ?? "Write the changes in one transaction  ⌘S"} onClick={() => void submit()}>
+            {saving && <span className="spinner" />}
+            Save
+          </button>
+          <button type="button" className="btn" disabled={saving} title="Discard the changes" onClick={revertAll}>
+            Discard
+          </button>
+        </div>
+      )}
+      {pager}
+      <div className="res-actions">
+        <MenuButton label="Go to a column" title="Columns" icon={<Columns3 {...ico} />}>
+          {(close) => (
+            <div className="menu cols-menu" role="menu" aria-label="Go to a column">
+              <p className="menu-note">{set.columns.length} columns</p>
+              {set.columns.map((c: ColMeta, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    close();
+                    setSel({ r: sel?.r ?? 0, c: i });
+                    wrap.current?.querySelector(`thead th[data-c="${i}"]`)?.scrollIntoView({ block: "nearest", inline: "center" });
+                    wrap.current?.focus();
+                  }}
+                >
+                  <span>{c.name}</span>
+                  <span className="col-t">{c.type}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </MenuButton>
+        {(["Copy", "Export"] as const).map((what) => (
+          <MenuButton key={what} label={`${what} rows`} title={what} icon={what === "Copy" ? <Copy {...ico} /> : <Download {...ico} />}>
             {(close) => (
-              <div className="menu cols-menu" role="menu" aria-label="Go to a column">
-                <p className="menu-note">{set.columns.length} columns</p>
-                {set.columns.map((c: ColMeta, i) => (
+              <div className="menu" role="menu" aria-label={`${what} as`}>
+                <p className="menu-note">{what} as</p>
+                {formats.map((f) => (
                   <button
-                    key={i}
+                    key={f}
                     type="button"
                     role="menuitem"
                     onClick={() => {
                       close();
-                      setSel({ r: sel?.r ?? 0, c: i });
-                      wrap.current?.querySelector(`thead th[data-c="${i}"]`)?.scrollIntoView({ block: "nearest", inline: "center" });
-                      wrap.current?.focus();
+                      if (what === "Copy") void copyText(renderAny(f, order), `${set.rows.length} rows as ${f}`);
+                      else void exportAs(f);
                     }}
                   >
-                    <span>{c.name}</span>
-                    <span className="col-t">{c.type}</span>
+                    {f}
                   </button>
                 ))}
               </div>
             )}
           </MenuButton>
-          {(["Copy", "Export"] as const).map((what) => (
-            <MenuButton key={what} label={`${what} rows`} title={what} icon={what === "Copy" ? <Copy {...ico} /> : <Download {...ico} />}>
-              {(close) => (
-                <div className="menu" role="menu" aria-label={`${what} as`}>
-                  <p className="menu-note">{what} as</p>
-                  {formats.map((f) => (
-                    <button
-                      key={f}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        close();
-                        if (what === "Copy") void copyText(renderAny(f, order), `${set.rows.length} rows as ${f}`);
-                        else void exportAs(f);
-                      }}
-                    >
-                      {f}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </MenuButton>
-          ))}
-        </div>
-        {trail}
+        ))}
       </div>
-      {saveErr && (
-        <div className="edit-err" role="alert">
-          <div className="edit-err-text">
-            <strong>{saveErr.title || "Nothing was saved"}</strong>
-            <span>{saveErr.message}</span>
-            {saveErr.hint && <span className="hint-line">{saveErr.hint}</span>}
-            {saveErr.says && <pre className="db-says">{saveErr.says}</pre>}
-          </div>
-          <button type="button" className="icon-btn" aria-label="Dismiss" onClick={() => setSaveErr(null)}>
-            <X {...ico} />
-          </button>
-        </div>
-      )}
+      {trail}
+    </>
+  );
+
+  return (
+    <>
+      {toolsIn === undefined ? <div className="res-tools">{tools}</div> : toolsIn && createPortal(tools, toolsIn)}
       <div className="grid-wrap" tabIndex={0} aria-label={label} ref={wrap} onKeyDown={onKey} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu}>
         <table className={`grid${pin ? " pin" : ""}${view.length === 1 ? " one" : ""}`} ref={table}>
           <thead>
             <tr>
-              <th className="rownum" scope="col">
-                <span className="visually-hidden">Row</span>
-              </th>
               {view.map((i) => {
                 const c = set.columns[i];
-                const TI = TYPE_ICON[kinds[i]];
+                // an enum's type is its own name: the one-of glyph says what it is
+                const TI = c.enumValues ? CircleDot : TYPE_ICON[kinds[i]];
                 const k = keys?.[c.name] ?? (target?.pk.includes(i) ? { primary: true } : undefined);
-                const dir = sort?.col === i ? sort.dir : 0;
+                const dir = onOrderBy ? (orderBy?.col === c.name ? (orderBy.desc ? -1 : 1) : 0) : sort?.col === i ? sort.dir : 0;
                 return (
-                  <th key={i} scope="col" data-c={i} className={[kinds[i] === "num" ? "num" : "", pins[i] ?? ""].join(" ").trim() || undefined} aria-sort={dir === 1 ? "ascending" : dir === -1 ? "descending" : "none"}>
-                    <button type="button" className="th-btn" title="Sort the rows on screen" onClick={() => sortBy(i)}>
+                  <th key={i} scope="col" data-c={i} data-enum={c.enumValues ? "" : undefined} className={[kinds[i] === "num" ? "num" : "", pins[i] ?? ""].join(" ").trim() || undefined} aria-sort={dir === 1 ? "ascending" : dir === -1 ? "descending" : "none"}>
+                    <button type="button" className="th-btn" title={onOrderBy ? "Order the table by this column" : "Sort the rows on screen"} onClick={() => (onOrderBy ? onOrderBy(c.name) : sortBy(i))}>
                       <TI {...icoC("t-ico")} />
                       <span className="col-name">{c.name}</span>
                       {k?.primary && (
@@ -898,13 +1087,15 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
                 editor={editing?.r === ri ? editor : undefined}
                 view={view}
                 pins={pins}
+                failed={failRow === ri}
               />
             ))}
           </tbody>
         </table>
       </div>
-      {col && sel && (
+      {col && sel ? (
         <div className="inspector" aria-live="polite">
+          {failBlock}
           <div className="ins-where">
             <span className="ins-col">{col.name}</span>
             <span className="ins-type">{col.type}</span>
@@ -917,6 +1108,8 @@ export function ResultGrid({ set, keys, label, exportName, lead, trail, foot, ed
             <Copy {...ico} />
           </button>
         </div>
+      ) : (
+        failBlock && <div className="inspector">{failBlock}</div>
       )}
       {ctx && (
         <CellMenu

@@ -703,14 +703,11 @@ kbd { font: var(--text-xs) var(--font-mono); padding: var(--space-3xs) var(--spa
 .grid thead th { position: sticky; top: 0; z-index: var(--z-sticky); height: auto; padding-block: var(--space-xs); background: var(--color-paper-3); vertical-align: bottom; font: 400 var(--text-sm)/1.2 var(--font-ui); color: var(--color-muted); }
 .grid .col-name { display: block; color: var(--color-ink); font-weight: 600; }
 .grid .col-type { display: block; margin-top: var(--space-3xs); font: var(--text-xs)/1.2 var(--font-table); color: var(--color-muted); }
-.grid .rownum { position: sticky; left: 0; z-index: var(--z-raised); width: 1%; background: var(--color-paper-3); border-right: 1px solid var(--color-rule); color: var(--color-gutter); text-align: right; }
-.grid thead .rownum { z-index: calc(var(--z-sticky) + 1); }
 .grid td { color: var(--color-ink); }
 .grid td.num, .grid th.num { text-align: right; }
 .grid td.null { color: var(--color-placeholder); font-style: italic; }
 .grid tbody tr:hover td { background: var(--color-paper-3); }
 .grid tbody tr[aria-selected="true"] td { background: var(--color-accent-soft); }
-.grid tbody tr[aria-selected="true"] .rownum { color: var(--color-link); }
 .grid .key { display: inline-flex; align-items: center; gap: var(--space-2xs); color: var(--color-link); font-family: var(--font-ui); }
 .grid .key .ico { width: 13px; height: 13px; }
 .grid-foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2xs); margin: calc(var(--space-sm) * -1) var(--space-md) var(--space-sm); color: var(--color-muted); font: var(--text-sm) var(--font-mono); }
@@ -871,11 +868,8 @@ th[aria-sort="ascending"] .sort-ico, th[aria-sort="descending"] .sort-ico { colo
 .th-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; border-radius: 4px; }
 .grid .col-type { margin-top: var(--space-3xs); padding-left: calc(var(--space-md) + var(--space-3xs)); }
 .grid th.num .col-type { padding-left: 0; }
-.grid .rownum { background: var(--color-paper); color: var(--color-placeholder); font-size: var(--text-xs); }
-.grid thead .rownum { box-shadow: inset -1px -1px 0 var(--color-rule); }
 .grid tbody tr:hover td { background: var(--color-paper-3); }
 .grid tbody tr[aria-selected="true"] td { background: color-mix(in srgb, var(--color-accent-soft) 55%, var(--color-paper)); }
-.grid tbody tr[aria-selected="true"] .rownum { color: var(--color-link); }
 .grid td.cell-sel { background: var(--color-accent-soft); box-shadow: inset 0 0 0 2px var(--color-focus); }
 .grid td.ts .d { color: var(--color-ink); }
 .grid td.ts .t { color: var(--color-ink-2); }
@@ -884,7 +878,8 @@ th[aria-sort="ascending"] .sort-ico, th[aria-sort="descending"] .sort-ico { colo
 .null-pill { display: inline-block; padding: 0 var(--space-2xs); border: 1px dashed var(--color-edge-aa); border-radius: 4px; color: var(--color-placeholder); font: italic var(--text-xs)/1.5 var(--font-ui); }
 .grid td.bool .ico { width: 15px; height: 15px; }
 .grid td.bool .yes { color: var(--color-ok); }
-.grid td.bool .no { color: var(--color-placeholder); }
+.grid td.bool .no { color: var(--tag-alizarin); }
+.grid td.bool :is(.yes, .no) { font-weight: 700; }
 .grid td.json { max-width: 44ch; color: var(--color-ink-2); }
 .jk { color: var(--j-key); } .js { color: var(--j-str); } .jn { color: var(--j-bool); }
 .inspector { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: var(--space-md); padding: var(--space-sm) var(--space-md); border-top: 1px solid var(--color-rule); background: var(--color-paper-3); }
@@ -899,11 +894,9 @@ th[aria-sort="ascending"] .sort-ico, th[aria-sort="descending"] .sort-ico { colo
 .ins-copy { flex-shrink: 0; }
 
 /* wide results: the row number and the first column stay on screen while the rest scrolls */
-:root { --rownum-w: 52px; }
-.grid .rownum { width: var(--rownum-w); min-width: var(--rownum-w); padding-inline: var(--space-sm); }
-.grid.pin tbody td:nth-child(2), .grid.pin thead th:nth-child(2) { position: sticky; left: var(--rownum-w); z-index: var(--z-raised); background: var(--color-paper); box-shadow: inset -1px 0 0 var(--color-rule); }
-.grid.pin thead th:nth-child(2) { z-index: calc(var(--z-sticky) + 1); }
-.grid.pin tbody tr:hover td:nth-child(2) { background: var(--color-paper-3); }
+.grid.pin tbody td:nth-child(1), .grid.pin thead th:nth-child(1) { position: sticky; left: 0; z-index: var(--z-raised); background: var(--color-paper); box-shadow: inset -1px 0 0 var(--color-rule); }
+.grid.pin thead th:nth-child(1) { z-index: calc(var(--z-sticky) + 1); }
+.grid.pin tbody tr:hover td:nth-child(1) { background: var(--color-paper-3); }
 .cols-menu { max-height: 360px; overflow-y: auto; }
 .cols-menu button { justify-content: space-between; gap: var(--space-md); }
 .cols-menu .col-t { color: var(--color-muted); font: var(--text-xs) var(--font-mono); }
@@ -1607,9 +1600,38 @@ body.cards-dragging .group-drop-new { display: flex; }
 .edit-n { margin-right: var(--space-2xs); color: var(--color-ok); font: 600 var(--text-sm) var(--font-ui); font-variant-numeric: tabular-nums; }
 .grid td.cell-edit, .grid tbody tr:hover td.cell-edit { background: color-mix(in srgb, var(--color-ok) 18%, var(--color-paper)); }
 .grid td.cell-edit.cell-sel { background: color-mix(in srgb, var(--color-ok) 26%, var(--color-paper)); }
-.grid tr.row-edit .rownum { color: var(--color-ok); font-weight: 600; }
+
+/* Save failed: on the row, not in a banner. The failed row is tinted red, its edited cells stronger (red, where
+   green means waiting to save). The edit bar's count becomes Save failed; the inspector says why on that row. */
+.grid tbody tr.row-fail td, .grid tbody tr.row-fail:hover td { background: color-mix(in srgb, var(--color-error) 7%, var(--color-paper)); }
+.grid tbody tr.row-fail td.cell-edit { background: color-mix(in srgb, var(--color-error) 18%, var(--color-paper)); color: var(--color-ink); }
+.grid tbody tr.row-fail td.cell-sel { box-shadow: inset 0 0 0 2px var(--color-error); }
+.edit-bar[hidden] { display: none; }
+.edit-fail { display: inline-flex; align-items: center; gap: var(--space-3xs); margin-right: var(--space-2xs); padding: 0 var(--space-2xs); min-height: 28px; border: 0; border-radius: var(--radius-control); background: none; color: var(--color-error); font: 600 var(--text-sm) var(--font-ui); cursor: pointer; }
+.edit-fail:hover { background: color-mix(in srgb, var(--color-error) 10%, transparent); }
+.edit-fail-ico { width: 15px; height: 15px; }
+.ins-fail { grid-column: 1 / -1; order: -1; display: grid; gap: var(--space-2xs); margin: calc(-1 * var(--space-sm)) calc(-1 * var(--space-md)) 0; padding: var(--space-xs) var(--space-md); border-bottom: 1px solid color-mix(in srgb, var(--color-error) 25%, var(--color-rule)); background: color-mix(in srgb, var(--color-error) 6%, var(--color-paper-3)); }
+.ins-fail[hidden] { display: none; }
+.ins-fail-head { margin: 0; color: var(--color-ink-2); font-size: var(--text-sm); line-height: 1.5; overflow-wrap: anywhere; }
+.ins-fail-head strong { color: var(--color-error); font-weight: 600; }
+.ins-fail-ico { display: inline-block; width: 15px; height: 15px; margin-right: var(--space-2xs); vertical-align: -3px; color: var(--color-error); }
+.ins-fail-more { margin-left: var(--space-3xs); padding: 0; border: 0; background: none; color: var(--color-link); font: inherit; cursor: pointer; }
+.ins-fail .db-says { margin: 0; padding: var(--space-xs) var(--space-sm); max-height: 8em; overflow: auto; font-size: var(--text-xs); }
+.ins-fail .db-says[hidden] { display: none; }
+
+/* Editing an enum cell: the box filters, the list under the cell picks. The current label has the check. */
+.grid th[data-enum] .t-ico { color: var(--color-link); }
+.grid td.cell-editing { position: relative; padding: 0; overflow: visible; box-shadow: inset 0 0 0 2px var(--color-focus); background: var(--color-paper); }
+.cell-input { display: block; box-sizing: border-box; width: 100%; min-width: 12ch; height: 34px; margin: 0; padding: 8px var(--space-md); border: 0; outline: 0; resize: none; overflow: hidden; background: transparent; color: var(--color-ink); font: inherit; line-height: 18px; white-space: pre; }
+.enum-input { padding-right: 28px; }
+.enum-chev { position: absolute; right: 8px; top: 50%; width: 14px; height: 14px; translate: 0 -50%; color: var(--color-muted); pointer-events: none; }
+.menu.enum-menu { min-width: 220px; }
+.enum-menu .ac-item { padding-left: var(--space-xs); }
+.enum-menu .enum-cur { width: 14px; height: 14px; visibility: hidden; color: var(--color-link); }
+.enum-menu .ac-item[aria-current="true"] .enum-cur { visibility: visible; }
+.enum-menu .ac-item[hidden] { display: none; }
+.enum-none { margin: 0; padding: var(--space-2xs) var(--space-sm) var(--space-xs); font-size: var(--text-sm); }
 .grid tr.row-del td, .grid tbody tr.row-del:hover td { background: color-mix(in srgb, var(--color-error) 14%, var(--color-paper)); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--color-error) 70%, transparent); }
-.grid tr.row-del .rownum { color: var(--color-error); text-decoration: none; }
 .grid-foot .grid-add { margin-right: auto; min-height: 28px; }
 .grid-foot .edit-what { margin-right: auto; color: var(--color-muted); font-size: var(--text-sm); }
 .res-tools .seg + .btn--quiet { margin-left: var(--space-xs); }
@@ -1921,8 +1943,10 @@ body.cards-dragging .group-drop-new { display: flex; }
 .mq-more.mq-ico-btn[aria-expanded="true"] { background: var(--color-paper-2); color: var(--color-ink); }
 
 /* Query tabs: paging a run ypacapy added the row limit to. Next re-runs with an offset; a full page ends in … */
-.response > .q-pager { margin: 0; padding: var(--space-2xs) var(--space-md); border-top: 1px solid var(--color-rule); }
-.q-pager .pager-hint { margin-right: auto; font: var(--text-sm) var(--font-ui); }
+/* a query's or table's pager rides on the toolbar's right, then a rule, then Copy and Export */
+.res-tools .q-pager { min-width: 0; }
+.res-tools .q-pager:not([hidden]) + .res-actions { margin-left: var(--space-sm); padding-left: var(--space-sm); border-left: 1px solid var(--color-rule); }
+.q-pager .pager-hint { min-width: 0; margin-right: var(--space-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-muted); font: var(--text-xs) var(--font-ui); }
 
 /* Rows per page on table and collection tabs: just the number; the select lies over it, unseen, so the box hugs it */
 .row-pick { position: relative; display: inline-flex; align-items: center; margin-right: var(--space-sm); }
@@ -2183,3 +2207,83 @@ body.cards-dragging .group-drop-new { display: flex; }
 .dialog.tm .tm-foot { display: flex; justify-content: flex-end; margin: 0; padding: var(--space-sm) var(--space-lg) var(--space-md); }
 .tm-foot .btn .ico { width: 14px; height: 14px; }
 .dialog.tm .tm-foot[hidden] { display: none; }
+
+/* ---------- console history: a bar at the foot of the work area, opens into a log (⌘J) ---------- */
+.ch { position: relative; flex-shrink: 0; display: flex; flex-direction: column; border-top: 1px solid var(--color-rule); background: var(--color-paper); }
+.ch[data-open="true"] { background: var(--color-paper-2); }
+.ch-grip { position: absolute; left: 0; right: 0; top: -3px; height: 6px; z-index: 2; }
+.ch[data-open="true"] .ch-grip { cursor: row-resize; }
+.ch[data-open="true"] .ch-grip:hover { background: linear-gradient(var(--color-accent), var(--color-accent)) center / 100% 2px no-repeat; }
+.ch-bar { display: flex; align-items: center; gap: var(--space-sm); height: 32px; padding: 0 var(--space-2xs) 0 var(--space-xs); min-width: 0; }
+.ch[data-open="true"] .ch-bar { height: 40px; border-bottom: 1px solid var(--color-rule); background: var(--color-paper); }
+.ch-toggle { display: inline-flex; align-items: center; gap: var(--space-2xs); flex-shrink: 0; height: 24px; padding: 0 var(--space-xs) 0 var(--space-2xs); border: none; border-radius: 6px; background: none; color: var(--color-ink-2); font: 600 var(--text-sm) var(--font-ui); }
+.ch-toggle:hover { background: var(--color-hit); color: var(--color-ink); }
+.ch-toggle:focus-visible, .ch-line:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+.ch-ico { color: var(--color-link); }
+.ch-n { min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--color-accent-soft); color: var(--color-link); font: 600 11px / 17px var(--font-mono); text-align: center; }
+/* closed: the last statement, one line, muted; the whole strip stays quiet */
+.ch-peek { display: flex; align-items: center; gap: var(--space-xs); flex: 1; min-width: 0; color: var(--color-muted); font-size: var(--text-xs); }
+.ch-peek .ch-sql { font-family: var(--font-mono); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.85; }
+.ch-tools { display: flex; align-items: center; gap: var(--space-xs); flex: 1; min-width: 0; }
+.ch-conn { color: var(--color-muted); font-size: var(--text-xs); white-space: nowrap; margin-right: var(--space-2xs); }
+.ch-conn strong { color: var(--color-ink-2); font-weight: 600; }
+.ch-chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 var(--space-xs); border: 1px solid var(--color-rule); border-radius: 999px; background: none; color: var(--color-muted); font-size: var(--text-xs); white-space: nowrap; }
+.ch-chip .ico { width: 13px; height: 13px; }
+.ch-chip:hover { color: var(--color-ink); border-color: var(--color-field-edge); }
+.ch-chip[aria-pressed="true"] { border-color: transparent; background: var(--color-accent-soft); color: var(--color-link); font-weight: 600; }
+#ch-errs[aria-pressed="true"] { background: color-mix(in srgb, var(--color-error) 14%, transparent); color: var(--color-error); }
+.ch-search { max-width: 220px; margin-left: auto; }
+.ch-search .field { min-height: 26px; height: 26px; font-size: var(--text-xs); }
+.ch-chev { flex-shrink: 0; margin-left: auto; }
+.ch-tools:not([hidden]) + .ch-chev { margin-left: 0; }
+.ch-chev .ico { transition: transform var(--dur-micro) var(--ease-out); }
+.ch[data-open="true"] .ch-chev .ico { transform: rotate(180deg); }
+
+.ch-body { position: relative; height: 240px; min-height: 120px; display: flex; flex-direction: column; }
+.ch-list { flex: 1; min-height: 0; margin: 0; padding: var(--space-2xs) 0; list-style: none; overflow: auto; font: var(--text-xs) / 1.5 var(--font-mono); }
+.ch-row { position: relative; }
+.ch-line { display: grid; grid-template-columns: 11ch 4ch minmax(96px, 168px) minmax(0, 1fr) auto auto 6ch; align-items: center; column-gap: var(--space-sm); width: 100%; min-height: 26px; padding: 0 var(--space-md) 0 var(--space-sm); border: none; background: none; color: var(--color-ink); font: inherit; text-align: left; cursor: default; }
+.ch-line:hover { background: var(--color-hit); }
+.ch-line[aria-expanded="true"] { background: var(--color-paper); }
+.ch-time { color: var(--color-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ch-who { justify-self: start; padding: 0 5px; border-radius: 4px; font: 600 10px / 16px var(--font-ui); letter-spacing: 0.04em; text-transform: uppercase; background: var(--color-paper-3); color: var(--color-muted); }
+.ch-row[data-who="you"] .ch-who, .ch-peek .ch-who { background: var(--color-accent-soft); color: var(--color-link); }
+.ch-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink-2); font-family: var(--font-ui); }
+.ch-sql { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: inherit; color: var(--color-ink); }
+.ch-row[data-who="app"] .ch-sql { color: var(--color-ink-2); }
+.ch-row[data-flag="ping"] .ch-line { opacity: 0.6; }
+.ch-tag { padding: 0 5px; border-radius: 4px; background: var(--proj-3-bg); color: var(--proj-3-fg); font: 600 10px / 16px var(--font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ch-line > .ch-res:nth-child(5) { grid-column: 6; }
+.ch-res { color: var(--color-ok); white-space: nowrap; text-align: right; }
+.ch-row[data-flag="err"] .ch-res { color: var(--color-error); font-weight: 600; }
+.ch-row[data-flag="cancel"] .ch-res, .ch-res[data-flag="cancel"] { color: var(--color-warn); }
+.ch-ms { color: var(--color-muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* an error carries a red edge, open or closed */
+.ch-row[data-flag="err"]::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 2px; border-radius: 2px; background: var(--color-error); }
+.ch-x { margin: 0 var(--space-md) var(--space-xs) calc(var(--space-sm) + 15ch + var(--space-sm) * 2); padding: var(--space-xs) var(--space-sm); border: 1px solid var(--color-rule); border-radius: 8px; background: var(--color-paper); }
+.ch-full { margin: 0; white-space: pre-wrap; word-break: break-word; font: var(--font-size-code) / 1.55 var(--font-mono); color: var(--color-ink); }
+.ch-err { display: flex; align-items: center; gap: var(--space-2xs); margin: var(--space-xs) 0 0; color: var(--color-error); font: var(--text-xs) var(--font-ui); }
+.ch-x-acts { display: flex; gap: var(--space-2xs); margin: var(--space-xs) 0 0 calc(var(--space-xs) * -1); }
+.ch-x-acts .btn { min-height: 26px; font: var(--text-xs) var(--font-ui); }
+.ch-none { flex: 1; display: grid; place-items: center; padding: var(--space-md); }
+
+/* a table's pager and row actions ride on the Rows / Columns / Indexes line, after the time: one line, not two */
+.subtabs .sub-tools { padding: 0; margin-left: calc(var(--space-md) - var(--space-lg)); }
+.subtabs .sub-tools[hidden] { display: none; }
+.subtabs .sub-tools .q-pager { padding-left: var(--space-sm); border-left: 1px solid var(--color-rule); }
+/* one line at any width: the pager's hint gives way first (ellipsis), then nothing else wraps */
+.subtabs .subtab, .subtabs .meta { flex-shrink: 0; white-space: nowrap; }
+.subtabs .sub-tools { flex: 0 1 auto; min-width: 0; }
+.subtabs .sub-tools > *:not(.q-pager), .q-pager > *:not(.pager-hint) { flex-shrink: 0; }
+.q-pager .pager-hint { flex: 0 1 auto; }
+
+/* vertical lines between columns, the same rule as the row lines; the last column has none (the grid's edge) */
+.grid th:not(:last-child), .grid td:not(:last-child) { border-right: 1px solid var(--color-rule); }
+/* a pinned column's own right shadow would double the line */
+.grid.pin tbody td:nth-child(1) { box-shadow: none; }
+.grid.pin thead th:nth-child(1) { box-shadow: inset 0 -1px 0 var(--color-rule); }
+
+/* Refresh beside Run: a square, the height of Run */
+.request-line .btn-refresh, .mq-actions .btn-refresh { width: 32px; min-width: 32px; height: 32px; min-height: 32px; padding: 0; align-self: center; flex-shrink: 0; }
+.btn-refresh .ico { width: 15px; height: 15px; }
+.btn-refresh[hidden] { display: none; }

@@ -129,7 +129,7 @@ After that, the app updates itself. A little chip shows up in the title strip wh
 - **Light or dark**, each with its own colour scheme: ypacapy Light / Dark, plus the Ayu, Atom One and Xcode families.
 - **Fonts:** pick the UI, table and code fonts from what's installed on your Mac, each with its own size.
 - **Compact mode** for small screens and big result sets.
-- **Connection heartbeat** (off by default): every 30 s, a `select 1` on idle PostgreSQL and MySQL connections, a `ping` on MongoDB and a `PING` on Redis, for servers or VPNs that drop idle sessions. Each connection can override it. With it on, the connection's tab and the sidebar show whether the server answers, and a connection that dropped is opened again on its own once it does.
+- **Connection heartbeat** (on by default): every 30 s, a `select 1` on idle PostgreSQL and MySQL connections, a `ping` on MongoDB and a `PING` on Redis, for servers or VPNs that drop idle sessions. Each connection can override it. With it on, the connection's tab and the sidebar show whether the server answers, and a connection that dropped is opened again on its own once it does.
 
 ## <img src="docs/assets/icons/shield-check.svg" width="24" height="24" align="top" alt="" /> The write guard
 

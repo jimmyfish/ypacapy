@@ -19,7 +19,7 @@ const ICONS = ["plug-zap", "database", "list-tree", "history", "bookmark", "hous
   "lock", "lock-open", "type", "hash", "calendar-clock", "toggle-left", "braces", "arrow-up-down", "arrow-up", "arrow-down", "minus", "columns-3", "shield-check", "shield", "shield-off", "fingerprint", "check", "wand-sparkles", "file-plus", "pencil", "folder-input", "folder-minus", "folder-plus", "pin", "pin-off",
   "circle-arrow-down", "loader-circle", "triangle-alert", "external-link", "github", "circle-dot", "copy", "leaf", "brackets", "id-card", "info", "table-properties", "file-check", "timer",
   "network", "zoom-in", "zoom-out", "maximize", "undo-2", "locate", "list-checks", "eye-off", "save", "image", "file-code", "file-down", "arrow-right", "chevrons-up-down", "chevrons-down-up", "circle-plus", "copy-plus", "sliders-horizontal", "rotate-ccw", "funnel", "unplug",
-  "search-x", "timer-off", "inbox", "circle-slash", "message-square-text", "chevrons-left", "rows-3", "unlink", "circle-stop", "activity", "copy-x", "arrow-right-to-line", "arrow-left-to-line"];
+  "search-x", "timer-off", "inbox", "circle-slash", "message-square-text", "chevrons-left", "rows-3", "unlink", "circle-stop", "activity", "copy-x", "arrow-right-to-line", "arrow-left-to-line", "chevron-up", "square-terminal", "radio"];
 // Lucide 1.x renamed fingerprint; the old name is what the pages use
 const RENAMED = { fingerprint: "fingerprint-pattern" };
 // Lucide 1.x has no brand icons: GitHub's mark as lucide-react 0.460.0 drew it (ISC), the same as src/components/Icon.tsx
@@ -47,7 +47,7 @@ const ic = (n, cls = "") => `<svg aria-hidden="true" class="ico${cls ? " " + cls
 
 // ---------- sample data ----------
 const money = (n) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const tr = (i, cells, sel) => `<tr${sel ? ' aria-selected="true"' : ""}><td class="rownum">${i}</td>${cells.join("")}</tr>`;
+const tr = (i, cells, sel) => `<tr${sel ? ' aria-selected="true"' : ""}>${cells.join("")}</tr>`;
 const esc = (v) => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 // cells read by their type: the value is what the result set carries; nothing else is fetched
 const NULLC = (cls = "") => `<td class="null${cls}"><span class="null-pill">null</span></td>`;
@@ -61,14 +61,17 @@ const c = {
     const [d, t] = v.split(" ");
     return `<td class="ts" data-full="${v}"><span class="d">${d}</span> <span class="t">${t.slice(0, 8)}</span><span class="tz">${t.slice(8)}</span></td>`;
   },
-  bool: (v) => (v === null ? NULLC() : `<td class="bool" data-full="${v}">${ic(v ? "check" : "minus", v ? "yes" : "no")}<span class="visually-hidden">${v}</span></td>`),
+  // booleans as words: true green, false Alizarin (an icon for one and a word for the other read as two kinds of value)
+  bool: (v) => (v === null ? NULLC() : `<td class="bool" data-full="${v}"><span class="${v ? "yes" : "no"}">${v ? "True" : "False"}</span></td>`),
   json: (o) => (o === null ? NULLC() : `<td class="json" data-full="${esc(JSON.stringify(o))}">${jsonHtml(o)}</td>`),
 };
 // BSON types (MongoDB) read the same way: numbers, dates, booleans; objectId gets an id card (the key glyph is the primary-key mark), object braces, array brackets
 const TYPE_ICON = (t) => (/^objectId/.test(t) ? "id-card" : /^object/.test(t) ? "braces" : /^array/.test(t) ? "brackets" : /^(int|numeric|float|real|double|decimal|serial|bigint|smallint)/.test(t) ? "hash" : /timestamp|^date|^time/.test(t) ? "calendar-clock" : /^bool/.test(t) ? "toggle-left" : /^json/.test(t) ? "braces" : "type");
 // a column head: type glyph, name, a key mark when the catalog says so (table views only), the sort control; the type under it
-const th = (name, type, o = {}) => `<th scope="col"${o.num ? ' class="num"' : ""} aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen">${ic(TYPE_ICON(type), "t-ico")}<span class="col-name">${name}</span>${o.key ? `<span class="col-key" title="${o.key}">${ic(o.key === "Primary key" ? "key-round" : "link", "k-ico")}</span>` : ""}${ic("arrow-up-down", "sort-ico")}</button><span class="col-type">${type}</span></th>`;
-const ROWHEAD = `<th class="rownum" scope="col"><span class="visually-hidden">Row</span></th>`;
+// an enum (o.enum) gets the one-of glyph: its type is the enum's own name, so the name alone can't tell
+const th = (name, type, o = {}) => `<th scope="col"${o.num ? ' class="num"' : ""}${o.enum ? " data-enum" : ""} aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen">${ic(o.enum ? "circle-dot" : TYPE_ICON(type), "t-ico")}<span class="col-name">${name}</span>${o.key ? `<span class="col-key" title="${o.key}">${ic(o.key === "Primary key" ? "key-round" : "link", "k-ico")}</span>` : ""}${ic("arrow-up-down", "sort-ico")}</button><span class="col-type">${type}</span></th>`;
+// no row-number column: a number beside the rows read as a value (next to id, it read as the id). The inspector says which row.
+const ROWHEAD = "";
 const Q1_DATA = [["a.lindqvist@example.net", true, 4, 1284.5, "2026-11-14 18:02:11+07"], ["r.okonkwo@example.com", false, 3, 979.0, "2026-11-12 09:15:40+07"], ["mei.tanaka@example.org", true, 3, 642.75, "2026-11-16 08:41:07+07"], ["p.haddad@example.net", false, 2, 588.4, "2026-11-03 21:30:52+07"],
   ["s.ferreira@example.com", null, 2, 431.0, "2026-11-09 13:04:18+07"], ["k.nowak@example.org", false, 2, 219.99, "2026-10-29 10:12:00+07"], ["d.mensah@example.net", true, 1, 189.0, "2026-11-15 16:47:33+07"], ["l.bianchi@example.com", false, 1, 154.2, "2026-10-21 07:58:09+07"],
   ["t.nguyen@example.org", false, 1, 120.0, "2026-11-01 19:22:45+07"], ["h.adeyemi@example.net", false, 1, 96.5, "2026-11-10 11:36:27+07"], ["j.moreau@example.com", null, 1, 74.0, "2026-10-25 14:09:51+07"], ["n.kapoor@example.org", false, 1, 59.9, "2026-11-07 08:03:14+07"],
@@ -265,6 +268,14 @@ ${tabs.map(([id, icon, label, href]) => `          <div class="tab" data-tab="${
       </div>`;
 const FORMATS = ["Plain text", "JSON", "Markdown table", "CSV"];
 const resActions = (id) => `<div class="res-actions"><div class="menu-anchor"><button type="button" class="icon-btn" title="Columns" aria-label="Go to a column" aria-haspopup="menu" aria-expanded="false" data-menu="${id}-cols">${ic("columns-3")}</button><div class="menu cols-menu" id="${id}-cols" role="menu" aria-label="Go to a column" data-cols hidden></div></div>${[["copy", "Copy", "copy"], ["export", "Export", "download"]].map(([k, label, icon]) => `<div class="menu-anchor"><button type="button" class="icon-btn" title="${label}" aria-label="${label} rows" aria-haspopup="menu" aria-expanded="false" data-menu="${id}-${k}">${ic(icon)}</button><div class="menu" id="${id}-${k}" role="menu" aria-label="${label} as" hidden><p class="menu-note">${label} as</p>${FORMATS.map((x) => `<button type="button" role="menuitem">${x}</button>`).join("")}</div></div>`).join("")}</div>`;
+// Paging sits in the results toolbar, on the right before Copy and Export: the rows on screen as a range, as a
+// collection's "1 – 20" but with no "of N" (nothing is counted), then Previous and Next: out of the grid's height and clear of the
+// console history bar under the work area. A query's run: the page number and the hint; a table: rows per page too.
+const qPager = `<div class="pager q-pager" id="q-pager" role="group" aria-label="Pages" hidden><span class="pager-hint" id="q-hint" hidden></span><span class="pager-n" id="q-range"></span><button type="button" class="icon-btn" id="q-prev" aria-label="Previous page" title="Previous page">${ic("chevron-left")}</button><button type="button" class="icon-btn" id="q-next" aria-label="Next page" title="Next page">${ic("chevron-right")}</button></div>`;
+const tPager = (dflt) => `<div class="pager q-pager" role="group" aria-label="Pages">${rowPick(dflt)}<span class="pager-n">1 – ${dflt}</span><button type="button" class="icon-btn" aria-label="Previous page" title="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page" title="Next page">${ic("chevron-right")}</button></div>`;
+// Refresh sits just left of Run: it reads the page on screen again (Run starts over from the first page).
+// A query tab shows it only while a paged run is on screen.
+const refreshBtn = (id, title, hidden = false) => `<button type="button" class="btn btn-refresh" id="${id}" aria-label="Refresh" title="${title}"${hidden ? " hidden" : ""}>${ic("refresh-cw")}</button>`;
 // Run: one button, play icon, its shortcut inside (⌘↵ runs the selection or the statement at the cursor); Run all is ⇧⌘↵
 const runGroup = `
           <button type="button" class="btn btn--primary btn--run" id="run" title="Run  ⌘↵">${ic("play", "run-ico")}${ic("loader-circle", "run-spin")}<span class="btn-label">Run</span><span class="run-kbd" aria-hidden="true">⌘↵</span></button>`;
@@ -318,7 +329,7 @@ const queryWork = `${tabsbar("q1", ["q1", "q2", "q3", "q4", "q5"])}${hbBanner("s
         <div class="req-pane" id="req-pane">
           <div class="request-line">
             <div class="url-field"><div class="ctx"><span class="e e-postgres">PG</span><strong>shop_prod</strong><span class="sep">/</span>${sel("Database", ["shop", "shop_staging"])}<span class="sep">/</span>${sel("Schema", ["public", "audit"])}</div></div>
-            <button type="button" class="btn btn--save" id="save" title="Save  ⌘S">${ic("circle-check", "save-ico")}<span class="save-label">Save</span></button>${runGroup}
+            <button type="button" class="btn btn--save" id="save" title="Save  ⌘S">${ic("circle-check", "save-ico")}<span class="save-label">Save</span></button>${refreshBtn("q-refresh", "Run this page again", true)}${runGroup}
           </div>
           <div class="req-title"><button type="button" class="name" id="q-name">Refunds by customer</button><span class="path" id="q-path">Saved queries / Reports</span></div>
           <div class="section">
@@ -338,8 +349,8 @@ const queryWork = `${tabsbar("q1", ["q1", "q2", "q3", "q4", "q5"])}${hbBanner("s
             <button type="button" class="subtab" data-sub="results" aria-pressed="true">Results<span class="n" id="r-n">14</span></button>
             <button type="button" class="subtab" data-sub="messages" aria-pressed="false">Messages</button>
             <span class="push meta" id="r-meta"><span class="ok">OK</span><span class="dim">38&nbsp;ms</span></span>
+            <div class="res-tools sub-tools">${qPager}${resActions("q")}</div>
           </nav>
-          <div class="res-tools">${resActions("q")}</div>
           <div class="state" data-when="full" data-for="q1">
             <div class="grid-wrap" tabindex="0" aria-label="Results of Query 1">
               <table class="grid"><thead><tr>${ROWHEAD}${th("email", "text")}${th("is_vip", "bool")}${th("refunds", "int8", { num: 1 })}${th("refunded", "numeric", { num: 1 })}${th("last_refund", "timestamptz")}</tr></thead><tbody>
@@ -383,7 +394,6 @@ ${TICKET_ROWS}
               <table class="grid pin"><thead><tr>${ROWHEAD}${CUST_COLS.map(([n, t]) => th(n, t, { num: /^(int|numeric)/.test(t) })).join("")}</tr></thead><tbody></tbody></table>
             </div>
           </div>
-          <div class="grid-foot q-pager" id="q-pager" role="group" aria-label="Pages" hidden><span class="pager-hint" id="q-hint" hidden></span><span id="q-range"></span><button type="button" class="icon-btn" id="q-prev" aria-label="Previous page" title="Previous page">${ic("chevron-left")}</button><button type="button" class="icon-btn" id="q-next" aria-label="Next page" title="Next page">${ic("chevron-right")}</button></div>
           <div class="state" data-when="error" hidden><div class="error-box">
             <strong>Column totl does not exist</strong>
             <span class="hint-line">PostgreSQL stopped at line 1 and suggests the column you may have meant.</span>
@@ -405,7 +415,7 @@ HINT:  Perhaps you meant to reference the column "orders.total".</pre>
       </div>`;
 
 // ---------- preview bar ----------
-const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["diagram", "Diagram"], ["mongo", "MongoDB"], ["collection", "Collection"], ["redis", "Redis"], ["key", "Key"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["tasks", "Task manager"], ["about", "About"], ["modals", "Modals"], ["empty", "Empty states"]];
+const SCREENS = [["home", "Home"], ["index", "Query"], ["table", "Table"], ["diagram", "Diagram"], ["mongo", "MongoDB"], ["collection", "Collection"], ["redis", "Redis"], ["key", "Key"], ["settings", "Settings"], ["connect", "New connection"], ["updates", "Updates"], ["tasks", "Task manager"], ["console", "Console history"], ["about", "About"], ["modals", "Modals"], ["empty", "Empty states"]];
 const UI_FONTS = `<option value="">System</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option><option value="Avenir Next, Avenir, sans-serif">Avenir</option><option value="Georgia, serif">Georgia</option>`;
 const MONO_FONTS = `<option value="">System mono</option><option value="Menlo, monospace">Menlo</option><option value="'Courier New', monospace">Courier</option><option value="Monaco, monospace">Monaco</option>`;
 // preview-only: recolour the first connection tab (shop_prod) to try each connection colour on the title strip
@@ -804,14 +814,37 @@ const colReview = `
 <div class="toast" role="status" id="col-toast" hidden></div>
 <!-- icons the columns script clones into rows -->
 <template id="col-ico">${ic("shredder")}${ic("undo-2")}${ic("x")}${ic("key")}${ic("link")}${ic("lock")}${ic("lock-open")}${ic("play")}${ic("loader-circle")}</template>`;
+// Save failed: no banner. The row whose statement failed turns red (its edited cells stronger) and keeps its
+// edits; the edit bar says Save failed (a click goes to that row); the inspector, on that row, says why in the
+// database's words, with the server's text and the statement behind Details.
+const insFail = `
+              <div class="ins-fail" id="t-ins-fail" hidden>
+                <p class="ins-fail-head">${ic("circle-alert", "ins-fail-ico")}<strong>Row 10463 wasn't saved.</strong> <span>New row for relation "orders" violates check constraint "orders_total_check".</span> <button type="button" class="link ins-fail-more" id="t-save-more" aria-expanded="false" aria-controls="t-save-says">Details</button></p>
+                <pre class="db-says" id="t-save-says" hidden>ERROR:  new row for relation "orders" violates check constraint "orders_total_check"
+DETAIL:  Failing row contains (10463, 4143, shipped, -12.00, SGD, 2026-11-08 22:48:18+07, null, null).
+<span class="bad">update "public"."orders" set "status" = 'shipped', "total" = '-12.00' where "id" = '10463'</span></pre>
+              </div>`;
+const failBar = `<div class="edit-bar edit-bar--fail" role="group" aria-label="Unsaved changes" id="t-fail-bar" hidden><button type="button" class="edit-fail" id="t-fail-go" title="Go to the row that wasn't saved">${ic("circle-alert", "edit-fail-ico")}Save failed</button><button type="button" class="btn btn--primary" title="Write the changes in one transaction  ⌘S">Save</button><button type="button" class="btn" title="Discard the changes">Revert</button></div>`;
+// Editing an enum cell: the text box filters the type's labels (in declared order) and the list picks one, so a
+// typo like "sleepys" can't reach the server. The labels come with the result set (one pg_type lookup by OID).
+const ENUM_VALUES = ["pending", "paid", "shipped", "refunded", "cancelled"];
+const enumMenu = `
+<div class="menu ac-menu enum-menu" id="enum-menu" hidden>
+  <div class="ac-head"><b>order_status</b><span class="muted ac-count" id="enum-count">${ENUM_VALUES.length} values</span></div>
+  <div class="ac-list" role="listbox" aria-label="Values of order_status" id="enum-list">
+${ENUM_VALUES.map((v) => `    <button type="button" class="ac-item enum-item" role="option" data-v="${v}" tabindex="-1">${ic("check", "enum-cur")}<span class="ac-name">${v}</span></button>`).join("\n")}
+  </div>
+  <p class="enum-none muted" id="enum-none" hidden>No value of order_status starts with that</p>
+</div>`;
+
 pages["table.html"] = page({
   title: "ypacapy preview, table",
   desc: "Design preview of a table in ypacapy: its rows under a where filter, its columns (edited in place, applied after a SQL review), and its indexes and keys.",
-  barHtml: bar("table", [["rows", "Rows"], ["columns", "Columns"], ["col-edit", "Columns: editing"], ["col-review", "Review SQL"], ["col-strict", "Review: Strict"], ["col-fail", "Apply failed"], ["col-mysql", "MySQL: review"], ["col-sqlite", "SQLite"], ["col-sqlite-bad", "SQLite: NOT NULL, no default"], ["indexes", "Indexes"], ["no-match", "Filter matches nothing"], ["loading", "Loading"]]),
+  barHtml: bar("table", [["rows", "Rows"], ["columns", "Columns"], ["col-edit", "Columns: editing"], ["col-review", "Review SQL"], ["col-strict", "Review: Strict"], ["col-fail", "Apply failed"], ["col-mysql", "MySQL: review"], ["col-sqlite", "SQLite"], ["col-sqlite-bad", "SQLite: NOT NULL, no default"], ["indexes", "Indexes"], ["no-match", "Filter matches nothing"], ["loading", "Loading"], ["enum-pick", "Editing an enum"], ["save-error", "Save failed"], ["save-error-open", "Save failed, details"], ["save-error-away", "Save failed, other row"]]),
   body: app({ current: "shop_prod", side: schemaSide("orders") + historySide + savedSide, work: `${tabsbar("orders", ["orders"])}
       <div class="work-body">
         <div class="request-line">
-          <div class="url-field"><span class="where-k">where</span><input class="where-in" id="where" aria-label="Where clause for orders" value="status in ('paid', 'shipped', 'refunded')" spellcheck="false" autocomplete="off"></div>${runGroup}
+          <div class="url-field"><span class="where-k">where</span><input class="where-in" id="where" aria-label="Where clause for orders" value="status in ('paid', 'shipped', 'refunded')" spellcheck="false" autocomplete="off"></div>${refreshBtn("t-refresh", "Read this page again")}${runGroup}
         </div>
         <div class="req-title"><span class="name name--static">orders</span><span class="path" id="t-path">shop_prod / shop / public</span></div>
         <section class="response" aria-label="orders">
@@ -820,20 +853,19 @@ pages["table.html"] = page({
             <button type="button" class="subtab" data-view="columns" aria-pressed="false">Columns<span class="n" id="col-count">8</span></button>
             <button type="button" class="subtab" data-view="indexes" aria-pressed="false">Indexes<span class="n">3</span></button>
             <span class="push meta"><span class="dim" id="t-ms">6&nbsp;ms</span></span>
+            <div class="res-tools sub-tools" id="t-tools">${failBar}${tPager(20)}${resActions("t")}</div>
           </nav>
           <div class="state" data-when="full" data-view-of="rows">
-            <div class="res-tools"><span class="muted">Rows 1 to 20</span>${resActions("t")}</div>
             <div class="grid-wrap" tabindex="0" aria-label="Rows of orders">
-              <table class="grid"><thead><tr>${ROWHEAD}${th("id", "int8", { num: 1, key: "Primary key" })}${th("customer_id", "int8", { num: 1, key: "References customers.id" })}${th("status", "text")}${th("total", "numeric(12,2)", { num: 1 })}${th("currency", "char(3)")}${th("created_at", "timestamptz")}${th("shipped_at", "timestamptz")}${th("meta", "jsonb")}</tr></thead><tbody>
+              <table class="grid"><thead><tr>${ROWHEAD}${th("id", "int8", { num: 1, key: "Primary key" })}${th("customer_id", "int8", { num: 1, key: "References customers.id" })}${th("status", "order_status", { enum: 1 })}${th("total", "numeric(12,2)", { num: 1 })}${th("currency", "char(3)")}${th("created_at", "timestamptz")}${th("shipped_at", "timestamptz")}${th("meta", "jsonb")}</tr></thead><tbody>
 ${ORDERS}
               </tbody></table>
-            </div>${inspector("id", "int8", 1, "10463")}
-            <div class="grid-foot">${rowPick(20)}<span>Page 1</span><button type="button" class="icon-btn" aria-label="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page">${ic("chevron-right")}</button></div>
+            </div>${inspector("id", "int8", 1, "10463").replace(/<\/div>\s*$/, `${insFail}\n            </div>`)}
           </div>
           <div class="state" data-when="loading" hidden><div class="empty"><span class="spinner"></span><strong>Reading orders</strong><span>shop_prod, public.orders</span></div></div>
           <div class="state" data-when="empty" hidden><div class="empty"><strong>No row of orders matches this filter</strong><span>No order has the status lost. Status holds paid, shipped, refunded or pending.</span><button type="button" class="link" id="t-clear">Clear the filter</button></div></div>${structure}
         </section>
-      </div>`, overlay: colReview }),
+      </div>`, overlay: colReview + enumMenu }),
   script: js("page-table.js"),
 });
 
@@ -1244,7 +1276,7 @@ const connSecurityPane = () => `
 const connQueriesPane = () => `
       <div class="set-pane" data-pane="conn-queries" hidden>
         <h3>Queries <span class="cx-h-note">shop_prod only · empty uses Global</span></h3>
-        <div class="set-list">${setItem("Row limit", "Added to a select that has no limit of its own", '<span class="unit-field"><input id="cn-limit" class="field" inputmode="numeric" placeholder="100"><span class="unit">rows</span></span>', "cn-limit")}${setItem("Statement timeout", "0 lets a statement run as long as it takes", '<span class="unit-field"><input id="cn-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "cn-timeout")}${setItem("Keep query history", "", choice("cn-hist", [["app", "Use Global (on)"], ["on", "On"], ["off", "Off"]], "app"), "cn-hist")}${setItem("Connection heartbeat", "Keeps idle connections open with select 1", choice("cn-beat", [["app", "Use Global (off)"], ["on", "On"], ["off", "Off"]], "app"), "cn-beat")}
+        <div class="set-list">${setItem("Row limit", "Added to a select that has no limit of its own", '<span class="unit-field"><input id="cn-limit" class="field" inputmode="numeric" placeholder="100"><span class="unit">rows</span></span>', "cn-limit")}${setItem("Statement timeout", "0 lets a statement run as long as it takes", '<span class="unit-field"><input id="cn-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "cn-timeout")}${setItem("Keep query history", "", choice("cn-hist", [["app", "Use Global (on)"], ["on", "On"], ["off", "Off"]], "app"), "cn-hist")}${setItem("Connection heartbeat", "Keeps idle connections open with select 1", choice("cn-beat", [["app", "Use Global (on)"], ["on", "On"], ["off", "Off"]], "app"), "cn-beat")}
         </div>
       </div>`;
 pages["settings.html"] = page({
@@ -1282,7 +1314,7 @@ ${connQueriesPane()}
       </div>
       <div class="set-pane" data-pane="queries" hidden>
         <h3>Queries</h3>
-        <div class="set-list">${setItem("Row limit", "Added to a select that has no limit of its own", unit("set-limit", "100", "rows"), "set-limit")}${setItem("Statement timeout", "", unit("set-timeout", "30", "s"), "set-timeout")}${setItem("Keep query history", "", sw("set-hist", true), "set-hist")}${setItem("Connection heartbeat", "Sends select 1 on every open connection, for servers that drop idle ones", sw("set-beat", false), "set-beat")}${setItem("Every", "Below the server idle timeout", unit("set-beat-every", "30", "s"), "set-beat-every").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-beat hidden")}
+        <div class="set-list">${setItem("Row limit", "Added to a select that has no limit of its own", unit("set-limit", "100", "rows"), "set-limit")}${setItem("Statement timeout", "", unit("set-timeout", "30", "s"), "set-timeout")}${setItem("Keep query history", "", sw("set-hist", true), "set-hist")}${setItem("Connection heartbeat", "Sends select 1 on every open connection, for servers that drop idle ones", sw("set-beat", true), "set-beat")}${setItem("Every", "Below the server idle timeout", unit("set-beat-every", "30", "s"), "set-beat-every").replace("class=\"set-item\"", "class=\"set-item set-item--sub\" data-when-beat")}
         </div>
       </div>
 ${securityPane()}
@@ -1364,7 +1396,7 @@ pages["connect.html"] = page({
         </div>
         ${warnRows("c", "Settings", "h3", ' data-for="sql"')}
         <h3 class="cx-h">Queries <span class="cx-h-note">Empty uses Global</span></h3>
-        <div class="set-list">${setItem('<span data-for="no-redis">Row limit</span><span data-for="redis" hidden>Page size</span>', '<span data-for="sql">Added to a select that has no limit of its own</span><span data-for="mongo" hidden>Added to a find or aggregate that has no limit of its own</span><span data-for="redis" hidden>How many fields, items or members a key tab reads at a time</span>', '<span class="unit-field"><input id="c-limit" class="field" inputmode="numeric" placeholder="100"><span class="unit">rows</span></span>', "c-limit")}${setItem('<span data-for="no-redis">Statement timeout</span><span data-for="redis" hidden>Command timeout</span>', '<span data-for="no-redis">0 lets a statement run as long as it takes</span><span data-for="redis" hidden>ypacapy stops waiting; Redis has no way to stop a command it started</span>', '<span class="unit-field"><input id="c-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "c-timeout")}${setItem("Connection heartbeat", '<span data-for="sql">Keeps idle connections open with select 1</span><span data-for="mongo" hidden>Keeps idle connections open with a ping command</span><span data-for="redis" hidden>Keeps idle connections open with PING</span>', choice("c-beat", [["app", "Use Global (off)"], ["on", "On"], ["off", "Off"]], "app"), "c-beat")}${setItem("Keep query history", "Off keeps this connection's runs out of History, e.g. for production", choice("c-hist", [["app", "Use Global (on)"], ["on", "On"], ["off", "Off"]], "app"), "c-hist")}
+        <div class="set-list">${setItem('<span data-for="no-redis">Row limit</span><span data-for="redis" hidden>Page size</span>', '<span data-for="sql">Added to a select that has no limit of its own</span><span data-for="mongo" hidden>Added to a find or aggregate that has no limit of its own</span><span data-for="redis" hidden>How many fields, items or members a key tab reads at a time</span>', '<span class="unit-field"><input id="c-limit" class="field" inputmode="numeric" placeholder="100"><span class="unit">rows</span></span>', "c-limit")}${setItem('<span data-for="no-redis">Statement timeout</span><span data-for="redis" hidden>Command timeout</span>', '<span data-for="no-redis">0 lets a statement run as long as it takes</span><span data-for="redis" hidden>ypacapy stops waiting; Redis has no way to stop a command it started</span>', '<span class="unit-field"><input id="c-timeout" class="field" inputmode="numeric" placeholder="30"><span class="unit">s</span></span>', "c-timeout")}${setItem("Connection heartbeat", '<span data-for="sql">Keeps idle connections open with select 1</span><span data-for="mongo" hidden>Keeps idle connections open with a ping command</span><span data-for="redis" hidden>Keeps idle connections open with PING</span>', choice("c-beat", [["app", "Use Global (on)"], ["on", "On"], ["off", "Off"]], "app"), "c-beat")}${setItem("Keep query history", "Off keeps this connection's runs out of History, e.g. for production", choice("c-hist", [["app", "Use Global (on)"], ["on", "On"], ["off", "Off"]], "app"), "c-hist")}
         </div>
       </div>
 
@@ -1810,7 +1842,7 @@ const mongoWork = `${mtabs("q1", ["q1", "q2", "q3", "q4", "q5"])}
         <div class="req-pane" id="req-pane">
           <div class="request-line">
             <div class="url-field"><div class="ctx"><span class="e e-mongo">MDB</span><strong>${MCONN}</strong><span class="sep">/</span>${sel("Database", ["events", "analytics"])}</div></div>
-            <button type="button" class="btn btn--save" id="save" title="Save  ⌘S">${ic("circle-check", "save-ico")}<span class="save-label">Save</span></button>${runGroup}
+            <button type="button" class="btn btn--save" id="save" title="Save  ⌘S">${ic("circle-check", "save-ico")}<span class="save-label">Save</span></button>${refreshBtn("q-refresh", "Run this page again", true)}${runGroup}
           </div>
           <div class="req-title"><button type="button" class="name" id="q-name">Refunds by customer</button><span class="path" id="q-path">Saved queries / Reports</span></div>
           <div class="section">
@@ -1830,8 +1862,8 @@ ${mq("q5", 5, MQ5)}
             <button type="button" class="subtab" data-sub="results" aria-pressed="true">Results<span class="n" id="r-n">9</span></button>
             <button type="button" class="subtab" data-sub="messages" aria-pressed="false">Messages</button>
             <span class="push meta" id="r-meta"></span>
+            <div class="res-tools sub-tools">${asSeg}${qPager}${mresActions("q")}</div>
           </nav>
-          <div class="res-tools">${asSeg}${mresActions("q")}</div>
           <div class="state" data-when="full" data-for="q1" data-as="table" hidden>${mgrid("q1", "Results of Query 1", QADOCS, 2)}
           </div>
           <div class="state" data-when="full" data-for="q1" data-as="json">${jdocs("Documents of Query 1", QADOCS)}
@@ -1860,7 +1892,6 @@ ${mq("q5", 5, MQ5)}
           </div>
           <div class="state" data-when="nomore" data-as="json" hidden>${jdocs("Documents, page 3: none", [])}
           </div>
-          <div class="grid-foot q-pager" id="q-pager" role="group" aria-label="Pages" hidden><span class="pager-hint" id="q-hint" hidden></span><span id="q-range"></span><button type="button" class="icon-btn" id="q-prev" aria-label="Previous page" title="Previous page">${ic("chevron-left")}</button><button type="button" class="icon-btn" id="q-next" aria-label="Next page" title="Next page">${ic("chevron-right")}</button></div>
           <div class="state" data-when="error" hidden><div class="error-box">
             <strong>MongoDB does not know the operator $inn</strong>
             <span class="hint-line">The server rejected the filter before reading anything. $in matches any value in a list.</span>
@@ -1933,7 +1964,7 @@ pages["collection.html"] = page({
           <div class="mq-row">
             ${mqField("where", "filter", "{ field: value }", DEFAULT_FILTER, "mq-filter", ' aria-describedby="where-err"').replace('<span class="mq-k">filter</span>', `<span class="mq-k" title="Filter">${ic("funnel", "mq-k-ico")}<span class="mq-k-t">filter</span></span>`)}
           </div>
-          <div class="mq-actions"><button type="button" class="btn btn--quiet mq-more mq-ico-btn" id="mq-more" aria-expanded="false" aria-controls="mq-opts mq-paging" title="Project, sort, skip and limit" aria-label="Options">${ic("chevron-right", "mq-more-ico")}${ic("sliders-horizontal", "mq-narrow-ico")}<span class="btn-label">Options</span><span class="mq-set" id="mq-set" title="Options set" hidden></span></button><button type="button" class="btn btn--quiet mq-ico-btn" id="mq-reset" title="Back to the empty filter" aria-label="Reset">${ic("rotate-ccw", "mq-narrow-ico")}<span class="btn-label">Reset</span></button><button type="button" class="btn btn--quiet mq-ico-btn" data-href="./mongo.html?show=find" title="Open this query as db.orders.find(…) in a new query tab" aria-label="Open as a query">${ic("square-code")}<span class="btn-label">Open as a query</span></button>${runGroup}</div>
+          <div class="mq-actions"><button type="button" class="btn btn--quiet mq-more mq-ico-btn" id="mq-more" aria-expanded="false" aria-controls="mq-opts mq-paging" title="Project, sort, skip and limit" aria-label="Options">${ic("chevron-right", "mq-more-ico")}${ic("sliders-horizontal", "mq-narrow-ico")}<span class="btn-label">Options</span><span class="mq-set" id="mq-set" title="Options set" hidden></span></button><button type="button" class="btn btn--quiet mq-ico-btn" id="mq-reset" title="Back to the empty filter" aria-label="Reset">${ic("rotate-ccw", "mq-narrow-ico")}<span class="btn-label">Reset</span></button><button type="button" class="btn btn--quiet mq-ico-btn" data-href="./mongo.html?show=find" title="Open this query as db.orders.find(…) in a new query tab" aria-label="Open as a query">${ic("square-code")}<span class="btn-label">Open as a query</span></button>${refreshBtn("t-refresh", "Read this page again")}${runGroup}</div>
           <div class="mq-row mq-opts" id="mq-opts" hidden>
             ${mqField("proj", "project", "{ field: 0 }", "")}
             ${mqField("sort", "sort", "{ field: -1 }", "")}
@@ -1952,7 +1983,7 @@ pages["collection.html"] = page({
             <span class="push meta"><span class="dim" id="t-ms">7&nbsp;ms</span></span>
           </nav>
           <div class="state" data-when="full" data-view-of="docs">
-            <div class="res-tools">${asSeg}<button type="button" class="btn btn--quiet res-add" id="t-add" title="Add a document" aria-label="Add a document">${ic("plus")}<span class="btn-label">Add document</span></button>${mresActions("t")}<div class="pager" role="group" aria-label="Pages">${rowPick(20, "Documents")}<span class="pager-n" id="t-pager" aria-live="polite"></span><button type="button" class="icon-btn" id="t-refresh" title="Read this page again  ⌘↵" aria-label="Refresh">${ic("refresh-cw")}</button><button type="button" class="icon-btn" aria-label="Previous page" title="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page" title="Next page">${ic("chevron-right")}</button></div></div>
+            <div class="res-tools">${asSeg}<button type="button" class="btn btn--quiet res-add" id="t-add" title="Add a document" aria-label="Add a document">${ic("plus")}<span class="btn-label">Add document</span></button>${mresActions("t")}<div class="pager" role="group" aria-label="Pages">${rowPick(20, "Documents")}<span class="pager-n" id="t-pager" aria-live="polite"></span><button type="button" class="icon-btn" aria-label="Previous page" title="Previous page" disabled>${ic("chevron-left")}</button><button type="button" class="icon-btn" aria-label="Next page" title="Next page">${ic("chevron-right")}</button></div></div>
             <div class="as-pane" data-as="json">${jdocs("Documents of orders", MDOCS, true)}</div>
             <div class="as-pane" data-as="table" hidden>${mgrid("t", "Documents of orders", MDOCS, 0)}</div>
           </div>
@@ -2126,8 +2157,8 @@ ${rq("q5", 5, RQ5, true, ` data-fixed="${esc(rqLines("SCAN 0 MATCH session:* COU
             <button type="button" class="subtab" data-sub="results" aria-pressed="true">Results<span class="n" id="r-n">10</span></button>
             <button type="button" class="subtab" data-sub="messages" aria-pressed="false">Messages</button>
             <span class="push meta" id="r-meta"></span>
+            <div class="res-tools sub-tools">${rasSeg}${rresActions("q")}</div>
           </nav>
-          <div class="res-tools">${rasSeg}${rresActions("q")}</div>
           <div class="state" data-when="full" data-for="q1" data-as="table" hidden>${rgrid("Reply to Query 1", [["member", "string"], ["score", "double", true]], Q1ROWS, 0)}
           </div>
           <div class="state" data-when="full" data-for="q1" data-as="raw" hidden>${rawReply("Reply to Query 1", Q1RAW)}
@@ -2246,7 +2277,7 @@ const HASH_EDIT_ROWS = USER.map(([f, v], i) => {
   const del = f === "phone", changed = f === "city";
   const cells = [c.text(f), changed ? editCell(c.text("Kyoto")) : rcell(v)];
   return tr(i + 1, cells, changed).replace("<tr", `<tr${del ? ' class="row-del"' : ""}`);
-}).concat(`<tr class="row-edit row-new"><td class="rownum">+</td>${editCell(c.text("tier"))}${editCell(c.text("gold"))}</tr>`).join("\n");
+}).concat(`<tr class="row-edit row-new">${editCell(c.text("tier"))}${editCell(c.text("gold"))}</tr>`).join("\n");
 const hashEdit = `
             <div class="res-tools"><span class="muted">Fields in HSCAN order</span><div class="edit-bar" role="group" aria-label="Unsaved changes"><span class="edit-n">3 changes</span><button type="button" class="btn btn--primary" id="hash-save" title="Write the changes at once  ⌘S">Save</button><button type="button" class="btn" data-revert title="Discard the changes">Discard</button></div>${rresActions("ke")}</div>
             <div class="as-pane"><div class="grid-wrap" tabindex="0" aria-label="Fields of user:3107, edited"><table class="grid"><thead><tr>${ROWHEAD}${th("field", "string")}${th("value", "string")}</tr></thead><tbody>
@@ -2796,6 +2827,104 @@ pages["tasks.html"] = page({
   barHtml: bar("tasks", [["chip", "Running: chip"], ["pop", "Popover"], ["pop-stopping", "Popover: stopping"], ["pop-one", "Popover: one run"], ["idle", "Nothing running"], ["tm", "Task manager"], ["tm-stopping", "Task manager: stopping"], ["tm-none", "Task manager: nothing running"], ["upd", "With update"], ["upd-pop", "With update: running popover"], ["upd-open", "With update: update popover"], ["upd-dl", "With update: downloading"], ["upd-ready", "With update: restart"], ["upd-idle", "Update only, nothing running"]]),
   body: app({ current: "shop_prod", conns: CONNS, side: schemaSide("") + historySide + savedSide, work: queryWork, chip: TM_ANCHOR + UPD_CHIP, overlay: TM_DLG }),
   script: js("page-updates.js") + js("page-tasks.js"),
+});
+
+// Console history: a bar at the foot of the work area, over every tab, logging each statement ypacapy sent to the
+// connection in front: what you typed in a console and what ypacapy wrote itself (table reads, saves, schema tree,
+// columns, autocomplete, heartbeat pings). Kept in memory for this run only, the last 1,000 per connection; ⌘J opens it.
+const CH_KW = /\b(select|from|where|join|on|group|by|order|limit|offset|update|set|insert|into|values|delete|and|or|not|in|as|case|when|then|else|end|null|desc|asc|using|count|sum|coalesce|cast|is|db|find|aggregate|SCAN|MATCH|COUNT|TYPE|TTL|HSCAN|GET|PING|AUTH|SELECT|INFO|MEMORY|USAGE)\b/g;
+const chHl = (sqlText) => esc(sqlText).replace(/'[^']*'/g, (m) => `\u0001${m}\u0002`).split(/(\u0001[^\u0002]*\u0002)/).map((part) =>
+  part.startsWith("\u0001") ? `<span class="q-s">${part.slice(1, -1)}</span>` : part.replace(CH_KW, '<span class="q-k">$1</span>').replace(/\b(\d+)\b/g, '<span class="q-n">$1</span>')).join("");
+// [time, who: you | app, what, statement, result, duration, flags (err | write | ping | cancel), error message]
+const CH_PG = [
+  ["09:30:02.104", "app", "Connect", "select current_database()::text, coalesce(current_schema()::text, 'public')", "1 row", "3 ms"],
+  ["09:30:02.109", "app", "Connect", "set search_path to \"public\"; select pg_backend_pid()::text", "1 row", "1 ms"],
+  ["09:30:02.131", "app", "Schema tree", "select nspname::text from pg_namespace where nspname !~ '^pg_' and nspname <> 'information_schema' order by nspname", "2 rows", "2 ms"],
+  ["09:30:02.140", "app", "Schema tree · public", "select c.relname::text, c.relkind::text, case when c.reltuples < 0 then null else c.reltuples::bigint::text end from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = $1 and c.relkind in ('r', 'v', 'm', 'p') order by c.relname", "11 rows", "4 ms"],
+  ["09:30:32.140", "app", "Heartbeat", "select 1", "ok", "1 ms", "ping"],
+  ["09:31:15.802", "app", "orders · Rows", "select * from \"public\".\"orders\"\nwhere status in ('paid', 'shipped', 'refunded')\nlimit 20", "20 rows", "6 ms"],
+  ["09:31:15.806", "app", "orders · Columns", "select a.attname::text, format_type(a.atttypid, a.atttypmod), (not a.attnotnull)::text, pg_get_expr(d.adbin, d.adrelid) from pg_attribute a left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum where a.attrelid = $1::regclass and a.attnum > 0 and not a.attisdropped order by a.attnum", "9 rows", "3 ms"],
+  ["09:31:44.290", "app", "orders · Rows", "select * from \"public\".\"orders\"\nwhere status in ('paid', 'shipped', 'refunded')\norder by \"total\" desc\nlimit 20", "20 rows", "11 ms"],
+  ["09:33:02.140", "app", "Heartbeat", "select 1", "ok", "1 ms", "ping"],
+  ["09:38:10.551", "you", "Query 1", "select id, totl from orders", "error", "2 ms", "err", "column \"totl\" does not exist"],
+  ["09:38:59.020", "app", "Autocomplete · customers", "select a.attname::text, format_type(a.atttypid, a.atttypmod) from pg_attribute a where a.attrelid = $1::regclass and a.attnum > 0 and not a.attisdropped order by a.attnum", "7 rows", "2 ms"],
+  ["09:41:07.412", "you", "Query 1", "select c.email, count(*) as refunds from customers c join refunds r on r.customer_id = c.id group by c.email", "14 rows", "18 ms"],
+  ["09:42:30.007", "app", "orders · Save", "update \"public\".\"orders\" set \"status\" = 'shipped' where \"id\" = 10463", "1 row", "4 ms", "write"],
+  ["09:43:05.661", "you", "Query 2", "select * from events e join sessions s using (session_id)", "cancelled", "32.1 s", "cancel"],
+];
+const CH_MONGO = [
+  ["10:02:11.020", "app", "Connect", "db.adminCommand({ listDatabases: 1, nameOnly: true })", "3 dbs", "8 ms"],
+  ["10:02:11.044", "app", "Schema tree", "db.getSiblingDB(\"shop\").runCommand({ listCollections: 1, nameOnly: true })", "6 colls", "5 ms"],
+  ["10:02:11.051", "app", "Schema tree", "db.orders.estimatedDocumentCount()", "~48k", "2 ms"],
+  ["10:02:41.051", "app", "Heartbeat", "db.runCommand({ ping: 1 })", "ok", "1 ms", "ping"],
+  ["10:03:20.310", "app", "orders · Documents", "db.orders.find({ status: 'paid' }).limit(20)", "20 docs", "9 ms"],
+  ["10:03:20.318", "app", "orders · Indexes", "db.orders.getIndexes()", "3", "2 ms"],
+  ["10:05:47.902", "you", "Console 1", "db.orders.aggregate([{ $match: { status: 'refunded' } }, { $group: { _id: '$customer_id', n: { $sum: 1 } } }])", "41 docs", "27 ms"],
+  ["10:06:12.004", "app", "orders · Save", "db.orders.updateOne({ _id: ObjectId('6747c1e2a9f0b31d2c55e104') }, { $set: { status: 'shipped' } })", "1 doc", "6 ms", "write"],
+];
+const CH_REDIS = [
+  ["10:12:01.300", "app", "Connect", "AUTH ••••••••", "ok", "1 ms"],
+  ["10:12:01.302", "app", "Connect", "SELECT 0", "ok", "0 ms"],
+  ["10:12:01.310", "app", "Key tree", "SCAN 0 MATCH * COUNT 500", "500 keys", "4 ms"],
+  ["10:12:01.322", "app", "Key tree", "TYPE session:9f2c  ×500", "500", "6 ms"],
+  ["10:12:31.322", "app", "Heartbeat", "PING", "PONG", "0 ms", "ping"],
+  ["10:13:09.115", "app", "user:1042 · Fields", "HSCAN user:1042 0 COUNT 100", "12 fields", "1 ms"],
+  ["10:13:09.117", "app", "user:1042 · Info", "TTL user:1042", "-1", "0 ms"],
+  ["10:14:40.552", "you", "Console 1", "GET cart:9f2c", "nil", "0 ms"],
+];
+const chRow = ([t, who, what, sqlText, res, ms, flag = "", msg = ""], i) => `
+            <li class="ch-row" data-who="${who}"${flag ? ` data-flag="${flag}"` : ""}>
+              <button type="button" class="ch-line" aria-expanded="false" aria-controls="ch-x-${i}">
+                <span class="ch-time">${t}</span>
+                <span class="ch-who" title="${who === "you" ? "You typed it" : "ypacapy wrote it"}">${who === "you" ? "you" : "app"}</span>
+                <span class="ch-what">${what}</span>
+                <code class="ch-sql">${chHl(sqlText.replace(/\s*\n\s*/g, " "))}</code>
+                ${flag === "write" ? '<span class="ch-tag">write</span>' : ""}<span class="ch-res">${res}</span>
+                <span class="ch-ms">${ms}</span>
+              </button>
+              <div class="ch-x" id="ch-x-${i}" hidden>
+                <pre class="ch-full">${chHl(sqlText)}</pre>${msg ? `
+                <p class="ch-err">${ic("circle-alert")}<span>${esc(msg)}</span></p>` : ""}
+                <div class="ch-x-acts"><button type="button" class="btn btn--quiet">${ic("copy")}Copy</button><button type="button" class="btn btn--quiet">${ic("square-code")}Open in a console</button></div>
+              </div>
+            </li>`;
+const chList = (id, rows, hidden = false) => `
+          <ol class="ch-list" id="${id}"${hidden ? " hidden" : ""}>${rows.map((r, i) => chRow(r, `${id}-${i}`)).join("")}
+          </ol>`;
+const CH_LAST = CH_PG[CH_PG.length - 1];
+const CONSOLE_BAR = `
+      <section class="ch" id="ch" aria-label="Console history" data-open="false">
+        <div class="ch-grip" role="separator" aria-orientation="horizontal" aria-label="Resize console history" title="Drag to resize"></div>
+        <header class="ch-bar">
+          <button type="button" class="ch-toggle" id="ch-toggle" aria-expanded="false" aria-controls="ch-body" title="Console history  ⌘J">
+            ${ic("square-terminal", "ch-ico")}<span class="ch-title">Console history</span><span class="ch-n" id="ch-n">${CH_PG.filter((e) => e[6] !== "ping").length}</span>
+          </button>
+          <span class="ch-peek" id="ch-peek" aria-hidden="true"><span class="ch-time">${CH_LAST[0].slice(0, 8)}</span><span class="ch-who">you</span><code class="ch-sql">${chHl(CH_LAST[3])}</code><span class="ch-res" data-flag="cancel">${CH_LAST[4]}</span></span>
+          <div class="ch-tools" id="ch-tools" hidden>
+            <span class="ch-conn" id="ch-conn">on <strong>shop_prod</strong></span>
+            <div class="seg ch-seg" role="group" aria-label="Show">
+              <button type="button" aria-pressed="true" data-ch-who="all">All</button>
+              <button type="button" aria-pressed="false" data-ch-who="you" title="Statements you typed in a console">You</button>
+              <button type="button" aria-pressed="false" data-ch-who="app" title="Statements ypacapy wrote: table reads, saves, schema tree, columns, autocomplete">ypacapy</button>
+            </div>
+            <button type="button" class="ch-chip" id="ch-pings" aria-pressed="false" title="Heartbeat pings, every 30 s">${ic("radio")}Pings</button>
+            <button type="button" class="ch-chip" id="ch-errs" aria-pressed="false">${ic("circle-alert")}Errors</button>
+            <div class="search ch-search">${ic("search")}<input class="field" id="ch-q" placeholder="Filter" aria-label="Filter console history" autocomplete="off" spellcheck="false"></div>
+            <button type="button" class="icon-btn" id="ch-clear" aria-label="Clear console history" title="Clear. It's only kept until ypacapy quits.">${ic("shredder")}</button>
+          </div>
+          <button type="button" class="icon-btn ch-chev" id="ch-chev" aria-label="Open console history" title="⌘J">${ic("chevron-up")}</button>
+        </header>
+        <div class="ch-body" id="ch-body" hidden>${chList("ch-pg", CH_PG)}${chList("ch-mongo", CH_MONGO, true)}${chList("ch-redis", CH_REDIS, true)}
+          <div class="ch-none" id="ch-none" hidden>${es({ size: "sm", icon: "square-terminal", title: "Nothing sent to shop_prod yet", line: "Every statement ypacapy sends shows here: yours and its own. Kept until ypacapy quits." })}</div>
+          <div class="ch-none" id="ch-nomatch" hidden><p class="muted">Nothing matches this filter.</p></div>
+        </div>
+      </section>`;
+pages["console.html"] = page({
+  title: "ypacapy preview, console history",
+  desc: "Design preview of ypacapy's console history: a bar under every tab that logs each statement sent to the connection, typed by you or written by ypacapy.",
+  barHtml: bar("console", [["closed", "Closed"], ["open", "Open"], ["you", "Only you"], ["app", "Only ypacapy"], ["pings", "With pings"], ["expand", "Row opened: error"], ["filter", "Filtered"], ["nomatch", "No match"], ["none", "Nothing yet"], ["tall", "Dragged taller"], ["mongo", "MongoDB"], ["redis", "Redis"]]),
+  body: app({ current: "shop_prod", conns: CONNS, side: schemaSide("") + historySide + savedSide, work: queryWork + CONSOLE_BAR }),
+  script: js("page-console.js"),
 });
 
 for (const old of ["table.css", "settings.css", "connect.css"]) fs.rmSync(`${OUT}/${old}`, { force: true });

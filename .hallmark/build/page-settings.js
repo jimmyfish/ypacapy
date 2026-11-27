@@ -79,7 +79,7 @@
     cnSaved = cnLevel.value; renderCn();
   });
   $("#cn-protect-toggle").addEventListener("click", () => { if (cnUnlocked) { cnUnlocked = false; renderCn(); } else openAuth("unlock"); });
-  // Heartbeat: off by default; its interval row exists only while it is on
+  // Heartbeat: on by default; its interval row exists only while it is on
   const beat = $("#set-beat");
   beat.addEventListener("change", () => { $("[data-when-beat]").hidden = !beat.checked; });
   // Security: passphrase set or not; set, change and disable each open their own dialog; change and disable need the current one

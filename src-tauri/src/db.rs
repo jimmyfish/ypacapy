@@ -1,7 +1,7 @@
 //! The databases the person added: one sqlx pool per connection and database, opened on demand,
 //! kept for the session. ypacapy only ever runs catalog lookups and limited reads on its own;
 //! everything else is what the person typed. No polling: a pooled connection is tested when it is
-//! acquired, and the optional heartbeat (Settings > Queries, off by default) is the only timer. With it on, the
+//! acquired, and the heartbeat (Settings > Queries, on by default) is the only timer. With it on, the
 //! heartbeat also tells the window each connection's status, and opens again one that dropped.
 
 use std::collections::{HashMap, HashSet};
@@ -20,6 +20,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tokio_util::sync::CancellationToken;
 
 use crate::conns::{self, Conn, Engine, SslMode};
+use crate::console::{self, Flag, Who};
 use crate::guard::{self, Approval, Ask, GuardState};
 use crate::settings::SettingsState;
 use crate::store::{HistoryEntry, LocalStore};
@@ -80,6 +81,9 @@ trait Cells {
     fn cells(&self) -> Vec<Option<String>>;
     /// The storage type of one value, for result columns without a declared type (SQLite expressions).
     fn value_type(&self, i: usize) -> Option<String>;
+    /// PostgreSQL: the column's type OID. Raw SQL leaves types sqlx does not know (enums, domains,
+    /// extension types) unnamed ("?"); the OID lets one catalog lookup name them.
+    fn type_oid(&self, i: usize) -> Option<u32>;
 }
 
 fn hex(b: &[u8]) -> String {
@@ -87,7 +91,7 @@ fn hex(b: &[u8]) -> String {
 }
 
 macro_rules! impl_cells {
-    ($row:ty) => {
+    ($row:ty, $oid:expr) => {
         impl Cells for $row {
             fn cells(&self) -> Vec<Option<String>> {
                 (0..self.len())
@@ -111,12 +115,16 @@ macro_rules! impl_cells {
                 let v = self.try_get_raw(i).ok()?;
                 (!v.is_null()).then(|| v.type_info().name().to_lowercase())
             }
+            fn type_oid(&self, i: usize) -> Option<u32> {
+                let f: fn(&$row, usize) -> Option<u32> = $oid;
+                f(self, i)
+            }
         }
     };
 }
-impl_cells!(PgRow);
-impl_cells!(MySqlRow);
-impl_cells!(SqliteRow);
+impl_cells!(PgRow, |r, i| r.columns().get(i)?.type_info().oid().map(|o| o.0));
+impl_cells!(MySqlRow, |_, _| None);
+impl_cells!(SqliteRow, |_, _| None);
 
 /// Raw SQL on one connection, with the lifetimes spelled out: inferring them inside a Send future
 /// trips the compiler's higher-ranked Executor bounds.
@@ -201,6 +209,18 @@ pub struct ColMeta {
     /// lower case, from the result set's own metadata
     #[serde(rename = "type")]
     ty: String,
+    /// PostgreSQL enums: the labels in their declared order, for the cell editor's list
+    #[serde(rename = "enumValues", skip_serializing_if = "Option::is_none")]
+    enum_values: Option<Vec<String>>,
+    /// PostgreSQL: the type OID, kept only to name an unnamed ("?") type after the run
+    #[serde(skip)]
+    oid: Option<u32>,
+}
+
+impl ColMeta {
+    pub fn new(name: impl Into<String>, ty: impl Into<String>) -> Self {
+        ColMeta { name: name.into(), ty: ty.into(), enum_values: None, oid: None }
+    }
 }
 
 #[derive(Serialize, Debug, Default)]
@@ -226,7 +246,8 @@ impl ResultSet {
                 let ty = c.type_info().name().to_lowercase();
                 // SQLite expressions have no declared type: take the value's storage class
                 let ty = if ty == "null" { row.value_type(i).unwrap_or(ty) } else { ty };
-                ColMeta { name: c.name().to_string(), ty }
+                let oid = if ty == "?" { row.type_oid(i) } else { None };
+                ColMeta { name: c.name().to_string(), ty, enum_values: None, oid }
             })
             .collect();
         ResultSet { columns, ..Default::default() }
@@ -336,23 +357,46 @@ async fn connect(conn: &Conn, database: &str, password: Option<String>, read_onl
 }
 
 /// Text rows of a catalog query; every selected value is cast to text in the SQL itself.
+/// Each call is one console history entry, its binds shown after the SQL.
 async fn catalog(pool: &Pool, sql: &str, binds: &[&str]) -> Result<Vec<Vec<Option<String>>>, sqlx::Error> {
-    on_pool!(pool, p => {
+    let st = console::start();
+    let r: Result<Vec<Vec<Option<String>>>, sqlx::Error> = on_pool!(pool, p => {
         let mut q = sqlx::query(sql);
         for b in binds {
             q = q.bind(b.to_string());
         }
         let rows = q.fetch_all(p).await?;
         Ok(rows.iter().map(|r| r.cells()).collect())
-    })
+    });
+    if console::on() {
+        log_rows(&st, console::with_binds(sql, binds, matches!(pool, Pool::Pg(_))), &r);
+    }
+    r
 }
 
-/// Raw SQL (text protocol), rows only.
+/// Raw SQL (text protocol), rows only. One console history entry per call.
 async fn raw_rows(pool: &Pool, sql: &str) -> Result<Vec<Vec<Option<String>>>, sqlx::Error> {
+    let st = console::start();
+    let r = fetch_raw(pool, sql).await;
+    if console::on() {
+        log_rows(&st, sql, &r);
+    }
+    r
+}
+
+/// raw_rows without the history entry, for callers that record their own (the cancel statement)
+async fn fetch_raw(pool: &Pool, sql: &str) -> Result<Vec<Vec<Option<String>>>, sqlx::Error> {
     on_pool!(pool, p => {
         let rows = sqlx::raw_sql(sql).fetch_all(p).await?;
         Ok(rows.iter().map(|r| r.cells()).collect())
     })
+}
+
+fn log_rows(st: &console::Started, text: impl Into<String>, r: &Result<Vec<Vec<Option<String>>>, sqlx::Error>) {
+    match r {
+        Ok(rows) => console::log(st, text).result(plural(rows.len(), "row")).send(),
+        Err(e) => console::log(st, text).err(err_text(e)).send(),
+    }
 }
 
 fn first(rows: &[Vec<Option<String>>]) -> String {
@@ -415,7 +459,8 @@ impl DbState {
         }
         let password = password_for(conn).await.map_err(|e| sqlx::Error::Configuration(e.into()))?;
         let pool = connect(conn, database, password, false, 4).await?;
-        let server = server_version(&pool, conn.engine).await.unwrap_or_else(|_| conn.engine.label().to_string());
+        // whatever asked for the pool, its version query is part of connecting
+        let server = console::again("Connect", server_version(&pool, conn.engine)).await.unwrap_or_else(|_| conn.engine.label().to_string());
         let open = Arc::new(Open { pool, engine: conn.engine, server, heartbeat: conn.heartbeat });
         let mut map = self.open.lock().await;
         // another call may have connected meanwhile: keep the first
@@ -504,6 +549,7 @@ pub async fn test_connection(conn: Conn, password: Option<String>, test_id: Opti
         on_pool!(&pool, p => p.close().await);
         Ok(TestResult { server: server?, ms })
     };
+    let work = console::scope(&conn.id, Who::App, "Test", work);
     // dropping the attempt closes whatever it had opened
     let out = tokio::select! {
         r = work => r,
@@ -530,13 +576,17 @@ pub struct OpenInfo {
 /// Opens (or reuses) the pool for a connection and database and lists what the context picker shows.
 #[tauri::command]
 pub async fn open_connection(id: String, database: Option<String>, state: State<'_, DbState>) -> Result<OpenInfo, String> {
-    let conn = conns::find(&id)?;
+    console::scope(&id, Who::App, "Connect", open_connection_in(&id, database, &state)).await
+}
+
+async fn open_connection_in(id: &str, database: Option<String>, state: &DbState) -> Result<OpenInfo, String> {
+    let conn = conns::find(id)?;
     let database = database.unwrap_or_default();
     if conn.engine == Engine::Mongo {
-        return mongo::open_info(&state, &conn, &database).await;
+        return mongo::open_info(state, &conn, &database).await;
     }
     if conn.engine == Engine::Redis {
-        return redis::open_info(&state, &conn).await;
+        return redis::open_info(state, &conn).await;
     }
     let open = state.get(&conn, &database).await.map_err(|e| err_text(&e))?;
     let pool = &open.pool;
@@ -621,17 +671,20 @@ fn quote_ident(engine: Engine, s: &str) -> String {
 #[tauri::command]
 pub async fn load_schema(id: String, database: Option<String>, schema: String, state: State<'_, DbState>) -> Result<SchemaObjects, String> {
     let conn = conns::find(&id)?;
-    // MongoDB: the tree's "schema" is a database
-    if conn.engine == Engine::Mongo {
-        return mongo::collections(&state, &conn, &schema).await;
-    }
-    // Redis: the tree reads keys with redis_scan
-    if conn.engine == Engine::Redis {
-        return Ok(SchemaObjects { tables: vec![], functions: vec![] });
-    }
-    check_schema(&conn, &schema)?;
-    let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
-    schema_objects(&open.pool, conn.engine, &schema).await
+    console::scope(&id, Who::App, format!("Schema tree · {schema}"), async {
+        // MongoDB: the tree's "schema" is a database
+        if conn.engine == Engine::Mongo {
+            return mongo::collections(&state, &conn, &schema).await;
+        }
+        // Redis: the tree reads keys with redis_scan
+        if conn.engine == Engine::Redis {
+            return Ok(SchemaObjects { tables: vec![], functions: vec![] });
+        }
+        check_schema(&conn, &schema)?;
+        let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
+        schema_objects(&open.pool, conn.engine, &schema).await
+    })
+    .await
 }
 
 async fn schema_objects(pool: &Pool, engine: Engine, s: &str) -> Result<SchemaObjects, String> {
@@ -795,8 +848,12 @@ pub async fn table_columns(
         return Ok(vec![]);
     }
     check_schema(&conn, &schema)?;
-    let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
-    let (s, t) = (schema.as_str(), table.as_str());
+    console::scope(&id, Who::App, format!("Autocomplete · {table}"), table_columns_in(&conn, database, &schema, &table, &state)).await
+}
+
+async fn table_columns_in(conn: &Conn, database: Option<String>, schema: &str, table: &str, state: &DbState) -> Result<Vec<ColumnBrief>, String> {
+    let open = state.get(conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
+    let (s, t) = (schema, table);
     let rows = match conn.engine {
         Engine::Postgres => {
             catalog(
@@ -837,14 +894,17 @@ pub async fn table_info(
     let conn = conns::find(&id)?;
     // MongoDB: a collection's indexes (schema is its database)
     if conn.engine == Engine::Mongo {
-        return mongo::indexes(&state, &conn, &schema, &table).await;
+        return console::scope(&id, Who::App, format!("{table} · Indexes"), mongo::indexes(&state, &conn, &schema, &table)).await;
     }
     if conn.engine == Engine::Redis {
         return Ok(TableInfo { columns: vec![], indexes: vec![], foreign_keys: vec![] });
     }
     check_schema(&conn, &schema)?;
-    let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
-    table_catalog(&open.pool, conn.engine, &schema, &table, open.server.starts_with("MariaDB")).await
+    console::scope(&id, Who::App, format!("{table} · Columns"), async {
+        let open = state.get(&conn, &database.unwrap_or_default()).await.map_err(|e| err_text(&e))?;
+        table_catalog(&open.pool, conn.engine, &schema, &table, open.server.starts_with("MariaDB")).await
+    })
+    .await
 }
 
 async fn table_catalog(pool: &Pool, engine: Engine, s: &str, t: &str, mariadb: bool) -> Result<TableInfo, String> {
@@ -1007,6 +1067,19 @@ pub struct RunRequest {
     approval: Option<Approval>,
     /// record the run in history (the console does; table reads do not)
     history: bool,
+    /// the console history's label for this run ("orders · Rows" from a table tab); "Console" or "Query" when absent
+    #[serde(default)]
+    label: Option<String>,
+}
+
+impl RunRequest {
+    /// Who sent it and under what label, for the console history: a run kept in history is one the person
+    /// typed; the rest (table tabs reading a page) the app sends.
+    fn console_label(&self) -> (Who, String) {
+        let who = if self.history { Who::You } else { Who::App };
+        let what = self.label.as_deref().map(str::trim).filter(|l| !l.is_empty()).map(String::from);
+        (who, what.unwrap_or_else(|| if who == Who::You { "Console".into() } else { "Query".into() }))
+    }
 }
 
 #[derive(Serialize)]
@@ -1073,12 +1146,30 @@ async fn execute(open: &Open, schema: Option<&str>, sql: &str, cap: usize, token
         // (sqlite3_interrupt through the raw handle would stop a long single step too).
         Engine::Sqlite | Engine::Mongo | Engine::Redis => None,
     };
+    // console history: each statement's outcome as the server finishes it, kept outside the run so a
+    // cancelled run still tells what had finished
+    let log = console::on();
+    let ran = std::sync::Mutex::new(Ran { done: vec![], mark: console::start() });
     let (res, pid) = on_pool!(&open.pool, p => {
         let mut pc = p.acquire().await?;
         let pid = match &setup {
-            Some(s) => pc.rows(s).await?.first().and_then(|r| r.cells().into_iter().next().flatten()),
+            Some(s) => {
+                let st = console::start();
+                let rows = pc.rows(s).await;
+                if log {
+                    let l = console::log(&st, s.as_str()).app_as("Connect");
+                    match &rows {
+                        Ok(r) => l.result(plural(r.len(), "row")).send(),
+                        Err(e) => l.err(err_text(e)).send(),
+                    }
+                }
+                rows?.first().and_then(|r| r.cells().into_iter().next().flatten())
+            }
             None => None,
         };
+        if let Ok(mut r) = ran.lock() {
+            r.mark = console::start();
+        }
         let outcome = {
             let fut = async {
                 let mut stream = pc.stream(sql);
@@ -1089,11 +1180,17 @@ async fn execute(open: &Open, schema: Option<&str>, sql: &str, cap: usize, token
                     match item {
                         Either::Left(done) => match cur.take() {
                             Some(set) => {
+                                if log {
+                                    ran_one(&ran, Some(set.rows.len()), 0, false);
+                                }
                                 c.messages.push(format!("{} returned", plural(set.rows.len(), "row")));
                                 c.sets.push(set);
                             }
                             None => {
                                 let n = done.affected();
+                                if log {
+                                    ran_one(&ran, None, n, false);
+                                }
                                 c.affected = Some(c.affected.unwrap_or(0) + n);
                                 c.messages.push(format!("{} affected", plural(n as usize, "row")));
                             }
@@ -1111,6 +1208,9 @@ async fn execute(open: &Open, schema: Option<&str>, sql: &str, cap: usize, token
                 }
                 drop(stream);
                 if let Some(set) = cur.take() {
+                    if log {
+                        ran_one(&ran, Some(set.rows.len()), 0, set.truncated);
+                    }
                     c.messages.push(format!("{} returned{}", plural(set.rows.len(), "row"), if set.truncated { ", more were left unread" } else { "" }));
                     c.sets.push(set);
                 }
@@ -1145,14 +1245,140 @@ async fn execute(open: &Open, schema: Option<&str>, sql: &str, cap: usize, token
             }
         }
     });
+    if log {
+        let ran = ran.into_inner().unwrap_or_else(|e| e.into_inner());
+        log_run(open.engine, sql, ran, &res);
+    }
     if let Some(pid) = pid.and_then(|p| p.trim().parse::<i64>().ok()) {
         let stop = match open.engine {
             Engine::Postgres => format!("select pg_cancel_backend({pid})"),
             _ => format!("kill query {pid}"),
         };
-        let _ = raw_rows(&open.pool, &stop).await;
+        let st = console::start();
+        let r = fetch_raw(&open.pool, &stop).await;
+        if log {
+            let l = console::log(&st, stop.as_str()).app_as("Cancel").flag(Flag::Cancel);
+            match r {
+                Ok(_) => l.send(),
+                Err(e) => l.err(err_text(&e)).send(),
+            }
+        }
     }
-    res
+    match res {
+        Ok(Exec::Done(mut c)) if open.engine == Engine::Postgres => {
+            name_pg_types(&open.pool, &mut c.sets).await;
+            Ok(Exec::Done(c))
+        }
+        r => r,
+    }
+}
+
+/// Names the result columns raw SQL left as "?" (types sqlx does not know: enums, domains, extension types)
+/// with one pg_type lookup by OID, and gives enum columns their labels. Runs only when such a column came back.
+/// A failed lookup leaves the columns as they were.
+async fn name_pg_types(pool: &Pool, sets: &mut [ResultSet]) {
+    let mut oids: Vec<u32> = sets.iter().flat_map(|s| s.columns.iter().filter_map(|c| c.oid)).collect();
+    oids.sort_unstable();
+    oids.dedup();
+    if oids.is_empty() {
+        return;
+    }
+    let list = format!("{{{}}}", oids.iter().map(u32::to_string).collect::<Vec<_>>().join(","));
+    let Ok(rows) = catalog(
+        pool,
+        "select t.oid::text, format_type(t.oid, null), \
+         (select json_agg(e.enumlabel order by e.enumsortorder) from pg_enum e where e.enumtypid = t.oid)::text \
+         from pg_type t where t.oid = any($1::oid[])",
+        &[&list],
+    )
+    .await
+    else {
+        return;
+    };
+    let named: HashMap<u32, (String, Option<Vec<String>>)> = rows
+        .iter()
+        .filter_map(|r| {
+            let oid = col(r, 0).parse().ok()?;
+            let labels = r.get(2).cloned().flatten().and_then(|j| serde_json::from_str(&j).ok());
+            Some((oid, (col(r, 1), labels)))
+        })
+        .collect();
+    for c in sets.iter_mut().flat_map(|s| s.columns.iter_mut()) {
+        if let Some((ty, labels)) = c.oid.and_then(|o| named.get(&o)) {
+            c.ty = ty.clone();
+            c.enum_values = labels.clone();
+        }
+    }
+}
+
+/// One run's statements, as the console history saw them finish
+struct Ran {
+    /// each finished statement in order: its result, when it started, ms it took, and whether it returned rows
+    done: Vec<(String, console::Started, f64, bool)>,
+    /// when the statement now running started
+    mark: console::Started,
+}
+
+/// A statement finished: `rows` for one that returned a result set (`more` when rows were left unread),
+/// else `affected`. The bool kept with it says it returned rows (it is a query, not a write).
+fn ran_one(ran: &std::sync::Mutex<Ran>, rows: Option<usize>, affected: u64, more: bool) {
+    let Ok(mut r) = ran.lock() else { return };
+    let result = match rows {
+        Some(n) if more => format!("{n}+ rows"),
+        Some(n) => plural(n, "row"),
+        None => format!("{affected} affected"),
+    };
+    let st = r.mark;
+    r.done.push((result, st, st.ms(), rows.is_some()));
+    r.mark = console::start();
+}
+
+/// The run's console history entries: one per statement when the statements written match what the server
+/// finished, else one for the whole text. A failed or stopped run adds the statement it stopped on.
+fn log_run(engine: Engine, sql: &str, ran: Ran, res: &Result<Exec, sqlx::Error>) {
+    for l in run_entries(engine, sql, &ran, res) {
+        l.send();
+    }
+}
+
+fn run_entries(engine: Engine, sql: &str, ran: &Ran, res: &Result<Exec, sqlx::Error>) -> Vec<console::Log> {
+    let pieces = guard::split(sql, engine);
+    let stopped = !matches!(res, Ok(Exec::Done(_)));
+    let total = ran.done.len() + usize::from(stopped);
+    let entry = |text: &str, result: &str, st: &console::Started, ms: f64, returned: bool| {
+        let l = console::log(st, text).result(result).took(ms);
+        // "0 affected" from a query that returned no rows reads as 0 rows
+        let l = if !returned && result == "0 affected" && guard::is_query(text, engine) { l.result("0 rows") } else { l };
+        l.flag_if(!returned && guard::writes(text, engine), Flag::Write)
+    };
+    let stop_on = |text: &str, st: &console::Started| match res {
+        Err(e) => Some(console::log(st, text).err(err_text(e))),
+        Ok(Exec::Cancelled { timeout }) => Some(console::log(st, text).cancelled(*timeout)),
+        Ok(Exec::Done(_)) => None,
+    };
+    let mut out = vec![];
+    if pieces.len() == total || (stopped && ran.done.len() < pieces.len()) {
+        for (i, (result, st, ms, returned)) in ran.done.iter().enumerate() {
+            out.push(entry(&pieces[i], result, st, *ms, *returned));
+        }
+        if stopped {
+            out.extend(stop_on(&pieces[ran.done.len()], &ran.mark));
+        }
+        return out;
+    }
+    // the server's count differs (a procedure body, a dialect quirk): the whole text as one entry
+    let first = ran.done.first().map(|d| d.1).unwrap_or(ran.mark);
+    if stopped {
+        out.extend(stop_on(sql, &first));
+    } else {
+        let result = match ran.done.len() {
+            1 => ran.done[0].0.clone(),
+            n => format!("{n} statements, last {}", ran.done.last().map(|d| d.0.as_str()).unwrap_or("")),
+        };
+        let ms = ran.done.iter().map(|d| d.2).sum();
+        out.push(entry(sql, &result, &first, ms, ran.done.iter().all(|d| d.3)));
+    }
+    out
 }
 
 fn capitalise(s: &str) -> String {
@@ -1219,6 +1445,18 @@ fn run_error(e: &sqlx::Error, engine: Engine, sql: &str, conn: &Conn, ms: u64) -
 
 #[tauri::command]
 pub async fn run_query(
+    req: RunRequest,
+    state: State<'_, DbState>,
+    settings: State<'_, SettingsState>,
+    guard_state: State<'_, GuardState>,
+    store: State<'_, LocalStore>,
+) -> Result<RunOutcome, String> {
+    let (who, what) = req.console_label();
+    let conn_id = req.conn_id.clone();
+    console::scope(&conn_id, who, what, run_query_in(req, state, settings, guard_state, store)).await
+}
+
+async fn run_query_in(
     req: RunRequest,
     state: State<'_, DbState>,
     settings: State<'_, SettingsState>,
@@ -1332,28 +1570,88 @@ enum Applied {
 
 /// All statements in one transaction; each must change exactly one row, or nothing is kept. DDL changes no
 /// rows: it only has to run. (MySQL commits DDL on its own; the column editor sends it one ALTER.)
+/// Console history: BEGIN, each statement (flag write), then COMMIT, or ROLLBACK after the one that missed.
 async fn apply(open: &Open, stmts: &[String], timeout_s: u64, ddl: bool) -> Result<Applied, sqlx::Error> {
+    // the statement running when the timeout drops the work, for its history entry
+    let running = std::sync::Mutex::new(None::<(usize, console::Started)>);
     let work = async {
         on_pool!(&open.pool, p => {
-            let mut tx = p.begin().await?;
+            let st = console::start();
+            let mut tx = match p.begin().await {
+                Ok(tx) => tx,
+                Err(e) => {
+                    console::log(&st, "begin").err(err_text(&e)).send();
+                    return Err(e);
+                }
+            };
+            console::log(&st, "begin").send();
             let mut total = 0;
             for (index, s) in stmts.iter().enumerate() {
-                match RawExec::changed(&mut *tx, s).await {
-                    Ok(_) if ddl => total += 1,
-                    Ok(1) => total += 1,
-                    // dropping the transaction rolls it back
-                    Ok(n) => return Ok(Applied::Miss { index, n }),
-                    Err(err) => return Ok(Applied::Failed { index, err }),
+                let st = console::start();
+                if let Ok(mut r) = running.lock() {
+                    *r = Some((index, st));
+                }
+                let missed = match RawExec::changed(&mut *tx, s).await {
+                    Ok(_) if ddl => {
+                        console::log(&st, s.as_str()).flag(Flag::Write).send();
+                        total += 1;
+                        None
+                    }
+                    Ok(1) => {
+                        console::log(&st, s.as_str()).result("1 affected").flag(Flag::Write).send();
+                        total += 1;
+                        None
+                    }
+                    Ok(n) => {
+                        console::log(&st, s.as_str()).result(format!("{n} affected")).flag(Flag::Err).send();
+                        Some(Applied::Miss { index, n })
+                    }
+                    Err(err) => {
+                        console::log(&st, s.as_str()).err(err_text(&err)).send();
+                        Some(Applied::Failed { index, err })
+                    }
+                };
+                if let Some(a) = missed {
+                    // nothing is kept: roll back now (dropping the transaction would too, a moment later)
+                    let st = console::start();
+                    let _ = running.lock().map(|mut r| *r = None);
+                    match tx.rollback().await {
+                        Ok(()) => console::log(&st, "rollback").send(),
+                        Err(e) => console::log(&st, "rollback").err(err_text(&e)).send(),
+                    }
+                    return Ok(a);
                 }
             }
-            tx.commit().await?;
+            let _ = running.lock().map(|mut r| *r = None);
+            let st = console::start();
+            match tx.commit().await {
+                Ok(()) => console::log(&st, "commit").send(),
+                Err(e) => {
+                    console::log(&st, "commit").err(err_text(&e)).send();
+                    return Err(e);
+                }
+            }
             Ok(Applied::Done(total))
         })
     };
     if timeout_s == 0 {
         return work.await;
     }
-    tokio::time::timeout(Duration::from_secs(timeout_s), work).await.unwrap_or(Ok(Applied::TimedOut))
+    let out = tokio::time::timeout(Duration::from_secs(timeout_s), work).await.unwrap_or(Ok(Applied::TimedOut));
+    if let (Ok(Applied::TimedOut), Ok(Some((i, st)))) = (&out, running.lock().map(|r| *r)) {
+        console::log(&st, stmts[i].as_str()).cancelled(true).send();
+    }
+    out
+}
+
+/// What a save answers: the run's outcome, and for a failed or missed change the index of its statement in the
+/// request, so the grid can mark that row.
+#[derive(Serialize)]
+pub struct EditOutcome {
+    #[serde(flatten)]
+    outcome: RunOutcome,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    statement: Option<usize>,
 }
 
 #[tauri::command]
@@ -1363,11 +1661,28 @@ pub async fn apply_edits(
     settings: State<'_, SettingsState>,
     guard_state: State<'_, GuardState>,
     store: State<'_, LocalStore>,
-) -> Result<RunOutcome, String> {
+) -> Result<EditOutcome, String> {
     let conn = conns::find(&req.conn_id)?;
     if req.statements.is_empty() {
         return Err("Nothing to save.".into());
     }
+    // console history: "<table> · Save", the table read from the first statement
+    let what = match req.statements.first().and_then(|s| guard::table_of(s, conn.engine)) {
+        Some(t) => format!("{t} · Save"),
+        None => "Save".into(),
+    };
+    let conn_id = conn.id.clone();
+    console::scope(&conn_id, Who::App, what, apply_edits_in(req, conn, state, settings, guard_state, store)).await
+}
+
+async fn apply_edits_in(
+    req: EditRequest,
+    conn: Conn,
+    state: State<'_, DbState>,
+    settings: State<'_, SettingsState>,
+    guard_state: State<'_, GuardState>,
+    store: State<'_, LocalStore>,
+) -> Result<EditOutcome, String> {
     if conn.engine == Engine::Redis {
         return Err("Editing values in the grid is not available for Redis yet.".into());
     }
@@ -1377,7 +1692,7 @@ pub async fn apply_edits(
     let sql = req.statements.iter().map(|s| format!("{s};")).collect::<Vec<_>>().join("\n");
     let c = guard::classify(&sql, conn.engine);
     if let Some(ask) = guard::check(&c, &conn, req.approval, &guard_state).await? {
-        return Ok(RunOutcome::Ask(ask));
+        return Ok(EditOutcome { outcome: RunOutcome::Ask(ask), statement: None });
     }
     let started_at = conns::now_ms();
     let t = Instant::now();
@@ -1389,6 +1704,10 @@ pub async fn apply_edits(
     };
     let ms = t.elapsed().as_millis() as u64;
     let failed = |e: &sqlx::Error, stmt: &str| run_error(e, conn.engine, stmt, &conn, ms);
+    let statement = match &res {
+        Ok((Applied::Miss { index, .. } | Applied::Failed { index, .. }, _)) => Some(*index),
+        _ => None,
+    };
     let outcome = match res {
         Ok((Applied::Done(n), server)) => RunOutcome::Done {
             sets: vec![],
@@ -1437,7 +1756,7 @@ pub async fn apply_edits(
             })
             .await;
     }
-    Ok(outcome)
+    Ok(EditOutcome { outcome, statement })
 }
 
 /// What the write guard would ask before this SQL runs, without running it or touching the database: None when
@@ -1518,7 +1837,10 @@ macro_rules! beat_pool {
         } else {
             let mut fresh = held.is_empty();
             for c in held.iter_mut() {
-                if !matches!(tokio::time::timeout(BEAT_WAIT, c.run("select 1")).await, Ok(Ok(()))) {
+                let st = console::start();
+                let r = tokio::time::timeout(BEAT_WAIT, c.run("select 1")).await;
+                log_beat(&st, &r);
+                if !matches!(r, Ok(Ok(()))) {
                     c.close_on_drop();
                     fresh = true;
                 }
@@ -1528,17 +1850,29 @@ macro_rules! beat_pool {
                 Some(true)
             } else {
                 // acquire() tests what it takes (test_before_acquire) and opens a new one in place of a dead one
+                let st = console::start();
                 let check = async {
                     let mut c = p.acquire().await?;
                     c.run("select 1").await
                 };
-                Some(matches!(tokio::time::timeout(BEAT_WAIT, check).await, Ok(Ok(()))))
+                let r = tokio::time::timeout(BEAT_WAIT, check).await;
+                log_beat(&st, &r);
+                Some(matches!(r, Ok(Ok(()))))
             }
         }
     }};
 }
 
-/// Settings > Queries > Connection heartbeat (off by default): every interval, `select 1` on each idle
+/// A heartbeat `select 1` in the console history: flag ping, or err when it got no answer
+fn log_beat(st: &console::Started, r: &Result<Result<(), sqlx::Error>, tokio::time::error::Elapsed>) {
+    match r {
+        Ok(Ok(())) => console::log(st, "select 1").result("1 row").flag(Flag::Ping).send(),
+        Ok(Err(e)) => console::log(st, "select 1").err(err_text(e)).send(),
+        Err(_) => console::log(st, "select 1").err(format!("No answer in {} s", BEAT_WAIT.as_secs())).send(),
+    }
+}
+
+/// Settings > Queries > Connection heartbeat (on by default; missing = on): every interval, `select 1` on each idle
 /// pooled connection of every open PostgreSQL and MySQL connection, for servers that drop idle sessions.
 /// A connection's own Heartbeat choice (Advanced tab) overrides the setting for that connection.
 /// Connections busy with a run are not touched (they are not idle). SQLite is never pinged.
@@ -1550,7 +1884,7 @@ pub fn start_heartbeat(app: AppHandle) {
         loop {
             let every = app.state::<SettingsState>().u64("heartbeatEvery", 30).max(5);
             tokio::time::sleep(Duration::from_secs(every)).await;
-            let global = app.state::<SettingsState>().bool("heartbeat", false);
+            let global = app.state::<SettingsState>().bool("heartbeat", true);
             let state = app.state::<DbState>();
             let mut beat = Beat { app: &app, down: &mut down };
             // the ones a run lost: down by definition, so this check is a reconnect
@@ -1558,7 +1892,8 @@ pub fn start_heartbeat(app: AppHandle) {
             for c in lost {
                 beat.down.insert(c.id.clone());
                 beat.start(&c.id);
-                let up = matches!(tokio::time::timeout(BEAT_WAIT, state.reopen(&c)).await, Ok(Ok(())));
+                // the spawned loop has no console scope of its own: one per connection checked
+                let up = matches!(console::scope(&c.id, Who::App, "Heartbeat", tokio::time::timeout(BEAT_WAIT, state.reopen(&c))).await, Ok(Ok(())));
                 if up {
                     if let Ok(mut l) = state.lost.lock() {
                         l.remove(&c.id);
@@ -1581,11 +1916,14 @@ pub fn start_heartbeat(app: AppHandle) {
                 beat.start(&id);
                 let mut up = None;
                 for o in opens {
-                    let r = match &o.pool {
-                        Pool::Pg(p) => beat_pool!(p),
-                        Pool::My(p) => beat_pool!(p),
-                        Pool::Lite(_) => None,
-                    };
+                    let r = console::scope(&id, Who::App, "Heartbeat", async {
+                        match &o.pool {
+                            Pool::Pg(p) => beat_pool!(p),
+                            Pool::My(p) => beat_pool!(p),
+                            Pool::Lite(_) => None,
+                        }
+                    })
+                    .await;
                     match r {
                         Some(false) => {
                             up = Some(false);
@@ -1606,6 +1944,43 @@ pub fn start_heartbeat(app: AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A failed save keeps the outcome's own shape (kind and fields at the top) and adds the statement's index.
+    #[test]
+    fn edit_outcome_names_the_statement() {
+        let e = RunOutcome::Error { title: "t".into(), says: None, message: "m".into(), hint: None, lost: false, ms: 1, fix: None };
+        let v = serde_json::to_value(EditOutcome { outcome: e, statement: Some(2) }).unwrap();
+        assert_eq!(v["kind"], "error");
+        assert_eq!(v["title"], "t");
+        assert_eq!(v["statement"], 2);
+        let v = serde_json::to_value(EditOutcome { outcome: RunOutcome::Cancelled { ms: 1, timeout: true }, statement: None }).unwrap();
+        assert_eq!(v["kind"], "cancelled");
+        assert!(v.get("statement").is_none());
+    }
+
+    #[test]
+    fn console_history_entries_per_statement() {
+        let st = console::start();
+        let pg = Engine::Postgres;
+        let peek = |v: Vec<console::Log>| v.iter().map(|l| l.peek()).collect::<Vec<_>>();
+        let done = |r: &[(&str, bool)]| Ran { done: r.iter().map(|(x, q)| (x.to_string(), st, 1.0, *q)).collect(), mark: st };
+        let ok = Ok(Exec::Done(Collected { sets: vec![], messages: vec![], affected: None }));
+        let sql = "select * from t;\nupdate t set a = 1 where id = 2;\nselect * from t where false";
+        assert_eq!(
+            peek(run_entries(pg, sql, &done(&[("20 rows", true), ("1 affected", false), ("0 affected", false)]), &ok)),
+            vec![
+                ("select * from t".to_string(), "20 rows".to_string(), None),
+                ("update t set a = 1 where id = 2".to_string(), "1 affected".to_string(), Some(Flag::Write)),
+                ("select * from t where false".to_string(), "0 rows".to_string(), None),
+            ]
+        );
+        // stopped on the second statement
+        let cancelled = Ok(Exec::Cancelled { timeout: true });
+        assert_eq!(peek(run_entries(pg, sql, &done(&[("20 rows", true)]), &cancelled))[1], ("update t set a = 1 where id = 2".to_string(), "timed out".to_string(), Some(Flag::Cancel)));
+        // the server finished more than were written: one entry for the whole text
+        let v = peek(run_entries(pg, "select 1", &done(&[("1 row", true), ("1 row", true)]), &ok));
+        assert_eq!(v, vec![("select 1".to_string(), "2 statements, last 1 row".to_string(), None)]);
+    }
 
     #[test]
     fn mysql_defaults_read_as_sql() {
@@ -1704,6 +2079,14 @@ mod tests {
         let c = done(execute(&o, None, "select generate_series(1, 50)", 10, CancellationToken::new(), 10).await.unwrap());
         assert!(c.sets[0].truncated);
         assert_eq!(c.sets[0].rows.len(), 10);
+
+        // an enum sqlx does not know: named from pg_type, with its labels in order
+        let sql = "create type pg_temp.mood as enum ('sleepy', 'hungry', 'zoomies'); select 'hungry'::pg_temp.mood as m, 1 as n";
+        let c = done(execute(&o, None, sql, 10, CancellationToken::new(), 10).await.unwrap());
+        let m = &c.sets[0].columns[0];
+        assert!(m.ty.ends_with(".mood"), "{}", m.ty);
+        assert_eq!(m.enum_values.as_deref(), Some(&["sleepy".to_string(), "hungry".into(), "zoomies".into()][..]));
+        assert_eq!(c.sets[0].columns[1].enum_values, None);
 
         // the database's own error, with psql's caret
         let sql = "select totl from pg_class";

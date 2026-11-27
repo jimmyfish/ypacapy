@@ -36,11 +36,12 @@
     // the pager: under the results of a paged run, on its pages and on "No more documents"
     const pg = $("#q-pager");
     pg.hidden = !p || sub !== "results" || !(state === "full" || state === "nomore");
+    $("#q-refresh").hidden = !p || !(state === "full" || state === "nomore");
     if (!pg.hidden) {
       const o = off[tab];
-      // the page number only: nothing is counted, so there is no "of N"
-      $("#q-range").textContent = `Page ${o / LIMIT + 1}`;
-            $("#q-hint").textContent = p.hint ?? ""; $("#q-hint").hidden = !p.hint;
+      // the rows on screen as a range; nothing is counted, so there is no "of N"
+      $("#q-range").textContent = rows ? `${o + 1} – ${o + rows}` : "No more documents";
+            $("#q-hint").textContent = $("#q-hint").title = p.hint ?? ""; $("#q-hint").hidden = !p.hint;
       $("#q-prev").disabled = o === 0;
       // no count, no guess from a short page: Next stays on until a page comes back empty
       $("#q-next").disabled = rows === 0;
@@ -86,6 +87,7 @@
   }
   $("#q-prev").addEventListener("click", () => page(off[tab] - LIMIT));
   $("#q-next").addEventListener("click", () => page(off[tab] + LIMIT));
+  $("#q-refresh").addEventListener("click", () => page(off[tab]));
   $("#cancel").addEventListener("click", () => { clearTimeout(timer); state = restState(tab); render(); });
   $("#reconnect").addEventListener("click", () => runQuery());
   document.addEventListener("keydown", (e) => { if (e.metaKey && e.key === "Enter") { e.preventDefault(); runQuery(); } });

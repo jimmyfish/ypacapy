@@ -34,5 +34,3 @@ body.row-resizing, body.row-resizing * { cursor: row-resize !important; user-sel
   .mq-actions .btn--run { padding-inline: var(--space-sm); }
 }
 /* Query tabs: paging a run ypacapy added the row limit to. Next re-runs it with an offset; no totals, only the page number */
-.response > .q-pager { margin: 0; padding: var(--space-2xs) var(--space-md); border-top: 1px solid var(--color-rule); }
-.q-pager .pager-hint { margin-right: auto; font: var(--text-sm) var(--font-ui); }

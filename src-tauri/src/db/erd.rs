@@ -64,21 +64,28 @@ async fn open_sql(id: &str, database: Option<String>, schema: &str, state: &DbSt
 /// The diagram of `tables` (picked in the diagram's table picker) in `schema`; `None` reads every table.
 #[tauri::command]
 pub async fn schema_diagram(id: String, database: Option<String>, schema: String, tables: Option<Vec<String>>, state: State<'_, DbState>) -> Result<SchemaDiagram, String> {
-    let (conn, open) = open_sql(&id, database, &schema, &state).await?;
-    if tables.as_ref().is_some_and(Vec::is_empty) {
-        return Ok(SchemaDiagram { tables: vec![], keys: vec![] });
-    }
-    // MySQL: a schema is a database, and a connection limited to one database reads no other
-    let cross = !(conn.engine == Engine::Mysql && pinned(&conn).is_some());
-    diagram(&open.pool, conn.engine, &schema, tables.as_deref(), cross).await.map_err(|e| err_text(&e))
+    // console history: every catalog read below is one "Diagram" entry
+    console::scope(&id, Who::App, "Diagram", async {
+        let (conn, open) = open_sql(&id, database, &schema, &state).await?;
+        if tables.as_ref().is_some_and(Vec::is_empty) {
+            return Ok(SchemaDiagram { tables: vec![], keys: vec![] });
+        }
+        // MySQL: a schema is a database, and a connection limited to one database reads no other
+        let cross = !(conn.engine == Engine::Mysql && pinned(&conn).is_some());
+        diagram(&open.pool, conn.engine, &schema, tables.as_deref(), cross).await.map_err(|e| err_text(&e))
+    })
+    .await
 }
 
 /// Which tables of `schema` reference which (referencing, referenced), for the picker's Add linked tables.
 /// One catalog read of the schema's foreign keys, made when the person asks for it.
 #[tauri::command]
 pub async fn schema_links(id: String, database: Option<String>, schema: String, state: State<'_, DbState>) -> Result<Vec<[String; 2]>, String> {
-    let (conn, open) = open_sql(&id, database, &schema, &state).await?;
-    links(&open.pool, conn.engine, &schema).await.map_err(|e| err_text(&e))
+    console::scope(&id, Who::App, "Diagram", async {
+        let (conn, open) = open_sql(&id, database, &schema, &state).await?;
+        links(&open.pool, conn.engine, &schema).await.map_err(|e| err_text(&e))
+    })
+    .await
 }
 
 type Rows = Vec<Vec<Option<String>>>;

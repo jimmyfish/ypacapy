@@ -4,8 +4,8 @@ import { clockOf } from "../lib/time";
 import type { Conn, Link, Settings } from "../types";
 import { RefreshCw, Unplug } from "./Icon";
 
-/** The heartbeat is on for this connection: its own choice, else Settings. SQLite is never pinged. */
-export const beatOn = (c: Conn | undefined, s: Settings) => !!c && c.engine !== "sqlite" && (c.heartbeat ?? s.heartbeat === true);
+/** The heartbeat is on for this connection: its own choice, else Settings (on unless turned off). SQLite is never pinged. */
+export const beatOn = (c: Conn | undefined, s: Settings) => !!c && c.engine !== "sqlite" && (c.heartbeat ?? s.heartbeat !== false);
 
 const LABEL: Record<Link, string> = { connecting: "Connecting", connected: "Connected", disconnected: "Disconnected", reconnecting: "Reconnecting" };
 

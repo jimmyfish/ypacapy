@@ -1,4 +1,5 @@
 mod conns;
+mod console;
 mod db;
 mod fonts;
 mod guard;
@@ -127,6 +128,8 @@ pub fn run() {
                     *s = v;
                 }
             }
+            // console history: what each command sends, told to the window as console-entry
+            console::init(app.handle().clone());
             db::start_heartbeat(app.handle().clone());
             Ok(())
         })

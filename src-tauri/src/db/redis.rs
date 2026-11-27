@@ -97,20 +97,124 @@ fn secs(n: Option<u32>, default: u64) -> Duration {
 
 async fn open_one(client: &Client, wait: Duration, name: &str) -> Result<MultiplexedConnection, RedisError> {
     let cfg = AsyncConnectionConfig::new().set_connection_timeout(Some(wait)).set_response_timeout(None);
-    let mut c = client.get_multiplexed_async_connection_with_config(&cfg).await?;
+    let st = console::start();
+    let c = client.get_multiplexed_async_connection_with_config(&cfg).await;
+    // console history: the driver's own handshake, AUTH masked (a password never reaches the log)
+    let r = client.get_connection_info().redis_settings();
+    let mut hand = vec![];
+    if r.password().is_some() {
+        hand.push(match r.username() {
+            Some(u) => format!("AUTH {} ••••••••", arg_text(u.as_bytes())),
+            None => "AUTH ••••••••".to_string(),
+        });
+    }
+    if r.db() != 0 {
+        hand.push(format!("SELECT {}", r.db()));
+    }
+    if !hand.is_empty() {
+        let l = console::log(&st, hand.join("\n"));
+        match &c {
+            Ok(_) => l.result("OK").send(),
+            Err(e) => l.err(err_text(e)).send(),
+        }
+    }
+    let mut c = c?;
     // the name shows in CLIENT LIST; a server that refuses it is fine
-    let _: Result<Value, _> = ::redis::cmd("CLIENT").arg("SETNAME").arg(name).query_async(&mut c).await;
+    let st = console::start();
+    let set: Result<Value, _> = ::redis::cmd("CLIENT").arg("SETNAME").arg(name).query_async(&mut c).await;
+    log_reply(&st, format!("CLIENT SETNAME {}", arg_text(name.as_bytes())), &set);
     Ok(c)
+}
+
+/// One argument of a command line as redis-cli would take it back: bare, or quoted when it has spaces,
+/// quotes or bytes that aren't text
+fn arg_text(b: &[u8]) -> String {
+    match std::str::from_utf8(b) {
+        Ok(s) if !s.is_empty() && !s.chars().any(|c| c.is_whitespace() || c == '"' || c == '\'' || c.is_control()) => s.to_string(),
+        _ => quoted(b),
+    }
+}
+
+/// A command line for the console history, with every password masked: AUTH, HELLO … AUTH, MIGRATE … AUTH/AUTH2,
+/// CONFIG SET requirepass/masterauth, ACL SETUSER >pass and #hash
+fn line_text(args: &[Vec<u8>]) -> String {
+    const MASK: &str = "••••••••";
+    let up = |i: usize| args.get(i).map(|a| String::from_utf8_lossy(a).to_uppercase()).unwrap_or_default();
+    let name = up(0);
+    args.iter()
+        .enumerate()
+        .map(|(i, a)| {
+            let secret = match name.as_str() {
+                // AUTH pass, AUTH user pass: the last one
+                "AUTH" => i > 0 && i + 1 == args.len(),
+                // HELLO 3 AUTH user pass
+                "HELLO" => i >= 2 && up(i - 2) == "AUTH",
+                // MIGRATE … AUTH pass, MIGRATE … AUTH2 user pass
+                "MIGRATE" => (i >= 1 && up(i - 1) == "AUTH") || (i >= 2 && up(i - 2) == "AUTH2"),
+                // CONFIG SET name value [name value …]
+                "CONFIG" => up(1) == "SET" && i >= 3 && i % 2 == 1 && matches!(up(i - 1).as_str(), "REQUIREPASS" | "MASTERAUTH"),
+                _ => false,
+            };
+            if secret {
+                return MASK.to_string();
+            }
+            // ACL SETUSER name >pass <pass #hash !hash
+            if name == "ACL" && up(1) == "SETUSER" && i >= 3 && matches!(a.first(), Some(b'>' | b'<' | b'#' | b'!')) {
+                return format!("{}{MASK}", a[0] as char);
+            }
+            arg_text(a)
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// One console history entry for a typed reply: `ok` words it, or the error
+fn logged<T>(st: &console::Started, text: impl Into<String>, r: &Result<T, RedisError>, ok: impl FnOnce(&T) -> String) {
+    match r {
+        Ok(v) => console::log(st, text).result(ok(v)).send(),
+        Err(e) => console::log(st, text).err(err_text(e)).send(),
+    }
+}
+
+/// One console history entry for a reply: its short form, or the error
+fn log_reply<T: ShortReply>(st: &console::Started, text: impl Into<String>, r: &Result<T, RedisError>) {
+    match r {
+        Ok(v) => console::log(st, text).result(v.short()).send(),
+        Err(e) => console::log(st, text).err(err_text(e)).send(),
+    }
+}
+
+/// A reply in a few words for the console history: OK, PONG, (integer) 3, 12 bytes, 20 elements
+trait ShortReply {
+    fn short(&self) -> String;
+}
+impl ShortReply for Value {
+    fn short(&self) -> String {
+        match self {
+            Value::BulkString(b) => console::count(b.len(), "byte"),
+            Value::ServerError(e) => format!("(error) {}", e.code()),
+            v => summary(v),
+        }
+    }
+}
+impl ShortReply for String {
+    fn short(&self) -> String {
+        if self.len() <= 24 && !self.contains('\n') { self.clone() } else { console::count(self.len(), "byte") }
+    }
 }
 
 /// "Redis 7.2.4"; ", replica" when this server is one. INFO may be off for this user: then just "Redis".
 async fn server_of(c: &mut MultiplexedConnection) -> String {
+    let st = console::start();
     let info: Result<String, _> = ::redis::cmd("INFO").arg("server").query_async(c).await;
+    log_reply(&st, "INFO server", &info);
     let Ok(info) = info else { return "Redis".into() };
     let field = |k: &str| info.lines().find_map(|l| l.strip_prefix(k)).map(|v| v.trim().to_string());
     let name = if field("server_name:").as_deref() == Some("valkey") { "Valkey" } else { "Redis" };
     let mut s = format!("{name} {}", field("valkey_version:").or_else(|| field("redis_version:")).unwrap_or_default()).trim().to_string();
+    let st = console::start();
     let rep: Result<String, _> = ::redis::cmd("INFO").arg("replication").query_async(c).await;
+    log_reply(&st, "INFO replication", &rep);
     if rep.is_ok_and(|r| r.lines().any(|l| l.trim() == "role:slave")) {
         s += ", replica";
     }
@@ -122,7 +226,9 @@ async fn connect(conn: &Conn, password: Option<String>) -> Result<ROpen, String>
     let wait = secs(conn.connect_timeout, 15);
     let name = trimmed(&conn.app_name).unwrap_or_else(|| "ypacapy".into()).replace(char::is_whitespace, "-");
     let mut browse = tokio::time::timeout(wait, open_one(&client, wait, &name)).await.map_err(|_| format!("No answer in {} s", wait.as_secs()))?.map_err(|e| err_text(&e))?;
+    let st = console::start();
     let pong: Result<Value, _> = ::redis::cmd("PING").query_async(&mut browse).await;
+    log_reply(&st, "PING", &pong);
     pong.map_err(|e| err_text(&e))?;
     let server = server_of(&mut browse).await;
     Ok(ROpen { client, browse: std::sync::Mutex::new(browse), console: tokio::sync::Mutex::new(None), server, heartbeat: conn.heartbeat, db: db_of(conn)?, wait, name })
@@ -134,7 +240,8 @@ impl DbState {
             return Ok(o.clone());
         }
         let password = password_for(conn).await?;
-        let open = Arc::new(connect(conn, password).await?);
+        // whatever asked for it, opening is part of connecting
+        let open = Arc::new(console::again("Connect", connect(conn, password)).await?);
         Ok(self.redis.lock().await.entry(conn.id.clone()).or_insert(open).clone())
     }
     pub(super) async fn drop_redis(&self, id: &str) {
@@ -149,11 +256,14 @@ impl ROpen {
     }
     /// A multiplexed connection doesn't heal: open a new one, and use it if it answers
     async fn renew(&self) -> bool {
-        let fresh = async {
+        let fresh = console::again("Connect", async {
             let mut c = open_one(&self.client, self.wait, &self.name).await?;
-            let _: Value = ::redis::cmd("PING").query_async(&mut c).await?;
+            let st = console::start();
+            let pong: Result<Value, RedisError> = ::redis::cmd("PING").query_async(&mut c).await;
+            log_reply(&st, "PING", &pong);
+            pong?;
             Ok::<_, RedisError>(c)
-        };
+        });
         match tokio::time::timeout(super::BEAT_WAIT, fresh).await {
             Ok(Ok(c)) => {
                 *self.browse.lock().unwrap_or_else(|e| e.into_inner()) = c;
@@ -168,7 +278,7 @@ impl ROpen {
         if let Some(con) = c.as_ref() {
             return Ok(con.clone());
         }
-        let con = open_one(&self.client, self.wait, &self.name).await?;
+        let con = console::again("Connect", open_one(&self.client, self.wait, &self.name)).await?;
         *c = Some(con.clone());
         Ok(con)
     }
@@ -292,7 +402,7 @@ fn cell(v: &Value) -> Option<String> {
 }
 
 fn col(name: &str, ty: &str) -> ColMeta {
-    ColMeta { name: name.into(), ty: ty.into() }
+    ColMeta::new(name, ty)
 }
 
 fn items(v: &Value) -> Option<&Vec<Value>> {
@@ -415,7 +525,13 @@ pub async fn test(conn: &Conn, password: Option<String>) -> Result<TestResult, S
     let t = Instant::now();
     let open = connect(conn, password).await?;
     let mut c = open.browse();
-    let size: Option<i64> = ::redis::cmd("DBSIZE").query_async(&mut c).await.ok();
+    let st = console::start();
+    let size: Result<i64, _> = ::redis::cmd("DBSIZE").query_async(&mut c).await;
+    match &size {
+        Ok(n) => console::log(&st, "DBSIZE").result(console::count(*n as usize, "key")).send(),
+        Err(e) => console::log(&st, "DBSIZE").err(err_text(e)).send(),
+    }
+    let size = size.ok();
     let ms = t.elapsed().as_millis() as u64;
     let server = match size {
         Some(n) => format!("{}. db{} holds {} key{}", open.server, open.db, group(n), if n == 1 { "" } else { "s" }),
@@ -471,26 +587,46 @@ pub struct ScanPage {
 /// `pattern` is SCAN's MATCH. COUNT is the connection's Keys per scan.
 #[tauri::command]
 pub async fn redis_scan(id: String, cursor: String, pattern: Option<String>, state: State<'_, DbState>) -> Result<ScanPage, String> {
-    let conn = conns::find(&id)?;
+    console::scope(&id, Who::App, "Key tree", redis_scan_in(&id, cursor, pattern, &state)).await
+}
+
+async fn redis_scan_in(id: &str, cursor: String, pattern: Option<String>, state: &DbState) -> Result<ScanPage, String> {
+    let conn = conns::find(id)?;
     let open = state.redis(&conn).await?;
     let mut c = open.browse();
     let count = conn.scan_count.filter(|n| *n > 0).unwrap_or(1000);
     let mut q = ::redis::cmd("SCAN");
-    q.arg(cursor.trim().parse::<u64>().unwrap_or(0));
+    let from = cursor.trim().parse::<u64>().unwrap_or(0);
+    q.arg(from);
+    let mut line = format!("SCAN {from}");
     if let Some(p) = pattern.as_deref().map(str::trim).filter(|p| !p.is_empty()) {
         q.arg("MATCH").arg(p);
+        line += &format!(" MATCH {}", arg_text(p.as_bytes()));
     }
     q.arg("COUNT").arg(count);
+    line += &format!(" COUNT {count}");
     let res = async {
-        let (next, keys): (String, Vec<Vec<u8>>) = q.query_async(&mut c).await?;
+        let st = console::start();
+        let scanned: Result<(String, Vec<Vec<u8>>), RedisError> = q.query_async(&mut c).await;
+        match &scanned {
+            Ok((_, keys)) => console::log(&st, line).result(console::count(keys.len(), "key")).send(),
+            Err(e) => console::log(&st, line).err(err_text(e)).send(),
+        }
+        let (next, keys) = scanned?;
         let mut p = ::redis::pipe();
         p.ignore_errors();
         for k in &keys {
             p.cmd("TYPE").arg(k.as_slice()).cmd("PTTL").arg(k.as_slice());
         }
         p.cmd("DBSIZE");
-        let got: Vec<Value> = p.query_async(&mut c).await?;
-        Ok::<_, RedisError>((next, keys, got))
+        let st = console::start();
+        let got: Result<Vec<Value>, RedisError> = p.query_async(&mut c).await;
+        let line = if keys.is_empty() { "DBSIZE".to_string() } else { format!("TYPE/PTTL ×{} + DBSIZE (pipeline)", keys.len()) };
+        match &got {
+            Ok(g) => console::log(&st, line).result(format!("{} repl{}", g.len(), if g.len() == 1 { "y" } else { "ies" })).send(),
+            Err(e) => console::log(&st, line).err(err_text(e)).send(),
+        }
+        Ok::<_, RedisError>((next, keys, got?))
     }
     .await;
     let (next, keys, got) = match res {
@@ -569,7 +705,12 @@ pub struct KeyPage {
 
 async fn read_key(c: &mut MultiplexedConnection, r: &KeyRequest, page: i64) -> Result<KeyPage, RedisError> {
     let key = r.key.as_bytes();
-    let (kind, ttl): (String, i64) = ::redis::pipe().cmd("TYPE").arg(key).cmd("PTTL").arg(key).query_async(c).await?;
+    // console history: each command as sent, the key as redis-cli would take it
+    let k = arg_text(key);
+    let st = console::start();
+    let got: Result<(String, i64), RedisError> = ::redis::pipe().cmd("TYPE").arg(key).cmd("PTTL").arg(key).query_async(c).await;
+    logged(&st, format!("TYPE {k}; PTTL {k} (pipeline)"), &got, |(t, _)| t.clone());
+    let (kind, ttl) = got?;
     let mut p = KeyPage { kind: kind.clone(), ttl_ms: ttl, ..Default::default() };
     let len_cmd = match kind.as_str() {
         "string" => "STRLEN",
@@ -580,32 +721,49 @@ async fn read_key(c: &mut MultiplexedConnection, r: &KeyRequest, page: i64) -> R
         "stream" => "XLEN",
         _ => return Ok(p),
     };
-    p.len = ::redis::cmd(len_cmd).arg(key).query_async(c).await.ok();
+    let st = console::start();
+    let len: Result<i64, RedisError> = ::redis::cmd(len_cmd).arg(key).query_async(c).await;
+    logged(&st, format!("{len_cmd} {k}"), &len, |n| format!("(integer) {n}"));
+    p.len = len.ok();
     let pattern = r.pattern.as_deref().map(str::trim).filter(|x| !x.is_empty() && *x != "*");
     let cursor = r.cursor.as_deref().and_then(|x| x.parse::<u64>().ok()).unwrap_or(0);
     let offset = r.offset.unwrap_or(0).max(0);
     let next_offset = |n: usize| if (n as i64) < page { None } else { Some((offset + page).to_string()) };
     match kind.as_str() {
         "string" => {
-            let v: Vec<u8> = ::redis::cmd("GETRANGE").arg(key).arg(0).arg(STRING_CAP - 1).query_async(c).await?;
+            let st = console::start();
+            let v: Result<Vec<u8>, RedisError> = ::redis::cmd("GETRANGE").arg(key).arg(0).arg(STRING_CAP - 1).query_async(c).await;
+            logged(&st, format!("GETRANGE {k} 0 {}", STRING_CAP - 1), &v, |v| console::count(v.len(), "byte"));
+            let v = v?;
             p.binary = std::str::from_utf8(&v).is_err();
             p.cut = p.len.is_some_and(|l| l > STRING_CAP);
             p.value = Some(text(&v));
         }
         "hash" | "set" => {
-            let mut q = ::redis::cmd(if kind == "hash" { "HSCAN" } else { "SSCAN" });
+            let name = if kind == "hash" { "HSCAN" } else { "SSCAN" };
+            let mut q = ::redis::cmd(name);
             q.arg(key).arg(cursor);
+            let mut line = format!("{name} {k} {cursor}");
             if let Some(m) = pattern {
                 q.arg("MATCH").arg(m);
+                line += &format!(" MATCH {}", arg_text(m.as_bytes()));
             }
             q.arg("COUNT").arg(page);
-            let (next, list): (String, Vec<Value>) = q.query_async(c).await?;
+            line += &format!(" COUNT {page}");
+            let st = console::start();
+            let got: Result<(String, Vec<Value>), RedisError> = q.query_async(c).await;
+            let what = if kind == "hash" { "field" } else { "member" };
+            logged(&st, line, &got, |(_, l)| console::count(if kind == "hash" { l.len() / 2 } else { l.len() }, what));
+            let (next, list) = got?;
             let (cols, rows) = if kind == "hash" { pairs(&list, "field", ("value", "string")) } else { (vec![col("member", "string")], list.iter().map(|x| vec![cell(x)]).collect()) };
             (p.columns, p.rows) = (cols, rows);
             p.next = Some(next).filter(|n| n != "0");
         }
         "list" => {
-            let list: Vec<Value> = ::redis::cmd("LRANGE").arg(key).arg(offset).arg(offset + page - 1).query_async(c).await?;
+            let st = console::start();
+            let list: Result<Vec<Value>, RedisError> = ::redis::cmd("LRANGE").arg(key).arg(offset).arg(offset + page - 1).query_async(c).await;
+            logged(&st, format!("LRANGE {k} {offset} {}", offset + page - 1), &list, |l| console::count(l.len(), "element"));
+            let list = list?;
             p.columns = vec![col("index", "integer"), col("value", "string")];
             p.rows = list.iter().enumerate().map(|(i, x)| vec![Some((offset + i as i64).to_string()), cell(x)]).collect();
             p.next = next_offset(list.len());
@@ -616,14 +774,21 @@ async fn read_key(c: &mut MultiplexedConnection, r: &KeyRequest, page: i64) -> R
             if !r.ascending {
                 q.arg("REV");
             }
-            let list: Vec<Value> = q.arg("WITHSCORES").query_async(c).await?;
+            let st = console::start();
+            let list: Result<Vec<Value>, RedisError> = q.arg("WITHSCORES").query_async(c).await;
+            logged(&st, format!("ZRANGE {k} {offset} {}{} WITHSCORES", offset + page - 1, if r.ascending { "" } else { " REV" }), &list, |l| console::count(l.len() / 2, "member"));
+            let list = list?;
             p.columns = vec![col("rank", "integer"), col("member", "string"), col("score", "double")];
             p.rows = list.chunks(2).enumerate().map(|(i, x)| vec![Some((offset + i as i64 + 1).to_string()), cell(&x[0]), x.get(1).and_then(cell)]).collect();
             p.next = next_offset(list.len() / 2);
         }
         "stream" => {
             let start = r.after.as_deref().map(|id| format!("({id}")).unwrap_or_else(|| "+".into());
-            let list: Vec<Value> = ::redis::cmd("XREVRANGE").arg(key).arg(start).arg("-").arg("COUNT").arg(page).query_async(c).await?;
+            let st = console::start();
+            let line = format!("XREVRANGE {k} {} - COUNT {page}", arg_text(start.as_bytes()));
+            let list: Result<Vec<Value>, RedisError> = ::redis::cmd("XREVRANGE").arg(key).arg(start).arg("-").arg("COUNT").arg(page).query_async(c).await;
+            logged(&st, line, &list, |l| format!("{} entr{}", l.len(), if l.len() == 1 { "y" } else { "ies" }));
+            let list = list?;
             let (cols, rows) = entries(&list).unwrap_or_default();
             p.next = if (rows.len() as i64) < page { None } else { rows.last().and_then(|r| r[0].clone()) };
             (p.columns, p.rows) = (cols, rows);
@@ -636,6 +801,11 @@ async fn read_key(c: &mut MultiplexedConnection, r: &KeyRequest, page: i64) -> R
 /// One page of a key, read for its type. Run again for the next page with the `next` it gave.
 #[tauri::command]
 pub async fn redis_key(req: KeyRequest, state: State<'_, DbState>, settings: State<'_, SettingsState>) -> Result<KeyPage, String> {
+    let (id, what) = (req.conn_id.clone(), format!("{} · Read", req.key));
+    console::scope(&id, Who::App, what, redis_key_in(req, state, settings)).await
+}
+
+async fn redis_key_in(req: KeyRequest, state: State<'_, DbState>, settings: State<'_, SettingsState>) -> Result<KeyPage, String> {
     let conn = conns::find(&req.conn_id)?;
     let t = Instant::now();
     let open = state.redis(&conn).await?;
@@ -686,11 +856,19 @@ pub struct KeyInfo {
 /// Read when the dialog opens and on Refresh, never on its own.
 #[tauri::command]
 pub async fn redis_key_info(id: String, key: String, state: State<'_, DbState>) -> Result<KeyInfo, String> {
-    let conn = conns::find(&id)?;
+    console::scope(&id, Who::App, format!("{key} · Info"), redis_key_info_in(&id, &key, &state)).await
+}
+
+async fn redis_key_info_in(id: &str, key: &str, state: &DbState) -> Result<KeyInfo, String> {
+    let conn = conns::find(id)?;
     let open = state.redis(&conn).await?;
     let mut c = open.browse();
     let k = key.as_bytes();
-    let kind: String = ::redis::cmd("TYPE").arg(k).query_async(&mut c).await.map_err(|e| err_text(&e))?;
+    let kt = arg_text(k);
+    let st = console::start();
+    let kind: Result<String, RedisError> = ::redis::cmd("TYPE").arg(k).query_async(&mut c).await;
+    log_reply(&st, format!("TYPE {kt}"), &kind);
+    let kind = kind.map_err(|e| err_text(&e))?;
     let len_cmd = match kind.as_str() {
         "string" => Some("STRLEN"),
         "hash" => Some("HLEN"),
@@ -706,7 +884,11 @@ pub async fn redis_key_info(id: String, key: String, state: State<'_, DbState>) 
     if let Some(l) = len_cmd {
         p.cmd(l).arg(k);
     }
-    let got: Vec<Value> = p.query_async(&mut c).await.map_err(|e| err_text(&e))?;
+    let st = console::start();
+    let got: Result<Vec<Value>, RedisError> = p.query_async(&mut c).await;
+    let len_text = len_cmd.map(|l| format!("; {l} {kt}")).unwrap_or_default();
+    logged(&st, format!("OBJECT ENCODING {kt}; PTTL {kt}; MEMORY USAGE {kt} SAMPLES 5; OBJECT IDLETIME {kt}{len_text} (pipeline)"), &got, |g| format!("{} repl{}", g.len(), if g.len() == 1 { "y" } else { "ies" }));
+    let got = got.map_err(|e| err_text(&e))?;
     let int = |i: usize| match got.get(i) {
         Some(Value::Int(n)) => Some(*n),
         _ => None,
@@ -794,6 +976,9 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
             return Ok(RunOutcome::Error { title: format!("Could not open {}", conn.name), says: None, message: e, hint: None, lost: true, ms: ms(&t), fix: None });
         }
     };
+    // console history: one entry per command, as each replies; the one in flight when Cancel or the timeout
+    // drops the work is told after
+    let running = std::sync::Mutex::new(None::<(usize, console::Started)>);
     let work = async {
         let mut con = match open.console().await {
             Ok(c) => c,
@@ -802,7 +987,22 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
         let mut done = vec![];
         for (i, c) in cmds.iter().enumerate() {
             let t1 = Instant::now();
-            match query(c).query_async::<Value>(&mut con).await {
+            let st = console::start();
+            if let Ok(mut r) = running.lock() {
+                *r = Some((i, st));
+            }
+            let got = query(c).query_async::<Value>(&mut con).await;
+            if let Ok(mut r) = running.lock() {
+                *r = None;
+            }
+            if console::on() {
+                let l = console::log(&st, line_text(&c.args));
+                match &got {
+                    Ok(v) => l.result(v.short()).flag_if(matches!(redis_cli::kind(c), Kind::Write(_)), console::Flag::Write).send(),
+                    Err(e) => l.err(err_text(e)).send(),
+                }
+            }
+            match got {
                 Ok(v) => done.push((c.clone(), v, t1.elapsed().as_millis() as u64)),
                 Err(e) => return Step::Failed(done, i, e),
             }
@@ -825,6 +1025,9 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
         runs.remove(&req.run_id);
     }
     let elapsed = ms(&t);
+    if let (Step::Cancelled(timeout), Ok(Some((i, st)))) = (&step, running.lock().map(|r| *r)) {
+        console::log(&st, line_text(&cmds[i].args)).cancelled(*timeout).send();
+    }
     let outcome = match step {
         Step::Cancelled(timeout) => {
             // the command may still be running on the server; this connection is not used again
@@ -852,7 +1055,14 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
                 if e.code() == Some("WRONGTYPE") && c.args.len() > 1 {
                     let key = text(&c.args[1]);
                     let mut b = open.browse();
-                    let real: Option<String> = ::redis::cmd("TYPE").arg(&c.args[1]).query_async(&mut b).await.ok();
+                    let st = console::start();
+                    let real: Result<String, RedisError> = ::redis::cmd("TYPE").arg(&c.args[1]).query_async(&mut b).await;
+                    // the app asks this, not the person: under the key's own label
+                    match &real {
+                        Ok(t) => console::log(&st, format!("TYPE {}", arg_text(&c.args[1]))).result(t.clone()).app_as(format!("{key} · Info")).send(),
+                        Err(e) => console::log(&st, format!("TYPE {}", arg_text(&c.args[1]))).err(err_text(e)).app_as(format!("{key} · Info")).send(),
+                    }
+                    let real = real.ok();
                     if let Some((ty, words)) = real.as_deref().and_then(|r| TYPE_WORDS.iter().find(|(k, _)| *k == r)) {
                         title = format!("{key} is {words}, and {} does not read {}", c.name(), if *ty == "string" { "strings" } else { "that type" });
                         fix = reader(ty, &key);
@@ -916,9 +1126,20 @@ pub(super) async fn heartbeat(state: &DbState, global: bool, beat: &mut super::B
     let opens: Vec<(String, Arc<ROpen>)> = state.redis.lock().await.iter().filter(|(_, o)| o.heartbeat.unwrap_or(global)).map(|(id, o)| (id.clone(), o.clone())).collect();
     for (id, o) in opens {
         beat.start(&id);
-        let mut c = o.browse();
-        let pong = tokio::time::timeout(super::BEAT_WAIT, ::redis::cmd("PING").query_async::<Value>(&mut c)).await;
-        let up = matches!(pong, Ok(Ok(_))) || o.renew().await;
+        // the spawned heartbeat has no console scope: one per connection checked
+        let up = console::scope(&id, Who::App, "Heartbeat", async {
+            let mut c = o.browse();
+            let st = console::start();
+            let pong = tokio::time::timeout(super::BEAT_WAIT, ::redis::cmd("PING").query_async::<Value>(&mut c)).await;
+            let l = console::log(&st, "PING");
+            match &pong {
+                Ok(Ok(v)) => l.result(v.short()).flag(console::Flag::Ping).send(),
+                Ok(Err(e)) => l.err(err_text(e)).send(),
+                Err(_) => l.err(format!("No answer in {} s", super::BEAT_WAIT.as_secs())).send(),
+            }
+            matches!(pong, Ok(Ok(_))) || o.renew().await
+        })
+        .await;
         beat.done(&id, Some(up));
     }
 }
@@ -932,6 +1153,20 @@ mod tests {
     }
     fn b(s: &str) -> Value {
         Value::BulkString(s.as_bytes().to_vec())
+    }
+
+    #[test]
+    fn console_history_masks_passwords() {
+        let l = |s: &str| line_text(&c(s).args);
+        assert_eq!(l("AUTH hunter2"), "AUTH ••••••••");
+        assert_eq!(l("auth admin hunter2"), "auth admin ••••••••");
+        assert_eq!(l("HELLO 3 AUTH admin hunter2 SETNAME x"), "HELLO 3 AUTH admin •••••••• SETNAME x");
+        assert_eq!(l("MIGRATE h 6379 k 0 5000 AUTH2 u pw KEYS a"), "MIGRATE h 6379 k 0 5000 AUTH2 u •••••••• KEYS a");
+        assert_eq!(l("MIGRATE h 6379 k 0 5000 AUTH pw"), "MIGRATE h 6379 k 0 5000 AUTH ••••••••");
+        assert_eq!(l("CONFIG SET requirepass s3cret maxmemory 1gb"), "CONFIG SET requirepass •••••••• maxmemory 1gb");
+        assert_eq!(l("ACL SETUSER bob on >pw ~* +@all"), "ACL SETUSER bob on >•••••••• ~* +@all");
+        assert_eq!(l("SET \"a key\" v"), "SET \"a key\" v");
+        assert_eq!(l("SCAN 0 MATCH * COUNT 500"), "SCAN 0 MATCH * COUNT 500");
     }
 
     #[test]

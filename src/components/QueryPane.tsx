@@ -1,5 +1,6 @@
 import "./QueryPane.css";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { isDirty, useCurrent, useStore } from "../store";
 import { ENGINE_LABEL, ENGINE_NAME, formatSql, statementAt } from "../lib/sql";
 import { highlightMongo, mongoStatementAt } from "../lib/mongosh";
@@ -12,7 +13,7 @@ import type { QueryTab, ResultSet, RunOutcome, RunState } from "../types";
 import { ResultGrid, type GridEdit } from "./ResultGrid";
 import { SqlEditor, type Completer } from "./SqlEditor";
 import { useDismiss } from "./useDismiss";
-import { Braces, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, CircleSlash, Inbox, LoaderCircle, MessageSquareText, Play, Table2, WandSparkles, ico, icoC } from "./Icon";
+import { Braces, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, CircleSlash, Inbox, LoaderCircle, MessageSquareText, Play, RefreshCw, Table2, WandSparkles, ico, icoC } from "./Icon";
 import { EmptyState, Obj } from "./EmptyState";
 import { DocCards } from "./DocCards";
 import { LinkNote } from "./ConnStatus";
@@ -80,6 +81,15 @@ export function QueryContext() {
  * Run: a play icon, the label and its shortcut inside the button. While a run is out the button is
  * disabled and a turning loader takes the play icon's place. With `items`, a menu opens from a chevron beside it.
  */
+/** Refresh, just left of Run: reads the page on screen again (Run starts over from the first page). */
+export function RefreshBtn({ title, disabled, onClick }: { title: string; disabled?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" className="btn btn-refresh" aria-label="Refresh" title={title} disabled={disabled} onClick={onClick}>
+      <RefreshCw {...ico} />
+    </button>
+  );
+}
+
 export function RunGroup({ busy, disabled, onRun, kbd, items }: { busy: boolean; disabled?: boolean; onRun: () => void; kbd: string; items?: { label: string; kbd?: string; run: () => void }[] }) {
   const [open, setOpen] = useState(false);
   const ref = useDismiss(open, () => setOpen(false));
@@ -237,6 +247,8 @@ function QueryResults({ tab }: { tab: QueryTab }) {
   const { conn, session } = useCurrent();
   const [sub, setSub] = useState<"results" | "messages">("results");
   const [setIdx, setSetIdx] = useState<number | null>(null);
+  // the results' toolbar (notes, paging | actions) sits on the Results line, here
+  const [tools, setTools] = useState<HTMLDivElement | null>(null);
   const st = useStore.getState();
   const run = tab.run;
   const o = run.outcome;
@@ -262,6 +274,24 @@ function QueryResults({ tab }: { tab: QueryTab }) {
   const gridSet = emptyPage ?? shown;
   // the hint: without an order the database may hand back rows in a different order on each run
   const ordered = mongo ? /\.sort\s*\(|\$sort\b/.test(run.sql ?? "") : /\border\s+by\b/i.test(run.sql ?? "");
+  // the rows on screen as a range; nothing is counted, so there is no "of N". Refresh is beside Run.
+  const pager =
+    limit !== null && limit > 0 && run.status !== "running" ? (
+      <div className="pager" role="group" aria-label="Pages">
+        {!ordered && <span className="pager-hint" title={mongo ? "No sort, so documents can shift between pages" : "No order by, so rows can shift between pages"}>{mongo ? "No sort, so documents can shift between pages" : "No order by, so rows can shift between pages"}</span>}
+        <span className="pager-n" aria-live="polite">
+          {pageRows > 0 ? `${offset + 1} – ${offset + pageRows}` : mongo ? "No more documents" : "No more rows"}
+        </span>
+        <button type="button" className="icon-btn" title="Previous page" aria-label="Previous page" disabled={offset === 0} onClick={() => void st.page(tab.id, offset - limit)}>
+          <ChevronLeft {...ico} />
+        </button>
+        <button type="button" className="icon-btn" title="Next page" aria-label="Next page" disabled={pageRows === 0} onClick={() => void st.page(tab.id, offset + limit)}>
+          <ChevronRight {...ico} />
+        </button>
+      </div>
+    ) : undefined;
+  /** a toolbar of the body's own (no grid), on the Results line */
+  const onLine = (node: ReactNode) => tools && createPortal(node, tools);
   const target = useEditTarget(tab, mongo || redis ? undefined : shown, shownIdx);
   // no grid editing on MongoDB documents or Redis replies yet
   const edit: GridEdit | undefined = conn && session && shown && !mongo && !redis ? { target, connId: conn.id, connName: conn.name, database: session.database, key: `${tab.id}:${shownIdx}`, onSaved: (rs) => st.replaceSet(tab.id, shownIdx, rs) } : undefined;
@@ -395,20 +425,22 @@ function QueryResults({ tab }: { tab: QueryTab }) {
   else if (o.kind === "done" && shown && redis && as === "raw")
     body = (
       <div className="state">
-        <div className="res-tools">
-          {sets.length > 1 ? (
-            <div className="seg" role="group" aria-label="Reply">
-              {sets.map((_, i) => (
-                <button key={i} type="button" aria-pressed={shown === sets[i]} onClick={() => setSetIdx(i)}>
-                  Reply {i + 1}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <span className="muted">As redis-cli prints it</span>
-          )}
-          {asSeg}
-        </div>
+        {onLine(
+          <>
+            {sets.length > 1 ? (
+              <div className="seg" role="group" aria-label="Reply">
+                {sets.map((_, i) => (
+                  <button key={i} type="button" aria-pressed={shown === sets[i]} onClick={() => setSetIdx(i)}>
+                    Reply {i + 1}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="muted">As redis-cli prints it</span>
+            )}
+            {asSeg}
+          </>,
+        )}
         <pre className="code docs raw" tabIndex={0} aria-label={`Reply to ${tab.title}`}>
           {(shown.raw ?? "").split("\n").map((l, i) => {
             const m = /^(\s*\d+[)#] )+/.exec(l);
@@ -436,10 +468,13 @@ function QueryResults({ tab }: { tab: QueryTab }) {
   else if (o.kind === "done" && shown && mongo && as === "json")
     body = (
       <div className="state">
-        <div className="res-tools">
-          {asSeg}
-          {shown.truncated ? <span className="muted">First {shown.rows.length} documents; the rest were left unread</span> : <span className="muted">{shown.rows.length} documents</span>}
-        </div>
+        {onLine(
+          <>
+            {asSeg}
+            {shown.truncated ? <span className="muted">First {shown.rows.length} documents; the rest were left unread</span> : <span className="muted">{shown.rows.length} documents</span>}
+            {pager}
+          </>,
+        )}
         <DocCards docs={shown.docs ?? []} label={`Documents of ${tab.title}`} />
       </div>
     );
@@ -451,6 +486,8 @@ function QueryResults({ tab }: { tab: QueryTab }) {
           edit={edit}
           label={`Results of ${tab.title}`}
           exportName={tab.title}
+          toolsIn={tools}
+          pager={pager}
           lead={
             sets.length > 1 ? (
               <>
@@ -504,20 +541,9 @@ function QueryResults({ tab }: { tab: QueryTab }) {
           Messages
         </button>
         <RunMeta run={run} />
+        {sub === "results" && <div className="res-tools sub-tools" ref={setTools} />}
       </nav>
       {session && body}
-      {session && limit !== null && limit > 0 && sub === "results" && run.status !== "running" && (
-        <div className="grid-foot q-pager" role="group" aria-label="Pages">
-          {!ordered && <span className="pager-hint">{mongo ? "No sort, so documents can shift between pages" : "No order by, so rows can shift between pages"}</span>}
-          <span>Page {Math.floor(offset / limit) + 1}</span>
-          <button type="button" className="icon-btn" title="Previous page" aria-label="Previous page" disabled={offset === 0} onClick={() => void st.page(tab.id, offset - limit)}>
-            <ChevronLeft {...ico} />
-          </button>
-          <button type="button" className="icon-btn" title="Next page" aria-label="Next page" disabled={pageRows === 0} onClick={() => void st.page(tab.id, offset + limit)}>
-            <ChevronRight {...ico} />
-          </button>
-        </div>
-      )}
     </section>
   );
 }
@@ -621,6 +647,9 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
     });
 
   const saved = !!tab.savedId && !isDirty(tab);
+  // a run ypacapy added the row limit to (it pages); Redis never does
+  const ro = tab.run.outcome;
+  const pagedRun = ro?.kind === "done" && conn?.engine !== "redis" && ro.limit !== null && ro.limit > 0;
   if (!session) return null;
   return (
     <div className="work-body">
@@ -641,6 +670,8 @@ export function QueryPane({ tab }: { tab: QueryTab }) {
             {saved && <CircleCheck {...icoC("save-ico")} />}
             {saved ? "Saved" : "Save"}
           </button>
+          {/* a paged run: Refresh runs the page on screen again */}
+          {pagedRun && <RefreshBtn title="Run this page again" disabled={busy || session.status !== "open"} onClick={() => void st.page(tab.id, tab.offset ?? 0)} />}
           {/* the click does what ⌘↵ does; ⇧⌘↵ runs the whole editor */}
           <RunGroup busy={busy} disabled={session.status !== "open"} onRun={runSel} kbd="⌘↵" />
         </div>

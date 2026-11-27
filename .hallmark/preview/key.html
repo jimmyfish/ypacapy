@@ -122,6 +122,9 @@
   <symbol id="i-copy-x" viewBox="0 0 24 24"><path d="M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"/><rect x="8" y="8" width="14" height="14" rx="2"/><path d="m12.5 12.5 5 5"/><path d="m12.5 17.5 5-5"/></symbol>
   <symbol id="i-arrow-right-to-line" viewBox="0 0 24 24"><path d="M17 12H3"/><path d="m11 18 6-6-6-6"/><path d="M21 5v14"/></symbol>
   <symbol id="i-arrow-left-to-line" viewBox="0 0 24 24"><path d="M3 19V5"/><path d="m13 6-6 6 6 6"/><path d="M7 12h14"/></symbol>
+  <symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+  <symbol id="i-square-terminal" viewBox="0 0 24 24"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></symbol>
+  <symbol id="i-radio" viewBox="0 0 24 24"><path d="M16.247 7.761a6 6 0 0 1 0 8.478"/><path d="M19.075 4.933a10 10 0 0 1 0 14.134"/><path d="M4.925 19.067a10 10 0 0 1 0-14.134"/><path d="M7.753 16.239a6 6 0 0 1 0-8.478"/><circle cx="12" cy="12" r="2"/></symbol>
 </svg>
 
 <header class="pv-bar">
@@ -139,6 +142,7 @@
     <a class="btn btn--quiet" href="./connect.html" style="min-height:var(--control)">New connection</a>
     <a class="btn btn--quiet" href="./updates.html" style="min-height:var(--control)">Updates</a>
     <a class="btn btn--quiet" href="./tasks.html" style="min-height:var(--control)">Task manager</a>
+    <a class="btn btn--quiet" href="./console.html" style="min-height:var(--control)">Console history</a>
     <a class="btn btn--quiet" href="./about.html" style="min-height:var(--control)">About</a>
     <a class="btn btn--quiet" href="./modals.html" style="min-height:var(--control)">Modals</a>
     <a class="btn btn--quiet" href="./empty.html" style="min-height:var(--control)">Empty states</a>
@@ -335,23 +339,23 @@
             <div class="res-tools"><span class="muted">Fields in HSCAN order. Double-click a value to change it.</span><div class="res-actions"><div class="menu-anchor"><button type="button" class="icon-btn" title="Columns" aria-label="Go to a column" aria-haspopup="menu" aria-expanded="false" data-menu="k-cols"><svg aria-hidden="true" class="ico"><use href="#i-columns-3"/></svg></button><div class="menu cols-menu" id="k-cols" role="menu" aria-label="Go to a column" data-cols hidden></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Copy" aria-label="Copy rows" aria-haspopup="menu" aria-expanded="false" data-menu="k-copy"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg></button><div class="menu" id="k-copy" role="menu" aria-label="Copy as" hidden><p class="menu-note">Copy as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Export" aria-label="Export rows" aria-haspopup="menu" aria-expanded="false" data-menu="k-export"><svg aria-hidden="true" class="ico"><use href="#i-download"/></svg></button><div class="menu" id="k-export" role="menu" aria-label="Export as" hidden><p class="menu-note">Export as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div></div></div>
             <div class="as-pane">
             <div class="grid-wrap" tabindex="0" aria-label="Fields of user:3107">
-              <table class="grid"><thead><tr><th class="rownum" scope="col"><span class="visually-hidden">Row</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">field</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">value</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th></tr></thead><tbody>
-<tr aria-selected="true"><td class="rownum">1</td><td>email</td><td>mei.tanaka@example.org</td></tr>
-<tr><td class="rownum">2</td><td>full_name</td><td>Mei Tanaka</td></tr>
-<tr><td class="rownum">3</td><td>phone</td><td>+81 90 2231 7754</td></tr>
-<tr><td class="rownum">4</td><td>country</td><td>JP</td></tr>
-<tr><td class="rownum">5</td><td>city</td><td>Osaka</td></tr>
-<tr><td class="rownum">6</td><td>is_vip</td><td>1</td></tr>
-<tr><td class="rownum">7</td><td>lifetime_value</td><td>4820.00</td></tr>
-<tr><td class="rownum">8</td><td>orders_count</td><td>17</td></tr>
-<tr><td class="rownum">9</td><td>prefs</td><td class="json" data-full="{
+              <table class="grid"><thead><tr><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">field</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">value</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th></tr></thead><tbody>
+<tr aria-selected="true"><td>email</td><td>mei.tanaka@example.org</td></tr>
+<tr><td>full_name</td><td>Mei Tanaka</td></tr>
+<tr><td>phone</td><td>+81 90 2231 7754</td></tr>
+<tr><td>country</td><td>JP</td></tr>
+<tr><td>city</td><td>Osaka</td></tr>
+<tr><td>is_vip</td><td>1</td></tr>
+<tr><td>lifetime_value</td><td>4820.00</td></tr>
+<tr><td>orders_count</td><td>17</td></tr>
+<tr><td>prefs</td><td class="json" data-full="{
   &quot;lang&quot;: &quot;ja&quot;,
   &quot;newsletter&quot;: true,
   &quot;currency&quot;: &quot;JPY&quot;
 }">{ <span class="jk">"lang"</span>: <span class="js">"ja"</span>, <span class="jk">"newsletter"</span>: <span class="jn">true</span>, <span class="jk">"currency"</span>: <span class="js">"JPY"</span> }</td></tr>
-<tr><td class="rownum">10</td><td>last_order_id</td><td>10482</td></tr>
-<tr><td class="rownum">11</td><td>created_at</td><td>2024-03-11T08:21:00Z</td></tr>
-<tr><td class="rownum">12</td><td>last_seen_at</td><td>2026-11-18T09:52:14Z</td></tr>
+<tr><td>last_order_id</td><td>10482</td></tr>
+<tr><td>created_at</td><td>2024-03-11T08:21:00Z</td></tr>
+<tr><td>last_seen_at</td><td>2026-11-18T09:52:14Z</td></tr>
               </tbody></table>
             </div>
             <div class="inspector" aria-live="polite">
@@ -370,122 +374,122 @@
             <div class="res-tools"><span class="muted">Items 0 to 19, from the head</span><div class="res-actions"><div class="menu-anchor"><button type="button" class="icon-btn" title="Columns" aria-label="Go to a column" aria-haspopup="menu" aria-expanded="false" data-menu="k-cols"><svg aria-hidden="true" class="ico"><use href="#i-columns-3"/></svg></button><div class="menu cols-menu" id="k-cols" role="menu" aria-label="Go to a column" data-cols hidden></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Copy" aria-label="Copy rows" aria-haspopup="menu" aria-expanded="false" data-menu="k-copy"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg></button><div class="menu" id="k-copy" role="menu" aria-label="Copy as" hidden><p class="menu-note">Copy as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Export" aria-label="Export rows" aria-haspopup="menu" aria-expanded="false" data-menu="k-export"><svg aria-hidden="true" class="ico"><use href="#i-download"/></svg></button><div class="menu" id="k-export" role="menu" aria-label="Export as" hidden><p class="menu-note">Export as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div></div></div>
             <div class="as-pane">
             <div class="grid-wrap" tabindex="0" aria-label="Items of queue:emails">
-              <table class="grid"><thead><tr><th class="rownum" scope="col"><span class="visually-hidden">Row</span></th><th scope="col" class="num" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-hash"/></svg><span class="col-name">index</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">int</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">value</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th></tr></thead><tbody>
-<tr aria-selected="true"><td class="rownum">1</td><td class="num">0</td><td class="json" data-full="{
+              <table class="grid"><thead><tr><th scope="col" class="num" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-hash"/></svg><span class="col-name">index</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">int</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">value</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th></tr></thead><tbody>
+<tr aria-selected="true"><td class="num">0</td><td class="json" data-full="{
   &quot;job&quot;: &quot;receipt&quot;,
   &quot;to&quot;: &quot;a.lindqvist@example.net&quot;,
   &quot;order&quot;: 10482,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"receipt"</span>, <span class="jk">"to"</span>: <span class="js">"a.lindqvist@example.net"</span>, <span class="jk">"order"</span>: <span class="jn">10482</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">2</td><td class="num">1</td><td class="json" data-full="{
+<tr><td class="num">1</td><td class="json" data-full="{
   &quot;job&quot;: &quot;refund_notice&quot;,
   &quot;to&quot;: &quot;r.okonkwo@example.com&quot;,
   &quot;order&quot;: 10479,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"refund_notice"</span>, <span class="jk">"to"</span>: <span class="js">"r.okonkwo@example.com"</span>, <span class="jk">"order"</span>: <span class="jn">10479</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">3</td><td class="num">2</td><td class="json" data-full="{
+<tr><td class="num">2</td><td class="json" data-full="{
   &quot;job&quot;: &quot;welcome&quot;,
   &quot;to&quot;: &quot;mei.tanaka@example.org&quot;,
   &quot;order&quot;: 10476,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"welcome"</span>, <span class="jk">"to"</span>: <span class="js">"mei.tanaka@example.org"</span>, <span class="jk">"order"</span>: <span class="jn">10476</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">4</td><td class="num">3</td><td class="json" data-full="{
+<tr><td class="num">3</td><td class="json" data-full="{
   &quot;job&quot;: &quot;cart_reminder&quot;,
   &quot;to&quot;: &quot;p.haddad@example.net&quot;,
   &quot;order&quot;: 10473,
   &quot;attempt&quot;: 2
 }">{ <span class="jk">"job"</span>: <span class="js">"cart_reminder"</span>, <span class="jk">"to"</span>: <span class="js">"p.haddad@example.net"</span>, <span class="jk">"order"</span>: <span class="jn">10473</span>, <span class="jk">"attempt"</span>: <span class="jn">2</span> }</td></tr>
-<tr><td class="rownum">5</td><td class="num">4</td><td class="json" data-full="{
+<tr><td class="num">4</td><td class="json" data-full="{
   &quot;job&quot;: &quot;receipt&quot;,
   &quot;to&quot;: &quot;s.ferreira@example.com&quot;,
   &quot;order&quot;: 10470,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"receipt"</span>, <span class="jk">"to"</span>: <span class="js">"s.ferreira@example.com"</span>, <span class="jk">"order"</span>: <span class="jn">10470</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">6</td><td class="num">5</td><td class="json" data-full="{
+<tr><td class="num">5</td><td class="json" data-full="{
   &quot;job&quot;: &quot;refund_notice&quot;,
   &quot;to&quot;: &quot;k.nowak@example.org&quot;,
   &quot;order&quot;: 10467,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"refund_notice"</span>, <span class="jk">"to"</span>: <span class="js">"k.nowak@example.org"</span>, <span class="jk">"order"</span>: <span class="jn">10467</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">7</td><td class="num">6</td><td class="json" data-full="{
+<tr><td class="num">6</td><td class="json" data-full="{
   &quot;job&quot;: &quot;welcome&quot;,
   &quot;to&quot;: &quot;d.mensah@example.net&quot;,
   &quot;order&quot;: 10464,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"welcome"</span>, <span class="jk">"to"</span>: <span class="js">"d.mensah@example.net"</span>, <span class="jk">"order"</span>: <span class="jn">10464</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">8</td><td class="num">7</td><td class="json" data-full="{
+<tr><td class="num">7</td><td class="json" data-full="{
   &quot;job&quot;: &quot;cart_reminder&quot;,
   &quot;to&quot;: &quot;l.bianchi@example.com&quot;,
   &quot;order&quot;: 10461,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"cart_reminder"</span>, <span class="jk">"to"</span>: <span class="js">"l.bianchi@example.com"</span>, <span class="jk">"order"</span>: <span class="jn">10461</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">9</td><td class="num">8</td><td class="json" data-full="{
+<tr><td class="num">8</td><td class="json" data-full="{
   &quot;job&quot;: &quot;receipt&quot;,
   &quot;to&quot;: &quot;t.nguyen@example.org&quot;,
   &quot;order&quot;: 10458,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"receipt"</span>, <span class="jk">"to"</span>: <span class="js">"t.nguyen@example.org"</span>, <span class="jk">"order"</span>: <span class="jn">10458</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">10</td><td class="num">9</td><td class="json" data-full="{
+<tr><td class="num">9</td><td class="json" data-full="{
   &quot;job&quot;: &quot;refund_notice&quot;,
   &quot;to&quot;: &quot;h.adeyemi@example.net&quot;,
   &quot;order&quot;: 10455,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"refund_notice"</span>, <span class="jk">"to"</span>: <span class="js">"h.adeyemi@example.net"</span>, <span class="jk">"order"</span>: <span class="jn">10455</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">11</td><td class="num">10</td><td class="json" data-full="{
+<tr><td class="num">10</td><td class="json" data-full="{
   &quot;job&quot;: &quot;welcome&quot;,
   &quot;to&quot;: &quot;j.moreau@example.com&quot;,
   &quot;order&quot;: 10452,
   &quot;attempt&quot;: 2
 }">{ <span class="jk">"job"</span>: <span class="js">"welcome"</span>, <span class="jk">"to"</span>: <span class="js">"j.moreau@example.com"</span>, <span class="jk">"order"</span>: <span class="jn">10452</span>, <span class="jk">"attempt"</span>: <span class="jn">2</span> }</td></tr>
-<tr><td class="rownum">12</td><td class="num">11</td><td class="json" data-full="{
+<tr><td class="num">11</td><td class="json" data-full="{
   &quot;job&quot;: &quot;cart_reminder&quot;,
   &quot;to&quot;: &quot;n.kapoor@example.org&quot;,
   &quot;order&quot;: 10449,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"cart_reminder"</span>, <span class="jk">"to"</span>: <span class="js">"n.kapoor@example.org"</span>, <span class="jk">"order"</span>: <span class="jn">10449</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">13</td><td class="num">12</td><td class="json" data-full="{
+<tr><td class="num">12</td><td class="json" data-full="{
   &quot;job&quot;: &quot;receipt&quot;,
   &quot;to&quot;: &quot;a.lindqvist@example.net&quot;,
   &quot;order&quot;: 10446,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"receipt"</span>, <span class="jk">"to"</span>: <span class="js">"a.lindqvist@example.net"</span>, <span class="jk">"order"</span>: <span class="jn">10446</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">14</td><td class="num">13</td><td class="json" data-full="{
+<tr><td class="num">13</td><td class="json" data-full="{
   &quot;job&quot;: &quot;refund_notice&quot;,
   &quot;to&quot;: &quot;r.okonkwo@example.com&quot;,
   &quot;order&quot;: 10443,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"refund_notice"</span>, <span class="jk">"to"</span>: <span class="js">"r.okonkwo@example.com"</span>, <span class="jk">"order"</span>: <span class="jn">10443</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">15</td><td class="num">14</td><td class="json" data-full="{
+<tr><td class="num">14</td><td class="json" data-full="{
   &quot;job&quot;: &quot;welcome&quot;,
   &quot;to&quot;: &quot;mei.tanaka@example.org&quot;,
   &quot;order&quot;: 10440,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"welcome"</span>, <span class="jk">"to"</span>: <span class="js">"mei.tanaka@example.org"</span>, <span class="jk">"order"</span>: <span class="jn">10440</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">16</td><td class="num">15</td><td class="json" data-full="{
+<tr><td class="num">15</td><td class="json" data-full="{
   &quot;job&quot;: &quot;cart_reminder&quot;,
   &quot;to&quot;: &quot;p.haddad@example.net&quot;,
   &quot;order&quot;: 10437,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"cart_reminder"</span>, <span class="jk">"to"</span>: <span class="js">"p.haddad@example.net"</span>, <span class="jk">"order"</span>: <span class="jn">10437</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">17</td><td class="num">16</td><td class="json" data-full="{
+<tr><td class="num">16</td><td class="json" data-full="{
   &quot;job&quot;: &quot;receipt&quot;,
   &quot;to&quot;: &quot;s.ferreira@example.com&quot;,
   &quot;order&quot;: 10434,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"receipt"</span>, <span class="jk">"to"</span>: <span class="js">"s.ferreira@example.com"</span>, <span class="jk">"order"</span>: <span class="jn">10434</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">18</td><td class="num">17</td><td class="json" data-full="{
+<tr><td class="num">17</td><td class="json" data-full="{
   &quot;job&quot;: &quot;refund_notice&quot;,
   &quot;to&quot;: &quot;k.nowak@example.org&quot;,
   &quot;order&quot;: 10431,
   &quot;attempt&quot;: 2
 }">{ <span class="jk">"job"</span>: <span class="js">"refund_notice"</span>, <span class="jk">"to"</span>: <span class="js">"k.nowak@example.org"</span>, <span class="jk">"order"</span>: <span class="jn">10431</span>, <span class="jk">"attempt"</span>: <span class="jn">2</span> }</td></tr>
-<tr><td class="rownum">19</td><td class="num">18</td><td class="json" data-full="{
+<tr><td class="num">18</td><td class="json" data-full="{
   &quot;job&quot;: &quot;welcome&quot;,
   &quot;to&quot;: &quot;d.mensah@example.net&quot;,
   &quot;order&quot;: 10428,
   &quot;attempt&quot;: 1
 }">{ <span class="jk">"job"</span>: <span class="js">"welcome"</span>, <span class="jk">"to"</span>: <span class="js">"d.mensah@example.net"</span>, <span class="jk">"order"</span>: <span class="jn">10428</span>, <span class="jk">"attempt"</span>: <span class="jn">1</span> }</td></tr>
-<tr><td class="rownum">20</td><td class="num">19</td><td class="json" data-full="{
+<tr><td class="num">19</td><td class="json" data-full="{
   &quot;job&quot;: &quot;cart_reminder&quot;,
   &quot;to&quot;: &quot;l.bianchi@example.com&quot;,
   &quot;order&quot;: 10425,
@@ -504,27 +508,27 @@
             <div class="res-tools"><span class="muted">Members in SSCAN order. A set has no order of its own.</span><div class="res-actions"><div class="menu-anchor"><button type="button" class="icon-btn" title="Columns" aria-label="Go to a column" aria-haspopup="menu" aria-expanded="false" data-menu="k-cols"><svg aria-hidden="true" class="ico"><use href="#i-columns-3"/></svg></button><div class="menu cols-menu" id="k-cols" role="menu" aria-label="Go to a column" data-cols hidden></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Copy" aria-label="Copy rows" aria-haspopup="menu" aria-expanded="false" data-menu="k-copy"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg></button><div class="menu" id="k-copy" role="menu" aria-label="Copy as" hidden><p class="menu-note">Copy as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Export" aria-label="Export rows" aria-haspopup="menu" aria-expanded="false" data-menu="k-export"><svg aria-hidden="true" class="ico"><use href="#i-download"/></svg></button><div class="menu" id="k-export" role="menu" aria-label="Export as" hidden><p class="menu-note">Export as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div></div></div>
             <div class="as-pane">
             <div class="grid-wrap" tabindex="0" aria-label="Members of tags:sale">
-              <table class="grid"><thead><tr><th class="rownum" scope="col"><span class="visually-hidden">Row</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">member</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th></tr></thead><tbody>
-<tr aria-selected="true"><td class="rownum">1</td><td>TEE-M-BLK</td></tr>
-<tr><td class="rownum">2</td><td>MUG-12</td></tr>
-<tr><td class="rownum">3</td><td>CAP-OS</td></tr>
-<tr><td class="rownum">4</td><td>SOCK-3P</td></tr>
-<tr><td class="rownum">5</td><td>TEE-L-WHT</td></tr>
-<tr><td class="rownum">6</td><td>HOOD-M-GRY</td></tr>
-<tr><td class="rownum">7</td><td>BAG-TOTE</td></tr>
-<tr><td class="rownum">8</td><td>TEE-S-BLK</td></tr>
-<tr><td class="rownum">9</td><td>MUG-16</td></tr>
-<tr><td class="rownum">10</td><td>PIN-SET</td></tr>
-<tr><td class="rownum">11</td><td>TEE-XL-BLK</td></tr>
-<tr><td class="rownum">12</td><td>SOCK-6P</td></tr>
-<tr><td class="rownum">13</td><td>CAP-KIDS</td></tr>
-<tr><td class="rownum">14</td><td>HOOD-L-BLK</td></tr>
-<tr><td class="rownum">15</td><td>BOTTLE-500</td></tr>
-<tr><td class="rownum">16</td><td>STICKER-PK</td></tr>
-<tr><td class="rownum">17</td><td>TEE-M-NVY</td></tr>
-<tr><td class="rownum">18</td><td>BEANIE</td></tr>
-<tr><td class="rownum">19</td><td>SCARF-WOOL</td></tr>
-<tr><td class="rownum">20</td><td>GLOVES-M</td></tr>
+              <table class="grid"><thead><tr><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">member</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th></tr></thead><tbody>
+<tr aria-selected="true"><td>TEE-M-BLK</td></tr>
+<tr><td>MUG-12</td></tr>
+<tr><td>CAP-OS</td></tr>
+<tr><td>SOCK-3P</td></tr>
+<tr><td>TEE-L-WHT</td></tr>
+<tr><td>HOOD-M-GRY</td></tr>
+<tr><td>BAG-TOTE</td></tr>
+<tr><td>TEE-S-BLK</td></tr>
+<tr><td>MUG-16</td></tr>
+<tr><td>PIN-SET</td></tr>
+<tr><td>TEE-XL-BLK</td></tr>
+<tr><td>SOCK-6P</td></tr>
+<tr><td>CAP-KIDS</td></tr>
+<tr><td>HOOD-L-BLK</td></tr>
+<tr><td>BOTTLE-500</td></tr>
+<tr><td>STICKER-PK</td></tr>
+<tr><td>TEE-M-NVY</td></tr>
+<tr><td>BEANIE</td></tr>
+<tr><td>SCARF-WOOL</td></tr>
+<tr><td>GLOVES-M</td></tr>
               </tbody></table>
             </div>
             <div class="inspector" aria-live="polite">
@@ -538,27 +542,27 @@
             <div class="res-tools"><span class="seg" role="group" aria-label="Order"><button type="button" aria-pressed="true">Score high to low</button><button type="button" aria-pressed="false">Low to high</button></span><div class="res-actions"><div class="menu-anchor"><button type="button" class="icon-btn" title="Columns" aria-label="Go to a column" aria-haspopup="menu" aria-expanded="false" data-menu="k-cols"><svg aria-hidden="true" class="ico"><use href="#i-columns-3"/></svg></button><div class="menu cols-menu" id="k-cols" role="menu" aria-label="Go to a column" data-cols hidden></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Copy" aria-label="Copy rows" aria-haspopup="menu" aria-expanded="false" data-menu="k-copy"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg></button><div class="menu" id="k-copy" role="menu" aria-label="Copy as" hidden><p class="menu-note">Copy as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Export" aria-label="Export rows" aria-haspopup="menu" aria-expanded="false" data-menu="k-export"><svg aria-hidden="true" class="ico"><use href="#i-download"/></svg></button><div class="menu" id="k-export" role="menu" aria-label="Export as" hidden><p class="menu-note">Export as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div></div></div>
             <div class="as-pane">
             <div class="grid-wrap" tabindex="0" aria-label="Members of leaderboard:weekly">
-              <table class="grid"><thead><tr><th class="rownum" scope="col"><span class="visually-hidden">Row</span></th><th scope="col" class="num" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-hash"/></svg><span class="col-name">rank</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">int</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">member</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th><th scope="col" class="num" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-hash"/></svg><span class="col-name">score</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">double</span></th></tr></thead><tbody>
-<tr aria-selected="true"><td class="rownum">1</td><td class="num">1</td><td>mei.tanaka</td><td class="num">4,820</td></tr>
-<tr><td class="rownum">2</td><td class="num">2</td><td>a.lindqvist</td><td class="num">4,415</td></tr>
-<tr><td class="rownum">3</td><td class="num">3</td><td>r.okonkwo</td><td class="num">3,980</td></tr>
-<tr><td class="rownum">4</td><td class="num">4</td><td>k.nowak</td><td class="num">3,622</td></tr>
-<tr><td class="rownum">5</td><td class="num">5</td><td>s.ferreira</td><td class="num">3,507</td></tr>
-<tr><td class="rownum">6</td><td class="num">6</td><td>d.mensah</td><td class="num">3,110</td></tr>
-<tr><td class="rownum">7</td><td class="num">7</td><td>l.bianchi</td><td class="num">2,984</td></tr>
-<tr><td class="rownum">8</td><td class="num">8</td><td>t.nguyen</td><td class="num">2,870</td></tr>
-<tr><td class="rownum">9</td><td class="num">9</td><td>n.kapoor</td><td class="num">2,641</td></tr>
-<tr><td class="rownum">10</td><td class="num">10</td><td>j.moreau</td><td class="num">2,533</td></tr>
-<tr><td class="rownum">11</td><td class="num">11</td><td>h.adeyemi</td><td class="num">2,490</td></tr>
-<tr><td class="rownum">12</td><td class="num">12</td><td>p.haddad</td><td class="num">2,312</td></tr>
-<tr><td class="rownum">13</td><td class="num">13</td><td>sofia.f</td><td class="num">2,280</td></tr>
-<tr><td class="rownum">14</td><td class="num">14</td><td>k.ito</td><td class="num">2,194</td></tr>
-<tr><td class="rownum">15</td><td class="num">15</td><td>m.santos</td><td class="num">2,101</td></tr>
-<tr><td class="rownum">16</td><td class="num">16</td><td>o.berg</td><td class="num">1,987</td></tr>
-<tr><td class="rownum">17</td><td class="num">17</td><td>y.park</td><td class="num">1,950</td></tr>
-<tr><td class="rownum">18</td><td class="num">18</td><td>c.dubois</td><td class="num">1,876</td></tr>
-<tr><td class="rownum">19</td><td class="num">19</td><td>e.kowalski</td><td class="num">1,810</td></tr>
-<tr><td class="rownum">20</td><td class="num">20</td><td>f.rossi</td><td class="num">1,777</td></tr>
+              <table class="grid"><thead><tr><th scope="col" class="num" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-hash"/></svg><span class="col-name">rank</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">int</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">member</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th><th scope="col" class="num" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-hash"/></svg><span class="col-name">score</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">double</span></th></tr></thead><tbody>
+<tr aria-selected="true"><td class="num">1</td><td>mei.tanaka</td><td class="num">4,820</td></tr>
+<tr><td class="num">2</td><td>a.lindqvist</td><td class="num">4,415</td></tr>
+<tr><td class="num">3</td><td>r.okonkwo</td><td class="num">3,980</td></tr>
+<tr><td class="num">4</td><td>k.nowak</td><td class="num">3,622</td></tr>
+<tr><td class="num">5</td><td>s.ferreira</td><td class="num">3,507</td></tr>
+<tr><td class="num">6</td><td>d.mensah</td><td class="num">3,110</td></tr>
+<tr><td class="num">7</td><td>l.bianchi</td><td class="num">2,984</td></tr>
+<tr><td class="num">8</td><td>t.nguyen</td><td class="num">2,870</td></tr>
+<tr><td class="num">9</td><td>n.kapoor</td><td class="num">2,641</td></tr>
+<tr><td class="num">10</td><td>j.moreau</td><td class="num">2,533</td></tr>
+<tr><td class="num">11</td><td>h.adeyemi</td><td class="num">2,490</td></tr>
+<tr><td class="num">12</td><td>p.haddad</td><td class="num">2,312</td></tr>
+<tr><td class="num">13</td><td>sofia.f</td><td class="num">2,280</td></tr>
+<tr><td class="num">14</td><td>k.ito</td><td class="num">2,194</td></tr>
+<tr><td class="num">15</td><td>m.santos</td><td class="num">2,101</td></tr>
+<tr><td class="num">16</td><td>o.berg</td><td class="num">1,987</td></tr>
+<tr><td class="num">17</td><td>y.park</td><td class="num">1,950</td></tr>
+<tr><td class="num">18</td><td>c.dubois</td><td class="num">1,876</td></tr>
+<tr><td class="num">19</td><td>e.kowalski</td><td class="num">1,810</td></tr>
+<tr><td class="num">20</td><td>f.rossi</td><td class="num">1,777</td></tr>
               </tbody></table>
             </div>
             <div class="inspector" aria-live="polite">
@@ -572,27 +576,27 @@
             <div class="res-tools"><span class="muted">Newest first, read with XREVRANGE</span><div class="res-actions"><div class="menu-anchor"><button type="button" class="icon-btn" title="Columns" aria-label="Go to a column" aria-haspopup="menu" aria-expanded="false" data-menu="k-cols"><svg aria-hidden="true" class="ico"><use href="#i-columns-3"/></svg></button><div class="menu cols-menu" id="k-cols" role="menu" aria-label="Go to a column" data-cols hidden></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Copy" aria-label="Copy rows" aria-haspopup="menu" aria-expanded="false" data-menu="k-copy"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg></button><div class="menu" id="k-copy" role="menu" aria-label="Copy as" hidden><p class="menu-note">Copy as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Export" aria-label="Export rows" aria-haspopup="menu" aria-expanded="false" data-menu="k-export"><svg aria-hidden="true" class="ico"><use href="#i-download"/></svg></button><div class="menu" id="k-export" role="menu" aria-label="Export as" hidden><p class="menu-note">Export as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div></div></div>
             <div class="as-pane">
             <div class="grid-wrap" tabindex="0" aria-label="Entries of events:orders">
-              <table class="grid"><thead><tr><th class="rownum" scope="col"><span class="visually-hidden">Row</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">id</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">stream id</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">fields</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">field value …</span></th></tr></thead><tbody>
-<tr aria-selected="true"><td class="rownum">1</td><td>1763459534512-0</td><td>order_id 10482 · status paid · total 4,820.00</td></tr>
-<tr><td class="rownum">2</td><td>1763459493395-1</td><td>order_id 10481 · status shipped · total 129.90</td></tr>
-<tr><td class="rownum">3</td><td>1763459452278-2</td><td>order_id 10480 · status refunded · total 642.75</td></tr>
-<tr><td class="rownum">4</td><td>1763459411161-0</td><td>order_id 10479 · status shipped · total 88.00</td></tr>
-<tr><td class="rownum">5</td><td>1763459370044-1</td><td>order_id 10478 · status paid · total 1,499.00</td></tr>
-<tr><td class="rownum">6</td><td>1763459328927-2</td><td>order_id 10477 · status shipped · total 4,820.00</td></tr>
-<tr><td class="rownum">7</td><td>1763459287810-0</td><td>order_id 10476 · status shipped · total 129.90</td></tr>
-<tr><td class="rownum">8</td><td>1763459246693-1</td><td>order_id 10475 · status refunded · total 642.75</td></tr>
-<tr><td class="rownum">9</td><td>1763459205576-2</td><td>order_id 10474 · status paid · total 88.00</td></tr>
-<tr><td class="rownum">10</td><td>1763459164459-0</td><td>order_id 10473 · status shipped · total 1,499.00</td></tr>
-<tr><td class="rownum">11</td><td>1763459123342-1</td><td>order_id 10472 · status paid · total 4,820.00</td></tr>
-<tr><td class="rownum">12</td><td>1763459082225-2</td><td>order_id 10471 · status shipped · total 129.90</td></tr>
-<tr><td class="rownum">13</td><td>1763459041108-0</td><td>order_id 10470 · status refunded · total 642.75</td></tr>
-<tr><td class="rownum">14</td><td>1763458999991-1</td><td>order_id 10469 · status shipped · total 88.00</td></tr>
-<tr><td class="rownum">15</td><td>1763458958874-2</td><td>order_id 10468 · status paid · total 1,499.00</td></tr>
-<tr><td class="rownum">16</td><td>1763458917757-0</td><td>order_id 10467 · status shipped · total 4,820.00</td></tr>
-<tr><td class="rownum">17</td><td>1763458876640-1</td><td>order_id 10466 · status shipped · total 129.90</td></tr>
-<tr><td class="rownum">18</td><td>1763458835523-2</td><td>order_id 10465 · status refunded · total 642.75</td></tr>
-<tr><td class="rownum">19</td><td>1763458794406-0</td><td>order_id 10464 · status paid · total 88.00</td></tr>
-<tr><td class="rownum">20</td><td>1763458753289-1</td><td>order_id 10463 · status shipped · total 1,499.00</td></tr>
+              <table class="grid"><thead><tr><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">id</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">stream id</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">fields</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">field value …</span></th></tr></thead><tbody>
+<tr aria-selected="true"><td>1763459534512-0</td><td>order_id 10482 · status paid · total 4,820.00</td></tr>
+<tr><td>1763459493395-1</td><td>order_id 10481 · status shipped · total 129.90</td></tr>
+<tr><td>1763459452278-2</td><td>order_id 10480 · status refunded · total 642.75</td></tr>
+<tr><td>1763459411161-0</td><td>order_id 10479 · status shipped · total 88.00</td></tr>
+<tr><td>1763459370044-1</td><td>order_id 10478 · status paid · total 1,499.00</td></tr>
+<tr><td>1763459328927-2</td><td>order_id 10477 · status shipped · total 4,820.00</td></tr>
+<tr><td>1763459287810-0</td><td>order_id 10476 · status shipped · total 129.90</td></tr>
+<tr><td>1763459246693-1</td><td>order_id 10475 · status refunded · total 642.75</td></tr>
+<tr><td>1763459205576-2</td><td>order_id 10474 · status paid · total 88.00</td></tr>
+<tr><td>1763459164459-0</td><td>order_id 10473 · status shipped · total 1,499.00</td></tr>
+<tr><td>1763459123342-1</td><td>order_id 10472 · status paid · total 4,820.00</td></tr>
+<tr><td>1763459082225-2</td><td>order_id 10471 · status shipped · total 129.90</td></tr>
+<tr><td>1763459041108-0</td><td>order_id 10470 · status refunded · total 642.75</td></tr>
+<tr><td>1763458999991-1</td><td>order_id 10469 · status shipped · total 88.00</td></tr>
+<tr><td>1763458958874-2</td><td>order_id 10468 · status paid · total 1,499.00</td></tr>
+<tr><td>1763458917757-0</td><td>order_id 10467 · status shipped · total 4,820.00</td></tr>
+<tr><td>1763458876640-1</td><td>order_id 10466 · status shipped · total 129.90</td></tr>
+<tr><td>1763458835523-2</td><td>order_id 10465 · status refunded · total 642.75</td></tr>
+<tr><td>1763458794406-0</td><td>order_id 10464 · status paid · total 88.00</td></tr>
+<tr><td>1763458753289-1</td><td>order_id 10463 · status shipped · total 1,499.00</td></tr>
               </tbody></table>
             </div>
             <div class="inspector" aria-live="polite">
@@ -604,24 +608,24 @@
           </div>
           <div class="state" data-when="full" data-key-state="hash-edit" hidden>
             <div class="res-tools"><span class="muted">Fields in HSCAN order</span><div class="edit-bar" role="group" aria-label="Unsaved changes"><span class="edit-n">3 changes</span><button type="button" class="btn btn--primary" id="hash-save" title="Write the changes at once  ⌘S">Save</button><button type="button" class="btn" data-revert title="Discard the changes">Discard</button></div><div class="res-actions"><div class="menu-anchor"><button type="button" class="icon-btn" title="Columns" aria-label="Go to a column" aria-haspopup="menu" aria-expanded="false" data-menu="ke-cols"><svg aria-hidden="true" class="ico"><use href="#i-columns-3"/></svg></button><div class="menu cols-menu" id="ke-cols" role="menu" aria-label="Go to a column" data-cols hidden></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Copy" aria-label="Copy rows" aria-haspopup="menu" aria-expanded="false" data-menu="ke-copy"><svg aria-hidden="true" class="ico"><use href="#i-copy"/></svg></button><div class="menu" id="ke-copy" role="menu" aria-label="Copy as" hidden><p class="menu-note">Copy as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div><div class="menu-anchor"><button type="button" class="icon-btn" title="Export" aria-label="Export rows" aria-haspopup="menu" aria-expanded="false" data-menu="ke-export"><svg aria-hidden="true" class="ico"><use href="#i-download"/></svg></button><div class="menu" id="ke-export" role="menu" aria-label="Export as" hidden><p class="menu-note">Export as</p><button type="button" role="menuitem">redis-cli</button><button type="button" role="menuitem">JSON</button><button type="button" role="menuitem">CSV</button><button type="button" role="menuitem">Markdown table</button></div></div></div></div>
-            <div class="as-pane"><div class="grid-wrap" tabindex="0" aria-label="Fields of user:3107, edited"><table class="grid"><thead><tr><th class="rownum" scope="col"><span class="visually-hidden">Row</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">field</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">value</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th></tr></thead><tbody>
-<tr><td class="rownum">1</td><td>email</td><td>mei.tanaka@example.org</td></tr>
-<tr><td class="rownum">2</td><td>full_name</td><td>Mei Tanaka</td></tr>
-<tr class="row-del"><td class="rownum">3</td><td>phone</td><td>+81 90 2231 7754</td></tr>
-<tr><td class="rownum">4</td><td>country</td><td>JP</td></tr>
-<tr aria-selected="true"><td class="rownum">5</td><td>city</td><td class="cell-edit">Kyoto</td></tr>
-<tr><td class="rownum">6</td><td>is_vip</td><td>1</td></tr>
-<tr><td class="rownum">7</td><td>lifetime_value</td><td>4820.00</td></tr>
-<tr><td class="rownum">8</td><td>orders_count</td><td>17</td></tr>
-<tr><td class="rownum">9</td><td>prefs</td><td class="json" data-full="{
+            <div class="as-pane"><div class="grid-wrap" tabindex="0" aria-label="Fields of user:3107, edited"><table class="grid"><thead><tr><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">field</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th><th scope="col" aria-sort="none"><button type="button" class="th-btn" title="Sort the rows on screen"><svg aria-hidden="true" class="ico t-ico"><use href="#i-type"/></svg><span class="col-name">value</span><svg aria-hidden="true" class="ico sort-ico"><use href="#i-arrow-up-down"/></svg></button><span class="col-type">string</span></th></tr></thead><tbody>
+<tr><td>email</td><td>mei.tanaka@example.org</td></tr>
+<tr><td>full_name</td><td>Mei Tanaka</td></tr>
+<tr class="row-del"><td>phone</td><td>+81 90 2231 7754</td></tr>
+<tr><td>country</td><td>JP</td></tr>
+<tr aria-selected="true"><td>city</td><td class="cell-edit">Kyoto</td></tr>
+<tr><td>is_vip</td><td>1</td></tr>
+<tr><td>lifetime_value</td><td>4820.00</td></tr>
+<tr><td>orders_count</td><td>17</td></tr>
+<tr><td>prefs</td><td class="json" data-full="{
   &quot;lang&quot;: &quot;ja&quot;,
   &quot;newsletter&quot;: true,
   &quot;currency&quot;: &quot;JPY&quot;
 }">{ <span class="jk">"lang"</span>: <span class="js">"ja"</span>, <span class="jk">"newsletter"</span>: <span class="jn">true</span>, <span class="jk">"currency"</span>: <span class="js">"JPY"</span> }</td></tr>
-<tr><td class="rownum">10</td><td>last_order_id</td><td>10482</td></tr>
-<tr><td class="rownum">11</td><td>created_at</td><td>2024-03-11T08:21:00Z</td></tr>
-<tr><td class="rownum">12</td><td>last_seen_at</td><td>2026-11-18T09:52:14Z</td></tr>
-<tr class="row-edit row-new"><td class="rownum">+</td><td class="cell-edit">tier</td><td class="cell-edit">gold</td></tr>
+<tr><td>last_order_id</td><td>10482</td></tr>
+<tr><td>created_at</td><td>2024-03-11T08:21:00Z</td></tr>
+<tr><td>last_seen_at</td><td>2026-11-18T09:52:14Z</td></tr>
+<tr class="row-edit row-new"><td class="cell-edit">tier</td><td class="cell-edit">gold</td></tr>
             </tbody></table></div>
             <div class="inspector" aria-live="polite">
               <div class="ins-where"><span class="ins-col">value</span><span class="ins-type">string</span><span class="ins-row">row 5</span></div>
@@ -989,7 +993,7 @@
         const th = heads()[td.cellIndex];
         $(".ins-col", ins).textContent = $(".col-name", th).textContent;
         $(".ins-type", ins).textContent = $(".col-type", th).textContent;
-        $(".ins-row", ins).textContent = `row ${$(".rownum", td.parentElement).textContent}`;
+        $(".ins-row", ins).textContent = `row ${td.parentElement.sectionRowIndex + 1}`;
         // MongoDB: a missing field is not null; the document has no such field
         const v = $(".ins-value", ins), isNull = td.classList.contains("null"), isMissing = td.classList.contains("missing");
         v.textContent = isMissing ? "missing, this document has no such field" : isNull ? "null, no value" : td.dataset.full ?? td.textContent;

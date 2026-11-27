@@ -314,6 +314,88 @@ fn statement_end(sql: &str, d: &dyn Dialect) -> usize {
     }
 }
 
+// ---------- console history ----------
+
+/// The statements of a run as the person wrote them, cut at top-level semicolons (a semicolon in a string,
+/// identifier or comment is inside its own token), trimmed, empty ones dropped. For the console history only:
+/// the run itself still goes to the server as one text. Untokenizable text stays one piece.
+pub fn split(sql: &str, engine: Engine) -> Vec<String> {
+    let d = dialect(engine);
+    let Ok(tokens) = Tokenizer::new(&*d, sql).tokenize_with_location() else { return vec![sql.trim().to_string()] };
+    let line_starts: Vec<usize> = std::iter::once(0).chain(sql.match_indices('\n').map(|(i, _)| i + 1)).collect();
+    let offset = |line: u64, col: u64| -> usize {
+        let Some(&start) = line_starts.get(line.saturating_sub(1) as usize) else { return sql.len() };
+        sql[start..].char_indices().nth(col.saturating_sub(1) as usize).map(|(i, _)| start + i).unwrap_or(sql.len())
+    };
+    let mut out = vec![];
+    let (mut from, mut significant) = (0, false);
+    for t in &tokens {
+        match &t.token {
+            Token::SemiColon => {
+                let at = offset(t.span.start.line, t.span.start.column);
+                if significant {
+                    out.push(sql[from..at.max(from)].trim().to_string());
+                }
+                from = (at + 1).min(sql.len());
+                significant = false;
+            }
+            Token::Whitespace(_) => {}
+            _ => significant = true,
+        }
+    }
+    // the last statement, when no semicolon ends it (the tokenizer gives no EOF token)
+    if significant {
+        out.push(sql[from..].trim().to_string());
+    }
+    if out.is_empty() {
+        out.push(sql.trim().to_string());
+    }
+    out
+}
+
+/// The statement changes data or structure (any kind the guard knows as a write)
+pub fn writes(sql: &str, engine: Engine) -> bool {
+    !classify(sql, engine).kinds.is_empty()
+}
+
+/// The statement is a query: rows are expected, even none
+pub fn is_query(sql: &str, engine: Engine) -> bool {
+    classify(sql, engine).last_is_query
+}
+
+/// The table a grid save or column edit names: UPDATE t, DELETE FROM t, INSERT INTO t, ALTER TABLE t (the last
+/// part of a dotted name, unquoted). For the console history's label only.
+pub fn table_of(sql: &str, engine: Engine) -> Option<String> {
+    let d = dialect(engine);
+    let tokens = Tokenizer::new(&*d, sql).tokenize().ok()?;
+    let words: Vec<&Token> = tokens.iter().filter(|t| !matches!(t, Token::Whitespace(_))).collect();
+    let kw = |i: usize| match words.get(i) {
+        Some(Token::Word(w)) => Some(w.keyword),
+        _ => None,
+    };
+    let start = match kw(0)? {
+        Keyword::UPDATE => 1,
+        Keyword::DELETE if kw(1) == Some(Keyword::FROM) => 2,
+        Keyword::INSERT | Keyword::REPLACE if kw(1) == Some(Keyword::INTO) => 2,
+        Keyword::ALTER if kw(1) == Some(Keyword::TABLE) => 2,
+        _ => return None,
+    };
+    // ONLY / IF EXISTS before the name
+    let mut i = start;
+    while matches!(kw(i), Some(Keyword::ONLY | Keyword::IF | Keyword::EXISTS)) {
+        i += 1;
+    }
+    let mut name = None;
+    while let Some(Token::Word(w)) = words.get(i) {
+        name = Some(w.value.clone());
+        if words.get(i + 1) != Some(&&Token::Period) {
+            break;
+        }
+        i += 2;
+    }
+    name
+}
+
 // ---------- state ----------
 
 #[derive(Default)]
@@ -691,6 +773,22 @@ mod tests {
 
     fn kinds(sql: &str, e: Engine) -> Vec<&'static str> {
         classify(sql, e).names()
+    }
+
+    #[test]
+    fn console_history_splits_and_names() {
+        let pg = Engine::Postgres;
+        assert_eq!(split("select 1", pg), vec!["select 1"]);
+        assert_eq!(split("select 'a;b';\n-- note\nupdate t set x = 1 where id = 2;\n", pg), vec!["select 'a;b'", "-- note\nupdate t set x = 1 where id = 2"]);
+        assert_eq!(split("select 1;; -- only a comment", pg), vec!["select 1"]);
+        assert_eq!(split("select 1; select 2", pg), vec!["select 1", "select 2"]);
+        assert!(writes("update t set x = 1 where id = 2", pg));
+        assert!(!writes("select 1", pg));
+        assert!(is_query("select * from t", pg));
+        assert_eq!(table_of("UPDATE \"public\".\"orders\" SET a = 1 WHERE id = 2", pg).as_deref(), Some("orders"));
+        assert_eq!(table_of("delete from `shop`.`items` where id = 1", Engine::Mysql).as_deref(), Some("items"));
+        assert_eq!(table_of("ALTER TABLE IF EXISTS ONLY users ADD COLUMN x int", pg).as_deref(), Some("users"));
+        assert_eq!(table_of("select 1", pg), None);
     }
 
     fn warned(sql: &str, e: Engine, skip_limit: bool, skip_update: bool) -> Vec<Warning> {

@@ -17,7 +17,7 @@
 .upd-chip--error { background: transparent; color: var(--color-error); box-shadow: inset 0 0 0 1px var(--color-error); }
 /* popover: the .menu surface, wider and padded like a small card */
 .upd-pop {
-  position: absolute; top: calc(100% + 8px); right: 0; z-index: var(--z-dropdown); width: 320px;
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: var(--z-sticky-nav); width: 320px;
   display: grid; gap: var(--space-sm); padding: var(--space-md); border-radius: 10px;
   background: var(--color-paper); box-shadow: 0 0 0 1px var(--color-rule), 0 8px 24px var(--color-shadow);
   color: var(--color-ink); font-size: var(--text-md); -webkit-user-select: text; user-select: text;

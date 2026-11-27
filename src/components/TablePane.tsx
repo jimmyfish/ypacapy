@@ -1,12 +1,12 @@
 import "./TablePane.css";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_ROW_LIMIT, useCurrent, useStore } from "../store";
 import { estimate } from "../lib/cells";
 import { tableSelect } from "../lib/sql";
 import { targetOf } from "../lib/edit";
 import { duration } from "../lib/time";
 import type { ColMeta, ResultSet, TableTab } from "../types";
-import { ErrorState, RunGroup } from "./QueryPane";
+import { ErrorState, RefreshBtn, RunGroup } from "./QueryPane";
 import { ResultGrid, type ColKey, type GridEdit } from "./ResultGrid";
 import { ColumnEditor } from "./ColumnEditor";
 import { ChevronDown, ChevronLeft, ChevronRight, KeyRound, Link, Rows3, SearchX, ico } from "./Icon";
@@ -48,7 +48,7 @@ export function RowPick({ tab, rowLimit, label }: { tab: TableTab; rowLimit: num
   );
 }
 
-/** A table: its rows under a where filter (select … limit, no order by), its columns (edited in ColumnEditor), its indexes and keys. */
+/** A table: its rows under a where filter (select … limit; a column head adds order by), its columns (edited in ColumnEditor), its indexes and keys. */
 export function TablePane({ tab }: { tab: TableTab }) {
   const { conn, session } = useCurrent();
   const appLimit = useStore((s) => s.settings.rowLimit);
@@ -56,6 +56,8 @@ export function TablePane({ tab }: { tab: TableTab }) {
   const limit = Number(tab.limit) > 0 ? Number(tab.limit) : rowLimit;
   const st = useStore.getState();
   const busy = tab.run.status === "running";
+  // the grid's toolbar (paging | actions) sits on the Rows line, here
+  const [tools, setTools] = useState<HTMLDivElement | null>(null);
   const o = tab.run.outcome;
   const set = o?.kind === "done" ? o.sets[o.sets.length - 1] : undefined;
   // an empty page past the first shows the grid with the columns of the last page that had rows (none come with no rows)
@@ -135,25 +137,27 @@ export function TablePane({ tab }: { tab: TableTab }) {
           set={shownSet}
           keys={keys}
           edit={rows > 0 ? edit : undefined}
+          toolsIn={tools}
+          orderBy={tab.order}
+          onOrderBy={(col) => {
+            // ascending, then descending, then the table's own order; a new order reads from the first page
+            const cur = tab.order?.col === col ? tab.order : undefined;
+            void st.readTable(tab.id, { offset: 0, order: !cur ? { col } : !cur.desc ? { col, desc: true } : null });
+          }}
           label={`Rows of ${tab.table}`}
           exportName={tab.table}
-          lead={
-            rows > 0 ? (
-              <span className="muted">
-                Rows {from} to {to}
-              </span>
-            ) : undefined
-          }
-          foot={
-            <div className="grid-foot">
+          pager={
+            <div className="pager" role="group" aria-label="Pages">
               <RowPick tab={tab} rowLimit={rowLimit} label="Rows" />
-              {/* no totals: the page number only */}
-              <span>Page {Math.floor(tab.offset / limit) + 1}</span>
-              <button type="button" className="icon-btn" aria-label="Previous page" disabled={tab.offset === 0} onClick={() => void st.readTable(tab.id, { offset: Math.max(0, tab.offset - limit) })}>
+              {/* the rows on screen; nothing is counted, so there is no "of N" */}
+              <span className="pager-n" aria-live="polite">
+                {rows > 0 ? `${from} – ${to}` : "No more rows"}
+              </span>
+              <button type="button" className="icon-btn" title="Previous page" aria-label="Previous page" disabled={tab.offset === 0} onClick={() => void st.readTable(tab.id, { offset: Math.max(0, tab.offset - limit) })}>
                 <ChevronLeft {...ico} />
               </button>
               {/* nothing is counted: Next stays on until a page comes back empty */}
-              <button type="button" className="icon-btn" aria-label="Next page" disabled={rows === 0} onClick={() => void st.readTable(tab.id, { offset: tab.offset + limit })}>
+              <button type="button" className="icon-btn" title="Next page" aria-label="Next page" disabled={rows === 0} onClick={() => void st.readTable(tab.id, { offset: tab.offset + limit })}>
                 <ChevronRight {...ico} />
               </button>
             </div>
@@ -292,6 +296,7 @@ export function TablePane({ tab }: { tab: TableTab }) {
             onKeyDown={(e) => e.key === "Enter" && void st.readTable(tab.id)}
           />
         </div>
+        <RefreshBtn title="Read this page again" disabled={busy || session.status !== "open"} onClick={() => void st.readTable(tab.id, { offset: tab.offset })} />
         <RunGroup
           busy={busy}
           disabled={session.status !== "open"}
@@ -299,7 +304,15 @@ export function TablePane({ tab }: { tab: TableTab }) {
           kbd="⌘↵"
           items={[
             { label: "Run", kbd: "⌘↵", run: () => void st.readTable(tab.id) },
-            { label: "Open as a query", run: () => st.newQueryTab(tableSelect(conn.engine, tab.schema, tab.table, tab.where, limit, tab.offset) + "\n", tab.table) },
+            ...(tab.order
+              ? [
+                  {
+                    label: `Clear order by ${tab.order.col}`,
+                    run: () => void st.readTable(tab.id, { offset: 0, order: null }),
+                  },
+                ]
+              : []),
+            { label: "Open as a query", run: () => st.newQueryTab(tableSelect(conn.engine, tab.schema, tab.table, tab.where, limit, tab.offset, tab.order) + "\n", tab.table) },
             { label: "Refresh columns and indexes", run: () => void st.loadTableInfo(tab.id) },
           ]}
         />
@@ -327,6 +340,7 @@ export function TablePane({ tab }: { tab: TableTab }) {
           <span className="push meta">
             <span className="dim">{busy ? "reading" : ms !== null ? duration(ms) : ""}</span>
           </span>
+          {view === "rows" && <div className="res-tools sub-tools" ref={setTools} />}
         </nav>
         {view === "rows" ? rowsBody : structure}
       </section>

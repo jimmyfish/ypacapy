@@ -86,6 +86,10 @@ export {
   SquareFunction,
   Table2,
   Terminal,
+  // console history: its bar, the chevron that opens it, the heartbeat filter
+  SquareTerminal,
+  ChevronUp,
+  Radio,
   ToggleLeft,
   Trash2,
   TriangleAlert,

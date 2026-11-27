@@ -6,12 +6,12 @@ import { estimate } from "../lib/cells";
 import { docsToSet, fieldsOf } from "../lib/bson";
 import { duration } from "../lib/time";
 import type { ColMeta, TableTab } from "../types";
-import { ErrorState, RunGroup } from "./QueryPane";
+import { ErrorState, RefreshBtn, RunGroup } from "./QueryPane";
 import { RowPick } from "./TablePane";
 import { DocsActions, ResultGrid } from "./ResultGrid";
 import { DocCards } from "./DocCards";
 import { mongoColl } from "./Sidebar";
-import { Braces, ChevronLeft, ChevronRight, Funnel, Key, KeyRound, Link, Plus, RefreshCw, RotateCcw, SearchX, SlidersHorizontal, SquareCode, Table2, ico, icoC } from "./Icon";
+import { Braces, ChevronLeft, ChevronRight, Funnel, Key, KeyRound, Link, Plus, RotateCcw, SearchX, SlidersHorizontal, SquareCode, Table2, ico, icoC } from "./Icon";
 import { EmptyRow, EmptyState, Obj, QueryChip } from "./EmptyState";
 
 /** a query bar box that grows with its text, one line to eight, then scrolls */
@@ -161,9 +161,6 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
         {n ? `${from} – ${to}` : "No documents"}
         {n > 0 && total !== null && <> of {total}</>}
       </span>
-      <button type="button" className="icon-btn" title="Read this page again  ⌘↵" aria-label="Refresh" disabled={busy || session.status !== "open"} onClick={() => read()}>
-        <RefreshCw {...ico} />
-      </button>
       <button type="button" className="icon-btn" title="Previous page" aria-label="Previous page" disabled={tab.offset === 0} onClick={() => read(Math.max(0, tab.offset - limit))}>
         <ChevronLeft {...ico} />
       </button>
@@ -210,15 +207,15 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
     docsBody =
       as === "table" && (n > 0 || emptyPage) ? (
         <div className="state">
-          <ResultGrid set={n > 0 ? set : { ...set, columns: lastCols.current?.id === tab.id ? lastCols.current.cols : [] }} label={`Documents of ${tab.table}`} exportName={tab.table} lead={<>{seg}{addBtn}</>} trail={pager} />
+          <ResultGrid set={n > 0 ? set : { ...set, columns: lastCols.current?.id === tab.id ? lastCols.current.cols : [] }} label={`Documents of ${tab.table}`} exportName={tab.table} lead={<>{seg}{addBtn}</>} pager={pager} />
         </div>
       ) : (
         <div className="state">
           <div className="res-tools">
             {seg}
             {addBtn}
-            <DocsActions set={set} exportName={tab.table} />
             {pager}
+            <DocsActions set={set} exportName={tab.table} />
           </div>
           <DocCards
             docs={docs}
@@ -390,6 +387,7 @@ export function CollectionPane({ tab }: { tab: TableTab }) {
             <SquareCode {...ico} />
             <span className="btn-label">Open as a query</span>
           </button>
+          <RefreshBtn title="Read this page again" disabled={busy || session.status !== "open"} onClick={() => read()} />
           <RunGroup busy={busy} disabled={session.status !== "open"} onRun={() => read()} kbd="⌘↵" />
         </div>
         <div className="mq-row mq-opts" id={`mq-opts-${tab.id}`} hidden={!showOpts}>

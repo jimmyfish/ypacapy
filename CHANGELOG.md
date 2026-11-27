@@ -4,6 +4,19 @@ All notable changes to ypacapy are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Added
+
+- **Pick enum values from a list.** Editing a PostgreSQL enum cell opens its values under the cell, in their declared order, with the current one checked. Type to narrow the list, use the arrows to move, and press Enter or click to set. Only a real value can be set, so a typo never reaches the server.
+
+### Changed
+
+- **A failed save shows on its row.** The row whose change the database refused turns red and keeps your edits. The edit bar says Save failed, and clicking it goes to that row. With the row selected, the inspector gives the database's message, and Details shows its full text and the statement. This replaces the red box above the grid.
+- **Connection heartbeat is on by default.** Every open connection gets its `select 1`, `ping` or `PING` every 30 s, so its tab and the sidebar always show whether the server answers. Turn it off in Settings > Queries, or per connection.
+
+### Fixed
+
+- **Enum columns showed their type as `?`.** A PostgreSQL enum, domain or extension type now shows its own name (`sanctuary.mood`), found with one `pg_type` lookup when such a column comes back.
+
 ## [0.1.3] - 2026-11-26
 
 ### Added

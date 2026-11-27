@@ -6,7 +6,7 @@ import { changeCount, type ColDraft } from "./lib/alter";
 import { docsToSet } from "./lib/bson";
 import { positionsOf, withLinked } from "./lib/diagram";
 import { diagramCanSave, diagramChanged, diagramKey, diagramLayoutOf, diagramModelOf, diagramViews, mergeDiagram } from "./lib/diagramTab";
-import type { Approval, Ask, ColumnsEntry, Conn, DiagramTab, Engine, HistoryEntry, KeyTab, Link, SavedDiagram, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableTab } from "./types";
+import type { Approval, Ask, ColumnsEntry, Conn, DiagramTab, Engine, HistoryEntry, KeyTab, Link, SavedDiagram, SecurityLevel, QueryTab, ResultSet, RunOutcome, Saved, Session, Settings, Tab, TableOrder, TableTab } from "./types";
 
 /** conn-*: the open connection's own settings, shown only when Settings opens from its tab */
 export type SettingsSection = "conn-security" | "conn-queries" | "appearance" | "queries" | "security" | "data" | "updates";
@@ -195,7 +195,8 @@ interface State {
   /** a query tab's Next and Previous: the run that gave the results, again from `offset` (only where ypacapy added the row limit) */
   page(tabId: string, offset: number): Promise<void>;
   cancel(tabId: string): void;
-  readTable(tabId: string, opts?: { offset?: number; approval?: Approval; discard?: boolean }): Promise<void>;
+  /** order: a column head clicked (null: back to the table's own order); set only once unsaved edits are dropped */
+  readTable(tabId: string, opts?: { offset?: number; approval?: Approval; discard?: boolean; order?: TableOrder | null }): Promise<void>;
   /**
    * MongoDB, a collection tab: one write built from the JSON view (updateOne, deleteOne or insertOne on a document),
    * run as the console runs mongosh, so the write guard asks first. On success the page is read again. Resolves to
@@ -226,7 +227,7 @@ interface State {
  * A table entry has `kind: "table"` and no `sql`, so a build that knows only query tabs skips it.
  */
 type KeptQuery = { kind?: "query"; id: string; title: string; sql: string; savedId?: string; savedFolder?: string; savedSql?: string; pinned?: boolean };
-type KeptTable = { kind: "table"; id: string; schema: string; table: string; where: string; view: TableTab["view"]; pinned?: boolean; project?: string; sort?: string; limit?: string; as?: TableTab["as"] };
+type KeptTable = { kind: "table"; id: string; schema: string; table: string; where: string; order?: TableTab["order"]; view: TableTab["view"]; pinned?: boolean; project?: string; sort?: string; limit?: string; as?: TableTab["as"] };
 /** Redis: a pinned key tab */
 type KeptKey = { kind: "key"; id: string; key: string; pattern?: string; ascending?: boolean; as?: KeyTab["as"]; pinned?: boolean };
 interface Workspace {
@@ -257,7 +258,7 @@ function workspaceOf(s: Session): string {
         : t.kind === "key"
           ? { kind: "key", id: t.id, key: t.key, pattern: t.pattern || undefined, ascending: t.ascending || undefined, as: t.as, pinned: true }
           : t.kind === "table"
-            ? { kind: "table", id: t.id, schema: t.schema, table: t.table, where: t.where, view: t.view, pinned: true, project: t.project || undefined, sort: t.sort || undefined, limit: t.limit || undefined, as: t.as === "json" ? "json" : undefined }
+            ? { kind: "table", id: t.id, schema: t.schema, table: t.table, where: t.where, order: t.order, view: t.view, pinned: true, project: t.project || undefined, sort: t.sort || undefined, limit: t.limit || undefined, as: t.as === "json" ? "json" : undefined }
             : null,
     ).filter((t): t is KeptQuery | KeptTable | KeptKey => t !== null),
     ...(s.diagrams && Object.keys(s.diagrams).length ? { diagrams: s.diagrams } : {}),
@@ -315,6 +316,7 @@ async function readWorkspace(id: string): Promise<{ tabs: Tab[]; active: string 
           schema: t.schema,
           table: t.table,
           where: typeof t.where === "string" ? t.where : "",
+          ...(t.order && typeof t.order.col === "string" && t.order.col ? { order: { col: t.order.col, ...(t.order.desc ? { desc: true } : {}) } } : {}),
           offset: 0,
           view,
           // MongoDB's query bar
@@ -1082,7 +1084,7 @@ export const useStore = create<State>()((set, get) => {
       const prev = tab.run;
       patchTab(tabId, { run: { status: "running", runId, startedAt: Date.now(), outcome: prev.outcome, text: sql } });
       const out = await api
-        .runQuery({ runId, connId, database: s.database, schema: s.schema, sql, addLimit: true, offset: opts.offset ?? 0, approval: opts.approval, history: !opts.page })
+        .runQuery({ runId, connId, database: s.database, schema: s.schema, sql, addLimit: true, offset: opts.offset ?? 0, approval: opts.approval, history: !opts.page, label: tab.title })
         .catch(failed);
       const now = sessionOfTab(tabId)?.[2];
       if (!now || now.run.runId !== runId) return;
@@ -1142,14 +1144,18 @@ export const useStore = create<State>()((set, get) => {
       // the tab's rows per page (MongoDB: also the query bar's Limit), when set, is the page size
       const limit = Number(tab.limit) > 0 ? Number(tab.limit) : rowLimit;
       const mongo = conn.engine === "mongo";
-      const sql = mongo ? `find(${tab.where.trim() || "{}"})` : tableSelect(conn.engine, tab.schema, tab.table, tab.where, limit, offset);
+      // an order kept from before on a column the table no longer has (dropped, renamed) is dropped, not sent
+      const want = opts.order === undefined ? tab.order : (opts.order ?? undefined);
+      const order = want && tab.info && !tab.info.columns.some((c) => c.name === want.col) ? undefined : want;
+      if (order !== tab.order) patchTab(tabId, { order });
+      const sql = mongo ? `find(${tab.where.trim() || "{}"})` : tableSelect(conn.engine, tab.schema, tab.table, tab.where, limit, offset, order);
       const runId = uid();
       const prev = tab.run;
       patchTab(tabId, { offset, view: "rows", run: { status: "running", runId, startedAt: Date.now(), outcome: prev.outcome, text: mongo ? `db.${tab.table}.${sql}` : sql } });
       // MongoDB: find on the collection (its "schema" is its database); the boxes are read in Rust before anything is sent
       const out = await (mongo
         ? api.mongoFind({ runId, connId, database: tab.schema, collection: tab.table, filter: tab.where, projection: tab.project ?? "", sort: tab.sort ?? "", skip: offset, limit })
-        : api.runQuery({ runId, connId, database: s.database, schema: s.schema, sql, addLimit: false, approval: opts.approval, history: false })
+        : api.runQuery({ runId, connId, database: s.database, schema: s.schema, sql, addLimit: false, approval: opts.approval, history: false, label: `${tab.table} · Rows` })
       ).catch(failed);
       const now = sessionOfTab(tabId)?.[2];
       if (!now || now.run.runId !== runId) return;
@@ -1170,7 +1176,7 @@ export const useStore = create<State>()((set, get) => {
       if (tab.kind !== "table") return "Not a collection";
       const conn = get().conns.find((c) => c.id === connId);
       if (!conn) return "The connection is gone";
-      const out = await api.runQuery({ runId: uid(), connId, database: tab.schema, sql: cmd, addLimit: false, approval, history: true }).catch(failed);
+      const out = await api.runQuery({ runId: uid(), connId, database: tab.schema, sql: cmd, addLimit: false, approval, history: true, label: `${tab.table} · Save` }).catch(failed);
       if (out.kind === "ask")
         return new Promise((resolve) => {
           let approved = false;
@@ -1209,7 +1215,7 @@ export const useStore = create<State>()((set, get) => {
       const s = connId ? get().sessions[connId] : undefined;
       const conn = get().conns.find((c) => c.id === connId);
       if (!connId || !s || !conn) return;
-      const out = await api.runQuery({ runId: uid(), connId, database: s.database, schema: s.schema, sql: cmd, addLimit: false, approval, history: true }).catch(failed);
+      const out = await api.runQuery({ runId: uid(), connId, database: s.database, schema: s.schema, sql: cmd, addLimit: false, approval, history: true, label: `${key} · Delete` }).catch(failed);
       if (out.kind === "ask") {
         get().openModal({
           kind: "guard",
@@ -1239,7 +1245,7 @@ export const useStore = create<State>()((set, get) => {
       if (tab.kind !== "key") return "Not a key";
       const conn = get().conns.find((c) => c.id === connId);
       if (!conn) return "The connection is gone";
-      const out = await api.runQuery({ runId: uid(), connId, database: s.database, schema: s.schema, sql: cmd, addLimit: false, approval, history: true }).catch(failed);
+      const out = await api.runQuery({ runId: uid(), connId, database: s.database, schema: s.schema, sql: cmd, addLimit: false, approval, history: true, label: `${tab.key} · Save` }).catch(failed);
       if (out.kind === "ask")
         return new Promise((resolve) => {
           let approved = false;

@@ -28,7 +28,7 @@ export const api = {
   schemaDiagram: (id: string, database: string, schema: string, tables: string[]) => invoke<SchemaDiagram>("schema_diagram", { id, database, schema, tables }),
   /** the diagram picker's Add linked tables: [referencing, referenced] table pairs within the schema, one catalog read */
   schemaLinks: (id: string, database: string, schema: string) => invoke<[string, string][]>("schema_links", { id, database, schema }),
-  runQuery: (req: { runId: string; connId: string; database?: string; schema?: string; sql: string; addLimit: boolean; offset?: number; approval?: Approval; history: boolean }) =>
+  runQuery: (req: { runId: string; connId: string; database?: string; schema?: string; sql: string; addLimit: boolean; offset?: number; approval?: Approval; history: boolean; label?: string }) =>
     invoke<RunOutcome>("run_query", { req }),
   cancelQuery: (runId: string) => invoke<void>("cancel_query", { runId }),
   /** MongoDB's collection tab: find(filter, projection).sort().skip().limit(); boxes are read in Rust first */
@@ -44,7 +44,9 @@ export const api = {
   redisKeyInfo: (id: string, key: string) => invoke<KeyInfo>("redis_key_info", { id, key }),
   /** one transaction; every statement must change exactly one row */
   /** ddl: a table's structure (the Columns editor): one transaction, no row counts, the schema tree is stale after */
-  applyEdits: (req: { connId: string; database?: string; statements: string[]; approval?: Approval; ddl?: boolean }) => invoke<RunOutcome>("apply_edits", { req }),
+  applyEdits: (req: { connId: string; database?: string; statements: string[]; approval?: Approval; ddl?: boolean }) =>
+    // statement: a failed or missed change, the index of its statement in the request
+    invoke<RunOutcome & { statement?: number }>("apply_edits", { req }),
   /** what the write guard would ask before this SQL runs, without running it; null: it runs as is */
   guardAsk: (connId: string, sql: string) => invoke<Omit<Ask, "kind"> | null>("guard_ask", { connId, sql }),
   passphraseStatus: () => invoke<{ set: boolean; touchIdAvailable: boolean }>("passphrase_status"),

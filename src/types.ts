@@ -101,6 +101,7 @@ export interface Settings {
   rowLimit?: number;
   statementTimeout?: number;
   keepHistory?: boolean;
+  /** Connection heartbeat; missing = on */
   heartbeat?: boolean;
   heartbeatEvery?: number;
   /** Warnings for every SQL connection that does not set its own; missing = on */
@@ -285,6 +286,8 @@ export interface SchemaDiagram {
 export interface ColMeta {
   name: string;
   type: string;
+  /** PostgreSQL enums: the labels in their declared order */
+  enumValues?: string[];
 }
 
 export interface ResultSet {
@@ -407,6 +410,11 @@ export interface QueryTab {
   run: RunState;
 }
 
+export interface TableOrder {
+  col: string;
+  desc?: boolean;
+}
+
 export interface TableTab {
   id: string;
   kind: "table";
@@ -421,6 +429,8 @@ export interface TableTab {
   limit?: string;
   /** MongoDB: the documents as a table or as mongosh prints them */
   as?: "table" | "json";
+  /** SQL: a column head clicked: the rows are read again with `order by` this column (desc: descending) */
+  order?: TableOrder;
   /** columns is MongoDB's Fields (from the documents on screen) */
   view: "rows" | "columns" | "indexes";
   /** kept with the connection (a restart, a reconnect), first in the row, and not closed until unpinned */

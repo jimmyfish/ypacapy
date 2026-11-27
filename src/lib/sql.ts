@@ -173,10 +173,11 @@ export function quoteIdent(engine: Engine, name: string): string {
 }
 
 /** select * from the table, with the where clause the person typed; no order by they did not choose. */
-export function tableSelect(engine: Engine, schema: string, table: string, where: string, limit: number, offset: number): string {
+export function tableSelect(engine: Engine, schema: string, table: string, where: string, limit: number, offset: number, order?: { col: string; desc?: boolean }): string {
   const from = engine === "sqlite" && schema === "main" ? quoteIdent(engine, table) : `${quoteIdent(engine, schema)}.${quoteIdent(engine, table)}`;
   const w = where.trim();
-  return `select * from ${from}${w ? `\nwhere ${w}` : ""}\nlimit ${limit}${offset ? ` offset ${offset}` : ""}`;
+  const by = order ? `\norder by ${quoteIdent(engine, order.col)}${order.desc ? " desc" : ""}` : "";
+  return `select * from ${from}${w ? `\nwhere ${w}` : ""}${by}\nlimit ${limit}${offset ? ` offset ${offset}` : ""}`;
 }
 
 export const ENGINE_LABEL: Record<Engine, string> = { postgres: "PG", mysql: "MYSQL", sqlite: "SQLITE", mongo: "MDB", redis: "REDIS" };

@@ -1,9 +1,6 @@
 /* ResultGrid.tsx: its own rules, moved out of src/styles.css in their original order. Shared rules (used by more than one component) stay in src/styles.css. */
 .grid .col-name { display: block; color: var(--color-ink); font-weight: 600; }
 .grid .col-type { display: block; margin-top: var(--space-3xs); font: var(--text-xs)/1.2 var(--font-table); color: var(--color-muted); }
-.grid .rownum { position: sticky; left: 0; z-index: var(--z-raised); width: 1%; background: var(--color-paper-3); border-right: 1px solid var(--color-rule); color: var(--color-gutter); text-align: right; }
-.grid thead .rownum { z-index: calc(var(--z-sticky) + 1); }
-.grid tbody tr[aria-selected="true"] .rownum { color: var(--color-link); }
 .th-btn { display: inline-flex; align-items: center; gap: var(--space-2xs); padding: 0; border: 0; background: none; color: var(--color-ink); font: 600 var(--text-md)/1.2 var(--font-ui); white-space: nowrap; cursor: pointer; }
 .th-btn .t-ico { width: 14px; height: 14px; color: var(--color-muted); }
 .th-btn .k-ico { width: 12px; height: 12px; color: var(--color-link); }
@@ -14,9 +11,6 @@
 .th-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; border-radius: 4px; }
 .grid .col-type { margin-top: var(--space-3xs); padding-left: calc(var(--space-md) + var(--space-3xs)); }
 .grid th.num .col-type { padding-left: 0; }
-.grid .rownum { background: var(--color-paper); color: var(--color-placeholder); font-size: var(--text-xs); }
-.grid thead .rownum { box-shadow: inset -1px -1px 0 var(--color-rule); }
-.grid tbody tr[aria-selected="true"] .rownum { color: var(--color-link); }
 .grid td.cell-sel { background: var(--color-accent-soft); box-shadow: inset 0 0 0 2px var(--color-focus); }
 .null-pill { display: inline-block; padding: 0 var(--space-2xs); border: 1px dashed var(--color-edge-aa); border-radius: 4px; color: var(--color-placeholder); font: italic var(--text-xs)/1.5 var(--font-ui); }
 .jk { color: var(--j-key); }
@@ -28,9 +22,8 @@
 .ins-value.is-null { color: var(--color-placeholder); font-style: italic; }
 .col-key { display: inline-flex; }
 .ins-copy { flex-shrink: 0; }
-.grid .rownum { width: var(--rownum-w); min-width: var(--rownum-w); padding-inline: var(--space-sm); }
 .grid.pin :is(td, th):is(.pin-0, .pin-1, .pin-2, .pin-3) { position: sticky; z-index: var(--z-raised); max-width: min(36ch, var(--pin-max, 36ch)); }
-.grid.pin .pin-0 { left: var(--pl0, var(--rownum-w)); }
+.grid.pin .pin-0 { left: var(--pl0, 0); }
 .grid.pin .pin-1 { left: var(--pl1); }
 .grid.pin .pin-2 { left: var(--pl2); }
 .grid.pin .pin-3 { left: var(--pl3); }
@@ -49,14 +42,43 @@
 .grid td.cell-editing { position: relative; padding: 0; overflow: visible; box-shadow: inset 0 0 0 2px var(--color-focus); background: var(--color-paper); }
 .cell-input { display: block; box-sizing: border-box; width: 100%; min-width: 12ch; height: 34px; margin: 0; padding: 8px var(--space-md); border: 0; outline: 0; resize: none; overflow: hidden; background: transparent; color: var(--color-ink); font: inherit; line-height: 18px; white-space: pre; text-align: inherit; }
 .grid td.cell-editing.num .cell-input { text-align: right; }
-.edit-err { display: flex; align-items: flex-start; gap: var(--space-xs); margin: 0 var(--space-md) var(--space-xs); padding: var(--space-xs) var(--space-sm); border: 1px solid color-mix(in srgb, var(--color-error) 40%, var(--color-rule)); border-radius: var(--radius-control); background: color-mix(in srgb, var(--color-error) 7%, var(--color-paper)); }
-.edit-err-text { flex: 1; display: grid; gap: var(--space-3xs); min-width: 0; font-size: var(--text-sm); }
-.edit-err-text strong { color: var(--color-error); }
-.edit-err-text .hint-line { color: var(--color-ink-2); }
-.edit-err .db-says { margin: var(--space-3xs) 0 0; padding: var(--space-2xs) var(--space-sm); max-height: 8em; overflow: auto; }
+/* Save failed: on the row, not in a banner. The row whose statement failed is tinted red and its edited cells
+   stronger (red, where green means waiting to save). The edit bar's count becomes Save failed (a click goes to the
+   row); the inspector, on that row, says why in the database's words, its full text behind Details. */
+.grid tbody tr.row-fail td, .grid tbody tr.row-fail:is(:hover, [aria-selected]) td { background: color-mix(in srgb, var(--color-error) 7%, var(--color-paper)); }
+.grid tbody tr.row-fail td.cell-edit { background: color-mix(in srgb, var(--color-error) 18%, var(--color-paper)); color: var(--color-ink); }
+.grid tbody tr.row-fail td.cell-sel { box-shadow: inset 0 0 0 2px var(--color-error); }
+.edit-bar .edit-fail { display: inline-flex; align-items: center; gap: var(--space-3xs); min-height: 28px; margin-right: var(--space-2xs); padding: 0 var(--space-2xs); border: 0; border-radius: var(--radius-control); background: none; color: var(--color-error); font: 600 var(--text-sm) var(--font-ui); }
+.edit-bar button.edit-fail { cursor: pointer; }
+.edit-bar button.edit-fail:hover { background: color-mix(in srgb, var(--color-error) 10%, transparent); }
+.edit-fail-ico { width: 15px; height: 15px; }
+.ins-fail { grid-column: 1 / -1; order: -1; display: grid; gap: var(--space-2xs); margin: calc(-1 * var(--space-sm)) calc(-1 * var(--space-md)) 0; padding: var(--space-xs) var(--space-md); border-bottom: 1px solid color-mix(in srgb, var(--color-error) 25%, var(--color-rule)); background: color-mix(in srgb, var(--color-error) 6%, var(--color-paper-3)); }
+.inspector:has(> .ins-fail:only-child) { padding-bottom: 0; }
+.ins-fail-head { margin: 0; color: var(--color-ink-2); font-size: var(--text-sm); line-height: 1.5; overflow-wrap: anywhere; }
+.ins-fail-head strong { color: var(--color-error); font-weight: 600; }
+.ins-fail-hint { color: var(--color-muted); }
+.ins-fail-ico { display: inline-block; width: 15px; height: 15px; margin-right: var(--space-2xs); vertical-align: -3px; color: var(--color-error); }
+.ins-fail-more { margin-left: var(--space-3xs); padding: 0; border: 0; background: none; color: var(--color-link); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.ins-fail .db-says { margin: 0; padding: var(--space-xs) var(--space-sm); max-height: 8em; overflow: auto; font-size: var(--text-xs); }
+/* Editing an enum cell: the box filters, the list under the cell picks (fixed, in body, so the grid doesn't cut it).
+   The current value has the check; the highlighted one is where Enter lands. */
+.grid th[data-enum] .t-ico { color: var(--color-link); }
+.grid td.cell-editing .enum-input { padding-right: 28px; }
+.grid td.cell-editing .enum-chev { position: absolute; right: 8px; top: 50%; width: 14px; height: 14px; translate: 0 -50%; color: var(--color-muted); pointer-events: none; }
+.menu.enum-menu { position: fixed; top: 0; left: 0; right: auto; z-index: var(--z-modal); min-width: 220px; max-width: min(360px, calc(100vw - 16px)); padding: 0; overflow: hidden; }
+.enum-head { display: flex; align-items: baseline; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm) var(--space-2xs); color: var(--color-muted); font-size: var(--text-sm); }
+.enum-head b { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--color-ink); font-weight: 600; white-space: nowrap; }
+.enum-count { margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.enum-list { max-height: calc(9 * 28px + var(--space-2xs)); overflow-y: auto; overscroll-behavior: contain; padding: 0 var(--space-2xs) var(--space-2xs); }
+.enum-menu .enum-item { width: 100%; min-height: 28px; gap: var(--space-xs); padding-left: var(--space-xs); }
+.enum-menu .enum-item[aria-selected="true"] { background: var(--color-accent-soft); }
+.enum-menu .enum-cur { width: 14px; height: 14px; flex: none; visibility: hidden; color: var(--color-link); }
+.enum-menu .enum-item[aria-current="true"] .enum-cur { visibility: visible; }
+.enum-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: var(--text-code) var(--font-mono); }
+.enum-none { margin: 0; padding: var(--space-2xs) var(--space-sm) var(--space-xs); color: var(--color-muted); font-size: var(--text-sm); }
 .ins-edited { color: var(--color-ok); font-weight: 600; }
 .ins-deleted { color: var(--color-error); font-weight: 600; }
 /* A single-column result (a count, one id) doesn't stretch across the whole pane: the table hugs its column,
    which gets a comfortable fixed floor (an auto-layout cell width acts as a minimum) and keeps the 36ch cap. */
 .grid.one { min-width: 0; }
-.grid.one :is(th, td):not(.rownum) { width: 28ch; min-width: 28ch; }
+.grid.one :is(th, td) { width: 28ch; min-width: 28ch; }

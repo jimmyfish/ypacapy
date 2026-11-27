@@ -105,9 +105,15 @@ async fn client_options(conn: &Conn, password: Option<String>) -> Result<ClientO
 /// "MongoDB 7.0.14, replica set rs0". Reading buildInfo is what makes the driver connect and sign in.
 async fn server_of(client: &Client) -> Result<String, MError> {
     let admin = client.database("admin");
-    let info = admin.run_command(doc! { "buildInfo": 1 }).await?;
+    let st = console::start();
+    let info = admin.run_command(doc! { "buildInfo": 1 }).await;
+    logged(&st, "db.adminCommand({ buildInfo: 1 })", &info, |_| "ok".into());
+    let info = info?;
     let mut s = format!("MongoDB {}", info.get_str("version").unwrap_or(""));
-    if let Ok(h) = admin.run_command(doc! { "hello": 1 }).await {
+    let st = console::start();
+    let hello = admin.run_command(doc! { "hello": 1 }).await;
+    logged(&st, "db.adminCommand({ hello: 1 })", &hello, |_| "ok".into());
+    if let Ok(h) = hello {
         if let Ok(set) = h.get_str("setName") {
             s += &format!(", replica set {set}");
         }
@@ -133,7 +139,8 @@ impl DbState {
             return Ok(o.clone());
         }
         let password = password_for(conn).await?;
-        let (client, server) = connect(conn, password).await?;
+        // whatever asked for the client, signing in is part of connecting
+        let (client, server) = console::again("Connect", connect(conn, password)).await?;
         let open = Arc::new(MOpen { client, server, heartbeat: conn.heartbeat });
         Ok(self.mongo.lock().await.entry(conn.id.clone()).or_insert(open).clone())
     }
@@ -144,6 +151,23 @@ impl DbState {
         if let Some(o) = gone {
             tauri::async_runtime::spawn(async move { o.client.clone().shutdown().immediate(true).await });
         }
+    }
+}
+
+/// One console history entry for a driver call: `ok` words the result, or the error
+fn logged<T>(st: &console::Started, text: impl Into<String>, r: &Result<T, MError>, ok: impl FnOnce(&T) -> String) {
+    match r {
+        Ok(v) => console::log(st, text).result(ok(v)).send(),
+        Err(e) => console::log(st, text).err(err_text(e)).send(),
+    }
+}
+
+/// mongosh's name for a collection: db.orders, or db.getCollection("odd name") when it isn't an identifier
+fn coll_text(name: &str) -> String {
+    if !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$') && !name.starts_with(|c: char| c.is_ascii_digit()) {
+        format!("db.{name}")
+    } else {
+        format!("db.getCollection({})", shell(&Bson::String(name.to_string())))
     }
 }
 
@@ -244,7 +268,10 @@ pub async fn test(conn: &Conn, password: Option<String>) -> Result<TestResult, S
 /// database when even that is not allowed. admin, config and local are listed; the sidebar folds them away.
 pub async fn open_info(state: &DbState, conn: &Conn, database: &str) -> Result<OpenInfo, String> {
     let open = state.mongo(conn).await?;
-    let mut dbs = open.client.list_database_names().authorized_databases(true).await.unwrap_or_default();
+    let st = console::start();
+    let listed = open.client.list_database_names().authorized_databases(true).await;
+    logged(&st, "db.adminCommand({ listDatabases: 1, nameOnly: true, authorizedDatabases: true })", &listed, |d| console::count(d.len(), "db"));
+    let mut dbs = listed.unwrap_or_default();
     // no database picked or set on the connection: the first of the user's own (not admin, config or local)
     let cur = if database.trim().is_empty() && trimmed(&conn.database).is_none() {
         dbs.iter().filter(|d| !["admin", "config", "local"].contains(&d.as_str())).min().cloned().unwrap_or_else(|| "test".into())
@@ -262,7 +289,10 @@ pub async fn open_info(state: &DbState, conn: &Conn, database: &str) -> Result<O
 pub async fn collections(state: &DbState, conn: &Conn, database: &str) -> Result<SchemaObjects, String> {
     let open = state.mongo(conn).await?;
     let db = open.client.database(database);
-    let mut specs: Vec<_> = db.list_collections().await.map_err(|e| err_text(&e))?.try_collect::<Vec<_>>().await.map_err(|e| err_text(&e))?;
+    let st = console::start();
+    let listed = async { db.list_collections().await?.try_collect::<Vec<_>>().await }.await;
+    logged(&st, "db.getCollectionInfos()", &listed, |c| console::count(c.len(), "coll"));
+    let mut specs = listed.map_err(|e| err_text(&e))?;
     specs.retain(|s| !s.name.starts_with("system."));
     specs.sort_by(|a, b| a.name.cmp(&b.name));
     let kinds: Vec<&str> = specs
@@ -278,6 +308,7 @@ pub async fn collections(state: &DbState, conn: &Conn, database: &str) -> Result
     if counted {
         // eight at a time; a collection the user may not count shows no estimate
         let idx: Vec<usize> = (0..specs.len()).filter(|&i| kinds[i] != "view").collect();
+        let st = console::start();
         for chunk in idx.chunks(8) {
             let got = futures_util::future::join_all(chunk.iter().map(|&i| {
                 let c = db.collection::<Document>(&specs[i].name);
@@ -288,6 +319,16 @@ pub async fn collections(state: &DbState, conn: &Conn, database: &str) -> Result
                 estimates[i] = n.ok().map(|n| n as i64);
             }
         }
+        // one entry for all of them: a round trip each, eight at a time
+        if !idx.is_empty() {
+            let got = idx.iter().filter(|&&i| estimates[i].is_some()).count();
+            let text = match idx.len() {
+                1 => format!("{}.estimatedDocumentCount()", coll_text(&specs[idx[0]].name)),
+                n => format!("db.<collection>.estimatedDocumentCount() ×{n}"),
+            };
+            let l = console::log(&st, text).result(if got == idx.len() { console::count(got, "count") } else { format!("{got} of {} counts", idx.len()) });
+            l.flag_if(got == 0, console::Flag::Err).send();
+        }
     }
     let tables = specs.into_iter().zip(kinds).zip(estimates).map(|((s, k), e)| TreeTable { name: s.name, kind: k.into(), estimate: e }).collect();
     Ok(SchemaObjects { tables, functions: vec![] })
@@ -297,11 +338,23 @@ pub async fn collections(state: &DbState, conn: &Conn, database: &str) -> Result
 pub async fn indexes(state: &DbState, conn: &Conn, database: &str, collection: &str) -> Result<TableInfo, String> {
     let open = state.mongo(conn).await?;
     let coll = open.client.database(database).collection::<Document>(collection);
-    let list: Vec<IndexModel> = match coll.list_indexes().await {
-        Ok(c) => c.try_collect().await.map_err(|e| err_text(&e))?,
+    let st = console::start();
+    let listed = async { coll.list_indexes().await?.try_collect::<Vec<IndexModel>>().await }.await;
+    let text = format!("{}.getIndexes()", coll_text(collection));
+    let list: Vec<IndexModel> = match listed {
+        Ok(l) => {
+            console::log(&st, text).result(format!("{} index{}", l.len(), if l.len() == 1 { "" } else { "es" })).send();
+            l
+        }
         // a view has no indexes of its own
-        Err(e) if code_name(&e) == Some("CommandNotSupportedOnView") => vec![],
-        Err(e) => return Err(err_text(&e)),
+        Err(e) if code_name(&e) == Some("CommandNotSupportedOnView") => {
+            console::log(&st, text).result("0 indexes (a view)").send();
+            vec![]
+        }
+        Err(e) => {
+            console::log(&st, text).err(err_text(&e)).send();
+            return Err(err_text(&e));
+        }
     };
     let indexes = list
         .into_iter()
@@ -901,6 +954,8 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
     let (ops, unreadable) = mongo_shell::kinds(&cmd);
     let mut writes: Vec<&'static str> = ops.iter().map(|(k, _)| *k).collect();
     writes.dedup();
+    // console history: a run with a write method in it is flagged write when it works
+    let wrote = !writes.is_empty();
     if let Some(ask) = guard::check_kinds(writes, unreadable, Some(ops), &conn, req.approval, guard_state).await? {
         return Ok(RunOutcome::Ask(ask));
     }
@@ -912,6 +967,7 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
         runs.insert(req.run_id.clone(), token.clone());
     }
     let started_at = conns::now_ms();
+    let st = console::start();
     let res = match state.mongo(&conn).await {
         Ok(open) => {
             let db = open.client.database(&database);
@@ -942,6 +998,8 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
         runs.remove(&req.run_id);
     }
     let ms = t.elapsed().as_millis() as u64;
+    // nothing reached the server: no console history entry
+    let refused = matches!(res, Got::Refused(_) | Got::NoConn(_));
     let outcome = match res {
         Got::Cancelled(timeout) => RunOutcome::Cancelled { ms, timeout },
         Got::Failed(e) if code_name(&e) == Some("MaxTimeMSExpired") => RunOutcome::Cancelled { ms, timeout: true },
@@ -968,6 +1026,24 @@ pub async fn run(req: RunRequest, conn: Conn, state: &DbState, settings: &Settin
             }
         }
     };
+    // console history: the text as typed, one entry (the parse and the guard sent nothing; a refusal neither)
+    if !refused {
+        let l = console::log(&st, req.sql.trim());
+        match &outcome {
+            RunOutcome::Done { sets, affected, messages, .. } => {
+                let docs = sets.last().and_then(|s| s.docs.as_ref()).map(|d| d.len());
+                let result = match (affected, docs) {
+                    (Some(n), _) => format!("{n} affected"),
+                    (None, Some(n)) => console::count(n, "doc"),
+                    _ => messages.first().cloned().unwrap_or_else(|| "ok".into()),
+                };
+                l.result(result).flag_if(wrote, console::Flag::Write).send()
+            }
+            RunOutcome::Error { message, .. } => l.err(message.clone()).send(),
+            RunOutcome::Cancelled { timeout, .. } => l.cancelled(*timeout).send(),
+            RunOutcome::Ask(_) => {}
+        }
+    }
     if req.history && conn.keeps_history(&settings) {
         let (status, rows, error) = match &outcome {
             RunOutcome::Done { sets, affected, .. } => ("ok", affected.map(|a| a as i64).or(sets.last().and_then(|s| s.docs.as_ref()).map(|d| d.len() as i64)), None),
@@ -1004,6 +1080,11 @@ pub struct FindRequest {
 /// read here first, so a typo never reaches the server. No sort unless one was given: stored order.
 #[tauri::command]
 pub async fn mongo_find(req: FindRequest, state: State<'_, DbState>, settings: State<'_, SettingsState>) -> Result<RunOutcome, String> {
+    let (id, what) = (req.conn_id.clone(), format!("{} · Documents", req.collection));
+    console::scope(&id, Who::App, what, mongo_find_in(req, state, settings)).await
+}
+
+async fn mongo_find_in(req: FindRequest, state: State<'_, DbState>, settings: State<'_, SettingsState>) -> Result<RunOutcome, String> {
     let conn = conns::find(&req.conn_id)?;
     let t = Instant::now();
     let mut parsed = vec![];
@@ -1029,6 +1110,22 @@ pub async fn mongo_find(req: FindRequest, state: State<'_, DbState>, settings: S
     if let Ok(mut runs) = state.runs.lock() {
         runs.insert(req.run_id.clone(), token.clone());
     }
+    // console history: the find as sent, in mongosh's words
+    let text = console::on().then(|| {
+        let mut t = format!("{}.find({}", coll_text(&req.collection), shell(&Bson::Document(filter.clone())));
+        if let Some(p) = &projection {
+            t += &format!(", {}", shell(&Bson::Document(p.clone())));
+        }
+        t.push(')');
+        if let Some(s) = &sort {
+            t += &format!(".sort({})", shell(&Bson::Document(s.clone())));
+        }
+        if let Some(s) = req.skip.filter(|s| *s > 0) {
+            t += &format!(".skip({s})");
+        }
+        t + &format!(".limit({limit})")
+    });
+    let st = console::start();
     let res = match state.mongo(&conn).await {
         Ok(open) => {
             let coll = open.client.database(&database_of(&conn, req.database.as_deref())).collection::<Document>(&req.collection);
@@ -1054,6 +1151,17 @@ pub async fn mongo_find(req: FindRequest, state: State<'_, DbState>, settings: S
         runs.remove(&req.run_id);
     }
     let ms = t.elapsed().as_millis() as u64;
+    if let Some(text) = text {
+        let l = console::log(&st, text);
+        match &res {
+            Err(timeout) => l.cancelled(*timeout).send(),
+            Ok(Err(e)) if code_name(e) == Some("MaxTimeMSExpired") => l.cancelled(true).send(),
+            // could not open: the connect entries say why, and the find was never sent
+            Ok(Err(e)) if matches!(e.kind.as_ref(), ErrorKind::Custom(_)) => {}
+            Ok(Err(e)) => l.err(err_text(e)).send(),
+            Ok(Ok(((docs, cut), _))) => l.result(format!("{}{}", console::count(docs.len(), "doc"), if *cut { "+" } else { "" })).send(),
+        }
+    }
     Ok(match res {
         Err(timeout) => RunOutcome::Cancelled { ms, timeout },
         Ok(Err(e)) if code_name(&e) == Some("MaxTimeMSExpired") => RunOutcome::Cancelled { ms, timeout: true },
@@ -1112,16 +1220,20 @@ pub struct CollInfo {
 #[tauri::command]
 pub async fn mongo_stats(id: String, database: Option<String>, collection: String, state: State<'_, DbState>) -> Result<CollInfo, String> {
     let conn = conns::find(&id)?;
-    let open = state.mongo(&conn).await?;
-    stats(&open.client.database(&database_of(&conn, database.as_deref())), &collection).await
+    console::scope(&id, Who::App, format!("{collection} · Info"), async {
+        let open = state.mongo(&conn).await?;
+        stats(&open.client.database(&database_of(&conn, database.as_deref())), &collection).await
+    })
+    .await
 }
 
 async fn stats(db: &Database, collection: &str) -> Result<CollInfo, String> {
     let collection = collection.to_string();
     let mut info = CollInfo { read_at: conns::now_ms(), kind: "collection".into(), ..Default::default() };
-    let spec: Option<Document> = db
-        .run_command(doc! { "listCollections": 1, "filter": { "name": collection.clone() }, "nameOnly": false })
-        .await
+    let st = console::start();
+    let listed = db.run_command(doc! { "listCollections": 1, "filter": { "name": collection.clone() }, "nameOnly": false }).await;
+    logged(&st, format!("db.getCollectionInfos({{ name: {} }})", shell(&Bson::String(collection.clone()))), &listed, |_| "ok".into());
+    let spec: Option<Document> = listed
         .ok()
         .and_then(|r| r.get_document("cursor").ok().and_then(|c| c.get_array("firstBatch").ok()).and_then(|b| b.first().and_then(Bson::as_document).cloned()));
     if let Some(s) = &spec {
@@ -1136,10 +1248,22 @@ async fn stats(db: &Database, collection: &str) -> Result<CollInfo, String> {
     if info.kind == "view" {
         return Ok(info);
     }
+    let st = console::start();
+    let agg = format!("{}.aggregate([ {{ $collStats: {{ storageStats: {{}} }} }} ])", coll_text(&collection));
     let shards: Vec<Document> = match db.collection::<Document>(&collection).aggregate([doc! { "$collStats": { "storageStats": {} } }]).await {
-        Ok(c) => c.try_collect().await.map_err(|e| err_text(&e))?,
+        Ok(c) => {
+            let r = c.try_collect::<Vec<Document>>().await;
+            logged(&st, agg, &r, |d| console::count(d.len(), "shard"));
+            r.map_err(|e| err_text(&e))?
+        }
         // older servers and some hosted tiers: the collStats command
-        Err(_) => vec![doc! { "storageStats": db.run_command(doc! { "collStats": collection.clone() }).await.map_err(|e| err_text(&e))? }],
+        Err(e) => {
+            console::log(&st, agg).err(err_text(&e)).send();
+            let st = console::start();
+            let r = db.run_command(doc! { "collStats": collection.clone() }).await;
+            logged(&st, format!("db.runCommand({{ collStats: {} }})", shell(&Bson::String(collection.clone()))), &r, |_| "ok".into());
+            vec![doc! { "storageStats": r.map_err(|e| err_text(&e))? }]
+        }
     };
     let add = |a: Option<i64>, b: Option<i64>| match (a, b) {
         (None, None) => None,
@@ -1176,7 +1300,18 @@ pub(super) async fn heartbeat(state: &DbState, global: bool, beat: &mut super::B
     let opens: Vec<(String, Arc<MOpen>)> = state.mongo.lock().await.iter().filter(|(_, o)| o.heartbeat.unwrap_or(global)).map(|(id, o)| (id.clone(), o.clone())).collect();
     for (id, o) in opens {
         beat.start(&id);
-        let up = matches!(tokio::time::timeout(super::BEAT_WAIT, o.client.database("admin").run_command(doc! { "ping": 1 })).await, Ok(Ok(_)));
+        let st = console::start();
+        let r = tokio::time::timeout(super::BEAT_WAIT, o.client.database("admin").run_command(doc! { "ping": 1 })).await;
+        let up = matches!(r, Ok(Ok(_)));
+        console::scope(&id, Who::App, "Heartbeat", async {
+            let l = console::log(&st, "db.runCommand({ ping: 1 })");
+            match r {
+                Ok(Ok(_)) => l.result("ok").flag(console::Flag::Ping).send(),
+                Ok(Err(e)) => l.err(err_text(&e)).send(),
+                Err(_) => l.err(format!("No answer in {} s", super::BEAT_WAIT.as_secs())).send(),
+            }
+        })
+        .await;
         beat.done(&id, Some(up));
     }
 }
